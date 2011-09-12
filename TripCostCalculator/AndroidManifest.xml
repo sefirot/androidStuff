@@ -1,12 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.android.tripcostcalculator">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.applanger.tripcostcalculator">
     <application android:icon="@drawable/icon">
-        <activity android:name=".Notepadv3" android:label="@string/app_name">
+        <activity android:name="com.applanger.tripcostcalculator.TabView" android:label="@string/app_name"
+           		  android:theme="@android:style/Theme.NoTitleBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".NoteEdit" />
+        <activity android:name="com.applanger.tripcostcalculator.PassAmounts"/>
+        <activity android:name="com.applanger.tripcostcalculator.TripperAccounts"/>
+        <activity android:name="com.applanger.tripcostcalculator.PayList"/>  
+        <activity android:name="com.applanger.tripcostcalculator.NoteEdit"/>
     </application>
 </manifest> 

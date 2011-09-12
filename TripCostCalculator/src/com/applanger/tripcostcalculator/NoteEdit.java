@@ -16,7 +16,7 @@
 
 /* niklas documented this file according to notepad tutorial exercise 3 */ 
 
-package com.android.tripcostcalculator;
+package com.applanger.tripcostcalculator;
 
 
 import android.app.Activity;
@@ -25,6 +25,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import com.applanger.tripcostcalculator.R;
 
 public class NoteEdit extends Activity {
 
@@ -59,7 +60,7 @@ public class NoteEdit extends Activity {
         /** check if 'savedInstanceState' is 'null' otherwise (':') getSerializable the long 'KEY_ROWID'*/
         mRowId = (savedInstanceState == null) ? null :
             (Long) savedInstanceState.getSerializable(NotesDbAdapter.KEY_ROWID);
-        /** check if mRowId is still 'null' then pass Intent 'extra' information (see Notepadv3.class) and put it into 'bundle'*/
+        /** check if mRowId is still 'null' then pass Intent 'extra' information (see PayList.class) and put it into 'bundle'*/
         if (mRowId == null) {
             Bundle extras = getIntent().getExtras();
             /** declare 'mRowID by checking 'extra information' is unequal 'null' then get the long 'KEY_ROWID' otherwise id remains 'null' */
@@ -73,7 +74,7 @@ public class NoteEdit extends Activity {
         
         /** methodinfo: by click 'confirm',...**/ 
         confirmButton.setOnClickListener(new View.OnClickListener() {
-        	/** internalstubbinfo: ... 'RESULT_OK' is returned to 'onActivityResult' in Notepadv3.class **/
+        	/** internalstubbinfo: ... 'RESULT_OK' is returned to 'onActivityResult' in PayList.class **/
         	public void onClick(View view) {
         	    setResult(RESULT_OK);
         	    /** methodinfo: ... then finish activity & return to notepadv3.class **/

@@ -20,7 +20,7 @@
 
 
 
-package com.android.tripcostcalculator;
+package com.applanger.tripcostcalculator;
 
 
 import android.app.ListActivity;
@@ -36,12 +36,13 @@ import android.view.ContextMenu.ContextMenuInfo;
 import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
 import android.widget.AdapterView.AdapterContextMenuInfo;
+import com.applanger.tripcostcalculator.R;
 
 
 
 /** 'ListActivity' is subclass of superclass 'Activity'    
  *  info: type 'ctrl+shift+0' to automatically import subclasses ListActivity + its interfaces 'Menu','MenuItem' & 'Bundle'*/ 
-public class Notepadv3 extends ListActivity {
+public class PayList extends ListActivity {
     
 	private static final int ACTIVITY_CREATE=0;
     private static final int ACTIVITY_EDIT=1;
