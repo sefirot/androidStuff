@@ -1,18 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<TableLayout xmlns:android="http://schemas.android.com/apk/res/android"
 	android:orientation="horizontal"
 		android:layout_width="fill_parent"
 		android:layout_height="wrap_content"
 		android:padding="10dp">
-		
-	<TextView android:id="@+id/text1" xmlns:android="http://schemas.android.com/apk/res/android"
-    	android:layout_width="fill_parent"
-    	android:layout_height="wrap_content"
-    	android:textSize="24sp"
-    	android:layout_weight="1"/>
-	<TextView android:id="@+id/text2" xmlns:android="http://schemas.android.com/apk/res/android"
-    	android:layout_width="fill_parent"
-    	android:layout_height="wrap_content"
-    	android:textSize="24sp"
-    	android:layout_weight="2"/>/>
-</LinearLayout>
+	<TableRow >
+		<TextView
+            android:text="@string/at"
+            android:padding="3dip" />
+        <TextView android:id="@+id/date" xmlns:android="http://schemas.android.com/apk/res/android"
+    		android:textSize="24sp"
+    		android:padding="3dip"/>
+		<TextView android:id="@+id/submitter" xmlns:android="http://schemas.android.com/apk/res/android"
+    		android:textSize="24sp"
+    		android:padding="3dip"/>
+		<TextView
+            android:text="@string/submit"
+            android:padding="3dip" />
+		<TextView android:id="@+id/receivers" xmlns:android="http://schemas.android.com/apk/res/android"
+    		android:textSize="24sp"
+    		android:gravity="right"
+    		android:padding="3dip"/>
+		<TextView android:id="@+id/amount" xmlns:android="http://schemas.android.com/apk/res/android"
+    		android:textSize="24sp"
+    		android:padding="3dip"/>
+   		<TextView
+            android:text="@string/to"
+            android:padding="3dip" />
+        <TextView android:id="@+id/purpose" xmlns:android="http://schemas.android.com/apk/res/android"
+    		android:textSize="24sp"
+    		android:gravity="right"
+    		android:padding="3dip"/>
+    </TableRow>	
+</TableLayout>

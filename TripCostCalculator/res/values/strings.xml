@@ -2,10 +2,16 @@
 <resources>
     <string name="app_name">Trip Cost Calc</string>
     <string name="no_notes">No Notes Yet</string>
+    <string name="at">Am</string>
+    <string name="submit">legt vor</string>
+    <string name="to">für</string>
     <string name="menu_insert">Add Note</string>
     <string name="menu_delete">Delete Note</string>
-    <string name="title">Title</string>
-    <string name="body">Body</string>
+    <string name="date">Wann?</string>
+    <string name="submitter">Wer legt vor?</string>
+    <string name="amount">Wieviel?</string>
+    <string name="receivers">Wem?</string>
+    <string name="purpose">Für was?</string>
     <string name="confirm">Confirm</string>
     <string name="edit_note">Edit Note</string>
 </resources>

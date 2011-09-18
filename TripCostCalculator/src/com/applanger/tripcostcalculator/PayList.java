@@ -74,15 +74,14 @@ public class PayList extends ListActivity {
     }
 
     
-    
     private void fillData() {
         // Get all of the rows from the database and create the item list
         notesCursor = mDbHelper.fetchAllNotes();
         startManagingCursor(notesCursor);
         // Create an array to specify the fields we want to display in the list (only TITLE)
-        String[] from = new String[]{NotesDbAdapter.KEY_TITLE, NotesDbAdapter.KEY_BODY};
+        String[] from = new String[]{NotesDbAdapter.KEY_DATE, NotesDbAdapter.KEY_SUBMITTER, NotesDbAdapter.KEY_AMOUNT, NotesDbAdapter.KEY_RECEIVERS, NotesDbAdapter.KEY_PURPOSE};
         // and an array of the fields we want to bind those fields to (in this case just text1)
-        int[] to = new int[]{R.id.text1, R.id.text2};
+        int[] to = new int[]{R.id.date, R.id.submitter,R.id.amount,R.id.receivers, R.id.purpose};
         // Now create a simple cursor adapter and set it to display
         SimpleCursorAdapter notes = 
             new SimpleCursorAdapter(this, R.layout.notes_row, notesCursor, from, to);
