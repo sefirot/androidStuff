@@ -10,9 +10,6 @@ package com.applanger.tripcostcalculator;
 public final class R {
     public static final class attr {
     }
-    public static final class color {
-        public static final int style=0x7f050000;
-    }
     public static final class drawable {
         public static final int ic_tab_artists=0x7f020000;
         public static final int ic_tab_artists_grey=0x7f020001;
@@ -48,5 +45,8 @@ public final class R {
         public static final int submit=0x7f040003;
         public static final int submitter=0x7f040008;
         public static final int to=0x7f040004;
+    }
+    public static final class style {
+        public static final int CustomText=0x7f050000;
     }
 }
