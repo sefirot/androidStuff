@@ -22,6 +22,8 @@ import android.database.Cursor;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.text.TextUtils;
+import android.text.TextUtils.SimpleStringSplitter;
 import android.util.Log;
 
 
@@ -40,9 +42,12 @@ public class NotesDbAdapter {
     public static final String KEY_DATE = "date";
     public static final String KEY_SUBMITTER = "submitter";
     public static final String KEY_AMOUNT = "amount";
-    public static final String KEY_RECEIVERS = "receivers";
     public static final String KEY_PURPOSE = "purpose";
     public static final String KEY_ROWID = "_id";
+    public static final String KEY_RECEIVER = "receiver";
+    public static final String KEY_RECEIVERS = "receivers";
+    public static final String KEY_SHARE = "share";
+    public static final String KEY_ENTRYID = "entry_id";
 
     private static final String TAG = "NotesDbAdapter";
     private DatabaseHelper mDbHelper;
@@ -51,12 +56,22 @@ public class NotesDbAdapter {
     /**
      * Database creation sql statement
      */
-    private static final String DATABASE_CREATE =
+    private static final String CREATE_TABLE =
         "create table notes (_id integer primary key autoincrement, "
-        + "date text not null, submitter text not null, amount text not null, receivers text not null, purpose text not null);";
+        + "date text not null," 
+        + "submitter text not null," 
+        + "amount integer not null,"  
+        + "purpose text not null);";
+    
+    private static final String CREATE_TABLE2 =
+        "create table notes2 (_id integer primary key autoincrement, "
+        + "receiver text not null," 
+        + "share integer not null," 
+        + "entry_id integer not null);";
 
     private static final String DATABASE_NAME = "data";
     private static final String DATABASE_TABLE = "notes";
+    private static final String DATABASE_TABLE2 = "notes2";
     private static final int DATABASE_VERSION = 5;
 
     private final Context mCtx;
@@ -70,7 +85,8 @@ public class NotesDbAdapter {
         @Override
         public void onCreate(SQLiteDatabase db) {
 
-            db.execSQL(DATABASE_CREATE);
+            db.execSQL(CREATE_TABLE);
+            db.execSQL(CREATE_TABLE2);
         }
 
         @Override
@@ -121,17 +137,30 @@ public class NotesDbAdapter {
      * @param body the body of the note
      * @return rowId or -1 if failed
      */
-    public long createNote(String date, String submitter,String amount,String receivers, String purpose) {
+    public long createNote(String date, String submitter,String amount,String purpose) {
         ContentValues initialValues = new ContentValues();
         initialValues.put(KEY_DATE, date);
         initialValues.put(KEY_SUBMITTER, submitter);
         initialValues.put(KEY_AMOUNT, amount);
-        initialValues.put(KEY_RECEIVERS, receivers);
         initialValues.put(KEY_PURPOSE, purpose);
 
         return mDb.insert(DATABASE_TABLE, null, initialValues);
     }
 
+    public long createNote2(String receivers, String share, long entry_id) {
+        ContentValues initialValues = new ContentValues();
+		char delimiter = 12;
+		TextUtils.StringSplitter splitter = new TextUtils.SimpleStringSplitter(delimiter);
+		splitter.setString(receivers);
+		for (String receiver : splitter) {
+			initialValues.put(KEY_RECEIVER, receiver);
+			initialValues.put(KEY_SHARE, share);
+			initialValues.put(KEY_ENTRYID, entry_id);
+		}
+        return mDb.insert(DATABASE_TABLE2, null, initialValues);
+    }
+    
+    
     /**
      * Delete the note with the given rowId
      * 
@@ -150,7 +179,7 @@ public class NotesDbAdapter {
      */
     public Cursor fetchAllNotes() {
 
-        return mDb.query(DATABASE_TABLE, new String[] {KEY_ROWID, KEY_DATE, KEY_SUBMITTER, KEY_AMOUNT,KEY_RECEIVERS,KEY_PURPOSE}, null, null, null, null, null);
+        return mDb.query(DATABASE_TABLE, new String[] {KEY_ROWID, KEY_DATE, KEY_SUBMITTER, KEY_AMOUNT,KEY_PURPOSE}, null, null, null, null, null);
     }
 
     /**
@@ -165,7 +194,7 @@ public class NotesDbAdapter {
         Cursor mCursor =
 
             mDb.query(true, DATABASE_TABLE, new String[] {KEY_ROWID,
-                    KEY_DATE, KEY_SUBMITTER, KEY_AMOUNT,KEY_RECEIVERS,KEY_PURPOSE}, KEY_ROWID + "=" + rowId, null,
+                    KEY_DATE, KEY_SUBMITTER, KEY_AMOUNT,KEY_PURPOSE}, KEY_ROWID + "=" + rowId, null,
                     null, null, null, null);
         if (mCursor != null) {
             mCursor.moveToFirst();
@@ -174,6 +203,19 @@ public class NotesDbAdapter {
 
     }
 
+    public Cursor fetchReceivers(long rowId) throws SQLException {
+
+        Cursor mCursor =
+
+            mDb.query(true, DATABASE_TABLE, new String[] {KEY_ROWID,
+                    KEY_DATE, KEY_SUBMITTER, KEY_AMOUNT,KEY_PURPOSE}, KEY_ROWID + "=" + rowId, null,
+                    null, null, null, null);
+        if (mCursor != null) {
+            mCursor.moveToFirst();
+        }
+        return mCursor;
+
+    }
     /**
      * Update the note using the details provided. The note to be updated is
      * specified using the rowId, and it is altered to use the title and body
@@ -189,7 +231,6 @@ public class NotesDbAdapter {
         args.put(KEY_DATE, date);
         args.put(KEY_SUBMITTER, submitter);
         args.put(KEY_AMOUNT, amount);
-        args.put(KEY_RECEIVERS, receivers);
         args.put(KEY_PURPOSE, purpose);
         
         return mDb.update(DATABASE_TABLE, args, KEY_ROWID + "=" + rowId, null) > 0;

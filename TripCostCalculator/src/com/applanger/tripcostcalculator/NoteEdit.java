@@ -35,6 +35,7 @@ public class NoteEdit extends Activity {
     private EditText mAmountText;
     private EditText mReceiversText;
     private EditText mPurposeText;
+    private EditText mShareText;
     private Long mRowId;
     private NotesDbAdapter mDbHelper;
 
@@ -60,6 +61,7 @@ public class NoteEdit extends Activity {
         mAmountText = (EditText) findViewById(R.id.amount);
         mReceiversText = (EditText) findViewById(R.id.receivers);
         mPurposeText = (EditText) findViewById(R.id.purpose);
+        mShareText = (EditText) findViewById(R.id.share);
         Button confirmButton = (Button) findViewById(R.id.confirm);
         
         
@@ -101,10 +103,12 @@ public class NoteEdit extends Activity {
                     note.getColumnIndexOrThrow(NotesDbAdapter.KEY_SUBMITTER)));
             mAmountText.setText(note.getString(
                     note.getColumnIndexOrThrow(NotesDbAdapter.KEY_AMOUNT)));
-            mReceiversText.setText(note.getString(
-                    note.getColumnIndexOrThrow(NotesDbAdapter.KEY_RECEIVERS)));
             mPurposeText.setText(note.getString(
                     note.getColumnIndexOrThrow(NotesDbAdapter.KEY_PURPOSE)));
+            mReceiversText.setText(note.getString(
+                    note.getColumnIndexOrThrow(NotesDbAdapter.KEY_RECEIVER)));
+            mShareText.setText(note.getString(
+                    note.getColumnIndexOrThrow(NotesDbAdapter.KEY_SHARE)));
         }
     }
     
@@ -131,18 +135,20 @@ public class NoteEdit extends Activity {
         populateFields();
     }
         
-    /** life-cycle part 6: save updated, created & interimley saved edtitable strings to database respectively the mRowId*/
+    /** life-cycle part 6: save updated, created & interimely saved editable strings to database respectively the mRowId*/
     private void saveState() {
     String date = mDateText.getText().toString();
     String submitter = mSubmitterText.getText().toString();
     String amount = mAmountText.getText().toString();
     String receivers = mReceiversText.getText().toString();
     String purpose = mPurposeText.getText().toString();
+    String share = mShareText.getText().toString();
 
 	    if (mRowId == null) {
-	        long id = mDbHelper.createNote(date, submitter, amount, receivers, purpose);
-	        if (id > 0) {
-	            mRowId = id;
+	        long entry_id = mDbHelper.createNote(date, submitter, amount, purpose);
+	        if (entry_id > 0) {
+	            mRowId = entry_id;
+	            long receivers_id = mDbHelper.createNote2(receivers, share, entry_id);
 	        }
 	    } else {
 	        mDbHelper.updateNote(mRowId, date, submitter, amount, receivers, purpose);
