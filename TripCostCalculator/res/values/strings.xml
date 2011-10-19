@@ -7,11 +7,12 @@
     <string name="to">für</string>
     <string name="menu_insert">Add Note</string>
     <string name="menu_delete">Delete Note</string>
-    <string name="date">Wann?</string>
-    <string name="submitter">Wer legt vor?</string>
-    <string name="amount">Wieviel?</string>
-    <string name="receivers">Wem?</string>
-    <string name="purpose">Für was?</string>
+    <string name="date">Date:</string>
+    <string name="submitter">Submitter:</string>
+    <string name="amount">Amount:</string>
+    <string name="receiver">Receiver:</string>
+    <string name="purpose">Purpose</string>
     <string name="confirm">Confirm</string>
     <string name="edit_note">Edit Note</string>
+    <string name="share">Share</string>
 </resources>

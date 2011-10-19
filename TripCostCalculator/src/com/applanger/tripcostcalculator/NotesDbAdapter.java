@@ -16,14 +16,15 @@
 
 package com.applanger.tripcostcalculator;
 
+import java.util.ArrayList;
+import java.util.Iterator;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
-import android.text.TextUtils;
-import android.text.TextUtils.SimpleStringSplitter;
+import android.database.sqlite.SQLiteQueryBuilder;
 import android.util.Log;
 
 
@@ -43,11 +44,13 @@ public class NotesDbAdapter {
     public static final String KEY_SUBMITTER = "submitter";
     public static final String KEY_AMOUNT = "amount";
     public static final String KEY_PURPOSE = "purpose";
-    public static final String KEY_ROWID = "_id";
+    public static final String KEY_ROWID = "row_id";
     public static final String KEY_RECEIVER = "receiver";
     public static final String KEY_RECEIVERS = "receivers";
+    public static final String KEY_SHARES = "shares";
     public static final String KEY_SHARE = "share";
     public static final String KEY_ENTRYID = "entry_id";
+    public static final String KEY_RECCOUNT = "recCount";
 
     private static final String TAG = "NotesDbAdapter";
     private DatabaseHelper mDbHelper;
@@ -57,7 +60,7 @@ public class NotesDbAdapter {
      * Database creation sql statement
      */
     private static final String CREATE_TABLE =
-        "create table notes (_id integer primary key autoincrement, "
+        "create table notes (row_id integer primary key autoincrement, "
         + "date text not null," 
         + "submitter text not null," 
         + "amount integer not null,"  
@@ -67,7 +70,8 @@ public class NotesDbAdapter {
         "create table notes2 (_id integer primary key autoincrement, "
         + "receiver text not null," 
         + "share integer not null," 
-        + "entry_id integer not null);";
+        + "entry_id integer not null);"
+        + "reccount integer not null);";
 
     private static final String DATABASE_NAME = "data";
     private static final String DATABASE_TABLE = "notes";
@@ -147,20 +151,28 @@ public class NotesDbAdapter {
         return mDb.insert(DATABASE_TABLE, null, initialValues);
     }
 
-    public long createNote2(String receivers, String share, long entry_id) {
+    public long createNote2(ArrayList<String> receivers, ArrayList<String> shares, long row_id) {
         ContentValues initialValues = new ContentValues();
-		char delimiter = 12;
-		TextUtils.StringSplitter splitter = new TextUtils.SimpleStringSplitter(delimiter);
-		splitter.setString(receivers);
-		for (String receiver : splitter) {
+        
+        int recCount = 0;
+        String receiver;
+		String share;
+		
+		Iterator<String> a = receivers.iterator();
+		Iterator<String> b = shares.iterator();
+	    
+		while (a.hasNext() && b.hasNext()) {
+			recCount++;
+			receiver = a.next();
+			share = b.next();		
+			
 			initialValues.put(KEY_RECEIVER, receiver);
 			initialValues.put(KEY_SHARE, share);
-			initialValues.put(KEY_ENTRYID, entry_id);
+			initialValues.put(KEY_ENTRYID, row_id);
+			initialValues.put(KEY_RECCOUNT, recCount);
 		}
-        return mDb.insert(DATABASE_TABLE2, null, initialValues);
+		return mDb.insert(DATABASE_TABLE2, null, initialValues);
     }
-    
-    
     /**
      * Delete the note with the given rowId
      * 
@@ -207,8 +219,7 @@ public class NotesDbAdapter {
 
         Cursor mCursor =
 
-            mDb.query(true, DATABASE_TABLE, new String[] {KEY_ROWID,
-                    KEY_DATE, KEY_SUBMITTER, KEY_AMOUNT,KEY_PURPOSE}, KEY_ROWID + "=" + rowId, null,
+            mDb.query(true, DATABASE_TABLE2, new String[] {KEY_RECEIVER}, KEY_ENTRYID + "=" + rowId, null,
                     null, null, null, null);
         if (mCursor != null) {
             mCursor.moveToFirst();
@@ -216,17 +227,74 @@ public class NotesDbAdapter {
         return mCursor;
 
     }
-    /**
-     * Update the note using the details provided. The note to be updated is
-     * specified using the rowId, and it is altered to use the title and body
-     * values passed in
-     * 
-     * @param rowId id of note to update
-     * @param title value to set note title to
-     * @param body value to set note body to
-     * @return true if the note was successfully updated, false otherwise
-     */
-    public boolean updateNote(long rowId, String date, String submitter,String amount,String receivers, String purpose) {
+    
+    public Cursor fetchQueryResultSets(String QueryID,String select1,String select2,
+    								   String where1,String where2,String where3,
+    								   String input1,String input2,String input3,
+    								   String dateMin,String dateMax)throws SQLException {
+    	
+    		SQLiteQueryBuilder QueryBuilder = new SQLiteQueryBuilder();
+    	
+   
+    		String[] resultColumns = new String[] {select1,select2};
+    		String selection = null;
+    		String[] selectionArgs = null;
+    		String groupBy = new String (select2);
+    		
+	        String oneInputSelection = new String (where1 + "= ?");
+	        String twoInput = new String (oneInputSelection + "AND" + where2 + "= ?");
+	        String threeInput = new String (twoInput + "AND" + where3 + "= ?");
+	        String dateSelection = new String (KEY_DATE + "BETWEEN ?s AND ?s");
+	        String oneInputDate = new String (oneInputSelection + "AND" + dateSelection);
+	        String twoInputDate = new String (twoInput + "AND" + dateSelection);
+	        String threeInputDate = new String (threeInput + "AND" + dateSelection);
+	        
+	       
+	        
+	        if(QueryID.contains("D")==true) {
+	    	   if(QueryID.length()==1) {
+	          		selectionArgs = new String [] {dateMin,dateMax};
+	          		selection = dateSelection;
+	           }else if(QueryID.length()==2) {
+	          		selectionArgs = new String [] {input1,dateMin,dateMax};
+	          		selection = oneInputDate;
+	           }else if(QueryID.length()==3) {
+	          		selectionArgs = new String [] {input1,input2,dateMin,dateMax};
+	          		selection = twoInputDate;
+	           }else if(QueryID.length()==4) {
+	          		selectionArgs = new String [] {input1,input2,dateMin,dateMax};
+	          		selection = threeInputDate;
+	           }
+	       }else {    
+	    	   if(QueryID.length()==1) {
+	       			selectionArgs = new String [] {input1};
+	       			selection = oneInputSelection;
+	    	   }else if(QueryID.length()==2) {
+	       			selectionArgs = new String [] {where1,where2};
+	       			selection = twoInput;
+	    	   }else if(QueryID.length()==3) {
+	       			selectionArgs = new String [] {where1,where2,where3};
+	       			selection = threeInput;
+	    	   }
+	 
+	       }
+	         
+	       if(QueryID.contains("R")==true) {
+	        	QueryBuilder.setTables("notes INNER JOIN notes2 ON (notes.row_id = notes2.event_id)");	
+	       }else {
+	        	QueryBuilder.setTables("notes");
+	       } 
+       
+	       Cursor mCursor =
+	    	   QueryBuilder.query(mDb,resultColumns,selection,selectionArgs,groupBy,null,null);
+        
+	       if (mCursor != null) {
+	    	   mCursor.moveToFirst();
+	       }
+	       return mCursor;
+    }
+
+    public boolean updateNote(long rowId, String date, String submitter,String amount, String purpose) {
         ContentValues args = new ContentValues();
         args.put(KEY_DATE, date);
         args.put(KEY_SUBMITTER, submitter);
@@ -234,5 +302,29 @@ public class NotesDbAdapter {
         args.put(KEY_PURPOSE, purpose);
         
         return mDb.update(DATABASE_TABLE, args, KEY_ROWID + "=" + rowId, null) > 0;
+    }
+    
+    public boolean updateNote2(ArrayList<String> receivers, ArrayList<String> shares, long rowId) {
+    	ContentValues args = new ContentValues();
+    	int recCount = 0;
+        String receiver;
+		String share;
+		
+		Iterator<String> a = receivers.iterator();
+		Iterator<String> b = shares.iterator();
+	    
+		while (a.hasNext()) {
+			recCount++;
+			receiver = a.next();
+			share = b.next();		
+			
+			args.put(KEY_RECEIVER, receiver);
+			args.put(KEY_SHARE, share);
+			args.put(KEY_ENTRYID, rowId);
+			args.put(KEY_RECCOUNT, recCount);
+		}
+		
+        
+        return mDb.update(DATABASE_TABLE2, args, KEY_ENTRYID + "=" + rowId, null) > 0;
     }
 }

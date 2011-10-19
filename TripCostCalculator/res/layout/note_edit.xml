@@ -4,20 +4,19 @@
 	android:orientation="vertical" android:layout_width="fill_parent"
 	android:layout_height="fill_parent">
 	
-	<LinearLayout android:orientation="vertical"
+	<LinearLayout android:orientation="horizontal"
 		android:layout_width="fill_parent"
 		android:layout_height="wrap_content">
 
 		<TextView android:layout_width="wrap_content"
 			android:layout_height="wrap_content" 
-			android:text="@string/date" />
+			android:text="@string/date"/>
 		<EditText android:id="@+id/date" 
 		  android:layout_width="wrap_content"
-			android:layout_height="wrap_content" 
-			android:layout_weight="1"/>
+			android:layout_height="wrap_content"/>
 	</LinearLayout>
 
-	<LinearLayout android:orientation="vertical"
+	<LinearLayout android:orientation="horizontal"
 		android:layout_width="fill_parent"
 		android:layout_height="wrap_content">
 
@@ -26,11 +25,10 @@
 			android:text="@string/submitter" />
 		<EditText android:id="@+id/submitter" 
 		  android:layout_width="wrap_content"
-			android:layout_height="wrap_content" 
-			android:layout_weight="1"/>
+			android:layout_height="wrap_content"/>
 	</LinearLayout>
 	
-	<LinearLayout android:orientation="vertical"
+	<LinearLayout android:orientation="horizontal"
 		android:layout_width="fill_parent"
 		android:layout_height="wrap_content">
 
@@ -39,21 +37,7 @@
 			android:text="@string/amount" />
 		<EditText android:id="@+id/amount" 
 		  android:layout_width="wrap_content"
-			android:layout_height="wrap_content" 
-			android:layout_weight="1"/>
-	</LinearLayout>
-	
-	<LinearLayout android:orientation="vertical"
-		android:layout_width="fill_parent"
-		android:layout_height="wrap_content">
-
-		<TextView android:layout_width="wrap_content"
-			android:layout_height="wrap_content" 
-			android:text="@string/receivers" />
-		<EditText android:id="@+id/receivers" 
-		  android:layout_width="wrap_content"
-			android:layout_height="wrap_content" 
-			android:layout_weight="1"/>
+			android:layout_height="wrap_content"/>
 	</LinearLayout>
 	
 	<LinearLayout android:orientation="vertical"
@@ -65,12 +49,41 @@
 			android:text="@string/purpose" />
 		<EditText android:id="@+id/purpose" 
 		  android:layout_width="wrap_content"
-			android:layout_height="wrap_content" 
-			android:layout_weight="1"/>
+			android:layout_height="wrap_content"/>
 	</LinearLayout>
 	
-	<Button android:id="@+id/confirm" 
+	<RelativeLayout android:orientation="horizontal"
+		android:layout_width="fill_parent"
+		android:layout_height="wrap_content">
+        <LinearLayout android:orientation="vertical"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_alignParentLeft="true">
+			<TextView android:text="@string/receiver" />
+			<EditText android:id="@+id/receiver"/>  		 
+		</LinearLayout>
+		<LinearLayout android:orientation="vertical"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginLeft="5dip"
+			android:layout_alignRight="@+id/receiver">
+			<TextView android:text="@string/share" />
+			<EditText android:id="@+id/share"/>  		 
+		</LinearLayout>
+		 <Button android:id="@+id/BtnPlus"
+        	android:layout_width="wrap_content"
+        	android:layout_height="wrap_content"
+        	android:layout_alignParentRight="true"
+        	android:layout_marginLeft="10dip"
+        	android:text="+" />
+	</RelativeLayout>
+	
+	<TableLayout android:id="@+id/AddReceiver"
+		android:layout_width="fill_parent"
+		android:layout_height="wrap_content"/>
+	
+	<Button android:id="@+id/BtnConfirm" 
 	  android:text="@string/confirm"
 		android:layout_width="wrap_content"
-		android:layout_height="wrap_content" />
+		android:layout_height="wrap_content"/>
 </LinearLayout>

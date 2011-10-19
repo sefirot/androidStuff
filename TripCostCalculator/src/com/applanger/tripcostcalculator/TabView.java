@@ -28,7 +28,7 @@ public class TabView extends TabActivity{
 	    tabHost.addTab(spec);
 
 	    // Do the same for the other tabs
-	    intent = new Intent().setClass(this, TripperAccounts.class);
+	    intent = new Intent().setClass(this, SearchView.class);
 	    spec = tabHost.newTabSpec("trippers").setIndicator("Trippers",
 	                      res.getDrawable(R.drawable.ic_tab_artists))
 	                  .setContent(intent);

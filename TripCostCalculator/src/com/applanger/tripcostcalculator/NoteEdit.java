@@ -19,12 +19,19 @@
 package com.applanger.tripcostcalculator;
 
 
+import java.util.ArrayList;
+
 import android.app.Activity;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.TableLayout;
+import android.widget.TableRow;
+import android.widget.TextView;
+import android.widget.TableLayout.LayoutParams;
+
 import com.applanger.tripcostcalculator.R;
 
 public class NoteEdit extends Activity {
@@ -33,11 +40,15 @@ public class NoteEdit extends Activity {
 	private EditText mDateText;
     private EditText mSubmitterText;
     private EditText mAmountText;
-    private EditText mReceiversText;
+    private EditText mReceiverText;
     private EditText mPurposeText;
     private EditText mShareText;
     private Long mRowId;
     private NotesDbAdapter mDbHelper;
+ 
+    public ArrayList<String> receivers;
+	public ArrayList<String> shares;
+	
 
     /**life-cycle part 1: 'onCreate'*/
     @Override
@@ -56,13 +67,15 @@ public class NoteEdit extends Activity {
         
         /** field&methodinfo: cast confirm-button & both 'EditText' components to the right view 
          *  sorted by the id's which become automatically generated in 'R.class' */
+        
         mDateText = (EditText) findViewById(R.id.date);
         mSubmitterText = (EditText) findViewById(R.id.submitter);
         mAmountText = (EditText) findViewById(R.id.amount);
-        mReceiversText = (EditText) findViewById(R.id.receivers);
+        mReceiverText = (EditText) findViewById(R.id.receiver);
         mPurposeText = (EditText) findViewById(R.id.purpose);
         mShareText = (EditText) findViewById(R.id.share);
-        Button confirmButton = (Button) findViewById(R.id.confirm);
+        Button BtnConfirm = (Button) findViewById(R.id.BtnConfirm);
+        Button BtnPlus = (Button) findViewById(R.id.BtnPlus);
         
         
         /** check if 'savedInstanceState' is 'null' otherwise (':') getSerializable the long 'KEY_ROWID'*/
@@ -79,9 +92,29 @@ public class NoteEdit extends Activity {
         /** methodinfo: call to view (see below) **/
         populateFields();
 
+        BtnPlus.setOnClickListener(new View.OnClickListener() {
+        	public void onClick(View view) {
+        		 receivers.add(mReceiverText.getText().toString());
+        		 shares.add(mShareText.getText().toString());    	
+    	 
+        		 TableLayout table = (TableLayout) findViewById(R.id.AddReceiver);
+        		 TableRow row = new TableRow(NoteEdit.this);
+        		 TextView listedRec = new TextView(NoteEdit.this);
+        		 TextView listedSha = new TextView(NoteEdit.this);
+        		 listedRec.setText(mReceiverText.getText().toString(), TextView.BufferType.EDITABLE);
+        		 listedRec.setText(mShareText.getText().toString(), TextView.BufferType.EDITABLE);
+                     
+        		 row.addView(listedRec);
+        		 row.addView(listedSha);
+        		 table.addView(row,new TableLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT));
+        		 
+        		 mReceiverText.setText(null,TextView.BufferType.EDITABLE);
+        		 mShareText.setText(null,TextView.BufferType.EDITABLE);
+        	}
+        });    
         
         /** methodinfo: by click 'confirm',...**/ 
-        confirmButton.setOnClickListener(new View.OnClickListener() {
+        BtnConfirm.setOnClickListener(new View.OnClickListener() {
         	/** internalstubbinfo: ... 'RESULT_OK' is returned to 'onActivityResult' in PayList.class **/
         	public void onClick(View view) {
         	    setResult(RESULT_OK);
@@ -92,11 +125,14 @@ public class NoteEdit extends Activity {
         });    
     }
     
+    
     /** life-cycle part 2:  bring editable string to view from Cursor 'note' = declared list in NotesDbAdapter.class */
     private void populateFields() {
         if (mRowId != null) {
             Cursor note = mDbHelper.fetchNote(mRowId);
+            Cursor note2 = mDbHelper.fetchReceivers(mRowId);
             startManagingCursor(note);
+            startManagingCursor(note2);
             mDateText.setText(note.getString(
                         note.getColumnIndexOrThrow(NotesDbAdapter.KEY_DATE)));
             mSubmitterText.setText(note.getString(
@@ -105,10 +141,10 @@ public class NoteEdit extends Activity {
                     note.getColumnIndexOrThrow(NotesDbAdapter.KEY_AMOUNT)));
             mPurposeText.setText(note.getString(
                     note.getColumnIndexOrThrow(NotesDbAdapter.KEY_PURPOSE)));
-            mReceiversText.setText(note.getString(
-                    note.getColumnIndexOrThrow(NotesDbAdapter.KEY_RECEIVER)));
-            mShareText.setText(note.getString(
-                    note.getColumnIndexOrThrow(NotesDbAdapter.KEY_SHARE)));
+            mReceiverText.setText(note2.getString(
+                    note2.getColumnIndexOrThrow(NotesDbAdapter.KEY_RECEIVERS)));
+            mShareText.setText(note2.getString(
+                    note2.getColumnIndexOrThrow(NotesDbAdapter.KEY_SHARES)));
         }
     }
     
@@ -140,18 +176,17 @@ public class NoteEdit extends Activity {
     String date = mDateText.getText().toString();
     String submitter = mSubmitterText.getText().toString();
     String amount = mAmountText.getText().toString();
-    String receivers = mReceiversText.getText().toString();
     String purpose = mPurposeText.getText().toString();
-    String share = mShareText.getText().toString();
 
 	    if (mRowId == null) {
-	        long entry_id = mDbHelper.createNote(date, submitter, amount, purpose);
-	        if (entry_id > 0) {
-	            mRowId = entry_id;
-	            long receivers_id = mDbHelper.createNote2(receivers, share, entry_id);
+	        long row_id = mDbHelper.createNote(date, submitter, amount, purpose);
+	        mDbHelper.createNote2(receivers, shares, row_id);
+	        if (row_id > 0) {
+	            mRowId = row_id;
 	        }
 	    } else {
-	        mDbHelper.updateNote(mRowId, date, submitter, amount, receivers, purpose);
+	        mDbHelper.updateNote(mRowId, date, submitter, amount, purpose);
+	        mDbHelper.updateNote2(receivers, shares, mRowId);
 	    }
     }
 }
