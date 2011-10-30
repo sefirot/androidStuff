@@ -25,6 +25,7 @@ import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.database.sqlite.SQLiteQueryBuilder;
+import android.os.Bundle;
 import android.util.Log;
 
 
@@ -41,14 +42,16 @@ import android.util.Log;
 public class NotesDbAdapter {
 
     public static final String KEY_DATE = "date";
-    public static final String KEY_SUBMITTER = "submitter";
+    public static final String KEY_DATEMAX = "dateMax";
+    public static final String KEY_NAME = "name";
     public static final String KEY_AMOUNT = "amount";
+    public static final String KEY_CURRENCY = "currency";
     public static final String KEY_PURPOSE = "purpose";
     public static final String KEY_ROWID = "row_id";
-    public static final String KEY_RECEIVER = "receiver";
-    public static final String KEY_RECEIVERS = "receivers";
-    public static final String KEY_SHARES = "shares";
-    public static final String KEY_SHARE = "share";
+    //public static final String KEY_NAME = "receiver";
+    //public static final String KEY_RECEIVERS = "receivers";
+    //public static final String KEY_SHARES = "shares";
+    //public static final String KEY_SHARE = "share";
     public static final String KEY_ENTRYID = "entry_id";
     public static final String KEY_RECCOUNT = "recCount";
 
@@ -60,23 +63,27 @@ public class NotesDbAdapter {
      * Database creation sql statement
      */
     private static final String CREATE_TABLE =
-        "create table notes (row_id integer primary key autoincrement, "
-        + "date text not null," 
-        + "submitter text not null," 
-        + "amount integer not null,"  
+        "create table cashParent (row_id integer primary key autoincrement, "
+    	+ "entry_id integer not null," 
+        + "date numeric not null," 
+        + "name text not null," 
+        + "amount real not null,"
+        + "currency text not null,"
         + "purpose text not null);";
     
     private static final String CREATE_TABLE2 =
-        "create table notes2 (_id integer primary key autoincrement, "
-        + "receiver text not null," 
-        + "share integer not null," 
-        + "entry_id integer not null);"
-        + "reccount integer not null);";
+        "create table cashParent (row_id integer primary key autoincrement, "
+    	+ "entry_id integer not null," 
+        + "date numeric not null," 
+        + "name text not null," 
+        + "amount real not null,"
+        + "currency text not null,"
+        + "purpose text not null);";
 
     private static final String DATABASE_NAME = "data";
-    private static final String DATABASE_TABLE = "notes";
-    private static final String DATABASE_TABLE2 = "notes2";
-    private static final int DATABASE_VERSION = 5;
+    private static final String DATABASE_TABLE = "cashParent";
+    private static final String DATABASE_TABLE2 = "cashChild";
+    private static final int DATABASE_VERSION = 6;
 
     private final Context mCtx;
 
@@ -90,7 +97,7 @@ public class NotesDbAdapter {
         public void onCreate(SQLiteDatabase db) {
 
             db.execSQL(CREATE_TABLE);
-            db.execSQL(CREATE_TABLE2);
+            
         }
 
         @Override
@@ -141,11 +148,15 @@ public class NotesDbAdapter {
      * @param body the body of the note
      * @return rowId or -1 if failed
      */
-    public long createNote(String date, String submitter,String amount,String purpose) {
+    public long createNote(String date, String submitter,String amount,String purpose, String currency) {
         ContentValues initialValues = new ContentValues();
+        int entry_id = 0;
+        entry_id++;
+        initialValues.put(KEY_ENTRYID, entry_id);
         initialValues.put(KEY_DATE, date);
-        initialValues.put(KEY_SUBMITTER, submitter);
+        initialValues.put(KEY_NAME, submitter);
         initialValues.put(KEY_AMOUNT, amount);
+        initialValues.put(KEY_CURRENCY, currency);
         initialValues.put(KEY_PURPOSE, purpose);
 
         return mDb.insert(DATABASE_TABLE, null, initialValues);
@@ -166,12 +177,12 @@ public class NotesDbAdapter {
 			receiver = a.next();
 			share = b.next();		
 			
-			initialValues.put(KEY_RECEIVER, receiver);
-			initialValues.put(KEY_SHARE, share);
+			initialValues.put(KEY_NAME, receiver);
+			initialValues.put(KEY_AMOUNT, share);
 			initialValues.put(KEY_ENTRYID, row_id);
 			initialValues.put(KEY_RECCOUNT, recCount);
 		}
-		return mDb.insert(DATABASE_TABLE2, null, initialValues);
+		return mDb.insert(DATABASE_TABLE, null, initialValues);
     }
     /**
      * Delete the note with the given rowId
@@ -228,10 +239,10 @@ public class NotesDbAdapter {
 
     }
     
-    public Cursor fetchQueryResultSets(String QueryID,String select1,String select2,
-    								   String where1,String where2,String where3,
-    								   String input1,String input2,String input3,
-    								   String dateMin,String dateMax)throws SQLException {
+    public Cursor fetchQueryResultSets(Bundle queryBundle, String queryIdStrings)throws SQLException {
+    	
+    	
+    	
     	
     		SQLiteQueryBuilder QueryBuilder = new SQLiteQueryBuilder();
     	

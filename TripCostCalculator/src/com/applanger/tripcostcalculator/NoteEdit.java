@@ -40,6 +40,7 @@ public class NoteEdit extends Activity {
 	private EditText mDateText;
     private EditText mSubmitterText;
     private EditText mAmountText;
+    private EditText mCurrencyText;
     private EditText mReceiverText;
     private EditText mPurposeText;
     private EditText mShareText;
@@ -71,6 +72,7 @@ public class NoteEdit extends Activity {
         mDateText = (EditText) findViewById(R.id.date);
         mSubmitterText = (EditText) findViewById(R.id.submitter);
         mAmountText = (EditText) findViewById(R.id.amount);
+        mCurrencyText = (EditText) findViewById(R.id.currency);
         mReceiverText = (EditText) findViewById(R.id.receiver);
         mPurposeText = (EditText) findViewById(R.id.purpose);
         mShareText = (EditText) findViewById(R.id.share);
@@ -136,15 +138,17 @@ public class NoteEdit extends Activity {
             mDateText.setText(note.getString(
                         note.getColumnIndexOrThrow(NotesDbAdapter.KEY_DATE)));
             mSubmitterText.setText(note.getString(
-                    note.getColumnIndexOrThrow(NotesDbAdapter.KEY_SUBMITTER)));
+                    note.getColumnIndexOrThrow(NotesDbAdapter.KEY_NAME)));
             mAmountText.setText(note.getString(
                     note.getColumnIndexOrThrow(NotesDbAdapter.KEY_AMOUNT)));
+            mCurrencyText.setText(note.getString(
+                    note.getColumnIndexOrThrow(NotesDbAdapter.KEY_CURRENCY)));
             mPurposeText.setText(note.getString(
                     note.getColumnIndexOrThrow(NotesDbAdapter.KEY_PURPOSE)));
             mReceiverText.setText(note2.getString(
-                    note2.getColumnIndexOrThrow(NotesDbAdapter.KEY_RECEIVERS)));
+                    note2.getColumnIndexOrThrow(NotesDbAdapter.KEY_NAME)));
             mShareText.setText(note2.getString(
-                    note2.getColumnIndexOrThrow(NotesDbAdapter.KEY_SHARES)));
+                    note2.getColumnIndexOrThrow(NotesDbAdapter.KEY_AMOUNT)));
         }
     }
     
@@ -176,10 +180,11 @@ public class NoteEdit extends Activity {
     String date = mDateText.getText().toString();
     String submitter = mSubmitterText.getText().toString();
     String amount = mAmountText.getText().toString();
+    String currency = mCurrencyText.getText().toString();
     String purpose = mPurposeText.getText().toString();
 
 	    if (mRowId == null) {
-	        long row_id = mDbHelper.createNote(date, submitter, amount, purpose);
+	        long row_id = mDbHelper.createNote(date, submitter, amount, purpose, currency);
 	        mDbHelper.createNote2(receivers, shares, row_id);
 	        if (row_id > 0) {
 	            mRowId = row_id;
