@@ -9,8 +9,11 @@
             </intent-filter>
         </activity>
         <activity android:name="com.applanger.tripcostcalculator.PassAmounts"/>
-        <activity android:name="com.applanger.tripcostcalculator.TripperAccounts"/>
+        <activity android:name="com.applanger.tripcostcalculator.TabView"/>
         <activity android:name="com.applanger.tripcostcalculator.PayList"/>  
         <activity android:name="com.applanger.tripcostcalculator.NoteEdit"/>
+        <activity android:name="com.applanger.tripcostcalculator.SearchView"/>
+        <service android:name="com.applanger.tripcostcalculator.StringCacheMap"/>
+        
     </application>
 </manifest> 

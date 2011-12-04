@@ -48,10 +48,10 @@ public class NotesDbAdapter {
     public static final String KEY_CURRENCY = "currency";
     public static final String KEY_PURPOSE = "purpose";
     public static final String KEY_ROWID = "row_id";
-    //public static final String KEY_NAME = "receiver";
-    //public static final String KEY_RECEIVERS = "receivers";
-    //public static final String KEY_SHARES = "shares";
-    //public static final String KEY_SHARE = "share";
+    public static final String KEY_NAMEID = "name_id";
+    public static final String KEY_RECEIVERSID = "receivers_id";
+    public static final String KEY_PURPOSEID = "purposes_id";
+    public static final String KEY_CURRNCYID = "currency_id";
     public static final String KEY_ENTRYID = "entry_id";
     public static final String KEY_RECCOUNT = "recCount";
 
@@ -63,26 +63,38 @@ public class NotesDbAdapter {
      * Database creation sql statement
      */
     private static final String CREATE_TABLE =
-        "create table cashParent (row_id integer primary key autoincrement, "
+        "create table parent (row_id integer primary key autoincrement, "
     	+ "entry_id integer not null," 
         + "date numeric not null," 
-        + "name text not null," 
+        + "submitter text not null," 
         + "amount real not null,"
         + "currency text not null,"
         + "purpose text not null);";
     
     private static final String CREATE_TABLE2 =
-        "create table cashParent (row_id integer primary key autoincrement, "
+        "create table receivers (receivers_id integer primary key autoincrement, "
     	+ "entry_id integer not null," 
-        + "date numeric not null," 
-        + "name text not null," 
-        + "amount real not null,"
-        + "currency text not null,"
-        + "purpose text not null);";
+        + "receiver text not null,";
+    
+    private static final String CREATE_TABLE3 =
+        "create table names (name_id integer primary key autoincrement, " 
+        + "name text not null,";
+    
+    private static final String CREATE_TABLE4 =
+        "create table purposes (purpose_id integer primary key autoincrement, " 
+        + "purpose text not null,";
+    
+    private static final String CREATE_TABLE5 =
+        "create table currencies (currency_id integer primary key autoincrement, "
+    	+ "currency text not null," 
+        + "toEuro real not null,";
 
     private static final String DATABASE_NAME = "data";
-    private static final String DATABASE_TABLE = "cashParent";
-    private static final String DATABASE_TABLE2 = "cashChild";
+    private static final String DATABASE_TABLE = "parent";
+    private static final String DATABASE_TABLE2 = "receivers";
+    private static final String DATABASE_TABLE3 = "names";
+    private static final String DATABASE_TABLE4 = "puposes";
+    private static final String DATABASE_TABLE5 = "currencies";
     private static final int DATABASE_VERSION = 6;
 
     private final Context mCtx;
@@ -97,6 +109,10 @@ public class NotesDbAdapter {
         public void onCreate(SQLiteDatabase db) {
 
             db.execSQL(CREATE_TABLE);
+            db.execSQL(CREATE_TABLE2);
+            db.execSQL(CREATE_TABLE3);
+            db.execSQL(CREATE_TABLE4);
+            db.execSQL(CREATE_TABLE5);
             
         }
 
@@ -212,6 +228,18 @@ public class NotesDbAdapter {
      * @return Cursor positioned to matching note, if found
      * @throws SQLException if note could not be found/retrieved
      */
+    public Cursor fetchAllNames() {
+
+        return mDb.query(DATABASE_TABLE3, new String[] {KEY_NAMEID, KEY_NAME}, null, null, null, null, null);
+    }
+    
+    public Cursor fetchAllPurposes() {
+
+        return mDb.query(DATABASE_TABLE4, new String[] {KEY_PURPOSEID, KEY_PURPOSE}, null, null, null, null, null);
+    }
+    
+
+    
     public Cursor fetchNote(long rowId) throws SQLException {
 
         Cursor mCursor =
