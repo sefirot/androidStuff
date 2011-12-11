@@ -3,6 +3,8 @@ package com.applanger.tripcostcalculator;
 import java.util.ArrayList;
 
 import android.app.ListActivity;
+import android.app.PendingIntent;
+import android.content.Intent;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.util.Log;
@@ -31,9 +33,8 @@ public class SearchView extends ListActivity
         setContentView(R.layout.notes_list);
         /** fieldinfo: opening of database via member field 'mDbHelper' = declared constructor in NotesDbAdapter class 
          *  parameterinfo: the context field "this" communicates with 'android os'**/
-    	mDbHelper = new NotesDbAdapter(this);
-        mDbHelper.open();
-        fillData();
+        Intent onStartStringCache = new Intent(this,StringCacheMap.class);  
+        PendingIntent onReceiveStringIds =  PendingIntent.getBroadcast(this, 0, onStartStringCache, 0);
         registerForContextMenu(getListView());
         
         // following EDitText  will be substituted by Textview for Contents and Buttons for QueryID 

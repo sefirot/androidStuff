@@ -216,10 +216,10 @@ public class NotesDbAdapter {
      * 
      * @return Cursor over all notes
      */
-    public Cursor fetchAllNotes() {
+    // public Cursor fetchAllNotes() {
 
-        return mDb.query(DATABASE_TABLE, new String[] {KEY_ROWID, KEY_DATE, KEY_SUBMITTER, KEY_AMOUNT,KEY_PURPOSE}, null, null, null, null, null);
-    }
+    //   return mDb.query(DATABASE_TABLE, new String[] {KEY_ROWID, KEY_DATE, KEY_SUBMITTER, KEY_AMOUNT,KEY_PURPOSE}, null, null, null, null, null);
+    //}
 
     /**
      * Return a Cursor positioned at the note that matches the given rowId

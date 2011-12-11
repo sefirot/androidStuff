@@ -26,13 +26,31 @@ public class StringCacheMap extends IntentService {
 	 * stops the service, as appropriate.
 	*/
 	@Override
-	protected void onHandleIntent(Intent intent) {  
+	protected void onHandleIntent(Intent onStartStringCache) {  
 		mDbHelper = new NotesDbAdapter(this);
         mDbHelper.open();
-       
-        namesCache = new ContentQueryMap(mDbHelper.fetchAllNames(),NotesDbAdapter.KEY_NAMEID,true,null); 
-        purposesCache = new ContentQueryMap(mDbHelper.fetchAllPurposes(),NotesDbAdapter.KEY_PURPOSEID,true,null); 
+        Bundle extras = onStartStringCache.getExtras();
         
+        
+        if (extras != null) {
+			
+        	
+        	
+        	String state = extras.getString(TelephonyManager.EXTRA_STATE);
+			Log.w("DEBUG", state);
+			if (state.equals(TelephonyManager.EXTRA_STATE_RINGING)) {
+				String phoneNumber = extras
+						.getString(TelephonyManager.EXTRA_INCOMING_NUMBER);
+				Log.w("DEBUG", phoneNumber);
+			} else {
+				namesCache = new ContentQueryMap(mDbHelper.fetchAllNames(),NotesDbAdapter.KEY_NAMEID,true,null); 
+				purposesCache = new ContentQueryMap(mDbHelper.fetchAllPurposes(),NotesDbAdapter.KEY_PURPOSEID,true,null); 
+				Bundle extra = extra.putString(key, value)
+				T[] hi;
+				
+						namesCache.getRows().values().toArray( Array); 
+				Bundle extra = test;
+				onStartStringCache.putExtras(extras);
         
 	}
 }
