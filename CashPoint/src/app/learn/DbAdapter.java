@@ -48,12 +48,18 @@ public class DbAdapter extends SQLiteOpenHelper {
     
     public int getEntryId() {
         Cursor cursor = mDb.rawQuery("select max(entry) from " + DATABASE_TABLE, null);
-        if (cursor.getCount() < 1)
-        	return 1;
-        else {
+        int retval = 0;
+        if (cursor.getCount() > 0) {
         	cursor.moveToFirst();
-        	return cursor.getInt(0);
+        	retval = cursor.getInt(0);
         }
+        cursor.close();
+        return ++retval;
+    }
+    
+    public void refreshCashpoint() {
+    	mDb.execSQL("DROP TABLE IF EXISTS cashpoint");
+    	onCreate(mDb);
     }
     
     public int createEntry(String name, double amount, String currency, String comment) {
@@ -64,7 +70,7 @@ public class DbAdapter extends SQLiteOpenHelper {
         values.put("name", name);
         values.put("amount", amount);
         values.put("currency", currency);
-//        values.put("date", datetime('now','localtime'));
+//        values.put("date", datetime("now","localtime"));
         values.put("comment", comment);
 
         long rowId = mDb.insert(DATABASE_TABLE, null, values);
