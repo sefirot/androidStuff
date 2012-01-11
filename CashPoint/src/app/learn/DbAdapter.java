@@ -1,5 +1,8 @@
 package app.learn;
 
+import java.util.Date;
+import java.text.SimpleDateFormat;
+
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
@@ -39,14 +42,22 @@ public class DbAdapter extends SQLiteOpenHelper {
 	public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
 		Log.w(TAG, "Upgrading database from version " + oldVersion + " to "
                 + newVersion + ", which will destroy all old data");
-        db.execSQL("DROP TABLE IF EXISTS cashpoint");
-        onCreate(db);
+		recreate(db);
 		
 	}
+    
+    public void recreate(SQLiteDatabase db) {
+    	db.execSQL("DROP TABLE IF EXISTS cashpoint");
+    	onCreate(db);
+    }
 	
     private SQLiteDatabase mDb;
     
-    public int getEntryId() {
+    public SQLiteDatabase getDb() {
+		return mDb;
+	}
+
+	public int getNewEntryId() {
         Cursor cursor = mDb.rawQuery("select max(entry) from " + DATABASE_TABLE, null);
         int retval = 0;
         if (cursor.getCount() > 0) {
@@ -57,27 +68,40 @@ public class DbAdapter extends SQLiteOpenHelper {
         return ++retval;
     }
     
-    public void refreshCashpoint() {
-    	mDb.execSQL("DROP TABLE IF EXISTS cashpoint");
-    	onCreate(mDb);
-    }
+    private SimpleDateFormat mDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     
-    public int createEntry(String name, double amount, String currency, String comment) {
-    	int entryId = getEntryId();
+    public String getDateFormat(Date date) {
+		return mDateFormat.format(date);
+	}
+
+	public int createEntry(String name, double amount, String currency, String comment) {
+    	int entryId = getNewEntryId();
     	
         ContentValues values = new ContentValues();
         values.put("entry", "" + entryId);
         values.put("name", name);
         values.put("amount", amount);
         values.put("currency", currency);
-//        values.put("date", datetime("now","localtime"));
+        values.put("date", getDateFormat(new Date()));
         values.put("comment", comment);
-
         long rowId = mDb.insert(DATABASE_TABLE, null, values);
         if (rowId < 0)
         	return -1;
         else {
         	return entryId;
         }
+    }
+    
+    public Cursor fetchEntry(int entry) throws SQLException {
+
+        Cursor mCursor = mDb.query(true, DATABASE_TABLE, 
+        		new String[] {"entry", "name", "amount", "currency", "date", "comment"}, 
+        		"entry=" + entry, 
+        		null, null, null, null, null);
+        if (mCursor != null) {
+            mCursor.moveToFirst();
+        }
+        return mCursor;
+
     }
 }
