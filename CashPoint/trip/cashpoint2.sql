@@ -30,9 +30,9 @@ select * from cashpoint;
 select sum(amount) as expenses from cashpoint where date not null;
 select count(name) as numOfNames from (select distinct name from cashpoint);
 select distinct comment as purposes from cashpoint where comment not null;
-select name,balance from 
-	(select name,sum(amount) as balance from cashpoint group by name);
+select name,sum(amount) as balance from cashpoint group by name order by name;
  -- following syntax is not required, 'group by ' gives the same effect
+ -- select name,balance from 
  -- (select name,sum(amount) as balance from cashpoint where name='Bob' union
  --  select name,sum(amount) as balance from cashpoint where name='Tom'union 
  --  select name,sum(amount) as balance from cashpoint where name='Sue');

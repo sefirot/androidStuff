@@ -11,13 +11,13 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
 
-public class DbAdapter extends SQLiteOpenHelper {
-
+public class DbAdapter extends SQLiteOpenHelper 
+{
 	private static final String TAG = "DbAdapter";
 
-    private static final String DATABASE_NAME = "data";
-    private static final String DATABASE_TABLE = "cashpoint";
-    private static final int DATABASE_VERSION = 1;
+	public static final String DATABASE_NAME = "data";
+	public static final int DATABASE_VERSION = 1;
+    public static final String DATABASE_TABLE = "cashpoint";
 	
 	public DbAdapter(Context context) {
 		super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -31,11 +31,10 @@ public class DbAdapter extends SQLiteOpenHelper {
 			" name text not null," +		//	the person involved
 			" amount real not null," +		//	the amount of money, negative for distributions
 			" currency text," +				//	if null it's the default currency (Euro or Dollar or ...)
-			" date numeric," +				//	if null it's a distribution
+			" timestamp text," +			//	if null it's a distribution
 			" comment text" +				//	optional, for recognition
 			" );"
 		);
-		
 	}
 
 	@Override
@@ -46,10 +45,10 @@ public class DbAdapter extends SQLiteOpenHelper {
 		recreate(db);
 	}
     
-    public void recreate(SQLiteDatabase db) {
+	public void recreate(SQLiteDatabase db) {
     	db.execSQL("DROP TABLE IF EXISTS " + DATABASE_TABLE);
     	onCreate(db);
-    }
+	}
 	
     private SQLiteDatabase mDb;
     
@@ -58,10 +57,10 @@ public class DbAdapter extends SQLiteOpenHelper {
 	}
 
     String[] getFieldNames() {
-    	return new String[] {"entry", "name", "amount", "currency", "date", "comment"};
+    	return new String[] {"entry", "name", "amount", "currency", "timestamp", "comment"};
     }
     
-    ContentValues putValues(int entry, String name, float amount, String currency, String timeStamp, String comment) {
+    protected ContentValues putValues(int entry, String name, float amount, String currency, String timeStamp, String comment) {
         ContentValues values = new ContentValues();
         
     	String[] fields = getFieldNames();
@@ -74,16 +73,34 @@ public class DbAdapter extends SQLiteOpenHelper {
         
         return values;
     }
+	
+	protected long addRecord(int entryId, String name, float amount, String currency, String timeStamp, String comment) {
+		return mDb.insert(DATABASE_TABLE, null, 
+        		putValues(entryId, name, amount, currency, timeStamp, comment));
+	}
 
+	public Cursor doQuery(String sql, String[] selectionArgs) {
+        Cursor cursor = mDb.rawQuery(sql, selectionArgs);
+        if (cursor != null) 
+        	cursorSize = cursor.getCount();
+        else
+        	cursorSize = -1;
+        return cursor;
+	}
+	
+	public int cursorSize = -1;
+	
 	public int getNewEntryId() {
-        Cursor cursor = mDb.rawQuery("select max(entry) from " + DATABASE_TABLE, null);
-        int retval = 0;
-        if (cursor.getCount() > 0) {
+        int entryId = 0;
+        
+        Cursor cursor = doQuery("select max(entry) from " + DATABASE_TABLE, null);
+        if (cursorSize > 0) {
         	cursor.moveToFirst();
-        	retval = cursor.getInt(0);
+        	entryId = cursor.getInt(0);
         }
         cursor.close();
-        return ++retval;
+        
+        return ++entryId;
     }
     
     private SimpleDateFormat mDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -95,13 +112,16 @@ public class DbAdapter extends SQLiteOpenHelper {
 	public int addEntry(String name, float amount, String currency, String comment) {
     	int entryId = getNewEntryId();
         
-        long rowId = mDb.insert(DATABASE_TABLE, null, 
-        		putValues(entryId, name, amount, 
-                	currency, getTimeStamp(new Date()), comment));
+        long rowId = addRecord(entryId, name, amount, 
+                	currency, getTimeStamp(new Date()), comment);
         if (rowId < 0)
         	return -1;
         else 
         	return entryId;
+    }
+    
+    public int removeEntry(int entryId) {
+    	return mDb.delete(DATABASE_TABLE, "entry=" + entryId, null);
     }
     
     public Cursor fetchEntry(int entryId) {
@@ -114,31 +134,76 @@ public class DbAdapter extends SQLiteOpenHelper {
         return cursor;
     }
     
+    public String fetchTimestamp(int entryId) {
+    	String timeStamp = null;
+    	
+    	Cursor cursor = fetchEntry(entryId);
+    	if (cursor != null) {
+			do {
+				timeStamp = cursor.getString(cursor.getColumnIndex("timestamp"));
+				if (timeStamp != null)
+					break;
+			} while (cursor.moveToNext());
+	    	
+	    	cursor.close();
+    	}
+    	
+    	return timeStamp;
+    }
+    
     public boolean doDistribution(int entryId, Map<String, Number> shares) {
     	Cursor cursor = fetchEntry(entryId);
-    	if (cursor == null)
+    	if (cursor == null || cursor.getCount() != 1)
     		return false;
     	
     	String entrant = cursor.getString(cursor.getColumnIndex("name"));
     	float amount = cursor.getFloat(cursor.getColumnIndex("amount"));
     	String currency = cursor.getString(cursor.getColumnIndex("currency"));
+    	String comment = cursor.getString(cursor.getColumnIndex("comment"));
+		
+    	cursor.close();
     	
     	for (String name : shares.keySet()) 
     		if (!entrant.equals(name)) {
     			float share = shares.get(name).floatValue();
     			
-    			if (mDb.insert(DATABASE_TABLE, null, 
-    					putValues(entryId, name, -share, currency, null, null)) < 0)
+    			if (addRecord(entryId, name, -share, currency, null, comment) < 0)
     	        	return false;
     	        
     			amount -= share;
     		}
 
-    	if (mDb.insert(DATABASE_TABLE, null, 
-    		   putValues(entryId, entrant, -amount, currency, null, null)) < 0)
+    	if (addRecord(entryId, entrant, -amount, currency, null, comment) < 0)
         	return false;
    	
     	return true;
     }
+    
+    public Set<String> getNames() {
+    	TreeSet<String> names = new TreeSet<String>();
+    	
+        Cursor cursor = doQuery("select distinct name from " + DATABASE_TABLE, null);
+        if (cursorSize > 0) {
+        	cursor.moveToFirst();
+    		do {
+    			names.add(cursor.getString(cursor.getColumnIndex("name")));
+    		} while (cursor.moveToNext());
+        }
+        cursor.close();
+        
+    	return names;
+    }
 
+    public float getSum(String clause) throws Exception {
+    	float sum = 0f;
+    	
+        Cursor cursor = doQuery("select sum(amount) from " + DATABASE_TABLE + " where " + clause, null);
+        if (cursorSize > 0) {
+        	cursor.moveToFirst();
+        	sum = cursor.getFloat(0);
+        }
+        cursor.close();
+        
+        return sum;
+    }
 }

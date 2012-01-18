@@ -5,6 +5,18 @@
     android:layout_height="wrap_content"
     android:padding="5dp">
 
+    <Button
+        android:id="@+id/exportButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/exportButtonText" />
+
+    <Button
+        android:id="@+id/importButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/importButtonText" />
+
     <TextView
         android:id="@+id/nameLabel"
         android:layout_width="wrap_content"
