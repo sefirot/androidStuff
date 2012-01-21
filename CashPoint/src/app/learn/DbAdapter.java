@@ -92,8 +92,10 @@ public class DbAdapter extends SQLiteOpenHelper
 		try {
 			cursor = mDb.rawQuery(sql, selectionArgs);
 		} catch (SQLiteException e) {}
-        if (cursor != null) 
+        if (cursor != null) {
         	cursorSize = cursor.getCount();
+        	cursor.moveToFirst();
+        }
         else
         	cursorSize = -1;
         return cursor;
@@ -111,7 +113,6 @@ public class DbAdapter extends SQLiteOpenHelper
 		boolean expensive = false;
 		Cursor cursor = doQuery("select expense from " + DATABASE_TABLE + " where ROWID=" + rowId, null);
 		if (cursorSize > 0) {
-        	cursor.moveToFirst();
 			expensive = cursor.getInt(0) > 0;
 		}
 		return expensive;
@@ -122,7 +123,6 @@ public class DbAdapter extends SQLiteOpenHelper
         
         Cursor cursor = doQuery("select max(entry) from " + DATABASE_TABLE, null);
         if (cursorSize > 0) {
-        	cursor.moveToFirst();
         	entryId = cursor.getInt(0);
         }
         if (cursor != null)
@@ -221,7 +221,6 @@ public class DbAdapter extends SQLiteOpenHelper
     	
         Cursor cursor = doQuery("select distinct name from " + DATABASE_TABLE, null);
         if (cursorSize > 0) {
-        	cursor.moveToFirst();
     		do {
     			names.add(cursor.getString(0));
     		} while (cursor.moveToNext());
@@ -238,7 +237,6 @@ public class DbAdapter extends SQLiteOpenHelper
         Cursor cursor = doQuery("select entry from " + DATABASE_TABLE + 
         		(clause != null && clause.length() > 0 ? " where " + clause : ""), null);
         if (cursorSize > 0) {
-        	cursor.moveToFirst();
     		do {
     			ids.add(cursor.getInt(0));
     		} while (cursor.moveToNext());
@@ -255,7 +253,6 @@ public class DbAdapter extends SQLiteOpenHelper
         Cursor cursor = doQuery("select sum(amount) from " + DATABASE_TABLE + 
         		(clause != null && clause.length() > 0 ? " where " + clause : ""), null);
         if (cursorSize > 0) {
-        	cursor.moveToFirst();
         	sum = cursor.getFloat(0);
         }
         if (cursor != null)
@@ -270,7 +267,6 @@ public class DbAdapter extends SQLiteOpenHelper
         Cursor cursor = doQuery("select count(*) from " + DATABASE_TABLE + 
         		(clause != null && clause.length() > 0 ? " where " + clause : ""), null);
         if (cursorSize > 0) {
-        	cursor.moveToFirst();
         	count = cursor.getInt(0);
         }
         if (cursor != null)

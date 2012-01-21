@@ -9,13 +9,13 @@ import android.util.Log;
 
 public class Transactor extends DbAdapter
 {
-	private static final String TAG = "Transactor";
+	public static final String TAG = "Transactor";
 	
 	public Transactor(Context context) {
 		super(context);
 	}
 	
-	private String currency = null;
+	private String currency = "";
 	
 	public String getCurrency() {
 		return currency;
@@ -125,13 +125,13 @@ public class Transactor extends DbAdapter
     	TreeMap<String, Number> map = new TreeMap<String, Number>();
     	
     	Cursor cursor = doQuery("select name, sum(amount) as balance from " + DATABASE_TABLE + " group by name order by name", null);
-    	cursor.moveToFirst();
 		do {
 			map.put(cursor.getString(0), cursor.getFloat(1));
 		} while (cursor.moveToNext());
 		if (cursor != null)
         	cursor.close();
         
+    	Log.i(TAG, String.format("balances : %s", map.toString()));
     	return map;
     }
     /**
@@ -145,7 +145,7 @@ public class Transactor extends DbAdapter
      * calculates the accumulated costs
      * @return	the sum over all entries marked as 'expense'
      */
-    public float totalExpenses() {
+    public float expenses() {
     	return getSum("expense > 0 and timestamp not null");
     }
     /**
@@ -157,7 +157,6 @@ public class Transactor extends DbAdapter
     	
         Cursor cursor = doQuery("select name from sqlite_master where type = 'table'", null);
         if (cursorSize > 0) {
-        	cursor.moveToFirst();
         	do {
         		String name = cursor.getString(0);
         		if (name.startsWith(DATABASE_TABLE + "_"))
@@ -172,15 +171,18 @@ public class Transactor extends DbAdapter
     /**
      * changes the name of the table that has been worked on via transactions (current table). 
      * Thus this table is 'saved' in the same database. Note that the current table is non-existing after this operation. 
-     * In order to continue working with the <code>Transactor</code> the current table has to be restored or recreated (clear).
+     * In order to continue the current table has to be restored (loadFrom) or recreated (clear).
      * @param newSuffix	the <code>String</code> to append to the name of the current table in order to form the new table name 
      * @return	success if true
      */
-    public boolean performSaveAs(String newSuffix) {
+    public boolean saveAs(String newSuffix) {
     	if (newSuffix == null || newSuffix.length() < 1)
     		return false;
     	
     	String newTableName = DATABASE_TABLE + "_" + newSuffix;
+    	if (savedTables().contains(newTableName))
+    		return false;
+    		
     	rename(DATABASE_TABLE, newTableName);
 		Log.i(TAG, String.format("table saved as '%s'", newTableName));
     	return true;
@@ -191,7 +193,7 @@ public class Transactor extends DbAdapter
      * @param oldSuffix	the <code>String</code> to append to the name of the current table in order to form the old table name 
      * @return	success if true
      */
-    public boolean performLoadFrom(String oldSuffix) {
+    public boolean loadFrom(String oldSuffix) {
     	if (oldSuffix == null || oldSuffix.length() < 1)
     		return false;
     	

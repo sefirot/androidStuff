@@ -12,14 +12,11 @@ import android.test.suitebuilder.TestSuiteBuilder;
 
 import android.database.Cursor;
 import android.util.Log;
-import android.widget.Toast;
 
 import app.learn.*;
 
 public class CashPointTest extends ActivityInstrumentationTestCase2<CashPoint> 
 {
-	private static final String TAG = "CashPointTest";
-
 	public static void main(String[] args) {
 //		TestSuite suite = new TestSuite(CashPointTest.class);
 //		InstrumentationTestRunner.run(suite);
@@ -134,13 +131,13 @@ public class CashPointTest extends ActivityInstrumentationTestCase2<CashPoint>
     	String newTableName = DbAdapter.DATABASE_TABLE + "_test";
     	transactor.drop(newTableName);
     	
-    	assertTrue(transactor.performSaveAs("test"));
+    	assertTrue(transactor.saveAs("test"));
     	
     	assertTrue(transactor.savedTables().contains(newTableName));
     	transactor.clear();
 		assertEquals(0, transactor.getCount(null));
 		
-		assertTrue(transactor.performLoadFrom("test"));
+		assertTrue(transactor.loadFrom("test"));
 		
 		assertEquals(count, transactor.getCount(null));
 		assertEquals(sum, transactor.getSum(null));
@@ -196,11 +193,13 @@ public class CashPointTest extends ActivityInstrumentationTestCase2<CashPoint>
     	for (String name : shares.keySet())
     		if (!name.equals(submitter)) {
 				float share = shares.get(name).floatValue();
+				
     			do {
     				if (name.equals(cursor.getString(cursor.getColumnIndex("name")))) {
     					assertAmountZero("apportionment violated.", share + cursor.getFloat(cursor.getColumnIndex("amount")));
     				}
     			} while (cursor.moveToNext());
+    			
     			cursor.moveToFirst();
     		}
     	cursor.close();
@@ -217,15 +216,47 @@ public class CashPointTest extends ActivityInstrumentationTestCase2<CashPoint>
     	assertAmountEquals("wrong result after input.", total - amount, transactor.total());
     }
     
-    Map<String, Number> balanceTest(float... values) {
+    void sharingTest(float expenses) {
+    	float costs = transactor.expenses();
+		assertAmountEquals("costs are wrong.", expenses, costs);
+    	Map<String, Number> shares = transactor.sharesFor(participants, costs);
+    	for (Number share : shares.values()) 
+			costs -= share.floatValue();
+		assertAmountZero("sharing sucks.", costs);
+    }
+    
+    void balanceTest(Float... values) {
     	Map<String, Number> balances = transactor.balances();
-    	assertEquals(values.length, balances.size());
+    	
     	int i = 0;
     	for (Map.Entry<String, Number> ey : balances.entrySet()) {
-			assertAmountEquals(ey.getKey() + "'s balance wrong.", values[i], ey.getValue());
-			i++;
+    		if (values.length > i && values[i] != null)
+    			assertAmountEquals(ey.getKey() + "'s balance wrong.", values[i], ey.getValue());
+    			
+    		i++;
 		}
-    	return balances;
+    }
+    
+    void totalTest(float... total) {
+    	if (total.length > 0)
+    		assertAmountEquals("total is unexpected.", total[0], transactor.total());
+    	else
+    		assertAmountZero("total is wrong.", transactor.total());
+    }
+    
+    void compensationTest() {
+    	for (Map.Entry<String, Number> ey : transactor.balances().entrySet()) {
+    		String participant = ey.getKey();
+    		float amount = ey.getValue().floatValue();
+    		
+    		if (amount > minAmount)
+		    	payoutTest(participant, amount, "reimbursement");
+    		else if (amount < -minAmount)
+		    	inputTest(participant, -amount, "pay down");
+    		
+    		float balance = transactor.getSum(String.format("name='%s'", participant));
+			assertAmountZero("balance is wrong.", balance);
+    	}
     }
     
     public void testScenario() {
@@ -237,38 +268,18 @@ public class CashPointTest extends ActivityInstrumentationTestCase2<CashPoint>
     	expenseTest("Sue", 70f, "groceries");
     	
     	//	Kassensturz !
-		assertAmountEquals("total is wrong.", 50f, transactor.total());
+    	totalTest(50f);
+		//	total of expenses
+		sharingTest(170f);
 		
-    	float costs = transactor.totalExpenses();
-		assertAmountEquals("costs are wrong.", 170f, costs);
-    	Map<String, Number> shares = transactor.sharesFor(participants, costs);
-    	for (Number share : shares.values()) 
-			costs -= share.floatValue();
-		assertAmountZero("sharing sucks.", costs);
-		
-    	Map<String, Number> balances = balanceTest(43.33f, 13.33f, -6.67f);
+    	balanceTest(43.33f, 13.33f, -6.67f);
     	//	Tom transfers some money to Sue to improve his balance
     	transferTest("Tom", 10f, "better balance", "Sue");
-    	balances = balanceTest(43.33f, 3.33f, 3.33f);
+    	balanceTest(43.33f, 3.33f, 3.33f);
    	
-    	//	compensation
-    	for (Map.Entry<String, Number> ey : balances.entrySet()) {
-    		String participant = ey.getKey();
-    		float amount = ey.getValue().floatValue();
-    		
-    		if (amount > minAmount)
-		    	payoutTest(participant, amount, "reimbursement");
-    		else if (amount < -minAmount)
-		    	inputTest(participant, -amount, "pay down");
-    		
-    		float balance = transactor.getSum(String.format("name='%s'", participant));
-			assertAmountZero("balance is wrong.", balance);
-			
-//			String msg = String.format("%s's balance : %f", participant, balance);
-//        	Toast.makeText(this.mActivity, msg, Toast.LENGTH_SHORT).show();
-    	}
+    	compensationTest();
     	
-		assertAmountZero("total is wrong.", transactor.total());
+    	totalTest();
  	}
     
 }
