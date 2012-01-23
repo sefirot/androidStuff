@@ -185,7 +185,7 @@ public class CashPointTest extends ActivityInstrumentationTestCase2<CashPoint>
     }
     
     void expenseTest(String submitter, float amount, String purpose) {
-    	Map<String, Number> shares = transactor.sharesFor(participants, amount);
+    	Map<String, Number> shares = transactor.shareMap(participants, amount);
     	int entry = transactor.performExpense(submitter, amount, purpose, shares);
     	Cursor cursor = transactor.fetchEntry(entry);
     	assertNotNull(cursor);
@@ -219,7 +219,7 @@ public class CashPointTest extends ActivityInstrumentationTestCase2<CashPoint>
     void sharingTest(float expenses) {
     	float costs = transactor.expenses();
 		assertAmountEquals("costs are wrong.", expenses, costs);
-    	Map<String, Number> shares = transactor.sharesFor(participants, costs);
+    	Map<String, Number> shares = transactor.shareMap(participants, costs);
     	for (Number share : shares.values()) 
 			costs -= share.floatValue();
 		assertAmountZero("sharing sucks.", costs);

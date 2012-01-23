@@ -131,7 +131,7 @@ public class DbAdapter extends SQLiteOpenHelper
         return ++entryId;
     }
     
-    private SimpleDateFormat mDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    private SimpleDateFormat mDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
     
     public String getTimestamp(Date date) {
 		return mDateFormat.format(date);

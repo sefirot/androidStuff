@@ -105,7 +105,7 @@ public class Transactor extends DbAdapter
 	 * @param portions	given portions, if any, for individual sharers according to the sorted (!) order of the names
 	 * @return	a map containing the names as keys and accordingly the shares as values
 	 */
-    public Map<String, Number> sharesFor(String[] names, float amount, Float... portions) {
+    public Map<String, Number> shareMap(String[] names, float amount, Float... portions) {
     	TreeMap<String, Number> map = new TreeMap<String, Number>();
     	
     	int n = names.length;
