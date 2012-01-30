@@ -14,7 +14,7 @@ public class DbAdapter extends SQLiteOpenHelper
 
 	public static final String DATABASE_NAME = "data";
 	public static final int DATABASE_VERSION = 1;
-    public static final String DATABASE_TABLE = "cashpoint";
+    public static final String DATABASE_TABLE = "kitty";
 	
 	public DbAdapter(Context context) {
 		super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -30,7 +30,7 @@ public class DbAdapter extends SQLiteOpenHelper
 			" currency text," +				//	if null it's the default currency (Euro or Dollar or ...)
 			" timestamp text," +			//	if null it's a portion
 			" comment text," +				//	optional, for recognition
-			" expense integer not null" +	//	boolean, if true then the amount has been expended and possibly shared among others (apportionment)
+			" expense integer not null" +	//	boolean, if true then the amount has been expended and likely shared among others
 			" );"
 		);
 	}
@@ -59,7 +59,6 @@ public class DbAdapter extends SQLiteOpenHelper
 	}
     
 	protected void rename(String oldTableName, String newTableName) {
-		drop(newTableName);
 		mDb.execSQL("ALTER TABLE " + oldTableName + " RENAME TO " + newTableName);
 	}
 
@@ -82,26 +81,40 @@ public class DbAdapter extends SQLiteOpenHelper
         return values;
     }
 	
-	protected long addRecord(int entryId, String name, float amount, String currency, String timestamp, String comment) {
-		return mDb.insert(DATABASE_TABLE, null, 
-        		putValues(entryId, name, amount, currency, timestamp, comment, false));
+    protected long addRecord(int entryId, String name, float amount, String currency, String timestamp, String comment) {
+    	ContentValues values = putValues(entryId, name, amount, currency, timestamp, comment, false);
+    	long rowId = mDb.insert(DATABASE_TABLE, null, values);
+    	if (rowId < 0)
+    		Log.w(TAG, String.format("addRecord failed with : %s", values.toString()));
+    	return rowId;
 	}
 	
-	protected Cursor doQuery(String sql, String[] selectionArgs) {
+    public interface QueryEvaluator<T> 
+	{
+		public T evaluate(Cursor cursor, T defaultResult, Object... params);
+	}
+	
+	protected <T> T rawQuery(String sql, String[] selectionArgs, QueryEvaluator<T> qe, T defaultResult, Object... params) {
         Cursor cursor = null;
+        
 		try {
 			cursor = mDb.rawQuery(sql, selectionArgs);
-		} catch (SQLiteException e) {}
-        if (cursor != null) {
-        	cursorSize = cursor.getCount();
-        	cursor.moveToFirst();
-        }
-        else
-        	cursorSize = -1;
-        return cursor;
+	        if (cursor != null) {
+	        	if (cursor.getCount() > 0)
+	        		cursor.moveToFirst();
+	        	
+	        	return qe.evaluate(cursor, defaultResult, params);
+	        }
+		} 
+		catch (SQLiteException ex) {
+		}
+		finally {
+			if (cursor != null)
+				cursor.close();
+		}
+
+		return defaultResult;
 	}
-	
-	protected int cursorSize = -1;
 
 	protected int updateExpenseFlag(long rowId, boolean expense) {
         ContentValues values = new ContentValues();
@@ -110,168 +123,179 @@ public class DbAdapter extends SQLiteOpenHelper
 	}
 
 	public boolean isExpense(long rowId) {
-		boolean expensive = false;
-		Cursor cursor = doQuery("select expense from " + DATABASE_TABLE + " where ROWID=" + rowId, null);
-		if (cursorSize > 0) {
-			expensive = cursor.getInt(0) > 0;
-		}
-		return expensive;
+		return rawQuery("select expense from " + DATABASE_TABLE + " where ROWID=" + rowId, null, 
+			new QueryEvaluator<Boolean>() {
+				public Boolean evaluate(Cursor cursor, Boolean defaultResult, Object... params) {
+					return cursor.getCount() > 0 && cursor.getInt(0) > 0;
+				}
+			}, false);
 	}
 	
 	public int getNewEntryId() {
-        int entryId = 0;
-        
-        Cursor cursor = doQuery("select max(entry) from " + DATABASE_TABLE, null);
-        if (cursorSize > 0) {
-        	entryId = cursor.getInt(0);
-        }
-        if (cursor != null)
-        	cursor.close();
-        
-        return ++entryId;
+		return 1 + rawQuery("select max(entry) from " + DATABASE_TABLE, null, 
+			new QueryEvaluator<Integer>() {
+				public Integer evaluate(Cursor cursor, Integer defaultResult, Object... params) {
+					if (cursor.getCount() > 0)
+						return cursor.getInt(0);
+					else
+						return defaultResult;
+				}
+			}, -1);
     }
     
-    private SimpleDateFormat mDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
-    
-    public String getTimestamp(Date date) {
-		return mDateFormat.format(date);
+    public String timestampNow() {
+		return timestamp(new Date());
 	}
     
-	public int addEntry(String name, float amount, String currency, String comment) {
+	public int addEntry(String name, float amount, String currency, String comment, boolean expense) {
     	int entryId = getNewEntryId();
         
-        long rowId = addRecord(entryId, name, amount, 
-                	currency, getTimestamp(new Date()), comment);
-        if (rowId < 0)
+        long rowId = addRecord(entryId, name, amount, currency, timestampNow(), comment);
+        if (rowId < 0) {
+    		removeEntry(entryId);
         	return -1;
-        else 
+        }
+        else {
+			if (updateExpenseFlag(rowId, expense) != 1)
+				return -1;
+			
         	return entryId;
+        }
     }
     
     public int removeEntry(int entryId) {
     	return mDb.delete(DATABASE_TABLE, "entry=" + entryId, null);
     }
     
-    public Cursor fetchEntry(int entryId) {
-        Cursor cursor = mDb.query(true, 
-        		DATABASE_TABLE, 
-        		getFieldNames(), 
-        		"entry=" + entryId, 
-        		null, null, null, null, null);
-        if (cursor != null) 
-            cursor.moveToFirst();
-        return cursor;
-    }
-    
-    public String fetchTimestamp(int entryId) {
-    	String timeStamp = null;
-    	
-    	Cursor cursor = fetchEntry(entryId);
-    	if (cursor != null) {
-        	int columIndex = cursor.getColumnIndex("timestamp");
-			do {
-				timeStamp = cursor.getString(columIndex);
-				if (timeStamp != null)
-					break;
-			} while (cursor.moveToNext());
-	    	
-	    	cursor.close();
-    	}
-    	
-    	return timeStamp;
-    }
-    
-    public boolean apportionment(int entryId, Map<String, Number> shares) {
-    	Cursor cursor = fetchEntry(entryId);
-    	if (cursor == null || cursor.getCount() != 1)
-    		return false;
-    	
-    	long rowId = cursor.getLong(cursor.getColumnIndex("ROWID"));
-    	String entrant = cursor.getString(cursor.getColumnIndex("name"));
-    	float amount = cursor.getFloat(cursor.getColumnIndex("amount"));
-    	String currency = cursor.getString(cursor.getColumnIndex("currency"));
-    	String comment = cursor.getString(cursor.getColumnIndex("comment"));
-		
-    	cursor.close();
-    	
-    	updateExpenseFlag(rowId, true);
-    	
-    	for (String name : shares.keySet()) 
-    		if (!entrant.equals(name)) {
-    			float share = shares.get(name).floatValue();
-    			
-    			if ((rowId = addRecord(entryId, name, -share, currency, null, comment)) < 0)
-    	        	return false;
-    	    	
-    	    	updateExpenseFlag(rowId, true);
-    	        
-    			amount -= share;
-    		}
+    public <T> T fetchEntry(int entryId, QueryEvaluator<T> qe, T defaultResult, Object... params) {
+        Cursor cursor = null;
+        
+		try {
+	        cursor = mDb.query(true, 
+	        		DATABASE_TABLE, 
+	        		getFieldNames(), 
+	        		"entry=" + entryId, 
+	        		null, null, null, null, null);
+	        
+	        if (cursor != null) {
+	        	if (cursor.getCount() > 0)
+	        		cursor.moveToFirst();
+	        }
+	        	
+        	return qe.evaluate(cursor, defaultResult, params);
+		} 
+		catch (SQLiteException ex) {
+		}
+		finally {
+			if (cursor != null)
+				cursor.close();
+		}
 
-    	if ((rowId = addRecord(entryId, entrant, -amount, currency, null, comment)) < 0)
-        	return false;
+		return defaultResult;
+    }
+    
+    public String fetchField(int entryId, final String name) {
+    	return fetchEntry(entryId, 
+			new QueryEvaluator<String>() {
+				public String evaluate(Cursor cursor, String defaultResult, Object... params) {
+					int timestampIndex = cursor.getColumnIndex("timestamp");
+					do {
+						if (cursor.getString(timestampIndex) != null)
+							return cursor.getString(cursor.getColumnIndex(name));
+					} while (cursor.moveToNext());
+					return defaultResult;
+				}
+			}, null);
+    }
+    
+    public boolean allocate(boolean expense, int entryId, Map<String, Number> portions) {
+    	long rowId;
     	
-    	updateExpenseFlag(rowId, true);
-   	
-    	return true;
+		for (String name : portions.keySet()) {
+			float portion = portions.get(name).floatValue();
+
+			if ((rowId = addRecord(entryId, name, portion, null, null, null)) < 0)
+				return false;
+
+			if (updateExpenseFlag(rowId, expense) != 1)
+				return false;
+		}
+		
+		return portions.size() > 0;
     }
     
     public Set<String> getNames() {
-    	TreeSet<String> names = new TreeSet<String>();
-    	
-        Cursor cursor = doQuery("select distinct name from " + DATABASE_TABLE, null);
-        if (cursorSize > 0) {
-    		do {
-    			names.add(cursor.getString(0));
-    		} while (cursor.moveToNext());
-        }
-        if (cursor != null)
-        	cursor.close();
-        
-    	return names;
+		return rawQuery("select distinct name from " + DATABASE_TABLE + " where length(name) > 0", null, 
+			new QueryEvaluator<Set<String>>() {
+				public Set<String> evaluate(Cursor cursor, Set<String> defaultResult, Object... params) {
+			    	TreeSet<String> names = new TreeSet<String>();
+		    		do {
+		    			names.add(cursor.getString(0));
+		    		} while (cursor.moveToNext());
+					return names;
+				}
+			}, null);
     }
-
+    
     public Set<Integer> getEntryIds(String clause) {
-    	TreeSet<Integer> ids = new TreeSet<Integer>();
-    	
-        Cursor cursor = doQuery("select entry from " + DATABASE_TABLE + 
-        		(clause != null && clause.length() > 0 ? " where " + clause : ""), null);
-        if (cursorSize > 0) {
-    		do {
-    			ids.add(cursor.getInt(0));
-    		} while (cursor.moveToNext());
-        }
-        if (cursor != null)
-        	cursor.close();
-        
-        return ids;
+		return rawQuery("select entry from " + DATABASE_TABLE + 
+				(notNullOrEmpty(clause) ? " where " + clause : ""), null, 
+			new QueryEvaluator<Set<Integer>>() {
+				public Set<Integer> evaluate(Cursor cursor, Set<Integer> defaultResult, Object... params) {
+			    	TreeSet<Integer> ids = new TreeSet<Integer>();
+		    		do {
+		       			ids.add(cursor.getInt(0));
+		       		} while (cursor.moveToNext());
+					return ids;
+				}
+			}, null);
+    }
+    
+    public Set<Long> getRowIds(String clause) {
+		return rawQuery("select rowid from " + DATABASE_TABLE + 
+				(notNullOrEmpty(clause) ? " where " + clause : ""), null, 
+			new QueryEvaluator<Set<Long>>() {
+				public Set<Long> evaluate(Cursor cursor, Set<Long> defaultResult, Object... params) {
+			    	TreeSet<Long> ids = new TreeSet<Long>();
+		    		do {
+		       			ids.add(cursor.getLong(0));
+		       		} while (cursor.moveToNext());
+					return ids;
+				}
+			}, null);
     }
 
     public float getSum(String clause) {
-    	float sum = 0f;
-    	
-        Cursor cursor = doQuery("select sum(amount) from " + DATABASE_TABLE + 
-        		(clause != null && clause.length() > 0 ? " where " + clause : ""), null);
-        if (cursorSize > 0) {
-        	sum = cursor.getFloat(0);
-        }
-        if (cursor != null)
-        	cursor.close();
-        
-        return sum;
-    }
+		return rawQuery("select sum(amount) from " + DATABASE_TABLE + 
+				(notNullOrEmpty(clause) ? " where " + clause : ""), null, 
+			new QueryEvaluator<Float>() {
+				public Float evaluate(Cursor cursor, Float defaultResult, Object... params) {
+					return cursor.getFloat(0);
+				}
+			}, 0f);
+   }
 
     public int getCount(String clause) {
-    	int count = 0;
-    	
-        Cursor cursor = doQuery("select count(*) from " + DATABASE_TABLE + 
-        		(clause != null && clause.length() > 0 ? " where " + clause : ""), null);
-        if (cursorSize > 0) {
-        	count = cursor.getInt(0);
-        }
-        if (cursor != null)
-        	cursor.close();
-        
-        return count;
+		return rawQuery("select count(*) from " + DATABASE_TABLE + 
+				(notNullOrEmpty(clause) ? " where " + clause : ""), null, 
+			new QueryEvaluator<Integer>() {
+				public Integer evaluate(Cursor cursor, Integer defaultResult, Object... params) {
+					return cursor.getInt(0);
+				}
+			}, 0);
     }
+    
+	public static SimpleDateFormat timestampFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+    
+    public static String timestamp(Date date) {
+		return timestampFormat.format(date);
+	}
+
+	public static boolean notNullOrEmpty(String value) {
+		return value != null && value.length() > 0;
+	}
+
+	public static <T> boolean isAvailable(int i, T[] array) {
+		return i > -1 && i < array.length && array[i] != null;
+	}
 }

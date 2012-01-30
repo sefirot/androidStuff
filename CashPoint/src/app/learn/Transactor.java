@@ -4,7 +4,6 @@ import java.util.*;
 
 import android.content.Context;
 import android.database.Cursor;
-import android.os.Environment;
 import android.util.Log;
 
 public class Transactor extends DbAdapter
@@ -14,77 +13,267 @@ public class Transactor extends DbAdapter
 	public Transactor(Context context) {
 		super(context);
 	}
+    
+    public float delta = 0.001f;
 	
-	private String currency = "";
-	
-	public String getCurrency() {
-		return currency;
-	}
-
-	public void setCurrency(String currency) {
-		this.currency = currency;
-	}
-	/**
-	 * The transaction registers the amount as an expense and splits it according to a share map (apportionment).
-	 * @param submitter	the name of the participant who did the expense
-	 * @param amount	the amount of the expense
-	 * @param comment	a <code>String</code> to make the transaction recognizable
-	 * @param shares	a <code>Map</code> containing the shares of participants involved
-	 * @return	the unique entry id common to the records of the transaction
-	 */
-	public int performExpense(String submitter, float amount, String comment, Map<String, Number> shares) {
-    	int entryId = addEntry(submitter, amount, currency, comment);
-    	if (apportionment(entryId, shares)) {
-    		Log.i(TAG, String.format("entry %d: %s expended %f %s for '%s' shared by %s", entryId, submitter, amount, currency, comment, shares.toString()));
-    		return entryId;
+    /**
+	 * A map containing names as keys and sharing amounts as values
+     *
+     */
+    @SuppressWarnings("serial")
+	public static class ShareMap extends TreeMap<String, Number> 
+    {
+    	protected ShareMap() {}
+		/**
+		 * creates a sorted map of deals for a number of individuals.
+		 * A portion is assigned to the name in the corresponding spot.
+		 * If the portion of an individual appears as null value the corresponding name is ignored in the map.
+		 * @param names	the array of names of the dealers (not necessarily sorted)
+		 * @param portions	given deals, if any, for individuals according to the order of the names
+		 */
+    	public ShareMap(String[] names, Float[] portions) {
+	    	int n = Math.min(names.length, portions.length);
+	    	for (int i = 0; i < n; i++) {
+	    		if (isAvailable(i, portions))
+		        	put(names[i], portions[i]);
+	    	}
     	}
-    	else {
-    		removeEntry(entryId);
-    		return -1;
-    	}
-	}
+		/**
+		 * creates a sorted map of shares for a number of sharers optionally allowing for fixed portions of any of the sharers
+		 * except the first one whom the remainder of the amount is assigned to in any case.
+		 * If no portion is given for an individual sharer an equally shared portion is assumed (amount divided by the number of sharers).
+		 * If the portion of an individual sharer appears as null value the corresponding name is ignored in the map.
+		 * The values in the resulting map are the negated portions of the amount so that their sum equals the negative value of the amount.
+		 * @param names	the array of names of the sharers (not necessarily sorted)
+		 * @param amount	the value of the amount to share
+		 * @param portions	given portions, if any, for individual sharers according to the order of the names
+		 */
+	    public ShareMap(String[] names, float amount, Float... portions) {
+	    	int n = names.length;
+	    	if (n > 0) {
+	    		float portion = amount / n;
+	    		
+				for (int i = 1; i < n; i++) {
+					String name = names[i];
+					
+					if (isAvailable(i, portions))
+						put(name, -portions[i]);
+					else if (i >= portions.length)
+						put(name, -portion);
+					
+					if (containsKey(name))
+						amount += get(name).floatValue();
+				}
+				
+				put(names[0], -amount);
+			}
+	    }
+	    /**
+	     * calculates the sum of all the values in the map
+	     * @return	the value of the sum
+	     */
+	    public float sum() {
+	    	float sum = 0f;
+	    	for (Number value : values()) 
+				sum += value.floatValue();
+	    	return sum;
+	    }
+	    /**
+	     * turns each value in the map to its negative
+	     * @return	the negated map
+	     */
+	    public ShareMap negated() {
+			for (Map.Entry<String, Number> share : entrySet())
+				put(share.getKey(), -share.getValue().floatValue());
+	    	return this;
+	    }
+    }
+    
+    private float minAmount = 0.01f;
+    
+    private boolean hasNegativeTotalWith(float amount) {
+		if (total() - amount < -minAmount) {
+			Log.i(TAG, String.format("%f is too much", amount));
+			return true;
+		}
+		else
+			return false;
+    }
+    
+    private boolean isInternal(String name) {
+    	return name.length() < 1;
+    }
 	/**
-	 * The transaction registers the amount as a contribution.
-	 * @param submitter	the name of the participant who did the contribution
-	 * @param amount	the amount of the contribution
+	 * The transaction registers the negated sum of the shares with the submitter.
+	 * Additionally all the shares in the map are registered with the same entry id.
+	 * This transaction does not change the total. It registers an allocation of a certain amount.
+	 * If submitter is an empty <code>String</code> it means there is an internal reallocation which is not an expense.
+	 * Such an internal reallocation is not allowed if the transaction causes a negative total.
+	 * @param submitter	the name of the participant who expended an amount matching the negated sum of the shares
 	 * @param comment	a <code>String</code> to make the transaction recognizable
-	 * @return	the unique entry id common to the records of the transaction
+	 * @param shares	a <code>ShareMap</code> containing the shares of participants involved
+	 * @return	the entry id of the transaction or -1 in case the transaction failed
 	 */
-	public int performInput(String submitter, float amount, String comment) {
-		int entryId = addEntry(submitter, amount, currency, comment);
-		Log.i(TAG, String.format("entry %d: %s contributed %f %s as '%s'", entryId, submitter, amount, currency, comment));
-		return entryId;
-	}
-	/**
-	 * The transaction registers the amount as a disbursement.
-	 * @param recipient	the name of the participant who got the amount
-	 * @param amount	the amount of the disbursement
-	 * @param comment	a <code>String</code> to make the transaction recognizable
-	 * @return	the unique entry id common to the records of the transaction
-	 */
-	public int performPayout(String recipient, float amount, String comment) {
-		int entryId = addEntry(recipient, -amount, currency, comment);
-		Log.i(TAG, String.format("entry %d: %s received %f %s as '%s'", entryId, recipient, amount, currency, comment));
-		return entryId;
-	}
-	/**
-	 * The transaction performs a transfer of the amount from a submitter to a recipient.
-	 * This is the same as performing a contribution with the submitter and then a payout to the recipient.
-	 * @param submitter	the name of the participant who lost the amount
-	 * @param amount	the amount of the transfer
-	 * @param comment	a <code>String</code> to make the transaction recognizable
-	 * @param recipient	the name of the participant who got the amount
-	 * @return	the unique entry id common to the records of the transaction
-	 */
-	public int performTransfer(String submitter, float amount, String comment, String recipient) {
-		int entryId = addEntry(submitter, amount, currency, comment);
+	public int performExpense(String submitter, String comment, ShareMap shares) {
+		float amount = -shares.sum();
+		
+		boolean internal = isInternal(submitter);
+		if (internal) {
+			if (hasNegativeTotalWith(amount)) 
+				return -2;
+		}
+		
+		int entryId = addEntry(submitter, amount, currency, comment, !internal);
 		if (entryId < 0)
 			return -1;
 		
-		if (addRecord(entryId, recipient, -amount, currency, null, comment) < 0)
+    	if (allocate(!internal, entryId, shares)) {
+			String action = internal ? "reallocation of" : submitter + " expended";
+    		Log.i(TAG, String.format("entry %d: %s %f %s for '%s' shared by %s", 
+    				entryId, action, Math.abs(amount), currency, comment, shares.toString()));
+    	}
+    	else {
+    		removeEntry(entryId);
+    		entryId = -1;
+    	}
+    	
+		return entryId;
+	}
+    /**
+	 * The transaction registers the negated sum of the shares as an expense by a group of contributors.
+	 * Additionally all the shares in the map are registered with the same entry id.
+	 * Those names in the deals map that are empty <code>String</code> trigger transfers of internal amounts.
+	 * Such an internal transfer is not allowed if the transaction causes a negative total.
+     * @param deals	the names of the contributors and their contributions who expended an amount matching the negated sum of the deals
+	 * @param comment	a <code>String</code> to make the transaction recognizable
+	 * @param shares	a <code>ShareMap</code> containing the shares of participants involved
+	 * @return	the entry id of the transaction or a negative value in case the transaction failed
+     */
+	public int performComplexExpense(ShareMap deals, String comment, ShareMap shares) {
+    	int entryId = -1;
+    	
+    	float amount = deals.sum();
+    	if (Math.abs(amount + shares.sum()) < delta)
+	    	for (Map.Entry<String, Number> deal : deals.entrySet()) {
+				String name = deal.getKey();
+				
+				if (isInternal(name)) 
+					entryId = performTransfer(name, -deal.getValue().floatValue(), comment, name);
+				else {
+					long rowId = addRecord(entryId < 0 ? getNewEntryId() : entryId, 
+							name, deal.getValue().floatValue(), currency, timestampNow(), comment);
+					if (rowId < 0)
+			    		entryId = -1;
+					else
+						updateExpenseFlag(rowId, true);
+				}
+				
+		    	if (entryId < 0)
+		    		break;
+			}
+    	else
+    		Log.w(TAG, String.format("the sum of the deals (%f) for '%s' doesn't match the sum of the shares (%f)", 
+    				amount, comment, shares.sum()));
+    	
+    	if (entryId > -1) {
+        	if (allocate(true, entryId, shares)) {
+        		Log.i(TAG, String.format("entry %d: %s expended %f %s for '%s' shared by %s", 
+        				entryId, deals.toString(), Math.abs(amount), currency, comment, shares.toString()));
+        	}
+        	else {
+        		removeEntry(entryId);
+        		entryId = -1;
+        	}
+    	}
+  	
+    	if (entryId < 0)
+    		removeEntry(entryId);
+    	
+		return entryId;
+    }
+	/**
+	 * The transaction performs a transfer of the amount from a submitter to a recipient.
+	 * This is the same as performing a contribution of the submitter and then a payout to the recipient.
+	 * @param sender	the name of the participant who lost the amount
+	 * @param amount	the amount of the transfer
+	 * @param comment	a <code>String</code> to make the transaction recognizable
+	 * @param recipient	the name of the participant who got the amount
+	 * @return	the entry id of the transaction or a negative value in case the transaction failed
+	 */
+	public int performTransfer(String sender, float amount, String comment, String recipient) {
+		boolean internal = isInternal(sender);
+		if (internal) {
+			if (hasNegativeTotalWith(amount)) 
+				return -3;
+		}
+		
+		int entryId = addEntry(sender, amount, currency, comment, false);
+		if (entryId < 0)
+			return -1;
+		
+		long rowId = addRecord(entryId, recipient, -amount, currency, timestampNow(), comment);
+		if (rowId < 0){
+    		removeEntry(entryId);
 			return -2;
+		}
+		if (sender.equals(recipient)) 
+			updateExpenseFlag(rowId, true);
 
-		Log.i(TAG, String.format("entry %d: %s transferred %f %s as '%s' to %s", entryId, submitter, amount, currency, comment, recipient));
+		Log.i(TAG, String.format("entry %d: %s transfer %f %s for '%s' to %s", entryId, 
+				internal ? "internal" : sender, 
+				amount, currency, comment, 
+				isInternal(recipient) ? "internal" : recipient));
+		
+		return entryId;
+	}
+	/**
+	 * The transaction registers the amount as a contribution (positive) or a retrieval (negative).
+	 * A retrieval is not allowed if it surmounts the current total.
+	 * @param submitter	the name of the participant who did the submission
+	 * @param amount	the amount of the submission
+	 * @param comment	a <code>String</code> to make the transaction recognizable
+	 * @return	the entry id of the transaction or -1 in case the transaction failed or -2 if the transaction violates the 'no negative total' rule
+	 */
+	public int performSubmission(String submitter, float amount, String comment) {
+		int entryId = addEntry(submitter, amount, currency, comment, false);
+		
+		if (entryId > -1) {
+			if (hasNegativeTotalWith(-amount)) {
+	    		removeEntry(entryId);
+				return -2;
+			}
+			
+			String action = amount > 0 ? "contributed" : "retrieved";
+			Log.i(TAG, String.format("entry %d: %s %s %f %s as '%s'", 
+					entryId, submitter, action, Math.abs(amount), currency, comment));
+		}
+		
+		return entryId;
+	}
+	/**
+	 * The transaction registers multiple submissions.
+	 * This transaction as a whole is not allowed if it causes a negative total.
+	 * @param shares	a <code>ShareMap</code> containing the shares of participants involved
+	 * @param comment	a <code>String</code> to make the transactions recognizable
+	 * @return	the entry id of the transaction or -1 in case the transaction failed or -2 if the transactions in the sum violate the 'no negative total' rule
+	 */
+	public int performMultiple(ShareMap shares, String comment) {
+		if (hasNegativeTotalWith(-shares.sum())) 
+			return -2;
+		
+    	int entryId = getNewEntryId();
+    	
+		if (entryId > -1) {
+			for (Map.Entry<String, Number> share : shares.entrySet())
+				if (addRecord(entryId, share.getKey(), share.getValue().floatValue(), currency, timestampNow(), comment) < 0) {
+		    		removeEntry(entryId);
+					return -1;
+				}
+			
+			Log.i(TAG, String.format("entry %d: '%s' submissions : %s",
+					entryId, comment, shares.toString()));
+		}
+		
 		return entryId;
 	}
 	/**
@@ -97,42 +286,26 @@ public class Transactor extends DbAdapter
 		Log.i(TAG, String.format("entry %d: discarded, %d records deleted", entryId, affected));
 		return affected;
     }
-	/**
-	 * creates a map of shares for a number of 'sharers' optionally allowing for fixed portions of each or all of the sharers.
-	 * If no portion is given for an individual sharer an equally shared portion is assumed (amount divided by the number of sharers)
-	 * @param names	the <code>String</code> array of names of the sharers
-	 * @param amount	the <code>float</code> value of the amount to share
-	 * @param portions	given portions, if any, for individual sharers according to the sorted (!) order of the names
-	 * @return	a map containing the names as keys and accordingly the shares as values
-	 */
-    public Map<String, Number> shareMap(String[] names, float amount, Float... portions) {
-    	TreeMap<String, Number> map = new TreeMap<String, Number>();
-    	
-    	int n = names.length;
-        for (int i = 0; i < n; i++) 
-        	map.put(names[i], 
-        			i < portions.length && portions[i] != null ? 
-        					portions[i] : 
-        					amount / n);
-        
-    	return map;
-    }
+    
     /**
      * calculates the balances of all participants identified by their names
 	 * @return	a map containing the names as keys and the balances as values
      */
-    public Map<String, Number> balances() {
-    	TreeMap<String, Number> map = new TreeMap<String, Number>();
-    	
-    	Cursor cursor = doQuery("select name, sum(amount) as balance from " + DATABASE_TABLE + " group by name order by name", null);
-		do {
-			map.put(cursor.getString(0), cursor.getFloat(1));
-		} while (cursor.moveToNext());
-		if (cursor != null)
-        	cursor.close();
-        
-    	Log.i(TAG, String.format("balances : %s", map.toString()));
-    	return map;
+    public ShareMap balances() {
+		return rawQuery("select name, sum(amount) as balance from " + DATABASE_TABLE + 
+				" where length(name) > 0 group by name order by name", null, 
+			new QueryEvaluator<ShareMap>() {
+				public ShareMap evaluate(Cursor cursor, ShareMap defaultResult, Object... params) {
+					ShareMap map = new ShareMap();
+					
+		    		do {
+		    			map.put(cursor.getString(0), cursor.getFloat(1));
+		    		} while (cursor.moveToNext());
+		    		
+		        	Log.i(TAG, String.format("balances : %s", map.toString()));
+					return map;
+				}
+			}, null);
     }
     /**
      * calculates the amounted 'value' of the table
@@ -153,20 +326,29 @@ public class Transactor extends DbAdapter
      * @return	the <code>Set</code> of saved table names
      */
     public Set<String> savedTables() {
-    	TreeSet<String> names = new TreeSet<String>();
-    	
-        Cursor cursor = doQuery("select name from sqlite_master where type = 'table'", null);
-        if (cursorSize > 0) {
-        	do {
-        		String name = cursor.getString(0);
-        		if (name.startsWith(DATABASE_TABLE + "_"))
-        			names.add(name);
-           	} while (cursor.moveToNext());
-        }
-        if (cursor != null)
-        	cursor.close();
-        
-    	return names;
+		return rawQuery("select name from sqlite_master where type = 'table'", null, 
+			new QueryEvaluator<Set<String>>() {
+				public Set<String> evaluate(Cursor cursor, Set<String> defaultResult, Object... params) {
+			    	TreeSet<String> names = new TreeSet<String>();
+		    		
+			    	do {
+		        		String name = cursor.getString(0);
+		        		if (name.startsWith(DATABASE_TABLE + "_"))
+		        			names.add(name);
+		    		} while (cursor.moveToNext());
+					
+			    	Log.i(TAG, String.format("saved tables : %s", names.toString()));
+			    	return names;
+				}
+			}, null);
+    }
+    /**
+     * 
+     * @param suffix	an arbitrary <code>String</code> which is legal as an SQLite table name
+     * @return	the complete SQLite table name
+     */
+    public String tableName(String suffix) {
+    	return DbAdapter.DATABASE_TABLE + "_" + suffix;
     }
     /**
      * changes the name of the table that has been worked on via transactions (current table). 
@@ -179,7 +361,7 @@ public class Transactor extends DbAdapter
     	if (newSuffix == null || newSuffix.length() < 1)
     		return false;
     	
-    	String newTableName = DATABASE_TABLE + "_" + newSuffix;
+    	String newTableName = tableName(newSuffix);
     	if (savedTables().contains(newTableName))
     		return false;
     		
@@ -197,7 +379,7 @@ public class Transactor extends DbAdapter
     	if (oldSuffix == null || oldSuffix.length() < 1)
     		return false;
     	
-    	String oldTableName = DATABASE_TABLE + "_" + oldSuffix;
+    	String oldTableName = tableName(oldSuffix);
     	if (!savedTables().contains(oldTableName))
     		return false;
     		
@@ -221,7 +403,18 @@ public class Transactor extends DbAdapter
     	for (String table : savedTables())
     		drop(table);
     	
-    	clear();
+    	super.clear();
+		Log.i(TAG, "table and all saved tables cleared");
     }
+	
+	private String currency = "";
+	
+	public String getCurrency() {
+		return currency;
+	}
+
+	public void setCurrency(String currency) {
+		this.currency = currency;
+	}
     
 }
