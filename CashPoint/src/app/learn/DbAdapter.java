@@ -66,7 +66,7 @@ public class DbAdapter extends SQLiteOpenHelper
     	return new String[] {"entry", "name", "amount", "currency", "timestamp", "comment", "expense", "ROWID"};
     }
     
-    protected ContentValues putValues(int entry, String name, float amount, String currency, String timestamp, String comment, boolean expense) {
+    protected ContentValues putValues(int entry, String name, double amount, String currency, String timestamp, String comment, boolean expense) {
         ContentValues values = new ContentValues();
         
     	String[] fields = getFieldNames();
@@ -81,7 +81,7 @@ public class DbAdapter extends SQLiteOpenHelper
         return values;
     }
 	
-    protected long addRecord(int entryId, String name, float amount, String currency, String timestamp, String comment) {
+    protected long addRecord(int entryId, String name, double amount, String currency, String timestamp, String comment) {
     	ContentValues values = putValues(entryId, name, amount, currency, timestamp, comment, false);
     	long rowId = mDb.insert(DATABASE_TABLE, null, values);
     	if (rowId < 0)
@@ -147,7 +147,7 @@ public class DbAdapter extends SQLiteOpenHelper
 		return timestamp(new Date());
 	}
     
-	public int addEntry(String name, float amount, String currency, String comment, boolean expense) {
+	public int addEntry(String name, double amount, String currency, String comment, boolean expense) {
     	int entryId = getNewEntryId();
         
         long rowId = addRecord(entryId, name, amount, currency, timestampNow(), comment);
@@ -212,7 +212,7 @@ public class DbAdapter extends SQLiteOpenHelper
     	long rowId;
     	
 		for (String name : portions.keySet()) {
-			float portion = portions.get(name).floatValue();
+			double portion = portions.get(name).doubleValue();
 
 			if ((rowId = addRecord(entryId, name, portion, null, null, null)) < 0)
 				return false;
@@ -239,7 +239,7 @@ public class DbAdapter extends SQLiteOpenHelper
     
     public Set<Integer> getEntryIds(String clause) {
 		return rawQuery("select entry from " + DATABASE_TABLE + 
-				(notNullOrEmpty(clause) ? " where " + clause : ""), null, 
+				(Util.notNullOrEmpty(clause) ? " where " + clause : ""), null, 
 			new QueryEvaluator<Set<Integer>>() {
 				public Set<Integer> evaluate(Cursor cursor, Set<Integer> defaultResult, Object... params) {
 			    	TreeSet<Integer> ids = new TreeSet<Integer>();
@@ -253,7 +253,7 @@ public class DbAdapter extends SQLiteOpenHelper
     
     public Set<Long> getRowIds(String clause) {
 		return rawQuery("select rowid from " + DATABASE_TABLE + 
-				(notNullOrEmpty(clause) ? " where " + clause : ""), null, 
+				(Util.notNullOrEmpty(clause) ? " where " + clause : ""), null, 
 			new QueryEvaluator<Set<Long>>() {
 				public Set<Long> evaluate(Cursor cursor, Set<Long> defaultResult, Object... params) {
 			    	TreeSet<Long> ids = new TreeSet<Long>();
@@ -265,19 +265,19 @@ public class DbAdapter extends SQLiteOpenHelper
 			}, null);
     }
 
-    public float getSum(String clause) {
+    public double getSum(String clause) {
 		return rawQuery("select sum(amount) from " + DATABASE_TABLE + 
-				(notNullOrEmpty(clause) ? " where " + clause : ""), null, 
-			new QueryEvaluator<Float>() {
-				public Float evaluate(Cursor cursor, Float defaultResult, Object... params) {
-					return cursor.getFloat(0);
+				(Util.notNullOrEmpty(clause) ? " where " + clause : ""), null, 
+			new QueryEvaluator<Double>() {
+				public Double evaluate(Cursor cursor, Double defaultResult, Object... params) {
+					return cursor.getDouble(0);
 				}
-			}, 0f);
+			}, 0.);
    }
 
     public int getCount(String clause) {
 		return rawQuery("select count(*) from " + DATABASE_TABLE + 
-				(notNullOrEmpty(clause) ? " where " + clause : ""), null, 
+				(Util.notNullOrEmpty(clause) ? " where " + clause : ""), null, 
 			new QueryEvaluator<Integer>() {
 				public Integer evaluate(Cursor cursor, Integer defaultResult, Object... params) {
 					return cursor.getInt(0);
@@ -289,13 +289,5 @@ public class DbAdapter extends SQLiteOpenHelper
     
     public static String timestamp(Date date) {
 		return timestampFormat.format(date);
-	}
-
-	public static boolean notNullOrEmpty(String value) {
-		return value != null && value.length() > 0;
-	}
-
-	public static <T> boolean isAvailable(int i, T[] array) {
-		return i > -1 && i < array.length && array[i] != null;
 	}
 }

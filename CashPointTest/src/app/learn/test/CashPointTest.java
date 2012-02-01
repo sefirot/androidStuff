@@ -52,17 +52,17 @@ public class CashPointTest extends ActivityInstrumentationTestCase2<CashPoint>
 	}
     
     void assertAmountZero(String message, Number actual) {
-    	assertEquals(message, 0f, actual.floatValue(), transactor.delta);
+    	assertEquals(message, 0, actual.doubleValue(), Util.delta);
     }
     
-    String formatAmount(float value) {
+    String formatAmount(double value) {
     	return String.format("%.2f", value);
     }
     
     void assertAmountEquals(String message, Number expected, Number actual) {
-    	assertEquals(message, 
-    			formatAmount(expected.floatValue()), 
-    			formatAmount(actual.floatValue()));
+    	String exp = formatAmount(expected.doubleValue());
+    	String act = formatAmount(actual.doubleValue());
+    	assertEquals(message, exp, act);
     }
    
     <T> void assertArrayEquals(String message, T[] expected, T[] actual) {
@@ -72,6 +72,8 @@ public class CashPointTest extends ActivityInstrumentationTestCase2<CashPoint>
     }
 
     void assertEntrySize(final int expected, int entry) {
+    	assertTrue("invalid entry", entry > -1);
+    	
     	dbAdapter.fetchEntry(entry, 
     		new QueryEvaluator<Void>() {
 				public Void evaluate(Cursor cursor, Void defaultResult, Object... params) {
@@ -83,7 +85,7 @@ public class CashPointTest extends ActivityInstrumentationTestCase2<CashPoint>
     }
     
     public void testEntry() {
-    	int entryId = dbAdapter.addEntry("Bob", 100.5f, null, "gas", true);
+    	int entryId = dbAdapter.addEntry("Bob", 100.5, null, "gas", true);
     	assertEquals(dbAdapter.getNewEntryId() - 1, entryId);
     	
     	dbAdapter.fetchEntry(entryId, 
@@ -91,7 +93,7 @@ public class CashPointTest extends ActivityInstrumentationTestCase2<CashPoint>
 				public Void evaluate(Cursor cursor, Void defaultResult, Object... params) {
 			    	assertNotNull(cursor);
 					assertEquals("Bob", cursor.getString(1));
-					assertEquals(100.5f, cursor.getFloat(2));
+					assertEquals(100.5, cursor.getDouble(2));
 					assertEquals(null, cursor.getString(3));
 					String now = dbAdapter.timestampNow();
 					assertEquals(now.substring(0, 16), 
@@ -109,37 +111,51 @@ public class CashPointTest extends ActivityInstrumentationTestCase2<CashPoint>
     String[] participants = new String[] {"Sue", "Bob", "Tom"};
     
     public void testShareMap() {
-    	Transactor.ShareMap map = new Transactor.ShareMap(participants, new Float[] {200f,null,300f});
+    	ShareMap map = new ShareMap(participants, new Double[] {200.,null,300.});
     	assertEquals(2, map.size());
-    	assertEquals(200f, map.get(participants[0]));
-    	assertEquals(300f, map.get(participants[2]));
+    	assertEquals(200., map.get(participants[0]));
+    	assertEquals(300., map.get(participants[2]));
     	
-    	map = new Transactor.ShareMap(participants, 600f);
+    	map = new ShareMap(participants, 600.);
     	assertEquals(3, map.size());
     	for (int i = 0; i < 3; i++) 
-    		assertEquals(-200f, map.get(participants[i]));
+    		assertEquals(-200., map.get(participants[i]));
     	
-    	map = new Transactor.ShareMap(participants, 600f, null, 300f);
+    	map = new ShareMap(participants, 600., null, 300.);
     	assertEquals(3, map.size());
-    	assertEquals(-100f, map.get(participants[0]));
-    	assertEquals(-300f, map.get(participants[1]));
-    	assertEquals(-200f, map.get(participants[2]));
+    	assertEquals(-100., map.get(participants[0]));
+    	assertEquals(-300., map.get(participants[1]));
+    	assertEquals(-200., map.get(participants[2]));
     	
-    	assertEquals(-600f, map.sum());
-    	assertEquals(600f, map.negated().sum());
+    	assertEquals(-600., map.sum());
+    	assertEquals(600., map.negated().sum());
     	
-    	participants[1] = "";
-    	map = new Transactor.ShareMap(participants, 600f);
+    	map = new ShareMap(new String[] {participants[0], "", participants[2]}, 600.);
     	assertEquals("", map.firstKey());
+    	
+    	map = new ShareMap(participants, 120., new int[] {1,1,1});
+    	assertEquals(3, map.size());
+    	for (int i = 0; i < 3; i++) 
+    		assertEquals(-40., map.get(participants[i]));
+    	
+    	map = new ShareMap(participants, 120., new int[] {0,1,2});
+    	assertEquals(2, map.size());
+    	assertEquals(-40., map.get(participants[1]));
+    	assertEquals(-80., map.get(participants[2]));
     }
     
-    int allocateTest(final boolean expense) {
+    void zeroSumTest(int entry) {
+		double sum = dbAdapter.getSum("entry=" + entry + " and expense > 0");
+		assertAmountZero("allocation leaking.", sum);
+    }
+    
+    int allocationTest(final boolean expense) {
     	final int sign = expense ? 1 : -1;
-    	final float allocation = 120f * sign;
+    	final double allocation = 120 * sign;
     	
     	int entryId = dbAdapter.addEntry(expense ? "Bob" : "", allocation, null, "test", expense);
     	
-    	Transactor.ShareMap portions = new Transactor.ShareMap(
+    	ShareMap portions = new ShareMap(
     			new String[] {"Bob","Sue","Tom"}, 
     			allocation, 
     			null, allocation / 4, allocation / 3);
@@ -147,7 +163,7 @@ public class CashPointTest extends ActivityInstrumentationTestCase2<CashPoint>
     	assertTrue(dbAdapter.allocate(expense, entryId, portions));
     	
     	assertEntrySize(4, entryId);
-		assertAmountZero("allocation leaking.", dbAdapter.getSum("entry=" + entryId));
+    	zeroSumTest(entryId);
 		
 		assertNotNull("timestamp missing", dbAdapter.fetchField(entryId, "timestamp"));
 		
@@ -157,14 +173,14 @@ public class CashPointTest extends ActivityInstrumentationTestCase2<CashPoint>
 			    	assertNotNull(cursor);
 			    	do {
 			        	assertEquals(expense, dbAdapter.isExpense(cursor.getLong(cursor.getColumnIndex("ROWID"))));
-			        	float amount = cursor.getFloat(cursor.getColumnIndex("amount"));
+			        	double amount = cursor.getDouble(cursor.getColumnIndex("amount"));
 			        	if (cursor.getString(cursor.getColumnIndex("timestamp")) != null)
 			        		assertAmountEquals("allocated amount wrong", allocation, amount);
 			        	else {
 				        	String name = cursor.getString(cursor.getColumnIndex("name"));
-							if (name.equals("Sue")) assertAmountEquals("Sue 's portion wrong", -30f * sign, amount);
-							if (name.equals("Tom")) assertAmountEquals("Tom 's portion wrong", -40f * sign, amount);
-							if (name.equals("Bob")) assertAmountEquals("Bob 's portion wrong", -50f * sign, amount);
+							if (name.equals("Sue")) assertAmountEquals("Sue 's portion wrong", -30 * sign, amount);
+							if (name.equals("Tom")) assertAmountEquals("Tom 's portion wrong", -40 * sign, amount);
+							if (name.equals("Bob")) assertAmountEquals("Bob 's portion wrong", -50 * sign, amount);
 						}
 					} while (cursor.moveToNext());
 					return defaultResult;
@@ -177,27 +193,31 @@ public class CashPointTest extends ActivityInstrumentationTestCase2<CashPoint>
     public void testAllocation() {
     	Set<Integer> ids = new HashSet<Integer>();
     	
-    	ids.add(allocateTest(true));
-    	ids.add(allocateTest(false));
-    	
-    	ids.add(submissionTest("Sue", 99f, "test1"));
-    	assertEquals(-2, expenseTest("", 100f, "test1"));
-    	ids.add(expenseTest("", 99f, "test1"));
-    	ids.add(expenseTest("Sue", 100f, "test2"));
+    	ids.add(allocationTest(true));
+    	ids.add(allocationTest(false));
     	
     	for (Integer id : ids) 
     		if (id > -1) {
 				dbAdapter.removeEntry(id);
 				assertEntrySize(0, id);
 	    	}
+    	
+    	assertTrue(-1 < transactor.performSubmission(participants[0], 99., "test1"));
+    	assertEquals(-2, transactor.performExpense("", "test1", new ShareMap(participants, -100.)));
+    	assertTrue(-1 < transactor.performExpense("", "test1", new ShareMap(participants, -99.)));
+    	totalTest(99.);
+    	
+    	int id = transactor.performExpense(participants[2], "test2", new ShareMap(participants, 99., new int[] {1,0,2}));
+    	assertEntrySize(3, id);
+    	zeroSumTest(id);
     }
     
-    public void test_Save_Load() {
+    public void testSaveLoad() {
     	File dbDir = new File(Environment.getDataDirectory(), "data/app.learn/databases");
     	assertTrue(new File(dbDir, DbAdapter.DATABASE_NAME).exists());
     	
     	int count = transactor.getCount(null);
-    	float sum = transactor.getSum(null);
+    	double sum = transactor.getSum(null);
     	
     	saveTest("test");
     	
@@ -225,7 +245,7 @@ public class CashPointTest extends ActivityInstrumentationTestCase2<CashPoint>
     }
     
     public void testRingTransfer() {
-    	float someAmount = 312.54f;
+    	double someAmount = 312.54;
     	String purpose = "ring transfer";
     	
     	List<String> names = Arrays.asList(participants);
@@ -248,7 +268,7 @@ public class CashPointTest extends ActivityInstrumentationTestCase2<CashPoint>
     	assertEquals("discard failed.", 0, transactor.getCount(null));
     }
     
-    void transferTest(String submitter, float amount, String purpose, String recipient) {
+    void transferTest(String submitter, double amount, String purpose, String recipient) {
     	int entryId = transactor.performTransfer(submitter, amount, purpose, recipient);
     	assertEntrySize(2, entryId);
     	assertAmountZero("transfer leaking", transactor.getSum("entry=" + entryId));
@@ -260,98 +280,110 @@ public class CashPointTest extends ActivityInstrumentationTestCase2<CashPoint>
     	assertEntrySize(0, entryId);
  	}
     
-    int submissionTest(String submitter, float amount, String purpose) {
-    	float total = transactor.total();
-    	int entry = transactor.performSubmission(submitter, amount, purpose);
-    	dbAdapter.fetchEntry(entry, 
+    int entryTest(int entry, final int n, final ShareMap shares) {
+    	assertTrue("invalid entry", entry > -1);
+    	
+    	transactor.fetchEntry(entry, 
     		new QueryEvaluator<Void>() {
 				public Void evaluate(Cursor cursor, Void defaultResult, Object... params) {
 			    	assertNotNull(cursor);
-			    	assertEquals(1, cursor.getCount());
+			    	if (shares == null) 
+						assertEquals(n, cursor.getCount());
+			    	else {
+						assertEquals(n + shares.size(), cursor.getCount());
+						for (String name : shares.keySet()) {
+							double share = shares.get(name).doubleValue();
+
+							do {
+								if (cursor.getString(cursor.getColumnIndex("timestamp")) == null
+										&& name.equals(cursor.getString(cursor.getColumnIndex("name")))) {
+									double amount = cursor.getDouble(cursor
+											.getColumnIndex("amount"));
+									assertAmountEquals("allocation violated.",
+											share, amount);
+								}
+							} while (cursor.moveToNext());
+
+							cursor.moveToFirst();
+						}
+					}
 					return defaultResult;
 				}
 			}, null);
+    	
+    	if (shares != null) 
+    		zeroSumTest(entry);
+    	
+		return entry;
+    }
+    
+    int submissionTest(String submitter, double amount, String purpose) {
+    	double total = transactor.total();
+    	int entry = transactor.performSubmission(submitter, amount, purpose);
+    	assertFalse("transaction blocked because of negative total", entry == -2);
+    	
+    	entryTest(entry, 1, null);
+    	
     	assertAmountEquals("wrong result after input.", total + amount, transactor.total());
     	
     	return entry;
     }
     
-    int cursorTest(int entry, final int n, final Transactor.ShareMap shares) {
-    	transactor.fetchEntry(entry, 
-    		new QueryEvaluator<Void>() {
-				public Void evaluate(Cursor cursor, Void defaultResult, Object... params) {
-			    	assertNotNull(cursor);
-			    	assertEquals(n + shares.size(), cursor.getCount());
-			    	for (String name : shares.keySet()) {
-						float share = shares.get(name).floatValue();
-						
-		    			do {
-		    				if (cursor.getString(cursor.getColumnIndex("timestamp")) == null && 
-		    						name.equals(cursor.getString(cursor.getColumnIndex("name")))) {
-		    					float amount = cursor.getFloat(cursor.getColumnIndex("amount"));
-		    					assertAmountEquals("allocation violated.", share, amount);
-		    				}
-		    			} while (cursor.moveToNext());
-		    			
-		    			cursor.moveToFirst();
-		    		}
-					return defaultResult;
-				}
-			}, null);
+    int payoutTest(String[] recipients, double amount, String purpose, Double... portions) {
+    	double total = transactor.total();
+		ShareMap shares = new ShareMap(recipients, amount, portions);
+    	int entry = transactor.performMultiple(shares.negated(), purpose);
+    	assertFalse("transaction blocked because of negative total", entry == -2);
     	
-    	float sum = transactor.getSum("entry=" + entry + " and expense > 0");
-    	assertAmountZero("allocation leaking.", sum);
-   	
+    	entryTest(entry, 0, shares);
+    	
+    	assertAmountEquals("wrong result after input.", total + shares.sum(), transactor.total());
+    	
     	return entry;
     }
     
-    int expenseTest(final String submitter, float amount, String purpose, Float... portions) {
-		Transactor.ShareMap shares = new Transactor.ShareMap(participants, amount, portions);
+    int simpleExpenseTest(final String submitter, double amount, String purpose, Double... portions) {
+		ShareMap shares = new ShareMap(participants, amount, portions);
     	int entry = transactor.performExpense(submitter, purpose, shares);
-    	if (entry < 0)
-    		return entry;
-   	
-    	return cursorTest(entry, 1, shares);
+    	return entryTest(entry, 1, shares);
     }
     
-    int complexExpenseTest(String[] names, Float[] amounts, String purpose, Float... portions) {
-		Transactor.ShareMap deals = new Transactor.ShareMap(names, amounts);
-		Transactor.ShareMap shares = new Transactor.ShareMap(participants, deals.sum(), portions);
+    int complexExpenseTest(String[] names, Double[] amounts, String purpose, Double... portions) {
+		ShareMap deals = new ShareMap(names, amounts);
+		ShareMap shares = new ShareMap(participants, deals.sum(), portions);
     	int entry = transactor.performComplexExpense(deals, purpose, shares);
-    	if (entry < 0)
-    		return entry;
-
-    	return cursorTest(entry, deals.size() + (deals.containsKey("") ? 1 : 0), shares);
+    	return entryTest(entry, deals.size() + (deals.containsKey("") ? 1 : 0), shares);
     }
     
-    void payoutTest(String[] recipients, float amount, String purpose, Float... portions) {
-    	float total = transactor.total();
-		Transactor.ShareMap shares = new Transactor.ShareMap(recipients, amount, portions);
-    	int entry = transactor.performMultiple(shares.negated(), purpose);
-    	dbAdapter.fetchEntry(entry, 
-    		new QueryEvaluator<Void>() {
-				public Void evaluate(Cursor cursor, Void defaultResult, Object... params) {
-			    	assertNotNull(cursor);
-			    	assertTrue(cursor.getCount() > 0);
-					return defaultResult;
-				}
-			}, null);
-    	assertAmountEquals("wrong result after input.", total + shares.sum(), transactor.total());
+    void compensationTest(Double... values) {
+    	ShareMap compensations = balanceTest(values).negated();
+    	int entry = transactor.performMultiple(compensations, "compensation");
+    	if (values.length < 1)
+    		return;
+    	
+    	assertFalse("transaction blocked because of negative total", entry == -2);
+    	
+    	entryTest(entry, 0, compensations);
+   	
+     	for (Map.Entry<String, Number> ey : transactor.balances().entrySet()) {
+    		double balance = ey.getValue().doubleValue();
+			assertAmountZero(String.format("%s 's balance is wrong : %f", ey.getKey(), balance), balance);
+    	}
     }
     
-    void sharingTest(float expenses) {
-    	float costs = transactor.expenses();
+    void sharingTest(double expenses) {
+    	double costs = transactor.expenses();
 		assertAmountEquals("costs are wrong.", expenses, costs);
-		Transactor.ShareMap shares = new Transactor.ShareMap(participants, costs);
+		ShareMap shares = new ShareMap(participants, costs);
 		assertAmountEquals("sharing sucks.", costs, shares.negated().sum());
     }
     
-    Transactor.ShareMap balanceTest(Float... values) {
-    	Transactor.ShareMap balances = transactor.balances();
+    ShareMap balanceTest(Double... values) {
+    	ShareMap balances = transactor.balances();
     	
     	int i = 0;
     	for (Map.Entry<String, Number> ey : balances.entrySet()) {
-    		if (DbAdapter.isAvailable(i, values))
+    		if (Util.isAvailable(i, values))
     			assertAmountEquals(ey.getKey() + "'s balance wrong.", values[i], ey.getValue());
     		i++;
     	}
@@ -359,67 +391,49 @@ public class CashPointTest extends ActivityInstrumentationTestCase2<CashPoint>
     	return balances;
     }
     
-    void compensationTest(Float... values) {
-    	Transactor.ShareMap compensations = balanceTest(values).negated();
-    	int entry = transactor.performMultiple(compensations, "compensation");
-    	assertFalse("transaction blocked because of negative total", entry == -2);
-    	dbAdapter.fetchEntry(entry, 
-    		new QueryEvaluator<Void>() {
-				public Void evaluate(Cursor cursor, Void defaultResult, Object... params) {
-			    	assertNotNull(cursor);
-			    	assertEquals(transactor.getNames().size(), cursor.getCount());
-					return defaultResult;
-				}
-			}, null);
-     	for (Map.Entry<String, Number> ey : transactor.balances().entrySet()) {
-    		float balance = ey.getValue().floatValue();
-			assertAmountZero(String.format("%s 's balance is wrong : %f", ey.getKey(), balance), balance);
-    	}
-    }
-    
-    void totalTest(float... expected) {
-    	float total = transactor.total();
+    void totalTest(double... expected) {
+    	double total = transactor.total();
     	if (expected.length > 0)
     		assertAmountEquals("unexpected total : " + formatAmount(total), expected[0], total);
     	else
     		assertAmountZero("total is wrong.", total);
     }
     
-    public void testScenario1() {
+    public void test_Scenario1() {
     	//	cost sharing on a trip
-    	submissionTest("Tom", 50f, "stake");
-    	expenseTest("Bob", 100f, "gas");
-    	expenseTest("Sue", 70f, "groceries");
+    	submissionTest("Tom", 50, "stake");
+    	simpleExpenseTest("Bob", 100, "gas");
+    	simpleExpenseTest("Sue", 70, "groceries");
     	
     	//	Kassensturz !
-    	totalTest(50f);
+    	totalTest(50);
 		//	total of expenses
-		sharingTest(170f);
+		sharingTest(170);
 		
-    	balanceTest(43.33f, 13.33f, -6.67f);
+    	balanceTest(43.33, 13.33, -6.67);
     	//	Tom transfers some money to Sue to improve his balance
-    	transferTest("Tom", 10f, "better balance", "Sue");
+    	transferTest("Tom", 10, "better balance", "Sue");
    	
-    	compensationTest(43.33f, 3.33f, 3.33f);
+    	compensationTest(43.33, 3.33, 3.33);
     	
     	totalTest();
     	
     	saveTest("Scenario1");
  	}
     
-    public void testScenario2() {
+    public void test_Scenario2() {
     	//	cost sharing on a trip
-    	submissionTest("Tom", 60f, "stake");
-    	//	Bob pays 100f for gas and uses 50f from the kitty
-    	complexExpenseTest(new String[] {"","Bob"}, new Float[] {50f,50f}, "gas");
-    	expenseTest("Sue", 70f, "groceries");
+    	submissionTest("Tom", 60, "stake");
+    	//	Bob pays 100 for gas and uses 50 from the kitty
+    	complexExpenseTest(new String[] {"","Bob"}, new Double[] {50.,50.}, "gas");
+    	simpleExpenseTest("Sue", 70, "groceries");
     	
     	//	Kassensturz !
-    	totalTest(10f);
+    	totalTest(10);
 		//	total of expenses
-		sharingTest(170f);
+		sharingTest(170);
    	
-    	compensationTest(-6.67f, 13.33f, 3.33f);
+    	compensationTest(-6.67, 13.33, 3.33);
     	
     	totalTest();
     	

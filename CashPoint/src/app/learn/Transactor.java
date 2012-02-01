@@ -14,86 +14,12 @@ public class Transactor extends DbAdapter
 		super(context);
 	}
     
-    public float delta = 0.001f;
-	
-    /**
-	 * A map containing names as keys and sharing amounts as values
-     *
-     */
-    @SuppressWarnings("serial")
-	public static class ShareMap extends TreeMap<String, Number> 
-    {
-    	protected ShareMap() {}
-		/**
-		 * creates a sorted map of deals for a number of individuals.
-		 * A portion is assigned to the name in the corresponding spot.
-		 * If the portion of an individual appears as null value the corresponding name is ignored in the map.
-		 * @param names	the array of names of the dealers (not necessarily sorted)
-		 * @param portions	given deals, if any, for individuals according to the order of the names
-		 */
-    	public ShareMap(String[] names, Float[] portions) {
-	    	int n = Math.min(names.length, portions.length);
-	    	for (int i = 0; i < n; i++) {
-	    		if (isAvailable(i, portions))
-		        	put(names[i], portions[i]);
-	    	}
-    	}
-		/**
-		 * creates a sorted map of shares for a number of sharers optionally allowing for fixed portions of any of the sharers
-		 * except the first one whom the remainder of the amount is assigned to in any case.
-		 * If no portion is given for an individual sharer an equally shared portion is assumed (amount divided by the number of sharers).
-		 * If the portion of an individual sharer appears as null value the corresponding name is ignored in the map.
-		 * The values in the resulting map are the negated portions of the amount so that their sum equals the negative value of the amount.
-		 * @param names	the array of names of the sharers (not necessarily sorted)
-		 * @param amount	the value of the amount to share
-		 * @param portions	given portions, if any, for individual sharers according to the order of the names
-		 */
-	    public ShareMap(String[] names, float amount, Float... portions) {
-	    	int n = names.length;
-	    	if (n > 0) {
-	    		float portion = amount / n;
-	    		
-				for (int i = 1; i < n; i++) {
-					String name = names[i];
-					
-					if (isAvailable(i, portions))
-						put(name, -portions[i]);
-					else if (i >= portions.length)
-						put(name, -portion);
-					
-					if (containsKey(name))
-						amount += get(name).floatValue();
-				}
-				
-				put(names[0], -amount);
-			}
-	    }
-	    /**
-	     * calculates the sum of all the values in the map
-	     * @return	the value of the sum
-	     */
-	    public float sum() {
-	    	float sum = 0f;
-	    	for (Number value : values()) 
-				sum += value.floatValue();
-	    	return sum;
-	    }
-	    /**
-	     * turns each value in the map to its negative
-	     * @return	the negated map
-	     */
-	    public ShareMap negated() {
-			for (Map.Entry<String, Number> share : entrySet())
-				put(share.getKey(), -share.getValue().floatValue());
-	    	return this;
-	    }
-    }
+    private double minAmount = 0.01;
     
-    private float minAmount = 0.01f;
-    
-    private boolean hasNegativeTotalWith(float amount) {
-		if (total() - amount < -minAmount) {
-			Log.i(TAG, String.format("%f is too much", amount));
+    private boolean hasNegativeTotalWith(double amount) {
+    	double total = total();
+		if (total - amount < -minAmount) {
+			Log.w(TAG, String.format("retrieval of %f is more than than allowed : %f", amount, total));
 			return true;
 		}
 		else
@@ -115,11 +41,11 @@ public class Transactor extends DbAdapter
 	 * @return	the entry id of the transaction or -1 in case the transaction failed
 	 */
 	public int performExpense(String submitter, String comment, ShareMap shares) {
-		float amount = -shares.sum();
+		double amount = -shares.sum();
 		
 		boolean internal = isInternal(submitter);
 		if (internal) {
-			if (hasNegativeTotalWith(amount)) 
+			if (hasNegativeTotalWith(-amount)) 
 				return -2;
 		}
 		
@@ -152,16 +78,16 @@ public class Transactor extends DbAdapter
 	public int performComplexExpense(ShareMap deals, String comment, ShareMap shares) {
     	int entryId = -1;
     	
-    	float amount = deals.sum();
-    	if (Math.abs(amount + shares.sum()) < delta)
+    	double amount = deals.sum();
+    	if (Math.abs(amount + shares.sum()) < Util.delta)
 	    	for (Map.Entry<String, Number> deal : deals.entrySet()) {
 				String name = deal.getKey();
 				
 				if (isInternal(name)) 
-					entryId = performTransfer(name, -deal.getValue().floatValue(), comment, name);
+					entryId = performTransfer(name, -deal.getValue().doubleValue(), comment, name);
 				else {
 					long rowId = addRecord(entryId < 0 ? getNewEntryId() : entryId, 
-							name, deal.getValue().floatValue(), currency, timestampNow(), comment);
+							name, deal.getValue().doubleValue(), currency, timestampNow(), comment);
 					if (rowId < 0)
 			    		entryId = -1;
 					else
@@ -200,7 +126,7 @@ public class Transactor extends DbAdapter
 	 * @param recipient	the name of the participant who got the amount
 	 * @return	the entry id of the transaction or a negative value in case the transaction failed
 	 */
-	public int performTransfer(String sender, float amount, String comment, String recipient) {
+	public int performTransfer(String sender, double amount, String comment, String recipient) {
 		boolean internal = isInternal(sender);
 		if (internal) {
 			if (hasNegativeTotalWith(amount)) 
@@ -234,7 +160,7 @@ public class Transactor extends DbAdapter
 	 * @param comment	a <code>String</code> to make the transaction recognizable
 	 * @return	the entry id of the transaction or -1 in case the transaction failed or -2 if the transaction violates the 'no negative total' rule
 	 */
-	public int performSubmission(String submitter, float amount, String comment) {
+	public int performSubmission(String submitter, double amount, String comment) {
 		int entryId = addEntry(submitter, amount, currency, comment, false);
 		
 		if (entryId > -1) {
@@ -265,7 +191,7 @@ public class Transactor extends DbAdapter
     	
 		if (entryId > -1) {
 			for (Map.Entry<String, Number> share : shares.entrySet())
-				if (addRecord(entryId, share.getKey(), share.getValue().floatValue(), currency, timestampNow(), comment) < 0) {
+				if (addRecord(entryId, share.getKey(), share.getValue().doubleValue(), currency, timestampNow(), comment) < 0) {
 		    		removeEntry(entryId);
 					return -1;
 				}
@@ -299,7 +225,7 @@ public class Transactor extends DbAdapter
 					ShareMap map = new ShareMap();
 					
 		    		do {
-		    			map.put(cursor.getString(0), cursor.getFloat(1));
+		    			map.put(cursor.getString(0), cursor.getDouble(1));
 		    		} while (cursor.moveToNext());
 		    		
 		        	Log.i(TAG, String.format("balances : %s", map.toString()));
@@ -311,14 +237,14 @@ public class Transactor extends DbAdapter
      * calculates the amounted 'value' of the table
      * @return	the sum over the amounts of all records in the table
      */
-    public float total() {
+    public double total() {
     	return getSum(null);
     }
     /**
      * calculates the accumulated costs
      * @return	the sum over all entries marked as 'expense'
      */
-    public float expenses() {
+    public double expenses() {
     	return getSum("expense > 0 and timestamp not null");
     }
     /**
