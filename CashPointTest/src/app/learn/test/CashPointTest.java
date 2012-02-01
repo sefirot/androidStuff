@@ -207,7 +207,7 @@ public class CashPointTest extends ActivityInstrumentationTestCase2<CashPoint>
     	assertTrue(-1 < transactor.performExpense("", "test1", new ShareMap(participants, -99.)));
     	totalTest(99.);
     	
-    	int id = transactor.performExpense(participants[2], "test2", new ShareMap(participants, 99., new int[] {1,0,2}));
+    	int id = transactor.performExpense(participants[2], "test2", new ShareMap(participants, 70., new int[] {3,0,4}));
     	assertEntrySize(3, id);
     	zeroSumTest(id);
     }
@@ -342,10 +342,16 @@ public class CashPointTest extends ActivityInstrumentationTestCase2<CashPoint>
     	return entry;
     }
     
-    int simpleExpenseTest(final String submitter, double amount, String purpose, Double... portions) {
+    int simpleExpenseTest(String submitter, double amount, String purpose, Double... portions) {
 		ShareMap shares = new ShareMap(participants, amount, portions);
     	int entry = transactor.performExpense(submitter, purpose, shares);
     	return entryTest(entry, 1, shares);
+    }
+    
+    int expenseTest(String submitter, double amount, String purpose, int[] proportions) {
+		ShareMap shares = new ShareMap(participants, amount, proportions);
+    	int entryId = transactor.performExpense(submitter, purpose, shares);
+    	return entryTest(entryId, 1, shares);
     }
     
     int complexExpenseTest(String[] names, Double[] amounts, String purpose, Double... portions) {
@@ -438,6 +444,24 @@ public class CashPointTest extends ActivityInstrumentationTestCase2<CashPoint>
     	totalTest();
     	
     	saveTest("Scenario2");
+ 	}
+    
+    public void test_Scenario3() {
+    	//	cost sharing on a trip
+    	submissionTest("Tom", 50, "stake");
+    	expenseTest(participants[0], 70, "groceries", new int[] {3,0,4});
+    	expenseTest(participants[0], 100, "gas", new int[] {3,7,0});
+    	
+    	//	Kassensturz !
+    	totalTest(50);
+		//	total of expenses
+		sharingTest(170);
+   	
+    	compensationTest(-70.,110.,10.);
+    	
+    	totalTest();
+    	
+    	saveTest("Scenario3");
  	}
     
 }
