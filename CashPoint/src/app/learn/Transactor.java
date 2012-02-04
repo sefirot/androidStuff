@@ -6,20 +6,27 @@ import android.content.Context;
 import android.database.Cursor;
 import android.util.Log;
 
+/**
+ *	A class containing transactions and evaluation tools for a cost sharing system
+ * 
+ * @author lotharla
+ */
 public class Transactor extends DbAdapter
 {
-	public static final String TAG = "Transactor";
-	
 	public Transactor(Context context) {
 		super(context);
 	}
     
-    private double minAmount = 0.01;
+	private static final String TAG = "Transactor";
+	/**
+	 * no discussion about that amount
+	 */
+	public static double minAmount = 0.01;
     
     private boolean hasNegativeTotalWith(double amount) {
     	double total = total();
 		if (total - amount < -minAmount) {
-			Log.w(TAG, String.format("retrieval of %f is more than than allowed : %f", amount, total));
+			Log.w(TAG, String.format("retrieval of %f is more than allowed : %f", amount, total));
 			return true;
 		}
 		else
@@ -38,7 +45,7 @@ public class Transactor extends DbAdapter
 	 * @param submitter	the name of the participant who expended an amount matching the negated sum of the shares
 	 * @param comment	a <code>String</code> to make the transaction recognizable
 	 * @param shares	a <code>ShareMap</code> containing the shares of participants involved
-	 * @return	the entry id of the transaction or -1 in case the transaction failed
+	 * @return	the entry id of the transaction or -1 in case the transaction failed or -2 if the transaction violates the 'no negative total' rule
 	 */
 	public int performExpense(String submitter, String comment, ShareMap shares) {
 		double amount = -shares.sum();
@@ -80,14 +87,14 @@ public class Transactor extends DbAdapter
     	
     	double amount = deals.sum();
     	if (Math.abs(amount + shares.sum()) < Util.delta)
-	    	for (Map.Entry<String, Number> deal : deals.entrySet()) {
+	    	for (Map.Entry<String, Double> deal : deals.entrySet()) {
 				String name = deal.getKey();
 				
 				if (isInternal(name)) 
-					entryId = performTransfer(name, -deal.getValue().doubleValue(), comment, name);
+					entryId = performTransfer(name, -deal.getValue(), comment, name);
 				else {
 					long rowId = addRecord(entryId < 0 ? getNewEntryId() : entryId, 
-							name, deal.getValue().doubleValue(), currency, timestampNow(), comment);
+							name, deal.getValue(), currency, timestampNow(), comment);
 					if (rowId < 0)
 			    		entryId = -1;
 					else
@@ -124,13 +131,13 @@ public class Transactor extends DbAdapter
 	 * @param amount	the amount of the transfer
 	 * @param comment	a <code>String</code> to make the transaction recognizable
 	 * @param recipient	the name of the participant who got the amount
-	 * @return	the entry id of the transaction or a negative value in case the transaction failed
+	 * @return	the entry id of the transaction or -1 in case the transaction failed or -2 if the transaction violates the 'no negative total' rule
 	 */
 	public int performTransfer(String sender, double amount, String comment, String recipient) {
 		boolean internal = isInternal(sender);
 		if (internal) {
 			if (hasNegativeTotalWith(amount)) 
-				return -3;
+				return -2;
 		}
 		
 		int entryId = addEntry(sender, amount, currency, comment, false);
@@ -140,7 +147,7 @@ public class Transactor extends DbAdapter
 		long rowId = addRecord(entryId, recipient, -amount, currency, timestampNow(), comment);
 		if (rowId < 0){
     		removeEntry(entryId);
-			return -2;
+			return -1;
 		}
 		if (sender.equals(recipient)) 
 			updateExpenseFlag(rowId, true);
@@ -190,8 +197,8 @@ public class Transactor extends DbAdapter
     	int entryId = getNewEntryId();
     	
 		if (entryId > -1) {
-			for (Map.Entry<String, Number> share : shares.entrySet())
-				if (addRecord(entryId, share.getKey(), share.getValue().doubleValue(), currency, timestampNow(), comment) < 0) {
+			for (Map.Entry<String, Double> share : shares.entrySet())
+				if (addRecord(entryId, share.getKey(), share.getValue(), currency, timestampNow(), comment) < 0) {
 		    		removeEntry(entryId);
 					return -1;
 				}
@@ -212,10 +219,29 @@ public class Transactor extends DbAdapter
 		Log.i(TAG, String.format("entry %d: discarded, %d records deleted", entryId, affected));
 		return affected;
     }
-    
+    /**
+     * calculates the cash flows caused by the participants
+	 * @return	a sorted map containing the names as key and the cash flow of that participant as value
+     */
+    public ShareMap cashFlow() {
+		return rawQuery("select name, sum(amount) as balance from " + DATABASE_TABLE + 
+				" where length(name) > 0 and timestamp not null group by name order by name", null, 
+			new QueryEvaluator<ShareMap>() {
+				public ShareMap evaluate(Cursor cursor, ShareMap defaultResult, Object... params) {
+					ShareMap map = new ShareMap();
+					
+		    		do {
+		    			map.put(cursor.getString(0), cursor.getDouble(1));
+		    		} while (cursor.moveToNext());
+		    		
+		        	Log.i(TAG, String.format("cash flow : %s", map.toString()));
+					return map;
+				}
+			}, null);
+    }
     /**
      * calculates the balances of all participants identified by their names
-	 * @return	a map containing the names as keys and the balances as values
+	 * @return	a sorted map containing the names as keys and the balances as values
      */
     public ShareMap balances() {
 		return rawQuery("select name, sum(amount) as balance from " + DATABASE_TABLE + 
@@ -234,7 +260,7 @@ public class Transactor extends DbAdapter
 			}, null);
     }
     /**
-     * calculates the amounted 'value' of the table
+     * calculates the current over-all amount
      * @return	the sum over the amounts of all records in the table
      */
     public double total() {
@@ -247,6 +273,48 @@ public class Transactor extends DbAdapter
     public double expenses() {
     	return getSum("expense > 0 and timestamp not null");
     }
+
+	private Integer[] sharingPolicy = null;    //	uniform sharing among all participants
+	/**
+	 * A sharing policy depicts the way the volume of all the cash flows is to be shared among the participants 
+	 * when it comes to calculating compensations. The given integers are proportional weights for those participants 
+	 * who are involved in the compensation procedure. They are read according to the sorted list of names.
+	 * @return	an array containing integer values or empty meaning the default sharing policy (uniform sharing among all participants)
+	 */
+	public Integer[] getSharingPolicy() {
+		return sharingPolicy;
+	}
+	/**
+	 * sets the sharing policy.
+	 * Note that a call of <code>clear</code> or <code>clearAll</code> 
+	 * resets the sharing policy to its default (uniform sharing among all participants).
+	 * @param sharingPolicy
+	 */
+	public void setSharingPolicy(Integer[] sharingPolicy) {
+		this.sharingPolicy = sharingPolicy;
+	}
+	/**
+	 * calculates a compensation for each participant from the balance and the all-over cash flow at this point.
+	 * The sharing policy is taken into account for this calculation.
+	 * An example: A sharing policy 1:2:3 splits the volume of all the cash flows minus the current total
+	 * which is the remaining amount among the first, second and third participants out of the sorted list of names.
+	 * The first portion is 1/6, the second 2/6 and the third is 3/6 of the volume.
+	 * @return	a sorted map containing the names as keys and the compensations as values
+	 */
+	public ShareMap compensations() {
+    	String[] sortedNames = getSortedNames();
+    	ShareMap cashFlow = cashFlow();
+    	double volume = cashFlow.sum() - total();
+    	
+    	ShareMap differences = new ShareMap(sortedNames, volume);
+    	ShareMap sharedCosts = new ShareMap(sortedNames, volume, sharingPolicy);
+    	differences.minus(sharedCosts.values());
+    	
+    	ShareMap compensations = balances().negated();
+    	compensations.minus(differences.negated().values());
+		return compensations;
+	}
+	
     /**
      * retrieves the names of tables that had been 'saved' in the past
      * @return	the <code>Set</code> of saved table names
@@ -321,6 +389,7 @@ public class Transactor extends DbAdapter
     	int count = getCount(null);
     	super.clear();
 		Log.i(TAG, String.format("table cleared, %d records deleted", count));
+		setSharingPolicy(null);
     }
     /**
      * clears the current table and drops all saved tables
@@ -331,10 +400,11 @@ public class Transactor extends DbAdapter
     	
     	super.clear();
 		Log.i(TAG, "table and all saved tables cleared");
+		setSharingPolicy(null);
     }
 	
 	private String currency = "";
-	
+
 	public String getCurrency() {
 		return currency;
 	}

@@ -1,13 +1,17 @@
 package app.learn;
 
 import java.util.*;
-import java.text.SimpleDateFormat;
 
 import android.content.*;
 import android.database.*;
 import android.database.sqlite.*;
 import android.util.Log;
 
+/**
+ *	facilitates database access for a cost sharing system
+ *
+ * @author lotharla
+ */
 public class DbAdapter extends SQLiteOpenHelper 
 {
 	private static final String TAG = "DbAdapter";
@@ -144,7 +148,7 @@ public class DbAdapter extends SQLiteOpenHelper
     }
     
     public String timestampNow() {
-		return timestamp(new Date());
+		return Util.timestamp(new Date());
 	}
     
 	public int addEntry(String name, double amount, String currency, String comment, boolean expense) {
@@ -208,11 +212,11 @@ public class DbAdapter extends SQLiteOpenHelper
 			}, null);
     }
     
-    public boolean allocate(boolean expense, int entryId, Map<String, Number> portions) {
+    public boolean allocate(boolean expense, int entryId, Map<String, Double> portions) {
     	long rowId;
     	
 		for (String name : portions.keySet()) {
-			double portion = portions.get(name).doubleValue();
+			double portion = portions.get(name);
 
 			if ((rowId = addRecord(entryId, name, portion, null, null, null)) < 0)
 				return false;
@@ -224,45 +228,45 @@ public class DbAdapter extends SQLiteOpenHelper
 		return portions.size() > 0;
     }
     
-    public Set<String> getNames() {
+    public String[] getSortedNames() {
 		return rawQuery("select distinct name from " + DATABASE_TABLE + " where length(name) > 0", null, 
-			new QueryEvaluator<Set<String>>() {
-				public Set<String> evaluate(Cursor cursor, Set<String> defaultResult, Object... params) {
+			new QueryEvaluator<String[]>() {
+				public String[] evaluate(Cursor cursor, String[] defaultResult, Object... params) {
 			    	TreeSet<String> names = new TreeSet<String>();
 		    		do {
 		    			names.add(cursor.getString(0));
 		    		} while (cursor.moveToNext());
-					return names;
+					return names.toArray(defaultResult);
 				}
-			}, null);
+			}, new String[0]);
     }
     
-    public Set<Integer> getEntryIds(String clause) {
+    public Integer[] getEntryIds(String clause) {
 		return rawQuery("select entry from " + DATABASE_TABLE + 
 				(Util.notNullOrEmpty(clause) ? " where " + clause : ""), null, 
-			new QueryEvaluator<Set<Integer>>() {
-				public Set<Integer> evaluate(Cursor cursor, Set<Integer> defaultResult, Object... params) {
+			new QueryEvaluator<Integer[]>() {
+				public Integer[] evaluate(Cursor cursor, Integer[] defaultResult, Object... params) {
 			    	TreeSet<Integer> ids = new TreeSet<Integer>();
 		    		do {
 		       			ids.add(cursor.getInt(0));
 		       		} while (cursor.moveToNext());
-					return ids;
+					return ids.toArray(defaultResult);
 				}
-			}, null);
+			}, new Integer[0]);
     }
     
-    public Set<Long> getRowIds(String clause) {
+    public Long[] getRowIds(String clause) {
 		return rawQuery("select rowid from " + DATABASE_TABLE + 
 				(Util.notNullOrEmpty(clause) ? " where " + clause : ""), null, 
-			new QueryEvaluator<Set<Long>>() {
-				public Set<Long> evaluate(Cursor cursor, Set<Long> defaultResult, Object... params) {
+			new QueryEvaluator<Long[]>() {
+				public Long[] evaluate(Cursor cursor, Long[] defaultResult, Object... params) {
 			    	TreeSet<Long> ids = new TreeSet<Long>();
 		    		do {
 		       			ids.add(cursor.getLong(0));
 		       		} while (cursor.moveToNext());
-					return ids;
+					return ids.toArray(defaultResult);
 				}
-			}, null);
+			}, new Long[0]);
     }
 
     public double getSum(String clause) {
@@ -284,10 +288,4 @@ public class DbAdapter extends SQLiteOpenHelper
 				}
 			}, 0);
     }
-    
-	public static SimpleDateFormat timestampFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
-    
-    public static String timestamp(Date date) {
-		return timestampFormat.format(date);
-	}
 }
