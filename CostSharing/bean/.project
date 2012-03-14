@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<projectDescription>
+	<name>CostSharingBean</name>
+	<comment></comment>
+	<projects>
+	</projects>
+	<buildSpec>
+		<buildCommand>
+			<name>org.eclipse.jdt.core.javabuilder</name>
+			<arguments>
+			</arguments>
+		</buildCommand>
+	</buildSpec>
+	<natures>
+		<nature>org.eclipse.jdt.core.javanature</nature>
+	</natures>
+	<linkedResources>
+		<link>
+			<name>src/com/applang/DbAdapter.java</name>
+			<type>1</type>
+			<location>/home/lotharla/git/androidStuff/CostSharing/src/com/applang/DbAdapter.java</location>
+		</link>
+		<link>
+			<name>src/com/applang/ShareMap.java</name>
+			<type>1</type>
+			<location>/home/lotharla/git/androidStuff/CostSharing/src/com/applang/ShareMap.java</location>
+		</link>
+		<link>
+			<name>src/com/applang/Transactor.java</name>
+			<type>1</type>
+			<location>/home/lotharla/git/androidStuff/CostSharing/src/com/applang/Transactor.java</location>
+		</link>
+		<link>
+			<name>src/com/applang/Util.java</name>
+			<type>1</type>
+			<location>/home/lotharla/git/androidStuff/CostSharing/src/com/applang/Util.java</location>
+		</link>
+		<link>
+			<name>src/com/applang/test/CostSharingTest.java</name>
+			<type>1</type>
+			<location>/home/lotharla/git/androidStuff/CostSharing/test/src/com/applang/test/CostSharingTest.java</location>
+		</link>
+	</linkedResources>
+</projectDescription>

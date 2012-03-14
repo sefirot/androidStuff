@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/3"/>
+	<classpathentry kind="lib" path="/home/lotharla/work/sqlite/sqlite4java-213/sqlite4java.jar" sourcepath="/home/lotharla/.m2/repository/com/almworks/sqlite4java/sqlite4java/0.213/sqlite4java-0.213-sources.jar">
+		<attributes>
+			<attribute name="javadoc_location" value="file:/home/lotharla/work/sqlite/sqlite4java-213/doc/"/>
+			<attribute name="org.eclipse.jdt.launching.CLASSPATH_ATTR_LIBRARY_PATH_ENTRY" value="/home/lotharla/work/sqlite/sqlite4java-213/src"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="output" path="bin"/>
+</classpath>

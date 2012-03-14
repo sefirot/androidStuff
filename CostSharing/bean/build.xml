@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?eclipse.ant.import?>
+<project basedir="." default="build" name="CostSharingBean">
+    <property environment="env"/>
+    <property name="ECLIPSE_HOME" value="../../../../eclipse"/>
+    <property name="debuglevel" value="source,lines,vars"/>
+    <property name="target" value="1.7"/>
+    <property name="source" value="1.7"/>
+	<property name="bin-dir" location="bin" />
+	<property name="jar-file" location="CostSharingBean.jar" />
+    <path id="JUnit 3.libraryclasspath">
+        <pathelement location="${ECLIPSE_HOME}/plugins/org.junit_3.8.2.v3_8_2_v20100427-1100/junit.jar"/>
+    </path>
+    <path id="CostSharingBean.classpath">
+        <pathelement location="bin"/>
+        <path refid="JUnit 3.libraryclasspath"/>
+        <pathelement location="../../../../libs/commons-codec-1.5/commons-codec-1.5.jar"/>
+        <pathelement location="../../../../libs/slf4j-1.6.2/slf4j-api-1.6.2.jar"/>
+        <pathelement location="../../../../work/sqlite/sqlite4java-213/sqlite4java.jar"/>
+    </path>
+    <target name="init">
+        <mkdir dir="bin"/>
+        <copy includeemptydirs="false" todir="bin">
+            <fileset dir="src">
+                <exclude name="**/*.launch"/>
+                <exclude name="**/*.java"/>
+            </fileset>
+        </copy>
+    </target>
+    <target name="clean">
+        <delete dir="bin"/>
+    </target>
+    <target depends="clean" name="cleanall"/>
+    <target depends="build-subprojects,build-project" name="build"/>
+    <target name="build-subprojects"/>
+    <target depends="init" name="build-project">
+        <echo message="${ant.project.name}: ${ant.file}"/>
+        <javac debug="true" debuglevel="${debuglevel}" destdir="bin" source="${source}" target="${target}">
+            <src path="src"/>
+            <classpath refid="CostSharingBean.classpath"/>
+        </javac>
+    </target>
+    <target description="Build all projects which reference this project. Useful to propagate changes." name="build-refprojects"/>
+    <target description="copy Eclipse compiler jars to ant lib directory" name="init-eclipse-compiler">
+        <copy todir="${ant.library.dir}">
+            <fileset dir="${ECLIPSE_HOME}/plugins" includes="org.eclipse.jdt.core_*.jar"/>
+        </copy>
+        <unzip dest="${ant.library.dir}">
+            <patternset includes="jdtCompilerAdapter.jar"/>
+            <fileset dir="${ECLIPSE_HOME}/plugins" includes="org.eclipse.jdt.core_*.jar"/>
+        </unzip>
+    </target>
+    <target description="compile project with Eclipse compiler" name="build-eclipse-compiler">
+        <property name="build.compiler" value="org.eclipse.jdt.core.JDTCompilerAdapter"/>
+        <antcall target="build"/>
+    </target>
+	
+	<target name="jar" depends="build">
+		<jar jarfile="${jar-file}" 
+			includes="**/*.class" 
+			basedir="${bin-dir}">
+            <manifest>
+            </manifest>
+		</jar>
+	</target>
+</project>
