@@ -26,6 +26,10 @@ public class ActivityTest extends ActivityInstrumentationTestCase2<CostSharingAc
 		super("com.applang", CostSharingActivity.class);
 	}
 	
+	public ActivityTest(String method) {
+		this();
+	}
+
     @Override
     protected void setUp() throws Exception {
         super.setUp();
