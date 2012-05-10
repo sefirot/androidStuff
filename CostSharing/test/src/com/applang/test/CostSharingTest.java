@@ -9,6 +9,10 @@ import com.applang.Transactor.*;
 
 public class CostSharingTest extends ActivityTest 
 {
+	public CostSharingTest() {
+		super();
+	}
+
 	public CostSharingTest(String method) {
 		super(method);
 	}
