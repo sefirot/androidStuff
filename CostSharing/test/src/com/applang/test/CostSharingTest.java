@@ -21,10 +21,10 @@ public class CostSharingTest extends ActivityTest
 
     @Override
     protected void setUp() throws Exception {
-        super.setUp();
-    	
         transactor = new Transactor(this.getActivity());
         
+        super.setUp();
+    	
     	transactor.clear();
     }
 
