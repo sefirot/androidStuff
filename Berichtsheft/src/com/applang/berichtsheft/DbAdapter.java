@@ -40,7 +40,6 @@ public class DbAdapter {
         + "name text not null, botname text not null, family text not null, botfamily text not null, group text not null);";
 
     private static final String DATABASE_NAME = "data";
-    private static final String DATABASE_NAME2 = "data2";
     private static final String DATABASE_PLANTS = "plants";
     private static final int DATABASE_VERSION = 4;
 
