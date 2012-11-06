@@ -1,12 +1,69 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="fill_parent"
-    android:layout_height="fill_parent"
-    android:orientation="vertical" >
-
-    <TextView
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/hello" />
-
-</LinearLayout>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+android:layout_width="fill_parent"
+android:layout_height="fill_parent">
+	<LinearLayout 
+	    android:layout_width="fill_parent"
+		android:layout_height="wrap_content"
+		android:layout_marginTop="40dip"
+		android:layout_marginBottom="40dip">
+		<TextView 
+		android:text="@string/app_name"
+		android:layout_width="fill_parent"
+		android:layout_height="wrap_content"
+		android:gravity="center" 
+		android:textStyle="bold"
+		android:textSize="40sp"
+		android:textColor="#aa0000"/>
+	</LinearLayout>
+	<LinearLayout
+    android:id="@+id/upper_bottoms"
+    android:orientation="horizontal"
+	android:layout_width="fill_parent"
+	android:layout_height="wrap_content"
+	android:layout_centerInParent="true">
+		<Button
+		android:text="@string/berichte"
+		android:textStyle="bold"
+		android:textSize="18sp"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:padding="40dp"
+		android:layout_weight="1"
+		android:onClick="showTagesberichte"/>
+		<Button
+		android:text="@string/plants"
+		android:textStyle="bold"
+		android:textSize="18sp"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:padding="40dp"
+		android:layout_weight="1"
+		android:onClick="showPflanze"/>	    
+	</LinearLayout>
+	<LinearLayout
+    android:id="@+id/lower_bottoms"
+    android:orientation="horizontal"
+	android:layout_width="fill_parent"
+	android:layout_height="wrap_content"
+	android:layout_below="@+id/upper_bottoms">
+		<Button
+		android:text="@string/more"
+		android:textStyle="bold"
+		android:textSize="18sp"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:padding="40dp"
+		android:layout_weight="1"
+		android:onClick="showGroupView"/>
+		<Button
+		android:text="@string/more2"
+		android:textStyle="bold"
+		android:textSize="18sp"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:padding="40dp"
+		android:layout_weight="1"
+		android:onClick="showCalenderView"/>	    
+	</LinearLayout>
+</RelativeLayout>
