@@ -22,24 +22,29 @@ android:layout_height="fill_parent">
 	android:layout_width="fill_parent"
 	android:layout_height="wrap_content"
 	android:layout_centerInParent="true">
+
 		<Button
-		android:text="@string/berichte"
-		android:textStyle="bold"
-		android:textSize="18sp"
-		android:layout_width="0dp"
-		android:layout_height="wrap_content"
-		android:padding="40dp"
-		android:layout_weight="1"
-		android:onClick="showTagesberichte"/>
+		    android:id="@+id/button1"
+		    android:layout_width="0dp"
+		    android:layout_height="wrap_content"
+		    android:layout_weight="1"
+		    android:onClick="showTagesberichte"
+		    android:padding="40dp"
+		    android:text="@string/berichte"
+		    android:textSize="18sp"
+		    android:textStyle="bold" />
+
 		<Button
-		android:text="@string/plants"
-		android:textStyle="bold"
-		android:textSize="18sp"
-		android:layout_width="0dp"
-		android:layout_height="wrap_content"
-		android:padding="40dp"
-		android:layout_weight="1"
-		android:onClick="showPflanze"/>	    
+		    android:id="@+id/button2"
+		    android:layout_width="0dp"
+		    android:layout_height="wrap_content"
+		    android:layout_weight="1"
+		    android:onClick="showPflanze"
+		    android:padding="40dp"
+		    android:text="@string/plants"
+		    android:textSize="18sp"
+		    android:textStyle="bold" />
+	    
 	</LinearLayout>
 	<LinearLayout
     android:id="@+id/lower_bottoms"
@@ -47,23 +52,28 @@ android:layout_height="fill_parent">
 	android:layout_width="fill_parent"
 	android:layout_height="wrap_content"
 	android:layout_below="@+id/upper_bottoms">
+
 		<Button
-		android:text="@string/more"
-		android:textStyle="bold"
-		android:textSize="18sp"
-		android:layout_width="0dp"
-		android:layout_height="wrap_content"
-		android:padding="40dp"
-		android:layout_weight="1"
-		android:onClick="showGroupView"/>
+		    android:id="@+id/button3"
+		    android:layout_width="0dp"
+		    android:layout_height="wrap_content"
+		    android:layout_weight="1"
+		    android:onClick="showMore"
+		    android:padding="40dp"
+		    android:text="@string/more"
+		    android:textSize="18sp"
+		    android:textStyle="bold" />
+
 		<Button
-		android:text="@string/more2"
-		android:textStyle="bold"
-		android:textSize="18sp"
-		android:layout_width="0dp"
-		android:layout_height="wrap_content"
-		android:padding="40dp"
-		android:layout_weight="1"
-		android:onClick="showCalenderView"/>	    
+		    android:id="@+id/button4"
+		    android:layout_width="0dp"
+		    android:layout_height="wrap_content"
+		    android:layout_weight="1"
+		    android:onClick="showEvenMore"
+		    android:padding="40dp"
+		    android:text="@string/more2"
+		    android:textSize="18sp"
+		    android:textStyle="bold" />
+	    
 	</LinearLayout>
 </RelativeLayout>

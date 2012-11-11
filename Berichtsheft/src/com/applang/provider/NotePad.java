@@ -54,7 +54,7 @@ public final class NotePad {
         /**
          * The default sort order for this table
          */
-        public static final String DEFAULT_SORT_ORDER = "modified DESC";
+        public static final String DEFAULT_SORT_ORDER = "created ASC";
 
         /**
          * The title of the note

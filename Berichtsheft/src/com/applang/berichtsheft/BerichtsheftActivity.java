@@ -19,7 +19,31 @@ public class BerichtsheftActivity extends Activity {
         
         mButtonMessageTemplate =
         		getString(R.string.button_message_template);
-        		
+        
+        for (final int id : new int[] {R.id.button1, R.id.button2, R.id.button3, R.id.button4}) {
+        	Button btn = (Button) findViewById(id);
+        	btn.setOnClickListener(new View.OnClickListener() {
+        	    @Override
+        	    public void onClick(View v) {
+        	        switch (id) {
+					case R.id.button1:
+						showTagesberichte(v);
+						break;
+					case R.id.button2:
+						showPflanze(v);
+						break;
+					case R.id.button3:
+						showMore(v);
+						break;
+					case R.id.button4:
+						showEvenMore(v);
+						break;
+					}
+        	    }
+        	});	
+        }
+        
+		showToast(android.os.Build.VERSION.SDK);
 	}
 	
 	public void showTagesberichte(View clickedButton) {
@@ -37,7 +61,7 @@ public class BerichtsheftActivity extends Activity {
 		showToast(message);
 		}
 	
-	public void showGroupView(View clickedButton) {
+	public void showMore(View clickedButton) {
 		Button button = (Button)clickedButton;
 		CharSequence text = button.getText();
 		String message =
@@ -45,7 +69,7 @@ public class BerichtsheftActivity extends Activity {
 		showToast(message);
 		}
 	
-	public void showCalenderView(View clickedButton) {
+	public void showEvenMore(View clickedButton) {
 		Button button = (Button)clickedButton;
 		CharSequence text = button.getText();
 		String message =
