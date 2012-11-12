@@ -16,6 +16,9 @@
 
 package com.applang.tagesberichte;
 
+import java.util.Calendar;
+import java.util.Date;
+
 import com.applang.berichtsheft.R;
 import com.applang.provider.NotePad;
 import com.applang.provider.NotePad.Notes;
@@ -27,6 +30,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
+import android.widget.DatePicker;
 import android.widget.EditText;
 
 /**
@@ -46,20 +50,21 @@ public class TitleEditor extends Activity implements View.OnClickListener {
     private static final String[] PROJECTION = new String[] {
             NotePad.Notes._ID, // 0
             NotePad.Notes.TITLE, // 1
+            Notes.CREATED_DATE, 
     };
     /** Index of the title column */
     private static final int COLUMN_INDEX_TITLE = 1;
+    private static final int COLUMN_INDEX_CREATED = 2;
 
+    private static Calendar calendar = Calendar.getInstance();
+    
     /**
      * Cursor which will provide access to the note whose title we are editing.
      */
     private Cursor mCursor;
 
-    /**
-     * The EditText field from our UI. Keep track of this so we can extract the
-     * text when we are finished.
-     */
     private EditText mText;
+    private DatePicker mDate;
 
     /**
      * The content URI to the note that's being edited.
@@ -82,6 +87,9 @@ public class TitleEditor extends Activity implements View.OnClickListener {
         mText = (EditText) this.findViewById(R.id.title);
         mText.setOnClickListener(this);
         
+        mDate = (DatePicker) this.findViewById(R.id.date);
+        mDate.setOnClickListener(this);
+        
         Button b = (Button) findViewById(R.id.ok);
         b.setOnClickListener(this);
     }
@@ -94,6 +102,9 @@ public class TitleEditor extends Activity implements View.OnClickListener {
         if (mCursor != null) {
             mCursor.moveToFirst();
             mText.setText(mCursor.getString(COLUMN_INDEX_TITLE));
+    		Date date = new Date(mCursor.getLong(COLUMN_INDEX_CREATED));
+    		calendar.setTime(date);
+            mDate.init(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH), null);
         }
     }
 
@@ -105,6 +116,8 @@ public class TitleEditor extends Activity implements View.OnClickListener {
             // Write the title back to the note 
             ContentValues values = new ContentValues();
             values.put(Notes.TITLE, mText.getText().toString());
+            calendar.set(mDate.getYear(), mDate.getMonth(), mDate.getDayOfMonth());
+            values.put(Notes.CREATED_DATE, calendar.getTimeInMillis());
             getContentResolver().update(mUri, values, null, null);
         }
     }

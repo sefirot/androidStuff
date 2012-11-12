@@ -26,12 +26,17 @@
         android:maxLines="1" 
         android:layout_marginTop="2dip"
         android:layout_width="wrap_content"
-      	android:ems="25"
         android:layout_height="wrap_content" 
+      	android:ems="25"
         android:autoText="true"
         android:capitalize="sentences"
         android:scrollHorizontally="true" />
-   		
+
+    <DatePicker
+        android:id="@+id/date"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+    		
     <Button android:id="@+id/ok"
         android:layout_width="wrap_content" 
         android:layout_height="wrap_content" 

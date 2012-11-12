@@ -16,6 +16,11 @@
 
 package com.applang.tagesberichte;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
+
 import com.applang.berichtsheft.R;
 import com.applang.provider.NotePad.Notes;
 
@@ -35,6 +40,7 @@ import android.view.ContextMenu.ContextMenuInfo;
 import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
+import android.widget.TextView;
 
 /**
  * Displays a list of notes. Will display notes from the {@link Uri}
@@ -54,10 +60,32 @@ public class NotesList extends ListActivity {
     private static final String[] PROJECTION = new String[] {
             Notes._ID, // 0
             Notes.TITLE, // 1
+            Notes.CREATED_DATE, 
     };
 
     /** The index of the title column */
     private static final int COLUMN_INDEX_TITLE = 1;
+    private static final int COLUMN_INDEX_CREATED = 2;
+    
+    public static String getDateString(long millis) {
+		Date date = new Date(millis);
+		return dateFormat.format(date);
+    }
+    
+    private static SimpleDateFormat dateFormat = new SimpleDateFormat("d.MMM.yyyy");
+    
+    public static long getMillis(String dateString) {
+        Date date;
+		try {
+			date = dateFormat.parse(dateString);
+		} catch (ParseException e) {
+			return -1L;
+		}
+		
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(date);
+		return calendar.getTimeInMillis();
+    }
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,8 +109,21 @@ public class NotesList extends ListActivity {
                 Notes.DEFAULT_SORT_ORDER);
 
         // Used to map notes entries from the database to views
-        SimpleCursorAdapter adapter = new SimpleCursorAdapter(this, R.layout.noteslist_item, cursor,
-                new String[] { Notes.TITLE }, new int[] { android.R.id.text1 });
+//        SimpleCursorAdapter adapter = new SimpleCursorAdapter(this, R.layout.noteslist_item, cursor,
+//                new String[] { Notes.TITLE }, new int[] { android.R.id.text1 });
+        SimpleCursorAdapter adapter = new SimpleCursorAdapter(this, R.layout.noteslist_item2, cursor,
+                new String[] { Notes.TITLE, Notes.CREATED_DATE }, new int[] { R.id.textView1, R.id.textView2 }) {
+        	@Override
+        	public void setViewText(TextView v, String text) {
+        		switch (v.getId()) {
+				case R.id.textView2:
+					text = getDateString(Long.parseLong(text));
+
+				default:
+	        		super.setViewText(v, text);
+				}
+        	}
+        };
         setListAdapter(adapter);
     }
 

@@ -67,9 +67,11 @@
 
         </activity>
         
-		<activity android:name="com.applang.tagesberichte.TitleEditor" android:label="@string/title_edit_title"
-				android:theme="@android:style/Theme.Dialog"
-                android:windowSoftInputMode="stateVisible">
+		<activity android:name="com.applang.tagesberichte.TitleEditor" 
+			android:label="@string/title_edit_title"
+			android:theme="@android:style/Theme.Dialog"
+            android:windowSoftInputMode="stateVisible"
+        >
             <!-- This activity implements an alternative action that can be
                  performed on notes: editing their title.  It can be used as
                  a default operation if the user invokes this action, and is
