@@ -22,6 +22,7 @@
     <string name="title_create">Create note</string>
     <string name="title_edit">Edit note</string>
 	<string name="title_notes_list">Tagesberichte</string>   
+	<string name="title_plants_list">Tagesberichte</string>
 	<string name="title_note">Note</string>  
 	<string name="title_edit_title">Note title:</string>  
 	

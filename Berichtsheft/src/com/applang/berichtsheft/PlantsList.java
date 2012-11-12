@@ -14,15 +14,11 @@
  * limitations under the License.
  */
 
-package com.applang.tagesberichte;
-
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
+package com.applang.berichtsheft;
 
 import com.applang.berichtsheft.R;
-import com.applang.provider.NotePad.Notes;
+import com.applang.provider.PlantInfo.Plants;
+
 
 import android.app.ListActivity;
 import android.content.ComponentName;
@@ -40,14 +36,13 @@ import android.view.ContextMenu.ContextMenuInfo;
 import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
-import android.widget.TextView;
 
 /**
  * Displays a list of notes. Will display notes from the {@link Uri}
  * provided in the intent if there is one, otherwise defaults to displaying the
  * contents of the {@link NotePadProvider}
  */
-public class NotesList extends ListActivity {
+public class PlantsList extends ListActivity {
     private static final String TAG = "PlantsList";
 
     // Menu item ids
@@ -58,34 +53,16 @@ public class NotesList extends ListActivity {
      * The columns we are interested in from the database
      */
     private static final String[] PROJECTION = new String[] {
-            Notes._ID, // 0
-            Notes.TITLE, // 1
-            Notes.CREATED_DATE, 
+            Plants._ID, // 0
+            Plants.NAME, // 1
+            Plants.FAMILY, // 2
+            Plants.BOTNAME, // 3
+            Plants.BOTFAMILY, // 4
+            Plants.GROUP, // 5
     };
 
     /** The index of the title column */
     private static final int COLUMN_INDEX_TITLE = 1;
-    private static final int COLUMN_INDEX_CREATED = 2;
-    
-    public static String getDateString(long millis) {
-		Date date = new Date(millis);
-		return dateFormat.format(date);
-    }
-    
-    private static SimpleDateFormat dateFormat = new SimpleDateFormat("d.MMM.yyyy");
-    
-    public static long getMillis(String dateString) {
-        Date date;
-		try {
-			date = dateFormat.parse(dateString);
-		} catch (ParseException e) {
-			return -1L;
-		}
-		
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTime(date);
-		return calendar.getTimeInMillis();
-    }
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -97,7 +74,7 @@ public class NotesList extends ListActivity {
         // as a MAIN activity), then use our default content provider.
         Intent intent = getIntent();
         if (intent.getData() == null) {
-            intent.setData(Notes.CONTENT_URI);
+            intent.setData(Plants.CONTENT_URI);
         }
 
         // Inform the list we provide context menus for items
@@ -106,26 +83,15 @@ public class NotesList extends ListActivity {
         // Perform a managed query. The Activity will handle closing and requerying the cursor
         // when needed.
         Cursor cursor = managedQuery(getIntent().getData(), PROJECTION, null, null,
-                Notes.DEFAULT_SORT_ORDER);
+                Plants.DEFAULT_SORT_ORDER);
 
         // Used to map notes entries from the database to views
-//        SimpleCursorAdapter adapter = new SimpleCursorAdapter(this, R.layout.noteslist_item, cursor,
-//                new String[] { Notes.TITLE }, new int[] { android.R.id.text1 });
-        SimpleCursorAdapter adapter = new SimpleCursorAdapter(this, R.layout.noteslist_item2, cursor,
-                new String[] { Notes.TITLE, Notes.CREATED_DATE }, new int[] { R.id.textView1, R.id.textView2 }) {
-        	@Override
-        	public void setViewText(TextView v, String text) {
-        		switch (v.getId()) {
-				case R.id.textView2:
-					text = getDateString(Long.parseLong(text));
-
-				default:
-	        		super.setViewText(v, text);
-				}
-        	}
-        };
+        SimpleCursorAdapter adapter = new SimpleCursorAdapter(this, R.layout.plantslist_item, cursor,
+                new String[] {Plants.NAME,Plants.FAMILY /** ,Plants.BOTNAME,Plants.BOTFAMILY,Plants.GROUP */ }, 
+                new int[] {android.R.id.textPlantName,android.R.id.textPlantFamily /** ,android.R.id.textPlantBotname,android.R.id.textPlantBotfamily,android.R.id.textPlantGroup */});
         setListAdapter(adapter);
-    }
+    } 
+       
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -144,7 +110,7 @@ public class NotesList extends ListActivity {
         Intent intent = new Intent(null, getIntent().getData());
         intent.addCategory(Intent.CATEGORY_ALTERNATIVE);
         menu.addIntentOptions(Menu.CATEGORY_ALTERNATIVE, 0, 0,
-                new ComponentName(this, NotesList.class), null, intent, 0, null);
+                new ComponentName(this, PlantsList.class), null, intent, 0, null);
 
         return true;
     }

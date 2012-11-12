@@ -55,10 +55,9 @@ public class BerichtsheftActivity extends Activity {
 
 	public void showPflanze(View clickedButton) {
 		Button button = (Button)clickedButton;
-		CharSequence text = button.getText();
-		String message =
-				String.format(mButtonMessageTemplate, text);
-		showToast(message);
+		Intent activityIntent =
+				new Intent(this, PlantsList.class);
+		startActivity(activityIntent);
 		}
 	
 	public void showMore(View clickedButton) {
