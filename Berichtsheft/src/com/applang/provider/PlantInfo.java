@@ -39,7 +39,7 @@ public final class PlantInfo {
         /**
          * The default sort order for this table
          */
-        public static final String DEFAULT_SORT_ORDER = "modified DESC";
+        public static final String DEFAULT_SORT_ORDER = "name ASC";
 
         /**
          * The local name of the plant
@@ -69,6 +69,6 @@ public final class PlantInfo {
          * The crop category of the plant
          * <P>Type: TEXT</P>
          */
-        public static final String GROUP = "group";
+        public static final String GROUP = "crop_group";
     }
 }

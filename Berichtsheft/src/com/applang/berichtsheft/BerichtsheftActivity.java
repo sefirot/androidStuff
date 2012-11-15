@@ -1,5 +1,6 @@
 package com.applang.berichtsheft;
 
+import com.applang.provider.*;
 import com.applang.tagesberichte.*;
 
 import android.app.Activity;
@@ -65,7 +66,7 @@ public class BerichtsheftActivity extends Activity {
 		CharSequence text = button.getText();
 		String message =
 				String.format(mButtonMessageTemplate, text);
-		showToast(message);
+		impex(false);
 		}
 	
 	public void showEvenMore(View clickedButton) {
@@ -73,9 +74,17 @@ public class BerichtsheftActivity extends Activity {
 		CharSequence text = button.getText();
 		String message =
 				String.format(mButtonMessageTemplate, text);
-		showToast(message);
+		impex(true);
 		}
 	
+    public void impex(boolean flag) {
+    	String[] fileNames = new String[]{"databases/" + PlantInfoProvider.DATABASE_NAME, "databases/" + NotePadProvider.DATABASE_NAME};
+		
+    	if (flag) 
+			ImpexTask.doImport(this, fileNames, null);
+		else
+			ImpexTask.doExport(this, fileNames, null);
+    }
 	
 	
 	private void showToast(String text) {

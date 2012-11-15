@@ -134,6 +134,8 @@ public class NoteEditor extends Activity {
                 return;
             }
 
+            startActivity(new Intent(TitleEditor.EDIT_TITLE_ACTION, mUri));
+            
             // The new entry was created, so assume all will end well and
             // set the result to be returned.
             setResult(RESULT_OK, (new Intent()).setAction(mUri.toString()));
@@ -234,7 +236,7 @@ public class NoteEditor extends Activity {
 
                     // If we are creating a new note, then we want to also create
                     // an initial title for it.
-                    if (mState == STATE_INSERT) {
+/*					if (mState == STATE_INSERT) {
                         String title = text.substring(0, Math.min(30, length));
                         if (length > 30) {
                             int lastSpace = title.lastIndexOf(' ');
@@ -244,7 +246,7 @@ public class NoteEditor extends Activity {
                         }
                         values.put(Notes.TITLE, title);
                     }
-                }
+*/				}
 
                 // Write our text back into the provider.
                 values.put(Notes.NOTE, text);

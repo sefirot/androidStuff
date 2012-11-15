@@ -43,7 +43,7 @@ public class NotePadProvider extends ContentProvider {
 
     private static final String TAG = "NotePadProvider";
 
-    private static final String DATABASE_NAME = "note_pad.db";
+    public static final String DATABASE_NAME = "note_pad.db";
     private static final int DATABASE_VERSION = 2;
     private static final String NOTES_TABLE_NAME = "notes";
 

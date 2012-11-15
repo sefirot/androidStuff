@@ -7,9 +7,9 @@
         Bald siehst du hier die \'%s\'-Ansicht!
     </string>
     <string name="berichte">Tagesberichte</string>
-    <string name="plants">Pflanze d.W.</string>
-    <string name="more">more...</string>
-    <string name="more2">even more...</string>
+    <string name="plants">Pflanz d.W.</string>
+    <string name="more">Export to SDcard</string>
+    <string name="more2">Import from SDcard</string>
     
     <string name="menu_delete">Delete</string>
     <string name="menu_insert">Add note</string>
@@ -22,7 +22,7 @@
     <string name="title_create">Create note</string>
     <string name="title_edit">Edit note</string>
 	<string name="title_notes_list">Tagesberichte</string>   
-	<string name="title_plants_list">Tagesberichte</string>
+	<string name="title_plants_list">Pflanze der Woche</string>
 	<string name="title_note">Note</string>  
 	<string name="title_edit_title">Note title:</string>  
 	
