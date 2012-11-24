@@ -78,7 +78,7 @@ public class ProviderTest extends ActivityInstrumentationTestCase2<BerichtsheftA
                 Plants.DEFAULT_SORT_ORDER).getCount());
     	
     	String fileName = "databases/plant_info.db";
-        ImpexTask.doImpex(getActivity(), fileName, false);	//	Export
+        ImpexTask.doImpex(getActivity(), new String[]{fileName}, false);	//	Export
         
         ContentValues values = new ContentValues();
         values.put(Plants.NAME, "Paradeiser");
@@ -105,7 +105,7 @@ public class ProviderTest extends ActivityInstrumentationTestCase2<BerichtsheftA
         assertEquals("Solanum lycopersicum", cursor.getString(3));
         assertEquals("xitomatl", cursor.getString(5));
     	
-        ImpexTask.doImpex(getActivity(), fileName, true);	//	Import
+        ImpexTask.doImpex(getActivity(), new String[]{fileName}, true);	//	Import
         
         assertEquals(0, contentResolver.query(
         		Plants.CONTENT_URI, 

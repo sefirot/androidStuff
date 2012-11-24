@@ -24,6 +24,7 @@
 	<string name="title_notes_list">Tagesberichte</string>   
 	<string name="title_plants_list">Pflanze der Woche</string>
 	<string name="title_note">Note</string>  
+	<string name="plant_note">Plant</string>
 	<string name="title_edit_title">Note title:</string>  
 	
 	<string name="button_ok">OK</string>  

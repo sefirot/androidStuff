@@ -4,7 +4,7 @@
     android:versionCode="1"
     android:versionName="1.0" >
 
-    <uses-sdk android:minSdkVersion="3" android:targetSdkVersion="4"/>
+    <uses-sdk android:minSdkVersion="1" android:targetSdkVersion="4"/>
 	<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 	<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 	
@@ -87,6 +87,32 @@
                 <action android:name="android.intent.action.INSERT" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="vnd.android.cursor.dir/vnd.applang.note" />
+            </intent-filter>
+
+        </activity>
+        
+        <activity android:name="com.applang.berichtsheft.PlantEditor"
+            android:theme="@android:style/Theme.Light"
+            android:label="@string/plant_note"
+            android:screenOrientation="sensor"
+            android:configChanges="keyboardHidden|orientation"
+        >
+            <!-- This filter says that we can view or edit the data of
+                 a single note -->
+            <intent-filter android:label="@string/resolve_edit">
+                <action android:name="android.intent.action.VIEW" />
+                <action android:name="android.intent.action.EDIT" />
+                <action android:name="com.android.notepad.action.EDIT_NOTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="vnd.android.cursor.item/vnd.applang.plant" />
+            </intent-filter>
+
+            <!-- This filter says that we can create a new note inside
+                 of a directory of notes. -->
+            <intent-filter>
+                <action android:name="android.intent.action.INSERT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="vnd.android.cursor.dir/vnd.applang.plant" />
             </intent-filter>
 
         </activity>

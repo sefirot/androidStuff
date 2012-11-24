@@ -30,7 +30,7 @@ public class ImpexTask extends AsyncTask<String, Void, Boolean> {
 		this.impex = impex;
 		this.callback = callback;
 		
-		progress = new ProgressDialog(this.context);
+		this.progress = new ProgressDialog(this.context);
 	}
 	
 	Context context;
@@ -56,7 +56,13 @@ public class ImpexTask extends AsyncTask<String, Void, Boolean> {
 				.setPositiveButton("Yes",
 					new DialogInterface.OnClickListener() {
 						public void onClick(DialogInterface dialog,	int id) {
-		    	        	new ImpexTask(context, fileNames, flag, callback).execute();
+							if (Integer.parseInt(android.os.Build.VERSION.SDK) < 3) {
+								boolean success = doImpex(context, fileNames, flag);
+								message(success, context, flag);
+							}
+							else
+								new ImpexTask(context, fileNames, flag, callback).execute();
+							
 							dialog.dismiss();
 						}
 					})
@@ -86,7 +92,19 @@ public class ImpexTask extends AsyncTask<String, Void, Boolean> {
     			new File(Environment.getExternalStorageDirectory(), dir);
     }
     
-	public static boolean doImpex(Context context, String fileName, boolean flag) throws IOException {
+	public static boolean doImpex(Context context, String[] fileNames, boolean flag) {
+		try {
+			for (String fileName : fileNames) 
+				doCopy(context, fileName, flag);
+		} catch (IOException e) {
+			Log.e(TAG, e.getMessage(), e);
+			return false;
+		}
+		
+		return true;
+    }
+    
+	public static boolean doCopy(Context context, String fileName, boolean flag) throws IOException {
 		File importDir = directory(context, true);
 		File exportDir = directory(context, false);
 		
@@ -127,7 +145,7 @@ public class ImpexTask extends AsyncTask<String, Void, Boolean> {
 		}
 	}
 	
-	private final ProgressDialog progress;
+	private ProgressDialog progress = null;
 
 	// can use UI thread here
 	protected void onPreExecute() {
@@ -137,17 +155,7 @@ public class ImpexTask extends AsyncTask<String, Void, Boolean> {
 	
 	// automatically done on worker thread (separate from UI thread)
 	protected Boolean doInBackground(final String... args) {
-		try {
-			for (String fileName : this.fileNames) {
-//				Log.i(TAG, String.format((this.impex ? "Import" : "Export") + "ing : '%s'", fileName));
-				doImpex(this.context, fileName, this.impex);
-			}
-		} catch (IOException e) {
-			Log.e(TAG, e.getMessage(), e);
-			return false;
-		}
-		
-		return true;
+		return doImpex(this.context, this.fileNames, this.impex);
 	}
 	
 	// can use UI thread here
@@ -155,14 +163,18 @@ public class ImpexTask extends AsyncTask<String, Void, Boolean> {
 		if (this.progress.isShowing()) 
 			this.progress.dismiss();
 		
-		String s = impex ? "Import" : "Export";
-		if (success) 
-			Toast.makeText(this.context, s + " successful !", Toast.LENGTH_SHORT).show();
-		else 
-			Toast.makeText(this.context, s + " failed !", Toast.LENGTH_SHORT).show();
+		message(success, this.context, this.impex);
 		
 		if (this.callback != null)
 			this.callback.onTaskCompleted();
+	}
+
+	private static void message(boolean success, Context context, boolean flag) {
+		String s = flag ? "Import" : "Export";
+		if (success) 
+			Toast.makeText(context, s + " successful !", Toast.LENGTH_SHORT).show();
+		else 
+			Toast.makeText(context, s + " failed !", Toast.LENGTH_SHORT).show();
 	}
 }
 
