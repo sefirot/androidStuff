@@ -79,15 +79,15 @@ public class PlantEditor extends Activity {
     private EditText mText;
     private String mOriginalContent;
 
-	private EditText mNameText;
+	private EditText mPlantNameText;
 
-	private EditText mFamilyText;
+	private EditText mPlantFamilyText;
 
 	private EditText mBotNameText;
 
 	private EditText mBotFamilyText;
 
-	private EditText mGroupText;
+	private EditText mPlantGroupText;
 
     /**
      * A custom EditText that draws lines between each line of text that is displayed.
@@ -164,18 +164,16 @@ public class PlantEditor extends Activity {
             return;
         }
 
-        mNameText = (EditText) findViewById(R.id.editText1);
-        mFamilyText = (EditText) findViewById(R.id.editText2);
-        mBotNameText = (EditText) findViewById(R.id.editText3);
-        mBotFamilyText = (EditText) findViewById(R.id.editText4);
-        mGroupText = (EditText) findViewById(R.id.editText5);
-        
-        // Set the layout for this activity.  You can find it in res/layout/note_editor.xml
+     // Set the layout for this activity.  You can find it in res/layout-port/plant_editor.xml
         setContentView(R.layout.plant_editor);
         
-        // The text view for our note, identified by its ID in the XML file.
-        mText = (EditText) findViewById(R.id.note);
-
+     // The text view for our note, identified by its ID in the XML file.
+        mPlantNameText = (EditText) findViewById(R.id.PlantName);
+        mPlantFamilyText = (EditText) findViewById(R.id.PlantFamily);
+        mBotNameText = (EditText) findViewById(R.id.BotName);
+        mBotFamilyText = (EditText) findViewById(R.id.BotFamily);
+        mPlantGroupText = (EditText) findViewById(R.id.PlantGroup);
+        
         // Get the note!
         mCursor = managedQuery(mUri, PROJECTION, null, null, null);
 
@@ -208,7 +206,7 @@ public class PlantEditor extends Activity {
             // but leave the user where they were (retain the cursor position
             // etc).  This version of setText does that for us.
             String note = mCursor.getString(COLUMN_INDEX_NOTE);
-            mText.setTextKeepState(note);
+            mPlantNameText.setTextKeepState(note);
             
             // If we hadn't previously retrieved the original text, do so
             // now.  This allows the user to revert their changes.

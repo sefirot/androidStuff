@@ -87,8 +87,8 @@ public class PlantsList extends ListActivity {
 
         // Used to map notes entries from the database to views
         SimpleCursorAdapter adapter = new SimpleCursorAdapter(this, R.layout.plantslist_item, cursor,
-                new String[] {Plants.NAME,Plants.FAMILY /** ,Plants.BOTNAME,Plants.BOTFAMILY,Plants.GROUP */ }, 
-                new int[] {R.id.textPlantName,R.id.textPlantFamily /** ,R.id.textPlantBotname,R.id.textPlantBotfamily,R.id.textPlantGroup */});
+                new String[] {Plants.NAME,Plants.FAMILY ,Plants.BOTNAME,Plants.BOTFAMILY,Plants.GROUP}, 
+                new int[] {R.id.PlantName,R.id.PlantFamily,R.id.BotName,R.id.BotFamily,R.id.PlantGroup});
         setListAdapter(adapter);
     } 
        
