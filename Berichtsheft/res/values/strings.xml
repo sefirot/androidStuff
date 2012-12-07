@@ -31,4 +31,9 @@
 	
 	<string name="error_title">Error</string>
 	<string name="error_message">Error loading note</string>
+	<string name="bot_name">Botanischer Pflanzenname</string>
+	<string name="plant_name">Deutscher Pflanzenname</string>
+	<string name="family">Familie (deutsch)</string>
+	<string name="bot_family">Familie (botanisch)</string>
+	<string name="plant_group">Nutzpflanzengruppe</string>
 </resources>
