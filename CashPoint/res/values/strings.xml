@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="hello">This is CashPoint !</string>
-    <string name="app_name">Cashpoint</string>
-    <string name="nameLabelText">Name</string>
-    <string name="exportButtonText">Export</string>
-    <string name="importButtonText">Import</string>
-</resources>
