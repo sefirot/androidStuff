@@ -1,0 +1,55 @@
+<project name="BerichtsheftPlugin" default="build">
+	<description>
+    This is an ant build.xml file for building the Berichtsheft plugin for jEdit.
+	</description>
+
+	<property name="src.dir" value="src" />
+	<property name="build.support" value="/home/lotharla/jEdit/build-support" />
+  	<property file="build.properties"/>
+	<property file="${build.support}/build.properties"/>
+	<property name="user-doc.xml" location = "users-guide.xml"/>
+	<property name="user-doc.xsl" location = "${build.support}/users-guide.xsl"/>
+	<property name="user-doc.out" location = "${build.docs}/index.html"/>
+	<import file="${build.support}/plugin-build.xml" />
+
+    <!-- This selector defines extra files to be included
+         in the plugin's JAR file. The context of the
+         selector is the plugin's directory (${basedir}),
+         so it will not work for files outside the plugin
+         directory. For those cases, use the "build.prepare"
+         target. By default, it's empty.                    -->
+	<selector id="packageFiles">
+		<or>
+			<filename name="*.txt" />
+		</or>
+	</selector>
+
+    <!-- This selector defines the files that will be
+         compiled by the "compile" target. Define here which
+         files under ${src.dir} will be compiled when the
+         "compile" task is called.                          -->
+    <selector id="compileFiles">
+		<or>
+        	<filename name="com/applang/Util.java" />
+        	<filename name="com/applang/berichtsheft/ui/**/*.java" />
+		</or>
+    </selector>
+	
+    <path id="project.class.path">
+        <pathelement location="/home/lotharla/sqlite-jdbc/snapshot/target/sqlite-jdbc-3.7.8-SNAPSHOT.jar" />
+		<fileset dir="/home/lotharla/xalan-j_2_7_1">
+			<filename name="*.jar" />
+		</fileset>
+    </path>
+    
+    <target name="build.prepare">
+		<property name="images" value="com/applang/berichtsheft/ui/components/images" />
+        <mkdir dir="${build.classes}/${images}"/>
+        <copy todir="${build.classes}/${images}" includeEmptyDirs="false">
+            <fileset dir="${basedir}/${src.dir}/${images}">
+        		<filename name="*" />
+            </fileset>
+        </copy>
+    </target>
+
+</project>

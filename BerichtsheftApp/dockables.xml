@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+
+<!-- Dockable component definition file for Berichtsheft plugin -->
+<!-- $Id$
+-->
+
+<!DOCTYPE DOCKABLES SYSTEM "dockables.dtd">
+
+<!-- Berichtsheft dockable windows -->
+
+<DOCKABLES>
+	<DOCKABLE NAME="berichtsheft">
+		new com.applang.berichtsheft.ui.Berichtsheft(view, position);
+	</DOCKABLE>
+</DOCKABLES>

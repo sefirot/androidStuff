@@ -1,0 +1,128 @@
+Log file created on Mon Dec 17 13:59:38 CET 2012
+IMPORTANT:
+Because updating this file after every log message would kill
+performance, it will be *incomplete* unless you invoke the
+Utilities->Troubleshooting->Update Activity Log on Disk command!
+1:59:38 PM [main] [message] Log: When reporting bugs, please include the following information:
+1:59:38 PM [main] [message] Log: java.version=1.7.0
+1:59:38 PM [main] [message] Log: java.vm.version=21.0-b17
+1:59:38 PM [main] [message] Log: java.vm.name=Java HotSpot(TM) 64-Bit Server VM
+1:59:38 PM [main] [message] Log: java.runtime.version=1.7.0-b147
+1:59:38 PM [main] [message] Log: java.runtime.name=Java(TM) SE Runtime Environment
+1:59:38 PM [main] [message] Log: java.vendor=Oracle Corporation
+1:59:38 PM [main] [message] Log: java.compiler=null
+1:59:38 PM [main] [message] Log: os.name=Linux
+1:59:38 PM [main] [message] Log: os.version=2.6.32-45-server
+1:59:38 PM [main] [message] Log: os.arch=amd64
+1:59:38 PM [main] [message] Log: user.home=/home/lotharla
+1:59:38 PM [main] [message] Log: java.home=/usr/lib/jvm/jdk1.7.0/jre
+1:59:38 PM [main] [message] Log: java.class.path=/home/lotharla/work/Niklas/androidStuff/BerichtsheftPlugin/bin:/home/lotharla/xalan-j_2_7_1/xercesImpl.jar:/home/lotharla/xalan-j_2_7_1/xml-apis.jar:/home/lotharla/xalan-j_2_7_1/serializer.jar:/home/lotharla/xalan-j_2_7_1/xalan.jar:/home/lotharla/xmlunit-1.3/lib/xmlunit-1.3.jar:/home/lotharla/eclipse/plugins/org.junit_3.8.2.v3_8_2_v20100427-1100/junit.jar:/home/lotharla/jsontools-core-1.7/jsontools-core-1.7.jar:/home/lotharla/jsontools-core-1.7/lib/antlr-3.4-complete.jar:/home/lotharla/apache-sling/org.apache.sling.commons.json-2.0.6.jar:/home/lotharla/jEdit/5.0pre1/jedit.jar:/home/lotharla/sqlite-jdbc/snapshot/target/sqlite-jdbc-3.7.8-SNAPSHOT.jar
+1:59:38 PM [main] [message] jEdit: starting with command line arguments: -settings=.jedit -reuseview -nosplash
+1:59:38 PM [main] [debug] jEdit: before splash screen activation:303 ms
+1:59:38 PM [main] [debug] jEdit: after splash screen activation:303 ms
+1:59:38 PM [main] [debug] MiscUtilities: Saving backup of file "/home/lotharla/work/Niklas/androidStuff/BerichtsheftPlugin/.jedit/activity.log" to "/home/lotharla/work/Niklas/androidStuff/BerichtsheftPlugin/.jedit/settings-backup/activity.log~1~"
+1:59:38 PM [main] [notice] jEdit: jEdit version 5.0pre1
+1:59:38 PM [main] [message] jEdit: Settings directory is /home/lotharla/work/Niklas/androidStuff/BerichtsheftPlugin/.jedit
+1:59:38 PM [main] [message] jEdit: jEdit home directory is /home/lotharla/jEdit/5.0pre1
+1:59:39 PM [main] [message] BeanShell: Beanshell Init
+1:59:39 PM [main] [debug] GUIUtilities: Icon theme set to: tango
+1:59:39 PM [main] [debug] GUIUtilities: Loading icon theme from: jeditresource:/org/gjt/sp/jedit/icons/themes/tango/
+1:59:39 PM [main] [debug] EditServer: jEdit server started on port 60376
+1:59:39 PM [main] [debug] EditServer: Authorization key is 365822713
+1:59:39 PM [main] [debug] jEdit: initPLAF non-edt old=javax.swing.plaf.metal.MetalLookAndFeel requested=null new=javax.swing.plaf.metal.MetalLookAndFeel
+1:59:39 PM [main] [warning] jEdit: inifPLAF failed to set required l&f
+1:59:39 PM [main] [debug] ActionSet: Loading actions from jar:file:/home/lotharla/jEdit/5.0pre1/jedit.jar!/org/gjt/sp/jedit/actions.xml
+1:59:40 PM [main] [debug] DockableWindowManager: Loading dockables from jar:file:/home/lotharla/jEdit/5.0pre1/jedit.jar!/org/gjt/sp/jedit/dockables.xml
+1:59:40 PM [AWT-EventQueue-0] [debug] EditBus: SearchSettingsChanged[source=null]
+1:59:40 PM [main] [notice] jEdit: Loading plugins from /home/lotharla/jEdit/5.0pre1/jars
+1:59:40 PM [AWT-EventQueue-0] [debug] EditBus: PluginUpdate[what=LOADED,exit=false,version=null,source=/home/lotharla/jEdit/5.0pre1/jars/xercesImpl.jar]
+1:59:40 PM [AWT-EventQueue-0] [debug] EditBus: PluginUpdate[what=LOADED,exit=false,version=null,source=/home/lotharla/jEdit/5.0pre1/jars/js.jar]
+1:59:40 PM [AWT-EventQueue-0] [debug] EditBus: PluginUpdate[what=LOADED,exit=false,version=null,source=/home/lotharla/jEdit/5.0pre1/jars/bsf.jar]
+1:59:40 PM [AWT-EventQueue-0] [debug] EditBus: PluginUpdate[what=LOADED,exit=false,version=5.0,source=/home/lotharla/jEdit/5.0pre1/jars/QuickNotepad.jar,class=QuickNotepadPlugin]
+1:59:40 PM [AWT-EventQueue-0] [debug] EditBus: PluginUpdate[what=LOADED,exit=false,version=null,source=/home/lotharla/jEdit/5.0pre1/jars/xml-apis.jar]
+1:59:40 PM [AWT-EventQueue-0] [debug] EditBus: PluginUpdate[what=LOADED,exit=false,version=null,source=/home/lotharla/jEdit/5.0pre1/jars/sqlite-jdbc-3.7.2.jar]
+1:59:40 PM [main] [debug] PluginJAR: Opening /home/lotharla/jEdit/5.0pre1/jars/Berichtsheft.jar
+1:59:41 PM [main] [debug] ActionSet: Loading actions from jeditresource:/Berichtsheft.jar!/actions.xml
+1:59:41 PM [main] [debug] DockableWindowManager: Loading dockables from jeditresource:/Berichtsheft.jar!/dockables.xml
+1:59:41 PM [main] [debug] PluginJAR: Writing /home/lotharla/work/Niklas/androidStuff/BerichtsheftPlugin/.jedit/jars-cache/Berichtsheft.jar.summary
+1:59:41 PM [AWT-EventQueue-0] [debug] EditBus: PluginUpdate[what=LOADED,exit=false,version=5.0,source=/home/lotharla/jEdit/5.0pre1/jars/Berichtsheft.jar,class=com.applang.berichtsheft.ui.BerichtsheftPlugin]
+1:59:41 PM [AWT-EventQueue-0] [debug] EditBus: PluginUpdate[what=UNLOADED,exit=false,version=null,source=/home/lotharla/jEdit/5.0pre1/jars/Berichtsheft.jar,class=com.applang.berichtsheft.ui.BerichtsheftPlugin]
+1:59:41 PM [AWT-EventQueue-0] [debug] EditBus: PluginUpdate[what=LOADED,exit=false,version=5.0,source=/home/lotharla/jEdit/5.0pre1/jars/BerichtsheftPlugin.jar,class=com.applang.berichtsheft.ui.BerichtsheftPlugin]
+1:59:41 PM [main] [notice] jEdit: Loading plugins from /home/lotharla/work/Niklas/androidStuff/BerichtsheftPlugin/.jedit/jars
+1:59:41 PM [main] [message] HistoryModel: Loading history
+1:59:41 PM [main] [message] BufferHistory: Loading /home/lotharla/work/Niklas/androidStuff/BerichtsheftPlugin/.jedit/recent.xml
+1:59:41 PM [main] [message] KillRing: Loading /home/lotharla/work/Niklas/androidStuff/BerichtsheftPlugin/.jedit/killring.xml
+1:59:41 PM [main] [debug] jEdit: initPLAF non-edt old=javax.swing.plaf.metal.MetalLookAndFeel requested=null new=javax.swing.plaf.metal.MetalLookAndFeel
+1:59:41 PM [main] [warning] jEdit: inifPLAF failed to set required l&f
+1:59:41 PM [main] [debug] jEdit: SOCKS proxy disabled
+1:59:41 PM [main] [debug] jEdit: HTTP proxy disabled
+1:59:42 PM [AWT-EventQueue-0] [debug] EditBus: PropertiesChanged[source=null]
+1:59:42 PM [main] [message] jEdit: Loading mode catalog file /home/lotharla/jEdit/5.0pre1/modes/catalog
+1:59:42 PM [main] [message] jEdit: Loading mode catalog file /home/lotharla/work/Niklas/androidStuff/BerichtsheftPlugin/.jedit/modes/catalog
+1:59:42 PM [main] [debug] Macros: Registered beanshell macro handler
+1:59:43 PM [AWT-EventQueue-0] [debug] EditBus: DynamicMenuChanged[menu=macros,source=null]
+1:59:43 PM [main] [message] BeanShell: Running script /home/lotharla/jEdit/5.0pre1/startup/startup.bsh
+1:59:43 PM [main] [notice] jEdit$3: Loading edit mode /home/lotharla/jEdit/5.0pre1/modes/text.xml
+1:59:43 PM [main] [notice] jEdit$3: Loading edit mode /home/lotharla/jEdit/5.0pre1/modes/java.xml
+1:59:43 PM [main] [notice] jEdit$3: Loading edit mode /home/lotharla/jEdit/5.0pre1/modes/xml.xml
+1:59:43 PM [main] [notice] jEdit$3: Loading edit mode /home/lotharla/jEdit/5.0pre1/modes/xml.xml
+1:59:43 PM [main] [debug] String: BeanShell interpreter version 2.0b4-jedit
+1:59:43 PM [main] [debug] jEdit: main done:5400 ms
+1:59:43 PM [AWT-EventQueue-0] [message] PerspectiveManager: Loading /home/lotharla/work/Niklas/androidStuff/BerichtsheftPlugin/.jedit/perspective.xml
+1:59:44 PM [AWT-EventQueue-0] [debug] EditBus: BufferUpdate[what=PROPERTIES_CHANGED,view=null,source=Untitled-1 (~/)]
+1:59:44 PM [AWT-EventQueue-0] [debug] EditBus: BufferUpdate[what=CREATED,view=null,source=Untitled-1 (~/)]
+1:59:44 PM [AWT-EventQueue-0] [debug] EditBus: BufferUpdate[what=LOAD_STARTED,view=null,source=Untitled-1 (~/)]
+1:59:44 PM [AWT-EventQueue-0] [debug] EditBus: BufferUpdate[what=LOADED,view=null,source=Untitled-1 (~/)]
+1:59:44 PM [AWT-EventQueue-0] [debug] BufferSet: 1613911661: addBufferSetListener org.gjt.sp.jedit.EditPane[inactive]
+1:59:44 PM [AWT-EventQueue-0] [debug] EditBus: BufferChanging[what=BUFFER_CHANGING,source=org.gjt.sp.jedit.EditPane[inactive]]
+1:59:44 PM [AWT-EventQueue-0] [debug] BufferSet: 1613911661 addBufferAt(Untitled-1 (~/),-1)
+1:59:44 PM [AWT-EventQueue-0] [debug] BufferSet: 1613911661: Buffer added Untitled-1 (~/) at 0
+1:59:44 PM [AWT-EventQueue-0] [debug] EditBus: EditPaneUpdate[what=CREATED,source=org.gjt.sp.jedit.EditPane[inactive]]
+1:59:44 PM [AWT-EventQueue-0] [debug] BufferSet: 1613911661 addBufferAt(Untitled-1 (~/),0)
+1:59:45 PM [AWT-EventQueue-0] [debug] EditBus: ViewUpdate[what=CREATED,source=org.gjt.sp.jedit.View[active]]
+1:59:45 PM [AWT-EventQueue-0] [debug] EditBus: EditorStarted[source=null]
+1:59:45 PM [jEdit I/O #1] [debug] WorkThread: Work request thread starting [jEdit I/O #1]
+1:59:45 PM [jEdit I/O #2] [debug] WorkThread: Work request thread starting [jEdit I/O #2]
+1:59:45 PM [jEdit I/O #4] [debug] WorkThread: Work request thread starting [jEdit I/O #4]
+1:59:45 PM [jEdit I/O #3] [debug] WorkThread: Work request thread starting [jEdit I/O #3]
+1:59:45 PM [AWT-EventQueue-0] [message] jEdit: Startup complete: 7353 ms
+1:59:45 PM [AWT-EventQueue-0] [debug] DockableWindowManager: Loading dockables from jeditresource:/BerichtsheftPlugin.jar!/dockables.xml
+1:59:45 PM [AWT-EventQueue-0] [debug] PluginJAR: Opening /home/lotharla/jEdit/5.0pre1/jars/BerichtsheftPlugin.jar
+1:59:46 PM [AWT-EventQueue-0] [debug] JARClassLoader: Would have returned null for getResource(META-INF/services/java.sql.Driver)
+1:59:46 PM [AWT-EventQueue-0] [debug] JARClassLoader: returning(jar:file:/usr/lib/jvm/jdk1.7.0/jre/lib/resources.jar!/META-INF/services/java.sql.Driver)
+1:59:46 PM [AWT-EventQueue-0] [debug] EditBus: DockableWindowUpdate[what=ACTIVATED,dockable=berichtsheft,source=org.gjt.sp.jedit.gui.DockableWindowManagerImpl[,0,0,788x455,invalid,layout=org.gjt.sp.jedit.gui.DockableLayout,alignmentX=0.0,alignmentY=0.0,border=,flags=9,maximumSize=,minimumSize=,preferredSize=]]
+1:59:46 PM [AWT-EventQueue-0] [debug] EditBus: ViewUpdate[what=VIEW_ACTIVATED,source=org.gjt.sp.jedit.View[active]]
+2:00:11 PM [AWT-EventQueue-0] [debug] MiscUtilities: Saving backup of file "/home/lotharla/work/Niklas/androidStuff/BerichtsheftPlugin/.jedit/perspective.xml" to "/home/lotharla/work/Niklas/androidStuff/BerichtsheftPlugin/.jedit/settings-backup/perspective.xml~1~"
+2:00:13 PM [AWT-EventQueue-0] [debug] EditBus: BufferUpdate[what=DIRTY_CHANGED,view=null,source=Untitled-1 (~/)]
+2:00:41 PM [jEdit I/O #3] [debug] WorkThread: Running in work thread: [id=1,run=org.gjt.sp.jedit.bufferio.BufferAutosaveRequest[Untitled-1 (~/)]]
+3:18:42 PM [AWT-EventQueue-0] [debug] EditBus: EditorExitRequested[source=org.gjt.sp.jedit.View[active]]
+3:18:42 PM [AWT-EventQueue-0] [message] PerspectiveManager: Saving /home/lotharla/work/Niklas/androidStuff/BerichtsheftPlugin/.jedit/perspective.xml
+3:18:42 PM [AWT-EventQueue-0] [debug] MiscUtilities: Saving backup of file "/home/lotharla/work/Niklas/androidStuff/BerichtsheftPlugin/.jedit/perspective.xml" to "/home/lotharla/work/Niklas/androidStuff/BerichtsheftPlugin/.jedit/settings-backup/perspective.xml~1~"
+3:18:47 PM [AWT-EventQueue-0] [debug] EditBus: BufferUpdate[what=CLOSING,view=org.gjt.sp.jedit.View[active],source=Untitled-1 (~/)]
+3:18:47 PM [AWT-EventQueue-0] [debug] BufferSet: 1613911661: Buffer removed Untitled-1 (~/)
+3:18:47 PM [AWT-EventQueue-0] [debug] EditBus: BufferUpdate[what=PROPERTIES_CHANGED,view=null,source=Untitled-1 (~/)]
+3:18:47 PM [AWT-EventQueue-0] [debug] EditBus: BufferUpdate[what=CREATED,view=null,source=Untitled-1 (~/)]
+3:18:47 PM [AWT-EventQueue-0] [debug] EditBus: BufferUpdate[what=LOAD_STARTED,view=null,source=Untitled-1 (~/)]
+3:18:47 PM [AWT-EventQueue-0] [debug] EditBus: BufferUpdate[what=LOADED,view=null,source=Untitled-1 (~/)]
+3:18:47 PM [AWT-EventQueue-0] [debug] BufferSet: 1613911661 addBufferAt(Untitled-1 (~/),-1)
+3:18:47 PM [AWT-EventQueue-0] [debug] BufferSet: 1613911661: Buffer added Untitled-1 (~/) at 0
+3:18:47 PM [AWT-EventQueue-0] [debug] EditBus: BufferChanging[what=BUFFER_CHANGING,source=org.gjt.sp.jedit.EditPane[active]]
+3:18:47 PM [AWT-EventQueue-0] [debug] EditBus: EditPaneUpdate[what=BUFFER_CHANGED,source=org.gjt.sp.jedit.EditPane[active]]
+3:18:47 PM [AWT-EventQueue-0] [debug] EditBus: BufferUpdate[what=CLOSED,view=org.gjt.sp.jedit.View[active],source=Untitled-1 (~/)]
+3:18:47 PM [AWT-EventQueue-0] [debug] EditBus: EditorExiting[source=null]
+3:18:47 PM [AWT-EventQueue-0] [debug] EditBus: ViewUpdate[what=CLOSED,source=org.gjt.sp.jedit.View[active]]
+3:18:47 PM [AWT-EventQueue-0] [debug] EditBus: EditPaneUpdate[what=DESTROYED,source=org.gjt.sp.jedit.EditPane[active]]
+3:18:47 PM [AWT-EventQueue-0] [debug] BufferSet: 1613911661: Buffer removed Untitled-1 (~/)
+3:18:47 PM [AWT-EventQueue-0] [debug] BufferSetManager: Buffer:Untitled-1 (~/) is in no bufferSet anymore, closing it
+3:18:47 PM [AWT-EventQueue-0] [debug] EditBus: PluginUpdate[what=UNLOADED,exit=true,version=null,source=/home/lotharla/jEdit/5.0pre1/jars/xercesImpl.jar]
+3:18:47 PM [AWT-EventQueue-0] [debug] EditBus: PluginUpdate[what=UNLOADED,exit=true,version=null,source=/home/lotharla/jEdit/5.0pre1/jars/js.jar]
+3:18:47 PM [AWT-EventQueue-0] [debug] EditBus: PluginUpdate[what=UNLOADED,exit=true,version=null,source=/home/lotharla/jEdit/5.0pre1/jars/bsf.jar]
+3:18:47 PM [AWT-EventQueue-0] [debug] EditBus: PluginUpdate[what=UNLOADED,exit=true,version=5.0,source=/home/lotharla/jEdit/5.0pre1/jars/QuickNotepad.jar,class=QuickNotepadPlugin]
+3:18:47 PM [AWT-EventQueue-0] [debug] EditBus: PluginUpdate[what=UNLOADED,exit=true,version=null,source=/home/lotharla/jEdit/5.0pre1/jars/xml-apis.jar]
+3:18:47 PM [AWT-EventQueue-0] [debug] EditBus: PluginUpdate[what=UNLOADED,exit=true,version=null,source=/home/lotharla/jEdit/5.0pre1/jars/sqlite-jdbc-3.7.2.jar]
+3:18:47 PM [AWT-EventQueue-0] [debug] EditBus: PluginUpdate[what=UNLOADED,exit=true,version=5.0,source=/home/lotharla/jEdit/5.0pre1/jars/BerichtsheftPlugin.jar,class=com.applang.berichtsheft.ui.BerichtsheftPlugin]
+3:18:47 PM [AWT-EventQueue-0] [message] BufferHistory: Saving /home/lotharla/work/Niklas/androidStuff/BerichtsheftPlugin/.jedit/recent.xml
+3:18:47 PM [AWT-EventQueue-0] [debug] MiscUtilities: Saving backup of file "/home/lotharla/work/Niklas/androidStuff/BerichtsheftPlugin/.jedit/recent.xml" to "/home/lotharla/work/Niklas/androidStuff/BerichtsheftPlugin/.jedit/settings-backup/recent.xml~1~"
+3:18:47 PM [AWT-EventQueue-0] [message] KillRing: Saving /home/lotharla/work/Niklas/androidStuff/BerichtsheftPlugin/.jedit/killring.xml
+3:18:47 PM [AWT-EventQueue-0] [debug] MiscUtilities: Saving backup of file "/home/lotharla/work/Niklas/androidStuff/BerichtsheftPlugin/.jedit/killring.xml" to "/home/lotharla/work/Niklas/androidStuff/BerichtsheftPlugin/.jedit/settings-backup/killring.xml~1~"
+3:18:47 PM [AWT-EventQueue-0] [debug] MiscUtilities: Saving backup of file "/home/lotharla/work/Niklas/androidStuff/BerichtsheftPlugin/.jedit/properties" to "/home/lotharla/work/Niklas/androidStuff/BerichtsheftPlugin/.jedit/settings-backup/properties~1~"

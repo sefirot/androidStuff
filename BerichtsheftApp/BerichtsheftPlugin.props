@@ -1,0 +1,71 @@
+# Properties file for Berichtsheft plugin
+# $Id$
+
+# jEdit only needs to load the plugin the first time the user accesses it
+# the presence of this property also tells jEdit the plugin is using the new API
+plugin.com.applang.berichtsheft.ui.BerichtsheftPlugin.activate=defer
+
+# These two properties are required for all plugins
+plugin.com.applang.berichtsheft.ui.BerichtsheftPlugin.name=Berichtsheft
+plugin.com.applang.berichtsheft.ui.BerichtsheftPlugin.author=Lothar Langer
+
+# Even if you don't store additional files, this is a good idea to set:
+plugin.com.applang.berichtsheft.ui.BerichtsheftPlugin.usePluginHome=true
+
+# version number == jEdit version number
+plugin.com.applang.berichtsheft.ui.BerichtsheftPlugin.version=5.0
+
+# online help
+plugin.com.applang.berichtsheft.ui.BerichtsheftPlugin.docs=index.html
+
+# List dependencies of plugins with .depend.N property suffix:
+plugin.com.applang.berichtsheft.ui.BerichtsheftPlugin.depend.0=jdk 1.6
+# See jEdit.getBuild() to understand version numbering scheme.
+plugin.com.applang.berichtsheft.ui.BerichtsheftPlugin.depend.1=jedit 05.00.01.00
+
+plugin.com.applang.berichtsheft.ui.BerichtsheftPlugin.description=This plugin provides a dockable panel for controlling the 'Berichtsheft' process.
+# plugin menu
+plugin.com.applang.berichtsheft.ui.BerichtsheftPlugin.menu=berichtsheft \
+	- \
+	berichtsheft.choose-file \
+	berichtsheft.save-file \
+	berichtsheft.copy-to-buffer
+
+# action labels for actions supplied by dockables.xml
+berichtsheft.label=Berichtsheft
+
+# action labels for actions supplied by actions.xml
+berichtsheft.choose-file.label=Choose database file
+berichtsheft.save-file.label=Save notepad file
+berichtsheft.copy-to-buffer.label=Copy notepad to buffer
+
+# plugin option pane
+plugin.com.applang.berichtsheft.ui.BerichtsheftPlugin.option-pane=berichtsheft
+
+# Option pane activation BeanShell snippet
+options.berichtsheft.code=new com.applang.berichtsheft.ui.BerichtsheftOptionPane();
+
+# Option pane labels
+options.berichtsheft.label=Berichtsheft
+options.berichtsheft.file=File:
+options.berichtsheft.choose-file=Choose
+options.berichtsheft.choose-file.title=Choose a Berichtsheft database
+options.berichtsheft.choose-font=Font:
+options.berichtsheft.show-filepath.title=Display database file path
+
+# window title
+berichtsheft.title=Berichtsheft
+
+# window toolbar buttons
+berichtsheft.choose-file.icon=Open.png
+berichtsheft.save-file.icon=Save.png
+berichtsheft.copy-to-buffer.icon=CopyToBuffer.png
+
+# default settings
+options.berichtsheft.show-filepath=true
+options.berichtsheft.font=Monospaced
+options.berichtsheft.fontstyle=0
+options.berichtsheft.fontsize=14
+
+# Setting not defined but supplied for completeness
+options.berichtsheft.filepath=/home/lotharla/work/Niklas/androidStuff/BerichtsheftPlugin/databases/*

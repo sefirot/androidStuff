@@ -1,0 +1,29 @@
+<!-- Action definition file for Berichtsheft plugin -->
+<!-- $Id$
+-->
+
+<!DOCTYPE ACTIONS SYSTEM "actions.dtd">
+
+<ACTIONS>
+	<ACTION NAME="berichtsheft.choose-file">
+		<CODE>
+			wm.addDockableWindow(BerichtsheftPlugin.NAME);
+			wm.getDockableWindow(BerichtsheftPlugin.NAME).chooseFile();
+		</CODE>
+	</ACTION>
+
+	<ACTION NAME="berichtsheft.save-file">
+		<CODE>
+			wm.addDockableWindow(BerichtsheftPlugin.NAME);
+			wm.getDockableWindow(BerichtsheftPlugin.NAME).saveFile();
+		</CODE>
+	</ACTION>
+
+	<ACTION NAME="berichtsheft.copy-to-buffer">
+		<CODE>
+			wm.addDockableWindow(BerichtsheftPlugin.NAME);
+			wm.getDockableWindow(BerichtsheftPlugin.NAME).copyToBuffer();
+		</CODE>
+	</ACTION>
+</ACTIONS>
+

@@ -1,0 +1,6 @@
+<params>
+	<dbfile>/home/lotharla/work/Niklas/note_pad.db</dbfile>
+	<year>2012</year>
+	<weekInYear>32</weekInYear>
+	<dayInWeek>\d</dayInWeek>
+</params>

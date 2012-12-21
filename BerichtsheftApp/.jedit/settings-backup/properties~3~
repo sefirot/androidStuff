@@ -1,0 +1,28 @@
+#jEdit properties
+#Sun Dec 16 09:13:52 CET 2012
+view.width=798
+tip.show=false
+view.height=529
+search.beanshell.toggle=false
+view.y=137
+view.x=237
+firstTime=false
+helpviewer.extendedState=0
+search.ignoreCase.toggle=false
+search.regexp.toggle=false
+search.wholeWord.toggle=false
+helpviewer.splitter=250
+berichtsheft.dock-position=top
+helpviewer.height=532
+view.extendedState=0
+helpviewer.width=752
+berichtsheft.y=50
+berichtsheft.width=502
+options.berichtsheft.filepath=/home/lotharla/work/Niklas/androidStuff/BerichtsheftPlugin/databases/note_pad_2012-08.db
+berichtsheft.x=50
+search.wrap.toggle=false
+berichtsheft.height=295
+berichtsheft.extendedState=0
+keymap.current=imported
+helpviewer.y=50
+helpviewer.x=50
