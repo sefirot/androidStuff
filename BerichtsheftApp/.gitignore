@@ -1,4 +1,9 @@
 bin/
 build/
-
-
+.jedit/jars-cache/
+.jedit/settings-backup/
+.jedit/activity.log
+.jedit/history
+.jedit/perspective.xml
+.jedit/properties
+.jedit/recent.xml

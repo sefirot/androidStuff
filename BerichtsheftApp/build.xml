@@ -4,7 +4,7 @@
 	</description>
 
 	<property name="src.dir" value="src" />
-	<property name="build.support" value="/home/lotharla/jEdit/build-support" />
+	<property name="build.support" value="build-support" />
   	<property file="build.properties"/>
 	<property file="${build.support}/build.properties"/>
 	<property name="user-doc.xml" location = "users-guide.xml"/>
@@ -36,8 +36,11 @@
     </selector>
 	
     <path id="project.class.path">
-        <pathelement location="/home/lotharla/sqlite-jdbc/snapshot/target/sqlite-jdbc-3.7.8-SNAPSHOT.jar" />
-		<fileset dir="/home/lotharla/xalan-j_2_7_1">
+		<fileset dir=".jedit/jars">
+			<exclude name="BerichtsheftPlugin.jar"/>
+			<filename name="*.jar" />
+		</fileset>
+		<fileset dir="lib">
 			<filename name="*.jar" />
 		</fileset>
     </path>
@@ -50,6 +53,9 @@
         		<filename name="*" />
             </fileset>
         </copy>
+    </target>
+    
+    <target name="build.post">
     </target>
 
 </project>
