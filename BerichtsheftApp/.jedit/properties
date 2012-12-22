@@ -1,5 +1,6 @@
 #jEdit properties
-#Wed Dec 19 10:43:24 CET 2012
+#Sat Dec 22 12:01:10 CET 2012
+mode.text.filenameGlob=*.txt
 view.width=798
 tip.show=false
 view.height=529
@@ -7,6 +8,7 @@ search.beanshell.toggle=false
 view.y=137
 view.x=237
 firstTime=false
+mode.text.file=/home/lotharla/work/Niklas/androidStuff/BerichtsheftApp/.jedit/modes/text.xml
 helpviewer.extendedState=0
 search.ignoreCase.toggle=false
 search.regexp.toggle=false
