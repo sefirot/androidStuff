@@ -11,20 +11,23 @@
     <string name="more">Export to SDcard</string>
     <string name="more2">Import from SDcard</string>
     
-    <string name="menu_delete">Delete</string>
-    <string name="menu_insert">Add note</string>
+    <string name="menu_delete">Löschen</string>
+    <string name="menu_insert">Neuer Eintrag</string>
     <string name="menu_revert">Revert</string>
     <string name="menu_discard">Discard</string>
+    <string name="menu_sort_by">Sortieren nach</string>
 
     <string name="resolve_edit">Edit note</string>
     <string name="resolve_title">Edit title</string>  
-
+	<string name="resolve_order">Sortieren nach</string>
+    
     <string name="title_create">Create note</string>
     <string name="title_edit">Edit note</string>
 	<string name="title_notes_list">Tagesberichte</string>   
 	<string name="title_plants_list">Pflanze der Woche</string>
 	<string name="title_note">Note</string>  
-	<string name="plant_note">Plant</string>
+	<string name="plant_note">Neue Pflanze eingeben</string>
+	<string name="plant_edit">Eingaben zur Pflanze ändern</string>
 	<string name="title_edit_title">Note title:</string>  
 	
 	<string name="button_ok">OK</string>  
@@ -36,4 +39,15 @@
 	<string name="family">Familie (deutsch)</string>
 	<string name="bot_family">Familie (botanisch)</string>
 	<string name="plant_group">Nutzpflanzengruppe</string>
+	
+	<string name="sort_by">Sortiert nach </string>
+	<string-array name="by_language_array">
+        <item>botanischen</item>
+        <item>deutschen</item>
+    </string-array>
+    <string-array name="by_order_array">
+        <item>Familiennamen</item>
+        <item>Pflanzennamen</item>
+    </string-array>
+	
 </resources>

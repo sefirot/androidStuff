@@ -18,9 +18,11 @@ package com.applang.berichtsheft;
 
 import com.applang.berichtsheft.R;
 import com.applang.provider.PlantInfo.Plants;
+import com.applang.tagesberichte.TitleEditor;
 
 
 import android.app.ListActivity;
+import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
 import android.content.ContentUris;
 import android.content.Intent;
@@ -34,8 +36,11 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
+import android.widget.Spinner;
+import android.widget.TextView;
 
 /**
  * Displays a list of notes. Will display notes from the {@link Uri}
@@ -48,6 +53,7 @@ public class PlantsList extends ListActivity {
     // Menu item ids
     public static final int MENU_ITEM_DELETE = Menu.FIRST;
     public static final int MENU_ITEM_INSERT = Menu.FIRST + 1;
+    public static final int MENU_ITEM_SORTBY = Menu.FIRST + 2;
 
     /**
      * The columns we are interested in from the database
@@ -63,6 +69,7 @@ public class PlantsList extends ListActivity {
 
     /** The index of the title column */
     private static final int COLUMN_INDEX_TITLE = 1;
+    private static final int COLUMN_INDEX_FAMILY = 2;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -87,8 +94,19 @@ public class PlantsList extends ListActivity {
 
         // Used to map notes entries from the database to views
         SimpleCursorAdapter adapter = new SimpleCursorAdapter(this, R.layout.plantslist_item, cursor,
-                new String[] {Plants.NAME,Plants.FAMILY ,Plants.BOTNAME,Plants.BOTFAMILY,Plants.GROUP}, 
-                new int[] {R.id.PlantName,R.id.PlantFamily,R.id.BotName,R.id.BotFamily,R.id.PlantGroup});
+                new String[] {Plants.NAME,Plants.FAMILY /**,Plants.BOTNAME,Plants.BOTFAMILY,Plants.GROUP */}, 
+                new int[] {R.id.textPlantName,R.id.textPlantFamily}){
+        	@Override
+        	public void setViewText(TextView v, String text) {
+        		switch (v.getId()) {
+				case R.id.textPlantFamily:
+					super.setStringConversionColumn(1);
+
+				default:
+	        		super.setViewText(v, text);
+				}
+        	}
+        };
         setListAdapter(adapter);
     } 
        
@@ -102,6 +120,10 @@ public class PlantsList extends ListActivity {
         menu.add(0, MENU_ITEM_INSERT, 0, R.string.menu_insert)
                 .setShortcut('3', 'a')
                 .setIcon(android.R.drawable.ic_menu_add);
+        
+        menu.add(0, MENU_ITEM_SORTBY, 0, R.string.menu_sort_by)
+        .setShortcut('4', 'a')
+        .setIcon(android.R.drawable.ic_menu_add);
 
         // Generate any additional actions that can be performed on the
         // overall list.  In a normal install, there are no additional
@@ -158,6 +180,15 @@ public class PlantsList extends ListActivity {
             // Launch activity to insert a new item
             startActivity(new Intent(Intent.ACTION_INSERT, getIntent().getData()));
             return true;
+        case MENU_ITEM_SORTBY:
+        	/*	try {  **/
+			// Launch activity to choose option in order to sort list entries
+				startActivity(new Intent(this, SortBySpinner.class));
+			/*	return true; 
+			} catch (ActivityNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} **/
         }
         return super.onOptionsItemSelected(item);
     }

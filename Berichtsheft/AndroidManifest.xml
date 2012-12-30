@@ -144,6 +144,33 @@
             </intent-filter>
         </activity>
         
+		<activity android:name="com.applang.berichtsheft.SortBySpinner" 
+			android:label="@string/sort_by"
+			android:theme="@android:style/Theme.Dialog"
+            android:windowSoftInputMode="stateVisible"
+        >
+            <!-- This activity implements an alternative action that can be
+                 performed on notes: editing their title.  It can be used as
+                 a default operation if the user invokes this action, and is
+                 available as an alternative action for any note data. -->
+            <intent-filter android:label="@string/resolve_order">
+                <!-- This is the action we perform.  It is a custom action we
+                     define for our application, not a generic VIEW or EDIT
+                     action since we are not a general note viewer/editor. -->
+                <action android:name="com.android.intent.action.VIEW" />
+                <!-- DEFAULT: execute if being directly invoked. -->
+                <category android:name="android.intent.category.DEFAULT" />
+                <!-- ALTERNATIVE: show as an alternative action when the user is
+                     working with this type of data. -->
+                <category android:name="android.intent.category.ALTERNATIVE" />
+                <!-- SELECTED_ALTERNATIVE: show as an alternative action the user
+                     can perform when selecting this type of data. -->
+                <category android:name="android.intent.category.SELECTED_ALTERNATIVE" />
+                <!-- This is the data type we operate on. -->
+                <data android:mimeType="vnd.android.cursor.item/vnd.applang.plant" />
+            </intent-filter>
+        </activity>
+		
 	</application>
 
 </manifest>

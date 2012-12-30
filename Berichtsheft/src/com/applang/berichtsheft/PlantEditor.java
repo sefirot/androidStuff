@@ -59,6 +59,10 @@ public class PlantEditor extends Activity {
     };
     /** The index of the note column */
     private static final int COLUMN_INDEX_NOTE = 1;
+    private static final int COLUMN_INDEX_FAMILY = 2;
+    private static final int COLUMN_INDEX_BOTNAME = 3;
+    private static final int COLUMN_INDEX_BOTFAMILY = 4;
+    private static final int COLUMN_INDEX_PLANTGROUP = 5;
     
     // This is our state data that is stored when freezing.
     private static final String ORIGINAL_CONTENT = "origContent";
@@ -196,22 +200,30 @@ public class PlantEditor extends Activity {
 
             // Modify our overall title depending on the mode we are running in.
             if (mState == STATE_EDIT) {
-                setTitle(getText(R.string.title_edit));
+                setTitle(getText(R.string.plant_edit));
             } else if (mState == STATE_INSERT) {
-                setTitle(getText(R.string.title_create));
+                setTitle(getText(R.string.plant_note));
             }
 
             // This is a little tricky: we may be resumed after previously being
             // paused/stopped.  We want to put the new text in the text view,
             // but leave the user where they were (retain the cursor position
             // etc).  This version of setText does that for us.
-            String note = mCursor.getString(COLUMN_INDEX_NOTE);
-            mPlantNameText.setTextKeepState(note);
+            String plantName = mCursor.getString(COLUMN_INDEX_NOTE);
+            String plantFamily = mCursor.getString(COLUMN_INDEX_FAMILY);
+            String botName = mCursor.getString(COLUMN_INDEX_BOTNAME);
+            String botFamily = mCursor.getString(COLUMN_INDEX_BOTFAMILY);
+            String plantGroup = mCursor.getString(COLUMN_INDEX_PLANTGROUP);
+            mPlantNameText.setTextKeepState(plantName);
+            mPlantFamilyText.setText(plantFamily);
+            mBotNameText.setText(botName);
+            mBotFamilyText.setText(botFamily);
+            mPlantGroupText.setText(plantGroup);
             
             // If we hadn't previously retrieved the original text, do so
             // now.  This allows the user to revert their changes.
             if (mOriginalContent == null) {
-                mOriginalContent = note;
+                mOriginalContent = plantName;
             }
 
         } else {
@@ -235,14 +247,19 @@ public class PlantEditor extends Activity {
         // changes are safely saved away in the provider.  We don't need
         // to do this if only editing.
         if (mCursor != null) {
-            String text = mText.getText().toString();
-            int length = text.length();
-
+            String plantName = mPlantNameText.getText().toString();
+            String plantFamily = mPlantFamilyText.getText().toString();
+            String botName = mBotNameText.getText().toString();
+            String botFamily = mBotFamilyText.getText().toString();
+            String plantGroup = mPlantGroupText.getText().toString();
+            int nameLength = plantName.length();
+            int familyLength = plantFamily.length();
+            
             // If this activity is finished, and there is no text, then we
             // do something a little special: simply delete the note entry.
             // Note that we do this both for editing and inserting...  it
             // would be reasonable to only do it when inserting.
-            if (isFinishing() && (length == 0) && !mNoteOnly) {
+            if (isFinishing() && (nameLength == 0) && (familyLength == 0) && !mNoteOnly) {
                 setResult(RESULT_CANCELED);
                 deleteNote();
 
@@ -253,7 +270,7 @@ public class PlantEditor extends Activity {
                 // This stuff is only done when working with a full-fledged note.
                 if (!mNoteOnly) {
                     // Bump the modification time to now.
-                    values.put(Notes.MODIFIED_DATE, System.currentTimeMillis());
+                    //values.put(Plants.MODIFIED_DATE, System.currentTimeMillis());
 
                     // If we are creating a new note, then we want to also create
                     // an initial title for it.
@@ -270,8 +287,12 @@ public class PlantEditor extends Activity {
 */				}
 
                 // Write our text back into the provider.
-                values.put(Notes.NOTE, text);
-
+                values.put(Plants.NAME, plantName);
+                values.put(Plants.FAMILY, plantFamily);
+                values.put(Plants.BOTNAME, botName);
+                values.put(Plants.BOTFAMILY, botFamily);
+                values.put(Plants.GROUP, plantGroup);
+                
                 // Commit all of our changes to persistent storage. When the update completes
                 // the content provider will notify the cursor of the change, which will
                 // cause the UI to be updated.
@@ -365,7 +386,7 @@ public class PlantEditor extends Activity {
             mCursor.close();
             mCursor = null;
             getContentResolver().delete(mUri, null, null);
-            mText.setText("");
+            mPlantNameText.setText("");
         }
     }
 }
