@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:orientation="vertical" >
+
+    <TextView
+        android:id="@+id/TextBotName"
+        android:layout_width="185dp"
+        android:layout_height="30dp"
+        android:text="@string/bot_name" />
+
+    <EditText
+        android:id="@+id/BotName"
+        android:layout_width="300dp"
+        android:layout_height="wrap_content"
+        android:ems="10" />
+
+    <TextView
+        android:id="@+id/TextPlantName"
+        android:layout_width="170dp"
+        android:layout_height="30dp"
+        android:text="@string/plant_name" />
+
+    <EditText
+        android:id="@+id/PlantName"
+        android:layout_width="300dp"
+        android:layout_height="wrap_content"
+        android:ems="10" />
+
+    <TextView
+        android:id="@+id/TextPlantFamily"
+        android:layout_width="114dp"
+        android:layout_height="30dp"
+        android:text="@string/family" />
+
+    <EditText
+        android:id="@+id/PlantFamily"
+        android:layout_width="300dp"
+        android:layout_height="wrap_content"
+        android:ems="10" >
+    </EditText>
+
+    <TextView
+        android:id="@+id/TextBotFamily"
+        android:layout_width="157dp"
+        android:layout_height="30dp"
+        android:text="@string/bot_family" />
+
+    <EditText
+        android:id="@+id/BotFamily"
+        android:layout_width="300dp"
+        android:layout_height="wrap_content"
+        android:ems="10" />
+
+    <TextView
+        android:id="@+id/TextPlantGroup"
+        android:layout_width="168dp"
+        android:layout_height="30dp"
+        android:text="@string/plant_group" />
+
+    <EditText
+        android:id="@+id/PlantGroup"
+        android:layout_width="300dp"
+        android:layout_height="wrap_content"
+        android:ems="10" />
+
+</LinearLayout>
