@@ -42,12 +42,12 @@
 	
 	<string name="sort_by">Sortiert nach </string>
 	<string-array name="by_language_array">
-        <item>botanischen</item>
         <item>deutschen</item>
+        <item>botanischen</item>
     </string-array>
     <string-array name="by_order_array">
-        <item>Familiennamen</item>
         <item>Pflanzennamen</item>
+        <item>Familiennamen</item>
     </string-array>
 	
 </resources>

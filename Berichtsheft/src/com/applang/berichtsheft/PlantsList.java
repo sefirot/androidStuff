@@ -41,6 +41,7 @@ import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
 import android.widget.Spinner;
 import android.widget.TextView;
+import android.widget.Toast;
 
 /**
  * Displays a list of notes. Will display notes from the {@link Uri}
@@ -54,6 +55,9 @@ public class PlantsList extends ListActivity {
     public static final int MENU_ITEM_DELETE = Menu.FIRST;
     public static final int MENU_ITEM_INSERT = Menu.FIRST + 1;
     public static final int MENU_ITEM_SORTBY = Menu.FIRST + 2;
+    private static final int ACTIVITY_TOGGLE_ORDER=5;
+    int language, order;
+    
 
     /**
      * The columns we are interested in from the database
@@ -83,8 +87,39 @@ public class PlantsList extends ListActivity {
         if (intent.getData() == null) {
             intent.setData(Plants.CONTENT_URI);
         }
-
-        // Inform the list we provide context menus for items
+        language = 0; 
+        order = 0;
+        setListView();   
+    } 
+       
+    private void setListView() {
+    	
+    	String UpperString = null, LowerString = null;	
+    	int UpperViewId = -1, LowerViewId = -1;
+    	
+    	switch (language){
+    	case 0:
+    		UpperString = Plants.NAME; 
+    		LowerString = Plants.FAMILY;
+    	break;
+    	case 1:
+    		UpperString = Plants.BOTNAME; 
+    		LowerString = Plants.BOTFAMILY;
+    	}
+    
+    	switch (order){
+    	case 0:
+    		UpperViewId = R.id.upper_text; 
+    		LowerViewId = R.id.lower_text;
+    	break;
+    	case 1:
+    		UpperViewId = R.id.lower_text; 
+    		LowerViewId = R.id.upper_text;
+    	}
+    	
+    	
+    	
+    	// Inform the list we provide context menus for items
         getListView().setOnCreateContextMenuListener(this);
         
         // Perform a managed query. The Activity will handle closing and requerying the cursor
@@ -94,12 +129,11 @@ public class PlantsList extends ListActivity {
 
         // Used to map notes entries from the database to views
         SimpleCursorAdapter adapter = new SimpleCursorAdapter(this, R.layout.plantslist_item, cursor,
-                new String[] {Plants.NAME,Plants.FAMILY /**,Plants.BOTNAME,Plants.BOTFAMILY,Plants.GROUP */}, 
-                new int[] {R.id.textPlantName,R.id.textPlantFamily}){
+                new String[] {UpperString,LowerString}, new int[] {UpperViewId,LowerViewId}){
         	@Override
         	public void setViewText(TextView v, String text) {
         		switch (v.getId()) {
-				case R.id.textPlantFamily:
+				case R.id.lower_text:
 					super.setStringConversionColumn(1);
 
 				default:
@@ -108,10 +142,15 @@ public class PlantsList extends ListActivity {
         	}
         };
         setListAdapter(adapter);
-    } 
-       
+    	
+        Toast.makeText(this, "Language:" + language 
+        		+"Order:" + order, 
+				Toast.LENGTH_LONG).show();
+        
+    }
+    
 
-    @Override
+	@Override
     public boolean onCreateOptionsMenu(Menu menu) {
         super.onCreateOptionsMenu(menu);
 
@@ -183,7 +222,12 @@ public class PlantsList extends ListActivity {
         case MENU_ITEM_SORTBY:
         	/*	try {  **/
 			// Launch activity to choose option in order to sort list entries
-				startActivity(new Intent(this, SortBySpinner.class));
+        		Intent sortOrder = new Intent(this, SortBySpinner.class);
+        		Bundle sortBundle = new Bundle();
+        		sortBundle.putInt("language", language);
+        		sortBundle.putInt("order", order);
+        		sortOrder.putExtras(sortBundle);
+        		startActivityForResult(sortOrder,ACTIVITY_TOGGLE_ORDER);
 			/*	return true; 
 			} catch (ActivityNotFoundException e) {
 				// TODO Auto-generated catch block
@@ -193,6 +237,20 @@ public class PlantsList extends ListActivity {
         return super.onOptionsItemSelected(item);
     }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent sortOrder) {
+        super.onActivityResult(requestCode, resultCode, sortOrder);
+        
+        if(sortOrder != null)
+        {
+        	Bundle sortBundle = sortOrder.getExtras();
+        	language = sortBundle.getInt("language");
+        	order = sortBundle.getInt("order");
+        }
+        
+        setListView();
+    }
+    
     @Override
     public void onCreateContextMenu(ContextMenu menu, View view, ContextMenuInfo menuInfo) {
         AdapterView.AdapterContextMenuInfo info;

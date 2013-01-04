@@ -5,23 +5,23 @@
     android:orientation="vertical" >
 
     <TextView
-        android:id="@+id/textPlantName"
+        android:id="@+id/upper_text"
         android:layout_alignParentLeft="true"
         android:layout_alignParentTop="true"
     	android:singleLine="true"
     	android:paddingLeft="10dip"
 	    android:gravity="center_vertical"
-        android:layout_width="wrap_content"
+        android:layout_width="fill_parent"
 	    android:layout_height="wrap_content"
 	    android:textAppearance="?android:attr/textAppearanceLarge"
 	    android:textStyle="bold" />
 
     <TextView
-        android:id="@+id/textPlantFamily"
-    	android:layout_below="@id/textPlantName"
+        android:id="@+id/lower_text"
+    	android:layout_below="@id/upper_text"
     	android:singleLine="true"
     	android:paddingLeft="10dip"
-        android:layout_width="wrap_content"
+        android:layout_width="fill_parent"
 	    android:layout_height="wrap_content"
 	    android:textAppearance="?android:attr/textAppearanceLarge"
 	    android:textColor="#F5B800" />

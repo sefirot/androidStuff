@@ -44,7 +44,7 @@ public class BerichtsheftActivity extends Activity {
         	});	
         }
         
-		showToast(android.os.Build.VERSION.SDK);
+		// showToast(android.os.Build.VERSION.SDK);
 	}
 	
 	public void showTagesberichte(View clickedButton) {
