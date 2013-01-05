@@ -18,7 +18,7 @@ import org.gjt.sp.jedit.gui.FontSelector;
 
 public class BerichtsheftOptionPane extends AbstractOptionPane implements
 		ActionListener {
-	private JCheckBox showPath;
+	private JCheckBox showToolbar;
 
 	private JTextField pathName;
 
@@ -29,12 +29,9 @@ public class BerichtsheftOptionPane extends AbstractOptionPane implements
 	}
 
 	public void _init() {
-		showPath = new JCheckBox(jEdit
-				.getProperty(BerichtsheftPlugin.OPTION_PREFIX
-						+ "show-filepath.title"), jEdit.getProperty(
-				BerichtsheftPlugin.OPTION_PREFIX + "show-filepath").equals(
-				"true"));
-		addComponent(showPath);
+		showToolbar = new JCheckBox(jEdit.getProperty(BerichtsheftPlugin.OPTION_PREFIX + "show-toolbar.title"), 
+				jEdit.getBooleanProperty(BerichtsheftPlugin.OPTION_PREFIX + "show-toolbar"));
+		addComponent(showToolbar);
 
 		pathName = new JTextField(jEdit
 				.getProperty(BerichtsheftPlugin.OPTION_PREFIX + "filepath"));
@@ -58,14 +55,13 @@ public class BerichtsheftOptionPane extends AbstractOptionPane implements
 		jEdit.setProperty(BerichtsheftPlugin.OPTION_PREFIX + "filepath",
 				pathName.getText());
 		Font _font = font.getFont();
-		jEdit.setProperty(BerichtsheftPlugin.OPTION_PREFIX + "font", _font
-				.getFamily());
-		jEdit.setProperty(BerichtsheftPlugin.OPTION_PREFIX + "fontsize", String
-				.valueOf(_font.getSize()));
-		jEdit.setProperty(BerichtsheftPlugin.OPTION_PREFIX + "fontstyle",
-				String.valueOf(_font.getStyle()));
-		jEdit.setProperty(BerichtsheftPlugin.OPTION_PREFIX + "show-filepath",
-				String.valueOf(showPath.isSelected()));
+		jEdit.setProperty(BerichtsheftPlugin.OPTION_PREFIX + "font", _font.getFamily());
+		jEdit.setProperty(BerichtsheftPlugin.OPTION_PREFIX + "fontsize", String.valueOf(_font.getSize()));
+		jEdit.setProperty(BerichtsheftPlugin.OPTION_PREFIX + "fontstyle", String.valueOf(_font.getStyle()));
+		jEdit.setProperty(BerichtsheftPlugin.OPTION_PREFIX + "show-toolbar",
+				String.valueOf(showToolbar.isSelected()));
+		jEdit.saveSettings();
+		BerichtsheftToolBar.init();
 	}
 
 	// end AbstractOptionPane implementation

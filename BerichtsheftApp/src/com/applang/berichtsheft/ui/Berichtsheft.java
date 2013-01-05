@@ -72,7 +72,7 @@ public class Berichtsheft extends JPanel
 		this.floating = position.equals(DockableWindowManager.FLOATING);
 
 		textArea = new BerichtsheftTextArea();
-		textArea.setFont(BerichtsheftOptionPane.makeFont());
+		textArea.textArea.setFont(BerichtsheftOptionPane.makeFont());
 
 		this.dbName = jEdit.getProperty(BerichtsheftPlugin.OPTION_PREFIX + "filepath");
 
@@ -82,7 +82,7 @@ public class Berichtsheft extends JPanel
 		if (floating)
 			this.setPreferredSize(new Dimension(500, 250));
 
-		JScrollPane pane = new JScrollPane(textArea);
+		JScrollPane pane = new JScrollPane(textArea.textArea);
 		add(BorderLayout.CENTER, pane);
 
 		readFile();
@@ -93,7 +93,7 @@ public class Berichtsheft extends JPanel
     
     // {{{ focusOnDefaultComponent
 	public void focusOnDefaultComponent() {
-		textArea.requestFocus();
+		textArea.textArea.requestFocus();
 	}
     // }}}
 
@@ -118,8 +118,8 @@ public class Berichtsheft extends JPanel
 		toolPanel.propertiesChanged();
 		
 		Font newFont = BerichtsheftOptionPane.makeFont();
-		if (!newFont.equals(textArea.getFont())) {
-			textArea.setFont(newFont);
+		if (!newFont.equals(textArea.textArea.getFont())) {
+			textArea.textArea.setFont(newFont);
 		}
 	}
     // }}}

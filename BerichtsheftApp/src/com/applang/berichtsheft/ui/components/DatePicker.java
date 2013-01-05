@@ -159,25 +159,52 @@ public class DatePicker
 		return sdf.format(cal.getTime());
 	}
 
-	public static boolean isCalendarDate(String date) {
-		return date.indexOf(',') > -1;
+	public static boolean isCalendarDate(String dateString) {
+		return dateString.indexOf(',') > -1;
 	}
 
-	public static boolean isWeekDate(String date) {
-		int slash = date.indexOf("/");
-		return slash > -1 && slash == date.lastIndexOf("/");
+	public static boolean isWeekDate(String dateString) {
+		int slash = dateString.indexOf("/");
+		return slash > -1 && slash == dateString.lastIndexOf("/");
 	}
 
-	public static int[] parseWeekDate(String date) {
-		int slash = date.indexOf("/");
+	public static int[] parseWeekDate(String dateString) {
+		int slash = dateString.indexOf("/");
 		int[] parts = new int[2];
-		parts[0] = Integer.parseInt(date.substring(0, slash));
-		parts[1] = Integer.parseInt(date.substring(1 + slash));
+		parts[0] = Integer.parseInt(dateString.substring(0, slash));
+		parts[1] = Integer.parseInt(dateString.substring(1 + slash));
 		if (parts[1] < 100) {
 			int year = Calendar.getInstance().get(Calendar.YEAR) % 100;
 			parts[1] = parts[1] > year ? parts[1] + 1900 : parts[1] + 2000;
 		}
 		return parts;
+	}
+	
+	public static String weekDate(long[] week) {
+		int[] val0 = parseWeekDate(Util.formatDate(week[0], DatePicker.weekFormat));
+		int[] val1 = parseWeekDate(Util.formatDate(week[1], DatePicker.weekFormat));
+		if (val0[1] == val1[1])
+			return val0[0] + "/" + val0[1] % 100;
+		else
+			return val0[0] + "/" + val1[1] % 100;
+	}
+	
+	public static long[] weekInterval(String dateString, int weeks) {
+		try {
+			Date date = Util.parseDate(dateString, DatePicker.weekFormat);
+			return Util.weekInterval(date, weeks);
+		} catch (ParseException e) {
+			return null;
+		}
+	}
+	
+	public static long[] nextWeekInterval(String dateString) {
+		long[] week = weekInterval(dateString, 2);
+		return Util.weekInterval(new Date(week[1]), -1);
+	}
+	
+	public static long[] previousWeekInterval(String dateString) {
+		return weekInterval(dateString, -1);
 	}
 }
 

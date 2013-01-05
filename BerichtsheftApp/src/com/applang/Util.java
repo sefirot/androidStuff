@@ -1,9 +1,11 @@
 package com.applang;
 
-import java.awt.Component;
 import java.awt.Container;
+import java.awt.KeyboardFocusManager;
 import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -29,12 +31,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.JTextField;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
 import javax.swing.filechooser.FileFilter;
+import javax.swing.text.JTextComponent;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.transform.OutputKeys;
@@ -103,12 +105,19 @@ public class Util
 		return calendar.getTimeInMillis();
 	}
 
-	public static long[] weekInterval(Date start) {
+	public static long[] weekInterval(Date start, int weeks) {
 		calendar.setTime(start);
+		long millis = calendar.getTimeInMillis();
+		calendar.add(Calendar.DATE, weeks * 7);
 		long[] interval = new long[2];
-		interval[0] = calendar.getTimeInMillis();
-		calendar.add(Calendar.DATE, 7);
-		interval[1] = calendar.getTimeInMillis();
+		if (weeks < 0) {
+			interval[0] = calendar.getTimeInMillis();
+			interval[1] = millis;
+		}
+		else {
+			interval[0] = millis;
+			interval[1] = calendar.getTimeInMillis();
+		}
 		return interval;
 	}
 
@@ -342,6 +351,16 @@ public class Util
 		return System.getProperty("os.name").toLowerCase().startsWith("windows");
 	}
 	
+	public static MatchResult[] findAllIn(String input, Pattern pattern) {
+		ArrayList<MatchResult> matches = new ArrayList<MatchResult>();
+		
+		Matcher matcher = pattern.matcher(input);
+		while (matcher.find()) 
+			matches.add(matcher.toMatchResult());
+		
+		return matches.toArray(new MatchResult[0]);
+	}
+	
 	public static MatchResult findFirstIn(String input, Pattern pattern) {
 		Matcher matcher = pattern.matcher(input);
 		if (matcher.find()) 
@@ -519,8 +538,7 @@ public class Util
 		if (path == null)
 			return base;
 		else
-			return new File(base).toURI().relativize(
-					new File(path).toURI()).getPath();
+			return new File(base).toURI().relativize(new File(path).toURI()).getPath();
 	}
 
 	public static boolean fileExists(File file) {
@@ -600,14 +618,30 @@ public class Util
 	    	return null;
 	}
 
-	public static void addFocusObserver(JTextField tf) {
-	    tf.addFocusListener(new FocusListener() {
+	public static void addFocusObserver(JTextComponent jtc) {
+	    jtc.addFocusListener(new FocusListener() {
 	        public void focusGained(FocusEvent e) {
-	            ((JTextField)e.getSource()).selectAll();
+	            ((JTextComponent)e.getSource()).selectAll();
 	        }
 	        public void focusLost(FocusEvent arg0) {    
 	        }
 	    });
+	}
+
+	public static void addTabKeyForwarding(JComponent jc) {
+	    jc.addKeyListener(new KeyAdapter() {
+			@Override
+			public void keyPressed(KeyEvent e) {
+				if (e.getKeyCode() == KeyEvent.VK_TAB) {
+					e.consume();
+					KeyboardFocusManager.getCurrentKeyboardFocusManager().focusNextComponent();
+				}
+				if (e.getKeyCode() == KeyEvent.VK_TAB && e.isShiftDown()) {
+					e.consume();
+					KeyboardFocusManager.getCurrentKeyboardFocusManager().focusPreviousComponent();
+				}
+			}
+		});
 	}
 
 	public static JTextField comboEdit(JComboBox combo) {

@@ -1,53 +1,41 @@
 package com.applang.berichtsheft.ui;
 
-import static ui.Util.*;
-
-import java.awt.Dimension;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 
 import javax.swing.JTextArea;
-import javax.swing.KeyStroke;
 
-import ui.Source;
-import ui.Util.Settings;
+import com.applang.Util;
+import com.applang.berichtsheft.ui.components.TextComponent;
 
-public class BerichtsheftTextArea extends JTextArea {
+public class BerichtsheftTextArea implements TextComponent
+{
 	public BerichtsheftTextArea() {
 		super();
-		setLineWrap(true);
-		setWrapStyleWord(true);
-		setTabSize(4);
-		setPreferredSize(new Dimension(100, 100));
+		textArea.setLineWrap(true);
+		textArea.setWrapStyleWord(true);
+		textArea.setTabSize(4);
+		Util.addTabKeyForwarding(textArea);
+	}
+
+	public JTextArea textArea = new JTextArea();
+	
+	@Override
+	public void addKeyListener(KeyListener l) {
+		textArea.addKeyListener(l);
 	}
 	
-	public void createPopupMenu() {
-		final String key = "Input";
-		final Source src = Source.fileFilters.get(key);
-        this.addMouseListener(newPopupAdapter(
-        	new Object[] {"Load " + key.toLowerCase() + " from ...", new ActionListener() {
-		        	public void actionPerformed(ActionEvent ae) {
-		        		src.loadFile(BerichtsheftTextArea.this);
-		        	}
-		        }, "load", "Load contents into this pane"}, 
-	        new Object[] {"Save " + key.toLowerCase() + " as ...", new ActionListener() {
-		        	public void actionPerformed(ActionEvent ae) {
-		        		src.saveFile(BerichtsheftTextArea.this);
-		        	}
-		        }, "save", "Save the contents of this pane"}, 
-	        new Object[] {"-"}, 
-	        new Object[] {"Change font ...", new ActionListener() {
-		        	public void actionPerformed(ActionEvent ae) {
-		        		if (changeFont(BerichtsheftTextArea.this))
-						{
-							Settings.put("font." + key.toLowerCase(), BerichtsheftTextArea.this.getFont());
-						}
-		        	}
-		        }, "change", "Change the font for this pane", changeFont(null)}, 
-	        new Object[] {"-"}, 
-	        new Object[] {"Search...", this, "SEARCH", "Search the contents", true, 
-		        KeyStroke.getKeyStroke(KeyEvent.VK_F, ActionEvent.CTRL_MASK)}
-        ));
-    }
+	@Override
+	public void setText(String t) {
+		textArea.setText(t);
+	}
+
+	@Override
+	public String getText() {
+		return textArea.getText();
+	}
+
+	@Override
+	public boolean spellcheck() {
+		return false;
+	}
 }

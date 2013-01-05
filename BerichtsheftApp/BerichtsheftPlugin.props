@@ -3,7 +3,7 @@
 
 # jEdit only needs to load the plugin the first time the user accesses it
 # the presence of this property also tells jEdit the plugin is using the new API
-plugin.com.applang.berichtsheft.ui.BerichtsheftPlugin.activate=defer
+plugin.com.applang.berichtsheft.ui.BerichtsheftPlugin.activate=startup
 
 # These two properties are required for all plugins
 plugin.com.applang.berichtsheft.ui.BerichtsheftPlugin.name=Berichtsheft
@@ -51,7 +51,7 @@ options.berichtsheft.file=File:
 options.berichtsheft.choose-file=Choose
 options.berichtsheft.choose-file.title=Choose a Berichtsheft database
 options.berichtsheft.choose-font=Font:
-options.berichtsheft.show-filepath.title=Display database file path
+options.berichtsheft.show-toolbar.title=Display toolbar
 
 # window title
 berichtsheft.title=Berichtsheft
@@ -62,10 +62,10 @@ berichtsheft.save-file.icon=Save.png
 berichtsheft.copy-to-buffer.icon=CopyToBuffer.png
 
 # default settings
-options.berichtsheft.show-filepath=true
+options.berichtsheft.show-toolbar=true
 options.berichtsheft.font=Monospaced
 options.berichtsheft.fontstyle=0
 options.berichtsheft.fontsize=14
 
 # Setting not defined but supplied for completeness
-options.berichtsheft.filepath=/home/lotharla/work/Niklas/androidStuff/BerichtsheftPlugin/databases/*
+options.berichtsheft.filepath=/home/lotharla/work/Niklas/androidStuff/BerichtsheftApp/databases/*

@@ -4,12 +4,6 @@
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/3"/>
 	<classpathentry kind="lib" path=".jedit/jedit.jar" sourcepath="/home/lotharla/jEdit/5.0pre1"/>
-	<classpathentry kind="lib" path="lib/hamcrest-all-1.3.0RC2.jar"/>
-	<classpathentry kind="lib" path="lib/JFontChooser.jar"/>
-	<classpathentry kind="lib" path="lib/junit-dep-4.8.2.jar"/>
-	<classpathentry kind="lib" path="lib/slf4j-api-1.6.2.jar"/>
-	<classpathentry kind="lib" path="lib/slf4j-simple-1.6.2.jar"/>
-	<classpathentry kind="lib" path="lib/Workshop.jar"/>
 	<classpathentry kind="lib" path=".jedit/jars/org.apache.sling.commons.json-2.0.6.jar"/>
 	<classpathentry kind="lib" path=".jedit/jars/serializer.jar"/>
 	<classpathentry kind="lib" path=".jedit/jars/sqlite-jdbc-3.7.8-SNAPSHOT.jar"/>
@@ -17,5 +11,11 @@
 	<classpathentry kind="lib" path=".jedit/jars/xercesImpl.jar"/>
 	<classpathentry kind="lib" path=".jedit/jars/xml-apis.jar"/>
 	<classpathentry kind="lib" path=".jedit/jars/xmlunit-1.3.jar"/>
+	<classpathentry kind="lib" path="/home/lotharla/work/Niklas/androidStuff/BerichtsheftApp/.jedit/jars/CommonControls.jar"/>
+	<classpathentry kind="lib" path="/home/lotharla/work/Niklas/androidStuff/BerichtsheftApp/.jedit/jars/ErrorList.jar"/>
+	<classpathentry kind="lib" path="/home/lotharla/work/Niklas/androidStuff/BerichtsheftApp/.jedit/jars/hunspell.jar"/>
+	<classpathentry kind="lib" path="/home/lotharla/work/Niklas/androidStuff/BerichtsheftApp/.jedit/jars/jna.jar"/>
+	<classpathentry kind="lib" path="/home/lotharla/work/Niklas/androidStuff/BerichtsheftApp/.jedit/jars/kappalayout.jar"/>
+	<classpathentry kind="lib" path="/home/lotharla/work/Niklas/androidStuff/BerichtsheftApp/.jedit/jars/SpellCheck.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
