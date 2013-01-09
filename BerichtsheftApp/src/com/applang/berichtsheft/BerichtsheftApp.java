@@ -36,7 +36,8 @@ public class BerichtsheftApp
 				"-settings=.jedit", 
 				"-newview", 
 				"-noserver", 
-				"-nosplash" };
+				"-nosplash", 
+				"/tmp/.notes" };
 		jEdit.main(args);
 	}
 

@@ -126,9 +126,9 @@ public class Util
 		return dateFormat.format(new Date(millis));
 	}
 
-	public static Date parseDate(String date, String pattern) throws ParseException {
+	public static Date parseDate(String dateString, String pattern) throws ParseException {
 		SimpleDateFormat dateFormat = new SimpleDateFormat(pattern);
-		return dateFormat.parse(date);
+		return dateFormat.parse(dateString);
 	}
 
 	public static boolean notNullOrEmpty(String value) {

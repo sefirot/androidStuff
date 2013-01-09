@@ -40,9 +40,6 @@
 			<exclude name="BerichtsheftPlugin.jar"/>
 			<filename name="*.jar" />
 		</fileset>
-		<fileset dir="lib">
-			<filename name="*.jar" />
-		</fileset>
     </path>
     
     <target name="build.prepare">

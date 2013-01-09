@@ -1,11 +1,13 @@
 package com.applang.berichtsheft.test;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -19,6 +21,7 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.regex.MatchResult;
 
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.sax.SAXResult;
@@ -47,6 +50,7 @@ import com.applang.JsonUtil;
 import com.applang.Util;
 import com.applang.ZipUtil;
 import com.applang.berichtsheft.BerichtsheftApp;
+import com.applang.berichtsheft.ui.BerichtsheftTextArea;
 import com.applang.berichtsheft.ui.components.DatePicker;
 import com.applang.berichtsheft.ui.components.NotePicker;
 
@@ -102,18 +106,18 @@ public class MiscTests extends XMLTestCase
 		assertTrue(weekDate[1] > 2000);
 	}
 
-	String dbName = Util.relativePath("databases/note_pad_2012-08.db");
 	NotePicker np = new NotePicker(null);
+	String note_pad = Util.relativePath("databases/note_pad_2012-08.db");
 	long[] interval;
 
-	void setupNotePicking() throws ParseException {
-		assertTrue(np.openConnection(dbName));
+	void setupNotesDb(String db, Object... params) throws ParseException {
+		assertTrue(np.openConnection(db, params));
 		interval = DatePicker.weekInterval("33/12", 1);
 		assertEquals(2, interval.length);
 	}
 
 	public void testNotePicking() throws Exception {
-		setupNotePicking();
+		setupNotesDb(note_pad);
 
 		PreparedStatement ps = np.getCon().prepareStatement("SELECT _id FROM notes where created between ? and ?");
 		ps.setLong(1, interval[0]);
@@ -141,12 +145,24 @@ public class MiscTests extends XMLTestCase
 	}
 
 	public void testNoteWrapping() throws Exception {
-		setupNotePicking();
+		setupNotesDb(note_pad);
+		
+		String text = np.wrapNote("foo", "bar");
+		assertEquals("{{{ foo\nbar\n}}}", text);
+		MatchResult m = Util.findFirstIn(text, NotePicker.notePattern1);
+		assertEquals(2, m.groupCount());
+		assertEquals("foo", m.group(1));
+		assertEquals("bar", m.group(2));
+		text = np.wrapNote(new Date().getTime(), "", "");
+		m = Util.findFirstIn(text, NotePicker.notePattern2);
+		assertEquals(3, m.groupCount());
+		assertEquals("", m.group(2));
+		assertEquals("", m.group(3));
 
 		PreparedStatement ps = np.preparePicking(np.getPattern(), interval);
 		assertEquals(11, np.registerNotes(ps.executeQuery()));
 		
-		String text = np.all();
+		text = np.all();
 		assertTrue(np.isWrapped(text));
 		String[][] notes = np.getRecords(text);
 		for (int i = 0; i < notes.length; i++) {
@@ -159,6 +175,38 @@ public class MiscTests extends XMLTestCase
 		
 		text = np.next();
 		assertFalse(np.isWrapped(text));
+	}
+
+	int[][] dates = new int[][] {
+			{2012, 52, Calendar.TUESDAY}, 
+			{2012, 52, Calendar.WEDNESDAY}, 
+			{2013, 1, Calendar.THURSDAY}, 
+	};
+	
+	public void testPersistence() throws Exception {
+		BerichtsheftTextArea textArea = new BerichtsheftTextArea();
+		np = new NotePicker(textArea);
+		setupNotesDb("//localhost/note_pad?user=lotharla&password=gnalppA", 
+				"mysql", 
+				"com.mysql.jdbc.Driver", 
+				"note_pad");
+		
+		InputStream is = MiscTests.class.getResourceAsStream("Kein Fehler im System.txt");
+		String text = Util.readAll(new BufferedReader(new InputStreamReader(is)));
+		is.close();
+		
+		int i = -1;
+		for (MatchResult m : Util.findAllIn(text, NotePicker.notePattern1)) {
+			np.setTitle(m.group(1));
+			long id = np.updateOrInsert(
+					np.getPattern(), 
+					np.formatDate(Util.dateInMillis(dates[++i][0], dates[i][1], dates[i][2])), 
+					m.group(2));
+			assertTrue(id > -1);
+		}
+		assertEquals(dates.length - 1, i);
+		
+		np.display();
 	}
 
 	public void testRegexpInSqlite() throws Exception {

@@ -1,10 +1,10 @@
 package com.applang.berichtsheft.ui.components;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
-import java.awt.KeyboardFocusManager;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
@@ -18,7 +18,6 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -48,7 +47,7 @@ public class NotePicker extends JPanel implements ActionListener
 		BerichtsheftTextArea textArea = new BerichtsheftTextArea();
 		
 		Container contentPane = f.getContentPane();
-		contentPane.setPreferredSize(new Dimension(1000, 100));
+		contentPane.setPreferredSize(new Dimension(1000, 200));
 		
 		NotePicker notePicker = new NotePicker(textArea, 
 				null,
@@ -178,6 +177,7 @@ public class NotePicker extends JPanel implements ActionListener
 				String dateString = new DatePicker(pick, getDate()).getDateString();
 				NotePicker.this.requestFocus();
 				setDate(dateString);
+				kindOfDate = kindOfDate(dateString);
         		checkMergePossible();
         		pick();
 				date.requestFocusInWindow();
@@ -229,7 +229,7 @@ public class NotePicker extends JPanel implements ActionListener
 		add(insert);
 		insert.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent ae) {
-				if (hasTextArea() && dateKind() == 1) {
+				if (hasTextArea()) {
 					updateOrInsert(getPattern(), getDate(), true);
 				}
 			}
@@ -238,7 +238,7 @@ public class NotePicker extends JPanel implements ActionListener
 		add(delete);
 		delete.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent ae) {
-				if (hasTextArea() && dateKind() == 1) {
+				if (hasTextArea() && kindOfDate == 1) {
 					String dateString = getDate();
 					if (JOptionPane.YES_OPTION == JOptionPane.showConfirmDialog(
 							NotePicker.this, String.format("delete '%s' on '%s'", getTitle(), dateString), 
@@ -247,7 +247,7 @@ public class NotePicker extends JPanel implements ActionListener
 					{
 						try {
 							delete(getPattern(), dateString);
-							setNext();
+							display();
 						} catch (Exception e) {
 							handle(e);
 						}
@@ -260,7 +260,7 @@ public class NotePicker extends JPanel implements ActionListener
 		merge.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				String dateString = getDate();
-				if (dateKind() == 2) {
+				if (kindOfDate == 2) {
 					updateOnRequest(caption);
 					int[] weekDate = DatePicker.parseWeekDate(dateString);
 					String docName = "Tagesberichte_" + String.format("%d_%d", weekDate[1], weekDate[0]) + ".odt";
@@ -281,9 +281,10 @@ public class NotePicker extends JPanel implements ActionListener
 		
 		clear();
 	}
+	
+	private int kindOfDate = 0;
 
-	int dateKind() {
-		String dateString = getDate();
+	private int kindOfDate(String dateString) {
 		if (DatePicker.isWeekDate(dateString))
 			return 2;
 		else if (DatePicker.isCalendarDate(dateString))
@@ -293,7 +294,7 @@ public class NotePicker extends JPanel implements ActionListener
 	}
 
 	private void checkMergePossible() {
-		buttons[4].setEnabled(dateKind() == 2);
+		buttons[4].setEnabled(kindOfDate == 2);
 	}
 
 	private void updateOnRequest(String caption) {
@@ -312,7 +313,7 @@ public class NotePicker extends JPanel implements ActionListener
 		if (file != null) {
 			dbName = file.getPath();
 			if (openConnection(dbName)) 
-				setNext();
+				display();
 			
 			titleCombo.requestFocusInWindow();
 		}
@@ -324,7 +325,7 @@ public class NotePicker extends JPanel implements ActionListener
 		return con;
 	}
 
-	public boolean openConnection(String dbName) {
+	public boolean openConnection(String db, Object... params) {
 		ResultSet rs = null;
 		try {
 			if (con != null && !con.isClosed())
@@ -332,24 +333,53 @@ public class NotePicker extends JPanel implements ActionListener
 			
 			clear();
 			
-			if (!Util.fileExists(new File(dbName)))
+			String scheme = Util.paramString("sqlite", 0, params);
+			if ("sqlite".equals(scheme) && !Util.fileExists(new File(db)))
 				return false;
 			
-			Class.forName("org.sqlite.JDBC");
-			con = DriverManager.getConnection("jdbc:sqlite:" + dbName);
+			String driver = Util.paramString("org.sqlite.JDBC", 1, params);
+			Class.forName(driver);
+			con = DriverManager.getConnection("jdbc:" + scheme + ":" + db);
 			Statement st = con.createStatement();
 			
-			rs = st.executeQuery("select name from sqlite_master where type = 'table'");
+			String database = Util.paramString("sqlite_master", 2, params);
+			if ("sqlite".equals(scheme))
+				rs = st.executeQuery("select name from " + database + " where type = 'table'");
+			else if ("mysql".equals(scheme)) {
+				rs = st.executeQuery("show databases;");
+				boolean exists = false;
+			    while (rs.next()) 
+			        if (rs.getString(1).equals(database)) {
+			        	exists = true;
+			        	break;
+			        }
+	        	rs.close();
+	        	if (!exists)
+	        		throw new Exception(String.format("database '%s' not found", database));
+	        	else
+	        		st.execute(String.format("use %s;", database));
+	        	
+				rs = st.executeQuery("show tables in " + database + ";");
+			}
+			
 		    while (rs.next()) 
 		        if (rs.getString(1).equals("notes")) 
 		        	return true;
 		    
-		    st.execute("CREATE TABLE notes (" +
-		    		"_id INTEGER PRIMARY KEY," +
-		    		"title TEXT," +
-		    		"note TEXT," +
-		    		"created INTEGER," +
-		    		"modified INTEGER)");
+			if ("sqlite".equals(scheme))
+			    st.execute("CREATE TABLE notes (" +
+			    		"_id INTEGER PRIMARY KEY," +
+			    		"title TEXT," +
+			    		"note TEXT," +
+			    		"created INTEGER," +
+			    		"modified INTEGER)");
+			else if ("mysql".equals(scheme)) 
+			    st.execute("CREATE TABLE notes (" +
+			    		"_id BIGINT PRIMARY KEY," +
+			    		"title TEXT," +
+			    		"note TEXT," +
+			    		"created BIGINT," +
+			    		"modified BIGINT)");
 		    
 		    return true;
 		} catch (Exception e) {
@@ -408,14 +438,14 @@ public class NotePicker extends JPanel implements ActionListener
 	}
 	
 	private boolean retrieveNotes() throws SQLException {
-		setDate("");
 		PreparedStatement ps = con.prepareStatement("select _id from notes where title regexp ? order by created, title");
 		ps.setString(1, getPattern());
 		int numberOfNotes = registerNotes(ps.executeQuery());
 		return numberOfNotes > 0;
 	}
 	
-	private void setNext(Object... params) {
+	public void display(Object... params) {
+		setDate("");
 		try {
 			if (retrieveNotes()) {
 				this.index = Util.paramInteger(this.index, 0, params);
@@ -476,7 +506,7 @@ public class NotePicker extends JPanel implements ActionListener
 		rs.close();
 	}
 
-	private long updateOrInsert(String pattern, String dateString, String note) {
+	public long updateOrInsert(String pattern, String dateString, String note) {
 		try {
 			long time = parseDate(dateString).getTime();
 			PreparedStatement ps = preparePicking(pattern, time);
@@ -505,7 +535,7 @@ public class NotePicker extends JPanel implements ActionListener
 	private void updateOrInsert(String pattern, String dateString, boolean retrieve) {
 		int index = -1;
 		
-		if (dateKind() == 2) {
+		if (kindOfDate == 2) {
 			for (String[] record : getRecords(getText())) 
 				updateOrInsert(record[1], record[0], record[2]);
 		}
@@ -515,10 +545,10 @@ public class NotePicker extends JPanel implements ActionListener
 		}
 		
 		if (retrieve) 
-			setNext(index);
+			display(index);
 	}
 	
-	ResultSet query(long id) {
+	private ResultSet query(long id) {
 		try {
 			PreparedStatement ps = con.prepareStatement("SELECT note,title,created FROM notes where _id=?");
 			ps.setLong(1, id);
@@ -529,68 +559,98 @@ public class NotePicker extends JPanel implements ActionListener
 		}
 	}
 	
-	ResultSet query(String pattern, long[] week) {
+	long[] week = null;
+	
+	private ResultSet queryWeek(long time) {
+		ResultSet rs = null;
 		try {
-			PreparedStatement ps = preparePicking(pattern, week);
-			return ps.executeQuery();
+			week = DatePicker.weekInterval(Util.formatDate(time, DatePicker.weekFormat), 1);
+			PreparedStatement ps = preparePicking(getPattern(), week);
+			rs = ps.executeQuery();
+			setDate(DatePicker.weekDate(week));
 		} catch (Exception e) {
 			handle(e);
-			return null;
 		}
+		return rs;
 	}
 
+	private Long findTime(boolean next) {
+		Long retval = null;
+		try {
+			String sql;
+			if (week == null)
+				sql = "SELECT " + (next ? "min" : "max") + "(created) FROM notes";
+			else 
+				sql = "SELECT created FROM notes where created " +
+					(next ? ">= ?" : "<= ?");
+			PreparedStatement ps = con.prepareStatement(sql);
+			if (week != null)
+				ps.setLong(1, next ? week[1] : week[0]);
+			ResultSet rs = ps.executeQuery();
+			if (rs.next())
+				retval = rs.getLong(1);
+			rs.close();
+		} catch (Exception e) {
+			handle(e);
+		}
+		return retval;
+	}
+	
 	public String next() {
-		int dk = dateKind();
 		ResultSet rs = null;
 		
-		if (dk == 2) {
-			long[] week = DatePicker.nextWeekInterval(getDate());
-			rs = query(getPattern(), week);
-			setDate(DatePicker.weekDate(week));
+		if (kindOfDate == 2) {
+			Long time = findTime(true);
+			if (time != null) 
+				rs = queryWeek(time);
+			buttons[2].setEnabled(time != null);
 		} else {
 			index++;
 			if (index < ids.length)
 				rs = query(ids[index]);
 			else 
 				buttons[2].setEnabled(false);
-			buttons[1].setEnabled(ids.length > 0);
 		}
+		buttons[1].setEnabled(ids.length > 0);
 		
-		return refreshWith(rs, dk);
+		return refreshWith(rs);
 	}
 
 	public String previous() {
-		int dk = dateKind();
 		ResultSet rs = null;
 		
-		if (dk == 2) {
-			long[] week = DatePicker.previousWeekInterval(getDate());
-			rs = query(getPattern(), week);
-			setDate(DatePicker.weekDate(week));
+		if (kindOfDate == 2) {
+			Long time = findTime(false);
+			if (time != null) 
+				rs = queryWeek(time);
+			buttons[1].setEnabled(time != null);
 		} else {
 			index--;
 			if (index > -1)
 				rs = query(ids[index]);
 			else 
 				buttons[1].setEnabled(false);
-			buttons[2].setEnabled(ids.length > 0);
 		}
+		buttons[2].setEnabled(ids.length > 0);
 		
-		return refreshWith(rs, dk);
+		return refreshWith(rs);
 	}
 
-	private String refreshWith(ResultSet rs, int dk) {
+	private String refreshWith(ResultSet rs) {
 		try {
 			actionBlocked = true;
 			
-			if (rs != null && dk == 2) 
+			if (rs != null && kindOfDate == 2) 
 				if (registerNotes(rs) > 0) 
 					return all();
 			
-			titleCombo.setSelectedIndex(-1);
-			setDate("");
-			if (rs == null)
+			if (rs == null) {
+				titleCombo.setSelectedIndex(-1);
+				setDate("");
+//				setFontColor(Color.GRAY);
+				week = null;
 				return "";
+			}
 			
 			setTitle(rs.getString(2));
 			setDate(formatDate(rs.getLong(3)));
@@ -600,7 +660,7 @@ public class NotePicker extends JPanel implements ActionListener
 			return note;
 		} catch (Exception e) {
 			handle(e);
-			return refreshWith(null, dk);
+			return refreshWith(null);
 		}
 		finally {
 			actionBlocked = false;
@@ -609,96 +669,15 @@ public class NotePicker extends JPanel implements ActionListener
 		}
 	}
 
-	public String all() throws Exception {
-		String all = "";
-		for (int i = 0; i < records.length; i++) {
-			if (all.length() > 0)
-				all += "\n";
-			all += wrapNote(records[i]);
-		}
-		return all;
-	}
-
-	public String formatDate(long time) throws Exception {
-		return Util.formatDate(time, DatePicker.dateFormat);
-	}
-
-	public Date parseDate(String dateString) throws Exception {
-		return Util.parseDate(dateString, DatePicker.dateFormat);
-	}
-
-	public String wrapNote(Object... params) throws Exception {
-		String dateString = formatDate((Long)params[0]);
-		return String.format(noteFormat, dateString, params[1], params[2]);
-	}
-	
-	String noteFormat = "{{{ %s '%s'\n%s\n}}}";
-	Pattern notePattern = Pattern.compile("\\{\\{\\{ (.*) '(.*)'\\n(.*)\\n\\}\\}\\}");
-	
-	public boolean isWrapped(String text) {
-		return text.startsWith("{{{") && text.endsWith("}}}");
-	}
-
-	public String[][] getRecords(String text) {
-		ArrayList<String[]> list = new ArrayList<String[]>();
-		
-		for (MatchResult m : Util.findAllIn(text, notePattern)) 
-			list.add(new String[] {m.group(1), m.group(2), m.group(3)});
-		
-		return list.toArray(new String[0][]);
-	}
-	
-	private void clear() {
-		refreshWith(null, 0);
-		buttons[1].setEnabled(false);
-		buttons[2].setEnabled(false);
-		buttons[5].setEnabled(false);
-		buttons[6].setEnabled(false);
-		buttons[4].setEnabled(false);
-	}
-
-	private void handle(Exception e) {
-		if (e != null) 
-			e.printStackTrace();
-	}
-	
-	public String getDate() {
-		return date.getText();
-	}
-	
-	public void setDate(String text) {
-		date.setText(text);
-	}
-	
-	public void setTitle(String title) {
-		Util.comboEdit(titleCombo).setText(title);
-		for (int i = 0; i < patterns.length; i++) 
-			if (title.matches(patterns[i]))
-				titleCombo.setSelectedIndex(i);
-	}
-
-	public String getTitle() {
-		return Util.comboEdit(titleCombo).getText();
-	}
-	
-	public String getPattern() {
-		String title = getTitle();
-		for (int i = 0; i < patterns.length; i++) 
-			if (title.matches(patterns[i]))
-				return patterns[i];
-		return title.length() > 0 ? title : ".*";
-	}
-
 	private void pick() {
 		String pattern = getPattern();
 		String dateString = getDate();
 		try {
 			PreparedStatement ps;
 			
-			int dk = dateKind();
-			switch (dk) {
+			switch (kindOfDate) {
 			case 2:
-				long[] week = DatePicker.weekInterval(dateString, 1);
+				week = DatePicker.weekInterval(dateString, 1);
 				ps = preparePicking(pattern, week);
 				break;
 
@@ -717,10 +696,119 @@ public class NotePicker extends JPanel implements ActionListener
 			
 			registerNotes(ps.executeQuery());
 			
-			setText(dk == 2 ? all() : next());
+			setText(kindOfDate == 2 ? 
+					all() : 
+					next());
 		} catch (Exception e) {
 			handle(e);
 		}
+	}
+
+	public String all() throws Exception {
+		String all = String.format(wrapFormat, ":folding=explicit:");
+		for (int i = 0; i < records.length; i++) {
+			if (all.length() > 0)
+				all += "\n";
+			all += wrapNote(records[i]);
+		}
+		return all;
+	}
+
+	public String formatDate(long time) throws Exception {
+		return Util.formatDate(time, DatePicker.dateFormat);
+	}
+
+	public Date parseDate(String dateString) throws Exception {
+		return Util.parseDate(dateString, DatePicker.dateFormat);
+	}
+
+	public String wrapNote(Object... params) throws Exception {
+		if (Util.isAvailable(0, params) && params[0] instanceof Long) {
+			String dateString = formatDate((Long)params[0]);
+			return String.format(noteFormat2, dateString, 
+					Util.param("", 1, params), 
+					Util.param("", 2, params));
+		}
+		else
+			return String.format(noteFormat1, 
+					Util.param("", 0, params), 
+					Util.param("", 1, params));
+	}
+	
+	public static String wrapFormat = "{{{ %s }}}";
+	public static Pattern wrapPattern = Pattern.compile("(?s)\\{\\{\\{ (.*?) \\}\\}\\}");
+	
+	public static String noteFormat1 = "{{{ %s\n%s\n}}}";
+	public static String noteFormat2 = "{{{ %s '%s'\n%s\n}}}";
+	public static Pattern notePattern1 = 
+			Pattern.compile("(?s)\\{\\{\\{ ([^\\}]*?)\\n([^\\}]*?)\\n\\}\\}\\}");
+	public static Pattern notePattern2 = 
+			Pattern.compile("(?s)\\{\\{\\{ ([^\\}]*?) '([^\\}]*?)'\\n(.*?)\\n\\}\\}\\}");
+	
+	public boolean isWrapped(String text) {
+		return text.startsWith("{{{") && text.endsWith("}}}");
+	}
+
+	public String[][] getRecords(String text) {
+		ArrayList<String[]> list = new ArrayList<String[]>();
+		
+		for (MatchResult m : Util.findAllIn(text, notePattern2)) 
+			list.add(new String[] {m.group(1), m.group(2), m.group(3)});
+		
+		return list.toArray(new String[0][]);
+	}
+	
+	private void clear() {
+		refreshWith(null);
+		buttons[1].setEnabled(false);
+		buttons[2].setEnabled(false);
+		buttons[5].setEnabled(false);
+		buttons[6].setEnabled(false);
+		buttons[4].setEnabled(false);
+	}
+
+	private void handle(Exception e) {
+		if (e != null) 
+			e.printStackTrace();
+	}
+
+	private boolean isFontColor(Color clr) {
+		return date.getForeground() == clr;
+	}
+
+	private void setFontColor(Color clr) {
+		date.setForeground(clr);
+		Util.comboEdit(titleCombo).setForeground(clr);
+	}
+	
+	public String getDate() {
+		return date.getText();
+	}
+	
+	public void setDate(String text) {
+		date.setText(text);
+		setFontColor(Color.BLACK);
+	}
+	
+	public void setTitle(String title) {
+		JTextField comboEdit = Util.comboEdit(titleCombo);
+		comboEdit.setText(title);
+		setFontColor(Color.BLACK);
+		for (int i = 0; i < patterns.length; i++) 
+			if (title.matches(patterns[i]))
+				titleCombo.setSelectedIndex(i);
+	}
+
+	public String getTitle() {
+		return Util.comboEdit(titleCombo).getText();
+	}
+	
+	public String getPattern() {
+		String title = getTitle();
+		for (int i = 0; i < patterns.length; i++) 
+			if (title.matches(patterns[i]))
+				return patterns[i];
+		return title.length() > 0 ? title : ".*";
 	}
 	
 	private boolean actionBlocked = false;
