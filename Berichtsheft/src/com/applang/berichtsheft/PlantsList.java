@@ -55,6 +55,7 @@ public class PlantsList extends ListActivity {
     public static final int MENU_ITEM_DELETE = Menu.FIRST;
     public static final int MENU_ITEM_INSERT = Menu.FIRST + 1;
     public static final int MENU_ITEM_SORTBY = Menu.FIRST + 2;
+    public static final int MENU_ITEM_QUERY = Menu.FIRST + 3;
     private static final int ACTIVITY_TOGGLE_ORDER=5;
     int language, order;
     
@@ -164,6 +165,9 @@ public class PlantsList extends ListActivity {
         .setShortcut('4', 'a')
         .setIcon(android.R.drawable.ic_menu_add);
 
+        menu.add(0, MENU_ITEM_QUERY, 0, R.string.query)
+        .setShortcut('4', 'a')
+        .setIcon(android.R.drawable.ic_menu_add);
         // Generate any additional actions that can be performed on the
         // overall list.  In a normal install, there are no additional
         // actions found here, but this allows other applications to extend
@@ -233,6 +237,10 @@ public class PlantsList extends ListActivity {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			} **/
+        case MENU_ITEM_QUERY:
+            // Launch activity to insert a new item
+            startActivity(new Intent(this, PlantsQuery.class));
+            return true;
         }
         return super.onOptionsItemSelected(item);
     }

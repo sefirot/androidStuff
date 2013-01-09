@@ -40,6 +40,11 @@ public final class PlantInfo {
          * The default sort order for this table
          */
         public static final String DEFAULT_SORT_ORDER = "name ASC";
+        
+        /**
+         * The default sort order for this table
+         */
+        public static final String ROWID_SORT_ORDER = "_id ASC";
 
         /**
          * The local name of the plant

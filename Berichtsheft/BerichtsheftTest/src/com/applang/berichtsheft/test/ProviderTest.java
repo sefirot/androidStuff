@@ -105,15 +105,66 @@ public class ProviderTest extends ActivityInstrumentationTestCase2<BerichtsheftA
         assertEquals("Solanum lycopersicum", cursor.getString(3));
         assertEquals("xitomatl", cursor.getString(5));
     	
-        ImpexTask.doImpex(getActivity(), new String[]{fileName}, true);	//	Import
+       // ImpexTask.doImpex(getActivity(), new String[]{fileName}, true);	//	Import
         
-        assertEquals(0, contentResolver.query(
-        		Plants.CONTENT_URI, 
-        		PROJECTION_PLANTS, 
-        		Plants.NAME + "=?", new String[]{"Paradeiser"},
-                Plants.DEFAULT_SORT_ORDER).getCount());
+//        assertEquals(0, contentResolver.query(
+//        		Plants.CONTENT_URI, 
+//        		PROJECTION_PLANTS, 
+//        		Plants.NAME + "=?", new String[]{"Paradeiser"},
+//                Plants.DEFAULT_SORT_ORDER).getCount());
     };
 
+    private String[] PROJECTION_ID = new String[] {
+            Plants._ID, // 0
+            
+    };
+
+    public void testgetAllEntries() throws IOException {
+      	assertTrue(getActivity() instanceof BerichtsheftActivity);
+      	
+          ContentResolver contentResolver = getActivity().getContentResolver();
+          String fileName = "databases/plant_info.db";
+          ImpexTask.doImpex(getActivity(), new String[]{fileName}, false);	//	Export 
+          contentResolver.delete(Plants.CONTENT_URI, null, null);
+          
+          assertEquals(0, contentResolver.query(
+         		Plants.CONTENT_URI, 
+        		PROJECTION_PLANTS, 
+        		null, null, null).getCount());
+    	
+    	    
+          for (int i = 1; i < 21; i++) {
+        	
+        	String insertName = "testName" + i;
+        	ContentValues values = new ContentValues();
+        	values.put(Plants.NAME, insertName);
+        	contentResolver.insert(Plants.CONTENT_URI, values);
+        	
+        	if (i%2 == 0) {
+        		String deleteName = "testName" + (i - 1);
+        		contentResolver.delete(Plants.CONTENT_URI, Plants.NAME + "=?", new String[]{deleteName});
+        	}	
+          }
+    	
+          Cursor cursor = contentResolver.query(
+        		Plants.CONTENT_URI, 
+        		PROJECTION_ID, 
+        		null, null,
+                Plants.ROWID_SORT_ORDER);
+          assertEquals(10, cursor.getCount());
+          assertTrue(cursor.moveToFirst());
+          for ( int i= 1; i < 21;i++) {
+        	if (i%2 == 0) {
+        		assertEquals(i, cursor.getInt(0));
+        		cursor.moveToNext(); 
+            } 
+          }
+        
+       ImpexTask.doImpex(getActivity(), new String[]{fileName}, true);	//	Import
+        
+
+    };
+    
     public void impexTest(boolean flag) throws InterruptedException {
 		assertTrue(ImpexTask.isExternalStorageAvailable());
     	File directory = ImpexTask.directory(getActivity(), !flag);
