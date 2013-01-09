@@ -334,8 +334,8 @@ public class NotePicker extends JPanel implements ActionListener
 			clear();
 			
 			String scheme = Util.paramString("sqlite", 0, params);
-			if ("sqlite".equals(scheme) && !Util.fileExists(new File(db)))
-				return false;
+//			if ("sqlite".equals(scheme)/* && !Util.fileExists(new File(db))*/)
+//				return false;
 			
 			String driver = Util.paramString("org.sqlite.JDBC", 1, params);
 			Class.forName(driver);
@@ -645,9 +645,9 @@ public class NotePicker extends JPanel implements ActionListener
 					return all();
 			
 			if (rs == null) {
-				titleCombo.setSelectedIndex(-1);
-				setDate("");
-//				setFontColor(Color.GRAY);
+//				titleCombo.setSelectedIndex(-1);
+//				setDate("");
+				setFontColor(Color.GRAY);
 				week = null;
 				return "";
 			}
