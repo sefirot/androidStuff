@@ -13,13 +13,13 @@ import org.gjt.sp.jedit.GUIUtilities;
 import org.gjt.sp.jedit.jEdit;
 import org.gjt.sp.jedit.gui.RolloverButton;
 
-import com.applang.berichtsheft.ui.components.NotePicker;
+//import com.applang.berichtsheft.ui.components.NotePicker;
 
 public class BerichtsheftToolPanel extends JPanel {
 	private Berichtsheft pad;
 
 	private JLabel label = new JLabel();
-	private NotePicker notePicker;
+//	private NotePicker notePicker;
 
 	public BerichtsheftToolPanel(Berichtsheft qnpad) {
 		setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
@@ -29,11 +29,11 @@ public class BerichtsheftToolPanel extends JPanel {
 		labelBox.add(Box.createGlue());
 
 		String title = jEdit.getProperty(BerichtsheftPlugin.OPTION_PREFIX + "choose-file.title");
-		notePicker = new NotePicker(pad.textArea, pad.getFilename(), title);
+//		notePicker = new NotePicker(pad.textArea, pad.getFilename(), title);
 		propertiesChanged();
 
 		labelBox.add(label);
-		labelBox.add(notePicker);
+//		labelBox.add(notePicker);
 		labelBox.add(Box.createGlue());
 
 		add(labelBox);
@@ -61,10 +61,10 @@ public class BerichtsheftToolPanel extends JPanel {
 	void propertiesChanged() {
 		String dbName = pad.getFilename();
 		label.setText(dbName);
-		if (notePicker.openConnection(dbName)) {
-			String text = notePicker.next();
-			pad.textArea.setText(text);
-		}
+//		if (notePicker.openConnection(dbName)) {
+//			String text = notePicker.next();
+//			pad.textArea.setText(text);
+//		}
 		boolean show_filepath = jEdit.getProperty(BerichtsheftPlugin.OPTION_PREFIX + "show-filepath").equals("true");
 		label.setVisible(show_filepath);
 	}

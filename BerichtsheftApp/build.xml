@@ -46,10 +46,9 @@
     </path>
     
     <target name="build.prepare">
-		<property name="images" value="com/applang/berichtsheft/ui/components/images" />
-        <mkdir dir="${build.classes}/${images}"/>
-        <copy todir="${build.classes}/${images}" includeEmptyDirs="false">
-            <fileset dir="${basedir}/${src.dir}/${images}">
+        <mkdir dir="${build.classes}/images"/>
+        <copy todir="${build.classes}/images" includeEmptyDirs="false">
+            <fileset dir="${basedir}/${src.dir}/images">
         		<filename name="*" />
             </fileset>
         </copy>

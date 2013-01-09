@@ -14,6 +14,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
@@ -45,7 +46,7 @@ import org.xml.sax.helpers.XMLReaderFactory;
 import com.applang.JsonUtil;
 import com.applang.Util;
 import com.applang.ZipUtil;
-import com.applang.berichtsheft.Main;
+import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.ui.components.DatePicker;
 import com.applang.berichtsheft.ui.components.NotePicker;
 
@@ -79,12 +80,18 @@ public class MiscTests extends XMLTestCase
 		String kalenderWoche = String.format("%d/%d", weekInYear % 52, (year + 1) % 100);
 		assertEquals(kalenderWoche, Util.formatDate(millis, DatePicker.weekFormat));
 		
-		Date date = Util.parseDate("53/12", DatePicker.weekFormat);
-		millis = Util.weekInterval(date)[1];
-		assertEquals("2/13", Util.formatDate(millis, DatePicker.weekFormat));
+		long[] week = DatePicker.weekInterval("53/12", 1);
+		assertEquals("2/13", Util.formatDate(week[1], DatePicker.weekFormat));
+		String dateString = "1/13";
+		assertEquals(dateString, DatePicker.weekDate(week));
+		week = DatePicker.nextWeekInterval(dateString);
+		dateString = Util.formatDate(week[0], DatePicker.weekFormat);
+		assertEquals("2/13", dateString);
+		week = DatePicker.previousWeekInterval(dateString);
+		assertEquals("1/13", DatePicker.weekDate(week));
 		
 		millis = Util.dateInMillis(1954, -Calendar.JANUARY, 27);
-		String dateString = Util.formatDate(millis, DatePicker.weekFormat);
+		dateString = Util.formatDate(millis, DatePicker.weekFormat);
 		assertFalse(DatePicker.isCalendarDate(dateString));
 		assertTrue(DatePicker.isWeekDate(dateString));
 		int[] weekDate = DatePicker.parseWeekDate(dateString);
@@ -95,41 +102,63 @@ public class MiscTests extends XMLTestCase
 		assertTrue(weekDate[1] > 2000);
 	}
 
-	String dbName = "/home/lotharla/work/Niklas/androidStuff/BerichtsheftPlugin/databases/note_pad_2012-08.db";
+	String dbName = Util.relativePath("databases/note_pad_2012-08.db");
+	NotePicker np = new NotePicker(null);
+	long[] interval;
+
+	void setupNotePicking() throws ParseException {
+		assertTrue(np.openConnection(dbName));
+		interval = DatePicker.weekInterval("33/12", 1);
+		assertEquals(2, interval.length);
+	}
 
 	public void testNotePicking() throws Exception {
-		NotePicker np = new NotePicker(null);
-		assertTrue(np.openConnection(dbName));
-		assertTrue(np.buttons[1].isEnabled());
-		assertTrue(np.buttons[2].isEnabled());
-		
-		Date date = Util.parseDate("33/12", DatePicker.weekFormat);
-		long[] interval = Util.weekInterval(date);
-		assertEquals(2, interval.length);
+		setupNotePicking();
 
-		PreparedStatement ps = np.getConnection().prepareStatement("SELECT _id FROM notes where created between ? and ?");
+		PreparedStatement ps = np.getCon().prepareStatement("SELECT _id FROM notes where created between ? and ?");
 		ps.setLong(1, interval[0]);
 		ps.setLong(2, interval[1]);
-		assertEquals(11, np.registerNotes(ps));
+		assertEquals(11, np.registerNotes(ps.executeQuery()));
 		
 		np.setTitle("Bericht");
 		String pattern = np.getPattern();
 		assertFalse("Bericht".equals(pattern));
 		assertTrue(Util.matches("Bericht", pattern));
 		
-		ps = np.getConnection().prepareStatement("SELECT _id FROM notes where title regexp ?");
+		ps = np.getCon().prepareStatement("SELECT _id FROM notes where title regexp ?");
 		ps.setString(1, pattern);
-		assertEquals(17, np.registerNotes(ps));
+		assertEquals(17, np.registerNotes(ps.executeQuery()));
 		
-		ps = np.getConnection().prepareStatement("SELECT _id FROM notes where created between ? and ? and title regexp ?");
+		ps = np.getCon().prepareStatement("SELECT _id FROM notes where created between ? and ? and title regexp ?");
 		ps.setLong(1, interval[0]);
 		ps.setLong(2, interval[1]);
 		ps.setString(3, pattern);
-		assertEquals(5, np.registerNotes(ps));
+		assertEquals(5, np.registerNotes(ps.executeQuery()));
 		
 		np.setTitle("Bemerk");
 		ps.setString(3, np.getPattern());
-		assertEquals(4, np.registerNotes(ps));
+		assertEquals(4, np.registerNotes(ps.executeQuery()));
+	}
+
+	public void testNoteWrapping() throws Exception {
+		setupNotePicking();
+
+		PreparedStatement ps = np.preparePicking(np.getPattern(), interval);
+		assertEquals(11, np.registerNotes(ps.executeQuery()));
+		
+		String text = np.all();
+		assertTrue(np.isWrapped(text));
+		String[][] notes = np.getRecords(text);
+		for (int i = 0; i < notes.length; i++) {
+			for (int j = 0; j < notes[i].length; j++) 
+				if (j == 0)
+					assertEquals(np.formatDate((long)np.records[i][j]), notes[i][j]);
+				else
+					assertEquals(np.records[i][j], notes[i][j]);
+		}
+		
+		text = np.next();
+		assertFalse(np.isWrapped(text));
 	}
 
 	public void testRegexpInSqlite() throws Exception {
@@ -279,7 +308,7 @@ public class MiscTests extends XMLTestCase
 		String _content = Util.pathCombine(tempDir.getPath(), "_content.xml");
 		assertTrue(new File(content).renameTo(new File(_content)));
 		
-		assertTrue(Main.pipe(_content, content, new FileReader(paramsFilename)));
+		assertTrue(BerichtsheftApp.pipe(_content, content, new FileReader(paramsFilename)));
 //		Util.xmlTransform("scripts/control.xml", "scripts/content.xsl", content, "inputfile", _content);
 		
 		compare_input_output(_content, content);
@@ -304,7 +333,7 @@ public class MiscTests extends XMLTestCase
 	}
 
 	public void testMerge() {
-		assertTrue(Main.merge(
+		assertTrue(BerichtsheftApp.merge(
 				"Vorlagen/Tagesberichte.odt", 
 				"Dokumente/Tagesberichte.odt", 
 				"/home/lotharla/work/Niklas/note_pad.db", 

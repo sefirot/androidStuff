@@ -2,6 +2,7 @@ package com.applang.berichtsheft.ui.components;
 
 import java.awt.BorderLayout;
 import java.awt.Container;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.KeyboardFocusManager;
 import java.awt.event.ActionEvent;
@@ -14,12 +15,15 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.regex.MatchResult;
+import java.util.regex.Pattern;
 
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
@@ -28,12 +32,10 @@ import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
 import javax.swing.JTextField;
-import javax.swing.text.JTextComponent;
 
 import com.applang.Util;
-import com.applang.berichtsheft.Main;
+import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.ui.BerichtsheftTextArea;
 
 @SuppressWarnings("rawtypes") 
@@ -43,14 +45,18 @@ public class NotePicker extends JPanel implements ActionListener
 		JFrame f = new JFrame(NotePicker.class.getSimpleName());
 		f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		
-		JTextArea textArea = new BerichtsheftTextArea();
+		BerichtsheftTextArea textArea = new BerichtsheftTextArea();
 		
 		Container contentPane = f.getContentPane();
+		contentPane.setPreferredSize(new Dimension(1000, 100));
+		
 		NotePicker notePicker = new NotePicker(textArea, 
 				null,
 				"Berichtsheft database");
 		contentPane.add(notePicker, BorderLayout.NORTH);
-		contentPane.add(new JScrollPane(textArea), BorderLayout.CENTER);
+
+		JScrollPane scroll = new JScrollPane(textArea.textArea);
+		contentPane.add(scroll, BorderLayout.CENTER);
 		
 		f.pack();
 		f.setLocationRelativeTo(null);
@@ -65,24 +71,25 @@ public class NotePicker extends JPanel implements ActionListener
 	String[] patterns = new String[] {"(?i).*bericht.*", "(?i).*bemerk.*"};
 	
 	public static ImageIcon iconFrom(String path) {
-		URL url = NotePicker.class.getResource("images/" + path);
+		URL url = NotePicker.class.getResource("/images/" + path);
 		return new ImageIcon(url);
 	}
 	
 	public static String[] resources = new String[] {
-		"category of the note", "date / press 'ENTER' to refresh the view", 
+		"category", "calendar date / week date", 
 		"update_16x16.png", "update note", 
 		"calendar_16x16.png", "pick date from calendar", 
-		"Arrow Left_16x16.png", "browse previous note", 
-		"Arrow Right_16x16.png", "browse next note", 
+		"Arrow Left_16x16.png", "previous note", 
+		"Arrow Right_16x16.png", "next note", 
 		"book_open_16x16.png", "choose database", 
 		"merge_16x16.png", "fill document", 
 		"plus_16x16.png", "add note", 
 		"minus_16x16.png", "delete note", 
 		"abc_16x16.png", "spell check", 
+		"refresh_16x16.png", "refresh view", 
 	};
 	
-	public JButton[] buttons = new JButton[8];
+	private JButton[] buttons = new JButton[9];
 	
 	JButton button(int n) {
 		int m = n + 2;
@@ -108,43 +115,41 @@ public class NotePicker extends JPanel implements ActionListener
 		changeButtonFace(5, this.dirty ? -1 : 5);
 	}
 
-	JTextComponent textArea = null;
+	TextComponent textArea = null;
 
 	private boolean hasTextArea() {
 		return this.textArea != null;
 	}
+
+	private void setText(String text) {
+		if (hasTextArea()) 
+			this.textArea.setText(text);
+	}
+
+	private String getText() {
+		return hasTextArea() ? this.textArea.getText() : null;
+	}
 	
-	private void setupTextArea(JTextComponent textArea) {
-		this.textArea = textArea;
+	public void setupTextArea() {
 		if (hasTextArea()) {
 			this.textArea.addKeyListener(new KeyAdapter() {
 				@Override
 				public void keyTyped(KeyEvent e) {
 					setDirty(true);
 				}
-				@Override
-				public void keyPressed(KeyEvent e) {
-					if (e.getKeyCode() == KeyEvent.VK_TAB) {
-						e.consume();
-						KeyboardFocusManager.getCurrentKeyboardFocusManager().focusNextComponent();
-					}
-					if (e.getKeyCode() == KeyEvent.VK_TAB && e.isShiftDown()) {
-						e.consume();
-						KeyboardFocusManager.getCurrentKeyboardFocusManager().focusPreviousComponent();
-					}
-				}
 			});
 		}
 	}
 
 	@SuppressWarnings("unchecked")
-	public NotePicker(JTextComponent textArea, Object... params) {
-		setupTextArea(textArea);
+	public NotePicker(TextComponent textArea, Object... params) {
+		this.textArea = textArea;
+		setupTextArea();
 		
 		this.dbName = Util.paramString("databases/*", 0, params);
 		final String caption = Util.paramString("Notes database", 1, params);
 		
-		this.setLayout(new FlowLayout());
+		this.setLayout(new FlowLayout(FlowLayout.LEADING));
 		
 		JButton open = button(3);
 		add(open);
@@ -155,6 +160,31 @@ public class NotePicker extends JPanel implements ActionListener
 			}
 		});
 		
+		date.setHorizontalAlignment(JTextField.CENTER);
+		date.setToolTipText(resources[1]);
+		date.addKeyListener(new KeyAdapter() {
+			@Override
+			public void keyTyped(KeyEvent e) {
+				checkMergePossible();
+			}
+		});
+		Util.addFocusObserver(date);
+		add(date);
+		date.addActionListener(this);
+		
+		final JButton pick = button(0);
+		pick.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent ae) {
+				String dateString = new DatePicker(pick, getDate()).getDateString();
+				NotePicker.this.requestFocus();
+				setDate(dateString);
+        		checkMergePossible();
+        		pick();
+				date.requestFocusInWindow();
+			}
+		});
+		add(pick);
+		
 		titleCombo.setEditable(true);
 		titleCombo.setToolTipText(resources[0]);
 		for (String t : titles)
@@ -162,37 +192,18 @@ public class NotePicker extends JPanel implements ActionListener
 		titleCombo.setSelectedIndex(-1);
 		Util.addFocusObserver(Util.comboEdit(titleCombo));
 		add(titleCombo);
+		titleCombo.addActionListener(this);
 		
-		date.setHorizontalAlignment(JTextField.CENTER);
-		date.setToolTipText(resources[1]);
-		date.addKeyListener(new KeyAdapter() {
-			@Override
-			public void keyTyped(KeyEvent e) {
-				checkMergePossible(date.getText());
-			}
-		});
-		date.addActionListener(this);
-		Util.addFocusObserver(date);
-		add(date);
-		
-		final JButton pick = button(0);
-		pick.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent ae) {
-				String dateString = new DatePicker(pick, date.getText()).getDateString();
-				NotePicker.this.requestFocus();
-				date.setText(dateString);
-        		checkMergePossible(dateString);
-				date.requestFocusInWindow();
-			}
-		});
-		add(pick);
+		JButton refresh = button(8);
+		add(refresh);
+		refresh.addActionListener(this);
 		
 		JButton prev = button(1);
 		add(prev);
 		prev.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent ae) {
 				updateOnRequest(caption);
-				setNote(previous());
+				setText(previous());
 			}
 		});
 		JButton next = button(2);
@@ -200,7 +211,7 @@ public class NotePicker extends JPanel implements ActionListener
 		next.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				updateOnRequest(caption);
-				setNote(next());
+				setText(next());
 			}
 		});
 		
@@ -209,7 +220,7 @@ public class NotePicker extends JPanel implements ActionListener
 		spell.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				if (hasTextArea()) {
-					setDirty(Main.spell(NotePicker.this.textArea) || isDirty());
+					setDirty(NotePicker.this.textArea.spellcheck() || isDirty());
 				}
 			}
 		});
@@ -218,9 +229,8 @@ public class NotePicker extends JPanel implements ActionListener
 		add(insert);
 		insert.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent ae) {
-				String dateString = date.getText();
-				if (hasTextArea() && DatePicker.isCalendarDate(dateString)) {
-					updateOrInsert(getPattern(), dateString, true);
+				if (hasTextArea() && dateKind() == 1) {
+					updateOrInsert(getPattern(), getDate(), true);
 				}
 			}
 		});
@@ -228,8 +238,8 @@ public class NotePicker extends JPanel implements ActionListener
 		add(delete);
 		delete.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent ae) {
-				String dateString = date.getText();
-				if (hasTextArea() && DatePicker.isCalendarDate(dateString)) 
+				if (hasTextArea() && dateKind() == 1) {
+					String dateString = getDate();
 					if (JOptionPane.YES_OPTION == JOptionPane.showConfirmDialog(
 							NotePicker.this, String.format("delete '%s' on '%s'", getTitle(), dateString), 
 							caption, 
@@ -237,24 +247,24 @@ public class NotePicker extends JPanel implements ActionListener
 					{
 						try {
 							delete(getPattern(), dateString);
-							if (retrieveNotes())
-								setNote(next());
+							setNext();
 						} catch (Exception e) {
 							handle(e);
 						}
 					}
+				}
 			}
 		});
 		JButton merge = button(4);
 		add(merge);
 		merge.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				String dateString = date.getText();
-				if (DatePicker.isWeekDate(dateString)) {
+				String dateString = getDate();
+				if (dateKind() == 2) {
 					updateOnRequest(caption);
 					int[] weekDate = DatePicker.parseWeekDate(dateString);
 					String docName = "Tagesberichte_" + String.format("%d_%d", weekDate[1], weekDate[0]) + ".odt";
-					if (Main.merge(
+					if (BerichtsheftApp.merge(
 						"Vorlagen/Tagesberichte.odt", 
 						"Dokumente/" + docName, 
 						dbName, 
@@ -272,12 +282,22 @@ public class NotePicker extends JPanel implements ActionListener
 		clear();
 	}
 
-	private void checkMergePossible(String dateString) {
-		buttons[4].setEnabled(DatePicker.isWeekDate(dateString));
+	int dateKind() {
+		String dateString = getDate();
+		if (DatePicker.isWeekDate(dateString))
+			return 2;
+		else if (DatePicker.isCalendarDate(dateString))
+			return 1;
+		else
+			return 0;
+	}
+
+	private void checkMergePossible() {
+		buttons[4].setEnabled(dateKind() == 2);
 	}
 
 	private void updateOnRequest(String caption) {
-		String dateString = date.getText();
+		String dateString = getDate();
 		if (isDirty() && JOptionPane.YES_OPTION == JOptionPane.showConfirmDialog(
 				NotePicker.this, String.format("update '%s' on '%s'", getTitle(), dateString), 
 				caption, 
@@ -292,7 +312,7 @@ public class NotePicker extends JPanel implements ActionListener
 		if (file != null) {
 			dbName = file.getPath();
 			if (openConnection(dbName)) 
-				setNote(next());
+				setNext();
 			
 			titleCombo.requestFocusInWindow();
 		}
@@ -300,7 +320,7 @@ public class NotePicker extends JPanel implements ActionListener
 
 	private Connection con = null;
 
-	public Connection getConnection() {
+	public Connection getCon() {
 		return con;
 	}
 
@@ -312,16 +332,17 @@ public class NotePicker extends JPanel implements ActionListener
 			
 			clear();
 			
+			if (!Util.fileExists(new File(dbName)))
+				return false;
+			
 			Class.forName("org.sqlite.JDBC");
 			con = DriverManager.getConnection("jdbc:sqlite:" + dbName);
 			Statement st = con.createStatement();
 			
 			rs = st.executeQuery("select name from sqlite_master where type = 'table'");
-		    while (rs.next()) {
-		        if	(rs.getString(1).equals("notes")) {
-		        	return retrieveNotes();
-		        }
-		    }
+		    while (rs.next()) 
+		        if (rs.getString(1).equals("notes")) 
+		        	return true;
 		    
 		    st.execute("CREATE TABLE notes (" +
 		    		"_id INTEGER PRIMARY KEY," +
@@ -349,42 +370,82 @@ public class NotePicker extends JPanel implements ActionListener
 	
 	private Long[] ids = null;
 	private int index = -1;
-
-	public int registerNotes(PreparedStatement ps) throws SQLException {
-		ArrayList<Long> list = new ArrayList<Long>();
+	public Object[][] records = null;
+	
+	public int registerNotes(ResultSet rs) throws SQLException {
+		ArrayList<Long> idlist = new ArrayList<Long>();
+		ArrayList<Object[]> reclist = new ArrayList<Object[]>();
 		
-		ResultSet rs = ps.executeQuery();
-		while (rs.next())
-			list.add(rs.getLong(1));
+		ResultSetMetaData rsmd = rs.getMetaData();
+		int cols = rsmd.getColumnCount();
+		boolean c = cols > 1;
+		
+		while (rs.next()) {
+			idlist.add(rs.getLong(1));
+			if (c) {
+				ArrayList<Object> list = new ArrayList<Object>();
+				for (int i = 2; i <= cols; i++)
+					list.add(rs.getObject(i));
+				reclist.add(list.toArray());
+			}
+		}
 		rs.close();
 		
-		ids = Util.arraycast(list.toArray(), new Long[0]);
-		index = -1;
+		records = reclist.toArray(new Object[0][]);
+		index = ids != null && idlist.size() == 1 ? 
+				Arrays.asList(ids).indexOf(idlist.get(0)) : -1;
+		if (index < 0)
+			ids = idlist.toArray(new Long[0]);
+		else
+			index--;
 		
 		boolean b = ids.length > 0;
-		buttons[1].setEnabled(b);
-		buttons[2].setEnabled(b);
+		buttons[1].setEnabled(b || c);
+		buttons[2].setEnabled(b || c);
 		buttons[5].setEnabled(hasTextArea());
 		buttons[6].setEnabled(b);
 		return ids.length;
 	}
 	
 	private boolean retrieveNotes() throws SQLException {
-		date.setText("");
+		setDate("");
 		PreparedStatement ps = con.prepareStatement("select _id from notes where title regexp ? order by created, title");
 		ps.setString(1, getPattern());
-		int numberOfNotes = registerNotes(ps);
+		int numberOfNotes = registerNotes(ps.executeQuery());
 		return numberOfNotes > 0;
 	}
 	
-	PreparedStatement preparePicking(String pattern, long time)	throws Exception {
-		PreparedStatement ps = con.prepareStatement("SELECT _id FROM notes where title regexp ? and created = ?");
-		ps.setString(1, pattern);
-		ps.setLong(2, time);
+	private void setNext(Object... params) {
+		try {
+			if (retrieveNotes()) {
+				this.index = Util.paramInteger(this.index, 0, params);
+				setText(next());
+			}
+		} catch (Exception e) {
+			handle(e);
+		}
+	}
+	
+	public PreparedStatement preparePicking(String pattern, long... time) throws Exception {
+		if (con == null || time.length < 1)
+			return null;
+		
+		PreparedStatement ps;
+		if (time.length < 2) {
+			ps = con.prepareStatement("SELECT _id FROM notes where title regexp ? and created = ?");
+			ps.setString(1, pattern);
+			ps.setLong(2, time[0]);
+		}
+		else {
+			ps = con.prepareStatement("SELECT _id,created,title,note FROM notes where created between ? and ? and title regexp ?");
+			ps.setLong(1, time[0]);
+			ps.setLong(2, time[1] - 1);
+			ps.setString(3, pattern);
+		}
 		return ps;
 	}
 
-	int update(Long id, String note) throws Exception {
+	private int update(Long id, String note) throws Exception {
 		PreparedStatement ps = con.prepareStatement("UPDATE notes SET note = ?, modified = ? where _id = ?");
 		ps.setString(1, note);
 		ps.setLong(2, new Date().getTime());
@@ -392,7 +453,7 @@ public class NotePicker extends JPanel implements ActionListener
 		return ps.executeUpdate();
 	}
 
-	int insert(Long id, String title, String note, long time) throws Exception {
+	private int insert(Long id, String title, String note, long time) throws Exception {
 		PreparedStatement ps = con.prepareStatement("INSERT INTO notes (_id,title,note,created,modified) VALUES (?,?,?,?,?)");
 		ps.setLong(1, id);
 		ps.setString(2, title);
@@ -401,36 +462,9 @@ public class NotePicker extends JPanel implements ActionListener
 		ps.setLong(5, time);
 		return ps.executeUpdate();
 	}
-
-	private void updateOrInsert(String pattern, String dateString, boolean retrieve) {
-		try {
-			long time = Util.parseDate(dateString, DatePicker.dateFormat).getTime();
-			PreparedStatement ps = preparePicking(pattern, time);
-			ResultSet rs = ps.executeQuery();
-			long id;
-			if (rs.next()) {
-				id = rs.getLong(1);
-				update(id, getNote());
-			}
-			else {
-				rs.close();
-				rs = con.createStatement().executeQuery("SELECT max(_id) FROM notes");
-				id = rs.next() ? rs.getLong(1) : -1;
-				insert(++id, getTitle(), getNote(), time);
-			}
-			rs.close();
-			
-			if (retrieve && retrieveNotes()) {
-				index = Arrays.asList(ids).indexOf(id) - 1;
-				setNote(next());
-			}
-		} catch (Exception e) {
-			handle(e);
-		}
-	}
-
+	
 	private void delete(String pattern, String dateString) throws Exception {
-		long time = Util.parseDate(dateString, DatePicker.dateFormat).getTime();
+		long time = parseDate(dateString).getTime();
 		PreparedStatement ps = preparePicking(pattern, time);
 		ResultSet rs = ps.executeQuery();
 		if (rs.next()) {
@@ -441,8 +475,50 @@ public class NotePicker extends JPanel implements ActionListener
 		}
 		rs.close();
 	}
+
+	private long updateOrInsert(String pattern, String dateString, String note) {
+		try {
+			long time = parseDate(dateString).getTime();
+			PreparedStatement ps = preparePicking(pattern, time);
+			ResultSet rs = ps.executeQuery();
+			
+			long id;
+			if (rs.next()) {
+				id = rs.getLong(1);
+				update(id, note);
+			}
+			else {
+				rs.close();
+				rs = con.createStatement().executeQuery("SELECT max(_id) FROM notes");
+				id = rs.next() ? rs.getLong(1) : -1;
+				insert(++id, getTitle(), note, time);
+			}
+			
+			rs.close();
+			return id;
+		} catch (Exception e) {
+			handle(e);
+			return -1;
+		}
+	}
+
+	private void updateOrInsert(String pattern, String dateString, boolean retrieve) {
+		int index = -1;
+		
+		if (dateKind() == 2) {
+			for (String[] record : getRecords(getText())) 
+				updateOrInsert(record[1], record[0], record[2]);
+		}
+		else {
+			long id = updateOrInsert(pattern, dateString, getText());
+			index = Arrays.asList(ids).indexOf(id) - 1;
+		}
+		
+		if (retrieve) 
+			setNext(index);
+	}
 	
-	ResultSet query(Long id) {
+	ResultSet query(long id) {
 		try {
 			PreparedStatement ps = con.prepareStatement("SELECT note,title,created FROM notes where _id=?");
 			ps.setLong(1, id);
@@ -452,51 +528,79 @@ public class NotePicker extends JPanel implements ActionListener
 			return null;
 		}
 	}
+	
+	ResultSet query(String pattern, long[] week) {
+		try {
+			PreparedStatement ps = preparePicking(pattern, week);
+			return ps.executeQuery();
+		} catch (Exception e) {
+			handle(e);
+			return null;
+		}
+	}
 
 	public String next() {
+		int dk = dateKind();
 		ResultSet rs = null;
 		
-		index++;
-		if (index < ids.length)
-			rs = query(ids[index]);
-		else 
-			buttons[2].setEnabled(false);
-		buttons[1].setEnabled(ids.length > 0);
+		if (dk == 2) {
+			long[] week = DatePicker.nextWeekInterval(getDate());
+			rs = query(getPattern(), week);
+			setDate(DatePicker.weekDate(week));
+		} else {
+			index++;
+			if (index < ids.length)
+				rs = query(ids[index]);
+			else 
+				buttons[2].setEnabled(false);
+			buttons[1].setEnabled(ids.length > 0);
+		}
 		
-		return updateComponent(rs);
+		return refreshWith(rs, dk);
 	}
 
 	public String previous() {
+		int dk = dateKind();
 		ResultSet rs = null;
 		
-		index--;
-		if (index > -1)
-			rs = query(ids[index]);
-		else 
-			buttons[1].setEnabled(false);
-		buttons[2].setEnabled(ids.length > 0);
+		if (dk == 2) {
+			long[] week = DatePicker.previousWeekInterval(getDate());
+			rs = query(getPattern(), week);
+			setDate(DatePicker.weekDate(week));
+		} else {
+			index--;
+			if (index > -1)
+				rs = query(ids[index]);
+			else 
+				buttons[1].setEnabled(false);
+			buttons[2].setEnabled(ids.length > 0);
+		}
 		
-		return updateComponent(rs);
+		return refreshWith(rs, dk);
 	}
 
-	private String updateComponent(ResultSet rs) {
+	private String refreshWith(ResultSet rs, int dk) {
 		try {
 			actionBlocked = true;
 			
+			if (rs != null && dk == 2) 
+				if (registerNotes(rs) > 0) 
+					return all();
+			
 			titleCombo.setSelectedIndex(-1);
-			date.setText("");
+			setDate("");
 			if (rs == null)
 				return "";
 			
 			setTitle(rs.getString(2));
-			date.setText(Util.formatDate(rs.getLong(3), DatePicker.dateFormat));
+			setDate(formatDate(rs.getLong(3)));
 			
 			String note = rs.getString(1);
 			rs.close();
 			return note;
 		} catch (Exception e) {
 			handle(e);
-			return updateComponent(null);
+			return refreshWith(null, dk);
 		}
 		finally {
 			actionBlocked = false;
@@ -505,8 +609,47 @@ public class NotePicker extends JPanel implements ActionListener
 		}
 	}
 
+	public String all() throws Exception {
+		String all = "";
+		for (int i = 0; i < records.length; i++) {
+			if (all.length() > 0)
+				all += "\n";
+			all += wrapNote(records[i]);
+		}
+		return all;
+	}
+
+	public String formatDate(long time) throws Exception {
+		return Util.formatDate(time, DatePicker.dateFormat);
+	}
+
+	public Date parseDate(String dateString) throws Exception {
+		return Util.parseDate(dateString, DatePicker.dateFormat);
+	}
+
+	public String wrapNote(Object... params) throws Exception {
+		String dateString = formatDate((Long)params[0]);
+		return String.format(noteFormat, dateString, params[1], params[2]);
+	}
+	
+	String noteFormat = "{{{ %s '%s'\n%s\n}}}";
+	Pattern notePattern = Pattern.compile("\\{\\{\\{ (.*) '(.*)'\\n(.*)\\n\\}\\}\\}");
+	
+	public boolean isWrapped(String text) {
+		return text.startsWith("{{{") && text.endsWith("}}}");
+	}
+
+	public String[][] getRecords(String text) {
+		ArrayList<String[]> list = new ArrayList<String[]>();
+		
+		for (MatchResult m : Util.findAllIn(text, notePattern)) 
+			list.add(new String[] {m.group(1), m.group(2), m.group(3)});
+		
+		return list.toArray(new String[0][]);
+	}
+	
 	private void clear() {
-		updateComponent(null);
+		refreshWith(null, 0);
 		buttons[1].setEnabled(false);
 		buttons[2].setEnabled(false);
 		buttons[5].setEnabled(false);
@@ -519,6 +662,14 @@ public class NotePicker extends JPanel implements ActionListener
 			e.printStackTrace();
 	}
 	
+	public String getDate() {
+		return date.getText();
+	}
+	
+	public void setDate(String text) {
+		date.setText(text);
+	}
+	
 	public void setTitle(String title) {
 		Util.comboEdit(titleCombo).setText(title);
 		for (int i = 0; i < patterns.length; i++) 
@@ -526,7 +677,7 @@ public class NotePicker extends JPanel implements ActionListener
 				titleCombo.setSelectedIndex(i);
 	}
 
-	private String getTitle() {
+	public String getTitle() {
 		return Util.comboEdit(titleCombo).getText();
 	}
 	
@@ -538,13 +689,38 @@ public class NotePicker extends JPanel implements ActionListener
 		return title.length() > 0 ? title : ".*";
 	}
 
-	private void setNote(String text) {
-		if (hasTextArea()) 
-			this.textArea.setText(text);
-	}
+	private void pick() {
+		String pattern = getPattern();
+		String dateString = getDate();
+		try {
+			PreparedStatement ps;
+			
+			int dk = dateKind();
+			switch (dk) {
+			case 2:
+				long[] week = DatePicker.weekInterval(dateString, 1);
+				ps = preparePicking(pattern, week);
+				break;
 
-	private String getNote() {
-		return this.textArea.getText();
+			case 1:
+				long time = parseDate(dateString).getTime();
+				ps = preparePicking(pattern, time);
+				break;
+
+			default:
+				setDate("");
+				
+				ps = con.prepareStatement("SELECT _id FROM notes where title regexp ?");
+				ps.setString(1, pattern);
+				break;
+			}
+			
+			registerNotes(ps.executeQuery());
+			
+			setText(dk == 2 ? all() : next());
+		} catch (Exception e) {
+			handle(e);
+		}
 	}
 	
 	private boolean actionBlocked = false;
@@ -552,36 +728,7 @@ public class NotePicker extends JPanel implements ActionListener
 	@Override
 	public void actionPerformed(ActionEvent ae) {
 		if (con != null && !actionBlocked) {
-			String pattern = getPattern();
-			String dateString = date.getText();
-			try {
-				PreparedStatement ps;
-				
-				if (DatePicker.isCalendarDate(dateString )) {
-					long time = Util.parseDate(dateString, DatePicker.dateFormat).getTime();
-					ps = preparePicking(pattern, time);
-				}
-				else if (DatePicker.isWeekDate(dateString)) {
-	        		Date date = Util.parseDate(dateString, DatePicker.weekFormat);
-	        		long[] interval = Util.weekInterval(date);
-	        		
-	    			ps = con.prepareStatement("SELECT _id FROM notes where created between ? and ? and title regexp ?");
-	    			ps.setLong(1, interval[0]);
-	    			ps.setLong(2, interval[1]);
-	    			ps.setString(3, pattern);
-				}
-				else {
-					date.setText("");
-	        		
-	    			ps = con.prepareStatement("SELECT _id FROM notes where title regexp ?");
-	    			ps.setString(1, pattern);
-				}
-				
-				registerNotes(ps);
-				setNote(next());
-			} catch (Exception e) {
-				handle(e);
-			}
+			pick();
 		}
 	}
 
