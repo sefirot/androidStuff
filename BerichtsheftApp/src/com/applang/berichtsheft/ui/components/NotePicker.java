@@ -333,12 +333,10 @@ public class NotePicker extends JPanel implements ActionListener
 			
 			clear();
 			
-			String scheme = Util.paramString("sqlite", 0, params);
-//			if ("sqlite".equals(scheme)/* && !Util.fileExists(new File(db))*/)
-//				return false;
-			
 			String driver = Util.paramString("org.sqlite.JDBC", 1, params);
 			Class.forName(driver);
+			
+			String scheme = Util.paramString("sqlite", 0, params);
 			con = DriverManager.getConnection("jdbc:" + scheme + ":" + db);
 			Statement st = con.createStatement();
 			

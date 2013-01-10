@@ -11,12 +11,12 @@
 	<classpathentry kind="lib" path=".jedit/jars/xercesImpl.jar"/>
 	<classpathentry kind="lib" path=".jedit/jars/xml-apis.jar"/>
 	<classpathentry kind="lib" path=".jedit/jars/xmlunit-1.3.jar"/>
-	<classpathentry kind="lib" path="/home/lotharla/work/Niklas/androidStuff/BerichtsheftApp/.jedit/jars/CommonControls.jar"/>
-	<classpathentry kind="lib" path="/home/lotharla/work/Niklas/androidStuff/BerichtsheftApp/.jedit/jars/ErrorList.jar"/>
-	<classpathentry kind="lib" path="/home/lotharla/work/Niklas/androidStuff/BerichtsheftApp/.jedit/jars/hunspell.jar"/>
-	<classpathentry kind="lib" path="/home/lotharla/work/Niklas/androidStuff/BerichtsheftApp/.jedit/jars/jna.jar"/>
-	<classpathentry kind="lib" path="/home/lotharla/work/Niklas/androidStuff/BerichtsheftApp/.jedit/jars/kappalayout.jar"/>
-	<classpathentry kind="lib" path="/home/lotharla/work/Niklas/androidStuff/BerichtsheftApp/.jedit/jars/SpellCheck.jar"/>
-	<classpathentry kind="lib" path="/home/lotharla/mysql-connector-java-5.1.22/mysql-connector-java-5.1.22-bin.jar"/>
+	<classpathentry kind="lib" path=".jedit/jars/CommonControls.jar"/>
+	<classpathentry kind="lib" path=".jedit/jars/ErrorList.jar"/>
+	<classpathentry kind="lib" path=".jedit/jars/hunspell.jar"/>
+	<classpathentry kind="lib" path=".jedit/jars/jna.jar"/>
+	<classpathentry kind="lib" path=".jedit/jars/kappalayout.jar"/>
+	<classpathentry kind="lib" path=".jedit/jars/SpellCheck.jar"/>
+	<classpathentry kind="lib" path=".jedit/jars/mysql-connector-java-5.1.22-bin.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

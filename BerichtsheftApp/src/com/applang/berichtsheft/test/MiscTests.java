@@ -168,7 +168,7 @@ public class MiscTests extends XMLTestCase
 		for (int i = 0; i < notes.length; i++) {
 			for (int j = 0; j < notes[i].length; j++) 
 				if (j == 0)
-					assertEquals(np.formatDate((long)np.records[i][j]), notes[i][j]);
+					assertEquals(np.formatDate((Long)np.records[i][j]), notes[i][j]);
 				else
 					assertEquals(np.records[i][j], notes[i][j]);
 		}
