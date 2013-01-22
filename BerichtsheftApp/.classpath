@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" path="src"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/3"/>
 	<classpathentry kind="lib" path=".jedit/jedit.jar" sourcepath="/home/lotharla/jEdit/5.0pre1"/>
 	<classpathentry kind="lib" path=".jedit/jars/org.apache.sling.commons.json-2.0.6.jar"/>
@@ -18,5 +17,6 @@
 	<classpathentry kind="lib" path=".jedit/jars/kappalayout.jar"/>
 	<classpathentry kind="lib" path=".jedit/jars/SpellCheck.jar"/>
 	<classpathentry kind="lib" path=".jedit/jars/mysql-connector-java-5.1.22-bin.jar"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
