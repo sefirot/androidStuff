@@ -18,10 +18,13 @@ import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.List;
 import java.util.regex.MatchResult;
+import java.util.regex.Pattern;
 
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.sax.SAXResult;
@@ -30,8 +33,12 @@ import javax.xml.transform.sax.SAXTransformerFactory;
 import javax.xml.transform.sax.TransformerHandler;
 import javax.xml.transform.stream.StreamSource;
 
-import junit.framework.*;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.*;
 
+import org.apache.sling.commons.json.JSONArray;
+import org.apache.sling.commons.json.JSONObject;
+import org.apache.sling.commons.json.JSONTokener;
 import org.apache.xml.serializer.OutputPropertiesFactory;
 import org.apache.xml.serializer.Serializer;
 import org.apache.xml.serializer.SerializerFactory;
@@ -78,7 +85,7 @@ public class MiscTests extends XMLTestCase
 		int year = 2012;
 		int weekInYear = 53;
 		int dayInWeek = 2;
-		long millis = Util.dateInMillis(year, weekInYear, dayInWeek);
+		Long millis = Util.dateInMillis(year, weekInYear, dayInWeek);
 		assertEquals(Util.dateInMillis(2012, -Calendar.DECEMBER, 31), millis);
 		millis = Util.dateInMillis(2013, -Calendar.JANUARY, 1);
 		String kalenderWoche = String.format("%d/%d", weekInYear % 52, (year + 1) % 100);
@@ -101,9 +108,11 @@ public class MiscTests extends XMLTestCase
 		int[] weekDate = DatePicker.parseWeekDate(dateString);
 		assertEquals(5, weekDate[0]);
 		assertEquals(1954, weekDate[1]);
-		dateString = Util.formatDate(new Date().getTime(), DatePicker.weekFormat);
+		dateString = Util.formatDate(Util.now(), DatePicker.weekFormat);
 		weekDate = DatePicker.parseWeekDate(dateString);
 		assertTrue(weekDate[1] > 2000);
+		
+		assertThat(Util.parseDate("", DatePicker.dateFormat), is(equalTo(null)));
 	}
 
 	NotePicker np = new NotePicker(null);
@@ -111,9 +120,187 @@ public class MiscTests extends XMLTestCase
 	long[] interval;
 
 	void setupNotesDb(String db, Object... params) throws ParseException {
-		assertTrue(np.openConnection(db, params));
+		assertTrue("openConnection failed", np.openConnection(db, params));
 		interval = DatePicker.weekInterval("33/12", 1);
 		assertEquals(2, interval.length);
+	}
+	
+	int test_data(boolean empty, 
+			Pattern expat, int grp, 
+			int[][] dates, String[] categories, 
+			Integer... params) throws Exception 
+	{
+		Integer start = Util.param(0, 0, params);
+		Integer length = Util.param(dates != null ? dates.length : 0, 1, params);
+		InputStream is = MiscTests.class.getResourceAsStream("Kein Fehler im System.txt");
+		
+		if (empty)
+			np.delete(NotePicker.allCategories, NotePicker.allDates);
+		
+		MatchResult[] excerpts = Util.excerptsFrom(is, expat);
+		int cnt = 0;
+		long time = Util.dateFromTodayInMillis(0);
+		for (int i = start; i < excerpts.length; i++) {
+			MatchResult m = excerpts[i];
+			int j = i - start;
+			if (Util.isAvailable(j, categories))
+				np.setCategory(categories[j]);
+			time = dates != null && j < dates.length ?
+					Util.dateInMillis(dates[j][0], dates[j][1], dates[j][2]) : 
+					Util.dateFromTodayInMillis(1, new Date(time));
+			String dateString = np.formatDate(time);
+			String note = m.group(grp);
+			if (empty)
+				assertThat(
+						np.insert(1+i-start, note, np.getCategory(), time), 
+						is(greaterThan(-1)));
+			else
+				assertThat(
+						np.updateOrInsert(np.getPattern(), dateString, note), 
+						is(greaterThan(-1L)));
+			cnt++;
+			if (j >= length - 1)
+				break;
+		}
+		return cnt;
+	}
+
+	int[][] dates = new int[][] {
+			{2012, 52, Calendar.SUNDAY}, 
+			{2012, 52, Calendar.SUNDAY}, 
+			{2013, 1, Calendar.SUNDAY}, 
+	};
+	
+	String[] categories = new String[] {
+			"Bemerkung", 
+			"Bericht", 
+			"Bericht", 
+	};
+	
+	public void testData() throws Exception {
+		assertTrue(new File(test_db).delete());
+		assertTrue(np.openConnection(test_db));
+		
+		Pattern expat = Pattern.compile("(?s)\\n([^\\{\\}]+?)(?=\\n)");
+		
+		int cnt = test_data(true, expat, 1, dates, categories, 2);
+		assertEquals(dates.length, cnt);
+		
+		try {
+			assertThat(
+					np.insert(4, "", np.getCategory(), Util.dateInMillis(dates[2][0], dates[2][1], dates[2][2])), 
+					is(greaterThan(-1)));
+			fail("expected to fail on UNIQUE constraint in the notes table");
+		} catch (Exception e) {}
+	}
+
+	String test_db = "/tmp/test.db";
+	
+	public void testSystemData() throws Exception {
+		assertTrue(new File(test_db).delete());
+		assertTrue(np.openConnection(test_db));
+		
+		int[][] dates = new int[][] {{2012, -Calendar.DECEMBER, 24}};
+		Pattern expat = Pattern.compile("(?s)\\n([^\\{\\}]+?)(?=\\n)");
+		
+		int length = 19;
+		assertThat(test_data(true, expat, 1, 
+				dates, 
+				new String[] {"1."}, 
+				2, length), is(equalTo(length)));
+		length = 7;
+		assertThat(test_data(false, expat, 1, 
+				dates, 
+				new String[] {"2."}, 
+				21, length), is(equalTo(length)));
+		length = 10;
+		assertThat(test_data(false, expat, 1, 
+				dates, 
+				new String[] {"3."}, 
+				28, length), is(equalTo(length)));
+		
+		assertThat(np.keyLine(NotePicker.allCategories).length, is(equalTo(36)));
+	}
+	
+	public void testMysql() throws Exception {
+//		BerichtsheftTextArea textArea = new BerichtsheftTextArea();
+//		np = new NotePicker(textArea);
+		setupNotesDb("//localhost/note_pad?user=lotharla&password=gnalppA", 
+				"mysql", 
+				"com.mysql.jdbc.Driver", 
+				"note_pad");
+		
+		int cnt = test_data(true, NotePicker.notePattern1, 2, dates, null);
+		
+		PreparedStatement ps = np.getCon().prepareStatement("select _id from notes");
+		assertThat(np.registerNotes(ps.executeQuery()), is(equalTo(cnt)));
+		
+		try {
+			assertThat(
+					np.insert(4, "", np.getCategory(), Util.dateInMillis(dates[2][0], dates[2][1], dates[2][2])), 
+					is(greaterThan(-1)));
+			fail("expected to fail on UNIQUE constraint in the notes table");
+		} catch (Exception e) {}
+	}
+
+	public void testKeyLine() throws Exception {
+		testData();
+		
+		String[] keys = np.keyLine();
+		assertThat(Arrays.asList(keys).toString(), keys.length, is(equalTo(dates.length)));
+		
+		int i = 1;
+		long time = Util.dateInMillis(dates[i][0], dates[i][1], dates[i][2]);
+		np.setPattern(categories[i]);
+		
+		assertThat(np.previousNoteAvailable(time),	is(true));
+		assertThat(np.noteAvailable(time - 1),		is(false));
+		assertThat(np.noteAvailable(time),			is(true));
+		assertThat(np.noteAvailable(time + 1),		is(false));
+		assertThat(np.nextNoteAvailable(time),		is(true));
+		
+		long after = Util.dateInMillis(dates[2][0], dates[2][1], dates[2][2]);
+		long before = Util.dateInMillis(dates[0][0], dates[0][1], dates[0][2]);
+		assertThat(np.find(true, new long[]{time}),	is(equalTo(np.keyValue(after, categories[2]))));
+		assertThat(np.find(false, new long[]{time}), is(equalTo(np.keyValue(before, categories[0]))));
+		
+		interval = DatePicker.weekInterval("52/12", 1);
+		time = np.timeFromKey(np.find(true, interval));
+		assertThat(np.formatWeek(time), is(equalTo("1/13")));
+		
+		np.setPattern("Bemerkung");
+		assertThat(np.previousNoteAvailable(interval[0]),	is(false));
+		assertThat(np.noteAvailable(interval[0]),			is(true));
+		assertThat(np.nextNoteAvailable(interval[0]),		is(true));
+		
+		np.setPattern("Bericht");
+		assertThat(np.previousNoteAvailable(interval[0]),	is(true));
+		assertThat(np.noteAvailable(interval[0]),			is(true));
+		assertThat(np.nextNoteAvailable(interval[0]),		is(true));
+		
+		np.setPattern("Bemerkung");
+		assertThat(np.previousNoteAvailable(interval[1]),	is(true));
+		assertThat(np.noteAvailable(interval[1]),			is(false));
+		assertThat(np.nextNoteAvailable(interval[1]),		is(false));
+		
+		np.setPattern("Bericht");
+		assertThat(np.previousNoteAvailable(interval[1]),	is(true));
+		assertThat(np.noteAvailable(interval[1]),			is(true));
+		assertThat(np.nextNoteAvailable(interval[1]),		is(false));
+		
+		np.setPattern(NotePicker.allCategories);
+		assertThat(np.noteAvailable(interval[0]),			is(true));
+		assertThat(np.previousNoteAvailable(interval),	is(false));
+		assertThat(np.noteAvailable(interval),			is(true));
+		assertThat(np.nextNoteAvailable(interval),		is(true));
+		
+		interval = DatePicker.weekInterval("1/13", 1);
+		time = np.timeFromKey(np.find(false, interval));
+		assertThat(np.formatWeek(time), is(equalTo("52/12")));
+		
+		assertThat(np.previousNoteAvailable(interval),	is(true));
+		assertThat(np.noteAvailable(interval),			is(true));
+		assertThat(np.nextNoteAvailable(interval),		is(false));
 	}
 
 	public void testNotePicking() throws Exception {
@@ -122,11 +309,10 @@ public class MiscTests extends XMLTestCase
 		PreparedStatement ps = np.getCon().prepareStatement("SELECT _id FROM notes where created between ? and ?");
 		ps.setLong(1, interval[0]);
 		ps.setLong(2, interval[1]);
-		assertEquals(11, np.registerNotes(ps.executeQuery()));
+		assertTrue(0 < np.registerNotes(ps.executeQuery()));
 		
-		np.setTitle("Bericht");
+		np.setCategory("Bericht");
 		String pattern = np.getPattern();
-		assertFalse("Bericht".equals(pattern));
 		assertTrue(Util.matches("Bericht", pattern));
 		
 		ps = np.getCon().prepareStatement("SELECT _id FROM notes where title regexp ?");
@@ -139,9 +325,9 @@ public class MiscTests extends XMLTestCase
 		ps.setString(3, pattern);
 		assertEquals(5, np.registerNotes(ps.executeQuery()));
 		
-		np.setTitle("Bemerk");
+		np.setCategory("Bemerk");
 		ps.setString(3, np.getPattern());
-		assertEquals(4, np.registerNotes(ps.executeQuery()));
+		assertTrue(4 <= np.registerNotes(ps.executeQuery()));
 	}
 
 	public void testNoteWrapping() throws Exception {
@@ -153,13 +339,13 @@ public class MiscTests extends XMLTestCase
 		assertEquals(2, m.groupCount());
 		assertEquals("foo", m.group(1));
 		assertEquals("bar", m.group(2));
-		text = np.wrapNote(new Date().getTime(), "", "");
+		text = np.wrapNote(Util.now(), "", "");
 		m = Util.findFirstIn(text, NotePicker.notePattern2);
 		assertEquals(3, m.groupCount());
 		assertEquals("", m.group(2));
 		assertEquals("", m.group(3));
 
-		PreparedStatement ps = np.preparePicking(np.getPattern(), interval);
+		PreparedStatement ps = np.preparePicking(false, np.getPattern(), interval);
 		assertEquals(11, np.registerNotes(ps.executeQuery()));
 		
 		text = np.all();
@@ -173,40 +359,8 @@ public class MiscTests extends XMLTestCase
 					assertEquals(np.records[i][j], notes[i][j]);
 		}
 		
-		text = np.next();
-		assertFalse(np.isWrapped(text));
-	}
-
-	int[][] dates = new int[][] {
-			{2012, 52, Calendar.TUESDAY}, 
-			{2012, 52, Calendar.WEDNESDAY}, 
-			{2013, 1, Calendar.THURSDAY}, 
-	};
-	
-	public void testPersistence() throws Exception {
-		BerichtsheftTextArea textArea = new BerichtsheftTextArea();
-		np = new NotePicker(textArea);
-		setupNotesDb("//localhost/note_pad?user=lotharla&password=gnalppA", 
-				"mysql", 
-				"com.mysql.jdbc.Driver", 
-				"note_pad");
-		
-		InputStream is = MiscTests.class.getResourceAsStream("Kein Fehler im System.txt");
-		String text = Util.readAll(new BufferedReader(new InputStreamReader(is)));
-		is.close();
-		
-		int i = -1;
-		for (MatchResult m : Util.findAllIn(text, NotePicker.notePattern1)) {
-			np.setTitle(m.group(1));
-			long id = np.updateOrInsert(
-					np.getPattern(), 
-					np.formatDate(Util.dateInMillis(dates[++i][0], dates[i][1], dates[i][2])), 
-					m.group(2));
-			assertTrue(id > -1);
-		}
-		assertEquals(dates.length - 1, i);
-		
-		np.display();
+		np.pickNote(DatePicker.weekDate(interval), np.getPattern());
+		assertFalse(np.isWrapped(np.getText()));
 	}
 
 	public void testRegexpInSqlite() throws Exception {
@@ -391,18 +545,30 @@ public class MiscTests extends XMLTestCase
     public void testWeather() {
         try
         {
-        	int days = Util.daysToTodayFrom(2012, 40, 2);
+        	int days = 0;	//	Util.daysToTodayFrom(2012, 40, 2);
     	    String url = String.format(
     	    		"http://openweathermap.org/data/history?id=4885&cnt=%d&type=day", 
     	    		days + 1);
 		    
     	    long dt = Util.dateFromTodayInMillis(-days) / 1000;
-            System.out.println(dt);
+//			System.out.println(dt);
             
 //			JSONTokener tokener = new JSONTokener(reader);
             
-//			JSONObject json = JsonUtil.readFromUrl(url);
-//		    System.out.println(json.toString());
+			JSONObject json = JsonUtil.readFromUrl(url);
+//			System.out.println(json.toString());
+			Iterator<String> it = json.keys();
+			while (it.hasNext()) {
+				String key = it.next();
+				String value = json.getString(key);
+				System.out.println(String.format("%s : %s", key, value));
+			}
+			JSONArray list = json.getJSONArray("list");
+//		    System.out.println(list.toString(4));
+		    for (int i = 0; i < list.length(); i++) {
+				String value = list.getString(i);
+				System.out.println(value);
+			}
 //			final JSONParser parser = new JSONParser(new URL(url).openStream());
 //			JSONValue val = parser.nextValue();
 //			Util.contentsToFile(

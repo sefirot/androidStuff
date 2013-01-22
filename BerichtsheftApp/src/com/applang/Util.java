@@ -1,5 +1,6 @@
 package com.applang;
 
+import java.awt.Component;
 import java.awt.Container;
 import java.awt.KeyboardFocusManager;
 import java.awt.event.FocusEvent;
@@ -51,6 +52,8 @@ import javax.xml.transform.stream.StreamSource;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 
+import com.applang.berichtsheft.ui.components.NotePicker;
+
 public class Util
 {
     private static Calendar calendar = Calendar.getInstance();
@@ -78,15 +81,21 @@ public class Util
 	/**
 	 * calculates the milliseconds after 1970-01-01 for a given start of a day (midnight)
 	 * @param year
-	 * @param weekOfYear
-	 * @param dayOfWeek
+	 * @param weekOfYear (1..7) or -month (-11..0)
+	 * @param dayOfWeek or dayOfMonth
 	 * @return
 	 */
-	public static long dateInMillis(int year, int weekOfYear, int dayOfWeek) {
-		if (weekOfYear < 1)
-			setMonthDate(year, Math.abs(weekOfYear), dayOfWeek);
+	public static Long dateInMillis(Integer... numbers) {
+		Integer year = param(null, 0, numbers);
+		Integer weekOrMonth = param(null, 1, numbers);
+		Integer day = param(null, 2, numbers);
+		if (year == null || weekOrMonth == null || day == null)
+			return null;
+		
+		if (weekOrMonth < 1)
+			setMonthDate(year, -weekOrMonth, day);
 		else
-			setWeekDate(year, weekOfYear, dayOfWeek);
+			setWeekDate(year, weekOrMonth, day);
 		return calendar.getTimeInMillis();
 	}
 
@@ -97,12 +106,16 @@ public class Util
 	    return (int)(diff / (1000*60*60*24));
 	}
 
-	public static long dateFromTodayInMillis(int days) {
-	    Date today = new Date();
+	public static long dateFromTodayInMillis(int days, Object... params) {
+	    Date today = Util.param(new Date(), 0, params);
 	    calendar.setTime(today);
 		setMidnight();
 		calendar.add(Calendar.DATE, days);
 		return calendar.getTimeInMillis();
+	}
+
+	public static long now() {
+		return new Date().getTime();
 	}
 
 	public static long[] weekInterval(Date start, int weeks) {
@@ -126,9 +139,13 @@ public class Util
 		return dateFormat.format(new Date(millis));
 	}
 
-	public static Date parseDate(String dateString, String pattern) throws ParseException {
-		SimpleDateFormat dateFormat = new SimpleDateFormat(pattern);
-		return dateFormat.parse(dateString);
+	public static Date parseDate(String dateString, String pattern) {
+		try {
+			SimpleDateFormat dateFormat = new SimpleDateFormat(pattern);
+			return dateFormat.parse(dateString);
+		} catch (Exception e) {
+			return null;
+		}
 	}
 
 	public static boolean notNullOrEmpty(String value) {
@@ -242,7 +259,7 @@ public class Util
 	}
 
 	public static <T> boolean isAvailable(int index, T[] array) {
-		return index > -1 && index < array.length && array[index] != null;
+		return array != null && index > -1 && index < array.length && array[index] != null;
 	}
 	
 	public static Object[] reduceDepth(Object[] params) {
@@ -492,6 +509,12 @@ public class Util
 		return sb.toString();
 	}
 	
+	public static MatchResult[] excerptsFrom(InputStream is, Pattern pattern) throws IOException {
+		String text = readAll(new BufferedReader(new InputStreamReader(is)));
+		is.close();
+		return findAllIn(text, pattern);
+	}
+	
 	public static String contentsFromFile(File file) {
 		Reader fr = null;
 		try {
@@ -646,6 +669,68 @@ public class Util
 
 	public static JTextField comboEdit(JComboBox combo) {
 		return (JTextField)combo.getEditor().getEditorComponent();
+	}
+	
+	public interface ComponentFunction<T> {
+		public T apply(Component comp, Object[] parms);
+	}
+	
+	public static <T> Object[] iterateComponents(Container container, ComponentFunction<T> func, Object... params) {
+		params = reduceDepth(params);
+		
+		if (container != null) {
+			Component[] components = params.length > 0 ? 
+				container.getComponents() : 
+				new Component[] {container};
+				
+			for (Component comp : components)
+			{
+				T t = func.apply(comp, params);
+				
+				if (comp instanceof Container)
+					iterateComponents((Container)comp, func, t);
+			}
+		}
+		
+		return params;
+	}
+    
+	/**
+	 * @param container
+	 * @param pattern
+	 * @return	an array of those child <code>Component</code> objects of container which names match the given pattern
+	 */
+	public static Component[] findComponents(Container container, final String pattern) {
+		final ArrayList<Component> al = new ArrayList<Component>();
+		
+		iterateComponents(container, new ComponentFunction<Object[]>() {
+			public Object[] apply(Component comp, Object[] parms) {
+				String name = comp.getName();
+				if (name != null && name.matches(pattern))
+					al.add(comp);
+				
+				return parms;
+			}
+		}, null, null);
+		
+		return al.toArray(new Component[al.size()]);
+	}
+    
+	/**
+	 * @param <C> the type of the return value (derived from <code>Component</code>)
+	 * @param container	the containing <code>Component</code>
+	 * @param key	the name of the <code>Component</code> searched for in the container including descending components
+	 * @return	the <code>Component</code> found if unequal <code>null</code> otherwise nothing was found
+	 */
+	@SuppressWarnings("unchecked")
+	public static <C extends Component> C findComponent(Container container, String key) {
+		Component[] comps = findComponents(container, key);
+		if (comps.length > 0) 
+			try {
+				return (C)comps[0];
+			} catch (Exception e) {}
+		
+		return null;
 	}
 
 }
