@@ -22,9 +22,12 @@ public class DatePicker
 	String date;
 	JButton[] weeks, days;
 	Calendar cal = Calendar.getInstance();
+	
+	Long[] timeLine = null;
 
 	public DatePicker(Component relative, Object... params) {
 		date = Util.paramString("", 0, params);
+		timeLine = Util.param(null, 1, params);
 		
 		final JDialog dialog = new JDialog();
 		dialog.setModal(true);
@@ -117,6 +120,9 @@ public class DatePicker
 		sdf.applyPattern(weekFormat);
 		for (int x = dayOfWeek - 1, day = 1; day <= daysInMonth; x++, day++) {
 			days[x].setText("" + day);
+			boolean flag = timeLine != null && 
+					Arrays.binarySearch(timeLine, Util.dateInMillis(year, -month, day)) > -1; 
+			days[x].setForeground(flag ? Color.GREEN : Color.BLACK);
 			int week = weekInYear;
 			weekInYear = cal.get(Calendar.WEEK_OF_YEAR);
 			if (week != weekInYear) {
@@ -183,19 +189,22 @@ public class DatePicker
 	public static String weekDate(long[] week) {
 		int[] val0 = parseWeekDate(Util.formatDate(week[0], DatePicker.weekFormat));
 		int[] val1 = parseWeekDate(Util.formatDate(week[1], DatePicker.weekFormat));
-		if (val0[1] == val1[1])
-			return val0[0] + "/" + val0[1] % 100;
-		else
+		if (val1[0] - val0[0] == 1 && val0[1] != val1[1])
 			return val0[0] + "/" + val1[1] % 100;
+		else
+			return val0[0] + "/" + val0[1] % 100;
 	}
 	
 	public static long[] weekInterval(String dateString, int weeks) {
-		try {
-			Date date = Util.parseDate(dateString, DatePicker.weekFormat);
-			return Util.weekInterval(date, weeks);
-		} catch (ParseException e) {
+		Date date = Util.parseDate(dateString, DatePicker.weekFormat);
+		return weekInterval(date, weeks);
+	}
+	
+	public static long[] weekInterval(Date date, int weeks) {
+		if (date == null)
 			return null;
-		}
+		else
+			return Util.weekInterval(date, weeks);
 	}
 	
 	public static long[] nextWeekInterval(String dateString) {
