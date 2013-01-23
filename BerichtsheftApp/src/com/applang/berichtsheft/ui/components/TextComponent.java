@@ -7,5 +7,7 @@ public interface TextComponent
 	public void addKeyListener(KeyListener l);
 	public void setText(String t);
 	public String getText();
-	public boolean spellcheck();
+	public boolean isDirty();
+	public void setDirty(boolean dirty);
+	public void spellcheck();
 }

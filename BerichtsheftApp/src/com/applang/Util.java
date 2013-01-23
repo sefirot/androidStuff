@@ -27,6 +27,7 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Iterator;
+import java.util.Random;
 import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -56,7 +57,9 @@ import com.applang.berichtsheft.ui.components.NotePicker;
 
 public class Util
 {
-    private static Calendar calendar = Calendar.getInstance();
+    public static final int millisPerDay = 1000*60*60*24;
+	private static Calendar calendar = Calendar.getInstance();
+    private static Random random = new Random();
 
 	static void setWeekDate(int year, int weekOfYear, int dayOfWeek) {
 		calendar.set(Calendar.YEAR, year);
@@ -85,13 +88,7 @@ public class Util
 	 * @param dayOfWeek or dayOfMonth
 	 * @return
 	 */
-	public static Long dateInMillis(Integer... numbers) {
-		Integer year = param(null, 0, numbers);
-		Integer weekOrMonth = param(null, 1, numbers);
-		Integer day = param(null, 2, numbers);
-		if (year == null || weekOrMonth == null || day == null)
-			return null;
-		
+	public static long dateInMillis(int year, int weekOrMonth, int day) {
 		if (weekOrMonth < 1)
 			setMonthDate(year, -weekOrMonth, day);
 		else
@@ -103,19 +100,19 @@ public class Util
 		setWeekDate(year, weekOfYear, dayOfWeek);
 	    Date today = new Date();
 	    long diff = today.getTime() - calendar.getTimeInMillis();
-	    return (int)(diff / (1000*60*60*24));
+	    return (int)(diff / millisPerDay);
 	}
 
 	public static long dateFromTodayInMillis(int days, Object... params) {
 	    Date today = Util.param(new Date(), 0, params);
+	    boolean randomizeTimeOfDay = Util.param(false, 1, params);
 	    calendar.setTime(today);
 		setMidnight();
 		calendar.add(Calendar.DATE, days);
-		return calendar.getTimeInMillis();
-	}
-
-	public static long now() {
-		return new Date().getTime();
+		long timeInMillis = calendar.getTimeInMillis();
+		if (randomizeTimeOfDay)
+			timeInMillis += random.nextInt(millisPerDay);
+		return timeInMillis;
 	}
 
 	public static long[] weekInterval(Date start, int weeks) {
@@ -146,6 +143,10 @@ public class Util
 		} catch (Exception e) {
 			return null;
 		}
+	}
+
+	public static long now() {
+		return new Date().getTime();
 	}
 
 	public static boolean notNullOrEmpty(String value) {

@@ -37,14 +37,22 @@ public class JEditTextComponent implements TextComponent
 		else
 			return null;
 	}
+    
+	boolean dirty = false;
+	
+	public boolean isDirty() {
+		return dirty;
+	}
+
+	public void setDirty(boolean dirty) {
+		this.dirty = dirty;
+	}
 
 	@Override
-	public boolean spellcheck() {
+	public void spellcheck() {
 		if (hasTextArea()) {
 			SpellCheckPlugin.setBufferLanguage(view, view.getBuffer());
 			SpellCheckPlugin.checkBuffer(view, view.getBuffer());
-			return true;
 		}
-		return false;
 	}
 }

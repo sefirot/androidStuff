@@ -5,6 +5,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.awt.*;
 import java.awt.event.*;
+
 import javax.swing.*;
 
 import com.applang.Util;
@@ -66,85 +67,104 @@ public class DatePicker
 		days = d.toArray(new JButton[]{});
 		
 		JPanel p2 = new JPanel(new GridLayout(1, 3));
-		JButton btn = new JButton("<<");
-		btn.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent ae) {
-				year--;
-				displayDate();
-			}
-		});
+		JButton btn = new JButton(moves[0]);
+		btn.addActionListener(moveMonth);
 		p2.add(btn);
-		btn = new JButton("<");
-		btn.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent ae) {
-				month--;
-				displayDate();
-			}
-		});
+		btn = new JButton(moves[1]);
+		btn.addActionListener(moveMonth);
 		p2.add(btn);
 		p2.add(lbl);
-		btn = new JButton(">");
-		btn.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent ae) {
-				month++;
-				displayDate();
-			}
-		});
+		btn = new JButton(moves[2]);
+		btn.addActionListener(moveMonth);
 		p2.add(btn);
-		btn = new JButton(">>");
-		btn.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent ae) {
-				year++;
-				displayDate();
-			}
-		});
+		btn = new JButton(moves[3]);
+		btn.addActionListener(moveMonth);
 		p2.add(btn);
 		dialog.add(p2, BorderLayout.NORTH);
 		dialog.add(p1, BorderLayout.CENTER);
 		dialog.pack();
-		dialog.setLocationRelativeTo(relative);
-		setDateString(Util.paramString("", 0, params));
+		if (relative != null)
+			dialog.setLocationRelativeTo(relative);
+		else
+			dialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+		setDateString(date);
 		dialog.setTitle("Date Picker");
 		dialog.setVisible(true);
 	}
+	
+	String[] moves = new String[] {"<<", "<", ">", ">>", };
 
+	ActionListener moveMonth = new ActionListener() {
+		@Override
+		public void actionPerformed(ActionEvent e) {
+			switch (Arrays.asList(moves).indexOf(e.getActionCommand())) {
+			case 0:
+				year--;
+				break;
+			case 1:
+				month--;
+				break;
+			case 2:
+				month++;
+				break;
+			case 3:
+				year++;
+				break;
+			}
+			displayDate();
+		}
+	};
+	
 	void displayDate() {
 		sdf.applyPattern(monthFormat);
 		cal.set(year, month, 1);
 		lbl.setText(sdf.format(cal.getTime()));
-		for (int x = 0; x < days.length; x++) days[x].setText("");
-		for (int x = 0; x < weeks.length; x++) weeks[x].setText("");
+		clearDisplay();
 		int dayOfWeek = cal.get(Calendar.DAY_OF_WEEK);
 		int daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH);
 		int weekInYear = 0;
 		sdf.applyPattern(weekFormat);
 		for (int x = dayOfWeek - 1, day = 1; day <= daysInMonth; x++, day++) {
-			days[x].setText("" + day);
-			boolean flag = timeLine != null && 
-					Arrays.binarySearch(timeLine, Util.dateInMillis(year, -month, day)) > -1; 
-			days[x].setForeground(flag ? Color.GREEN : Color.BLACK);
-			int week = weekInYear;
-			weekInYear = cal.get(Calendar.WEEK_OF_YEAR);
-			if (week != weekInYear) {
-				int y = cal.get(Calendar.WEEK_OF_MONTH);
-				long time;
-				if (week > weekInYear && y > 1)
-					time = Util.dateInMillis(year + 1, Calendar.JANUARY, 1);
-				else
-					time = cal.getTimeInMillis();
-				String format = sdf.format(time);
-				weeks[y - 1].setText(format);
-			}
+			setDay(x, day);
+			weekInYear = setWeek(weekInYear);
 			cal.add(Calendar.DATE, 1);
 		}
+	}
+
+	private void clearDisplay() {
+		for (int x = 0; x < days.length; x++) days[x].setText("");
+		for (int x = 0; x < weeks.length; x++) weeks[x].setText("");
+	}
+
+	private int setWeek(int weekInYear) {
+		int week = weekInYear;
+		weekInYear = cal.get(Calendar.WEEK_OF_YEAR);
+		if (week != weekInYear) {
+			int weekOfMonth = cal.get(Calendar.WEEK_OF_MONTH);
+			long time;
+			if (week > weekInYear && weekOfMonth > 1)
+				time = Util.dateInMillis(year + 1, Calendar.JANUARY, 1);
+			else
+				time = cal.getTimeInMillis();
+			String format = sdf.format(time);
+			weeks[weekOfMonth - 1].setText(format);
+		}
+		return weekInYear;
+	}
+
+	private void setDay(int x, int day) {
+		days[x].setText("" + day);
+		boolean flag = timeLine != null && 
+				Arrays.binarySearch(timeLine, Util.dateInMillis(year, -month, day)) > -1; 
+		days[x].setForeground(flag ? Color.GREEN : Color.BLACK);
 	}
 
 	public void setDateString(String text) {
 		if (text.length() > 0)
 			try {
-				if (text.indexOf("/") > -1) 
+				if (isWeekDate(text)) 
 					sdf.applyPattern(weekFormat);
-				else if (text.indexOf(",") > -1)
+				else if (isCalendarDate(text))
 					sdf.applyPattern(dateFormat);
 				
 				Date dt = sdf.parse(text);
@@ -165,6 +185,14 @@ public class DatePicker
 		return sdf.format(cal.getTime());
 	}
 
+	public static void main(String[] args) {
+		Calendar cal = Calendar.getInstance();
+		long time = cal.getTimeInMillis();
+		String dateString = Util.formatDate(time, dateFormat);
+		time = Util.dateInMillis(cal.get(Calendar.YEAR), -cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH));
+		new DatePicker(null, dateString, new Long[]{time});
+	}
+	
 	public static boolean isCalendarDate(String dateString) {
 		return dateString.indexOf(',') > -1;
 	}
@@ -187,8 +215,8 @@ public class DatePicker
 	}
 	
 	public static String weekDate(long[] week) {
-		int[] val0 = parseWeekDate(Util.formatDate(week[0], DatePicker.weekFormat));
-		int[] val1 = parseWeekDate(Util.formatDate(week[1], DatePicker.weekFormat));
+		int[] val0 = parseWeekDate(Util.formatDate(week[0], weekFormat));
+		int[] val1 = parseWeekDate(Util.formatDate(week[1], weekFormat));
 		if (val1[0] - val0[0] == 1 && val0[1] != val1[1])
 			return val0[0] + "/" + val1[1] % 100;
 		else
@@ -196,7 +224,7 @@ public class DatePicker
 	}
 	
 	public static long[] weekInterval(String dateString, int weeks) {
-		Date date = Util.parseDate(dateString, DatePicker.weekFormat);
+		Date date = Util.parseDate(dateString, weekFormat);
 		return weekInterval(date, weeks);
 	}
 	

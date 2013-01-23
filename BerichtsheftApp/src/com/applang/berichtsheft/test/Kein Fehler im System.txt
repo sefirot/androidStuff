@@ -1,7 +1,7 @@
 :folding=explicit:
 3 Variationen zu "Kein Fehler im System" 
 von Eugen Gomringer
-{{{ 1. 
+{{{ 1.
 kein fehler im system
 kein efhler im system
 kein ehfler im system

@@ -100,17 +100,6 @@ public class NotePicker extends JPanel
 		else
 			return null;
 	}
-    
-	boolean dirty = false;
-	
-	public boolean isDirty() {
-		return dirty;
-	}
-
-	public void setDirty(boolean dirty) {
-		this.dirty = dirty;
-//		changeButtonFace(5, this.dirty ? -1 : 5);
-	}
 
 	TextComponent textArea = null;
 
@@ -125,6 +114,15 @@ public class NotePicker extends JPanel
 
 	public String getText() {
 		return hasTextArea() ? this.textArea.getText() : null;
+	}
+	
+	public boolean isDirty() {
+		return hasTextArea() && textArea.isDirty();
+	}
+
+	public void setDirty(boolean dirty) {
+		if (hasTextArea()) 
+			textArea.setDirty(dirty);
 	}
 	
 	public void setupTextArea() {
@@ -267,11 +265,11 @@ public class NotePicker extends JPanel
 				break;
 			case PREVIOUS:
 				updateOnRequest(true);
-				setText(move(false));
+				setText(move(Direction.PREV));
 				break;
 			case NEXT:
 				updateOnRequest(true);
-				setText(move(true));
+				setText(move(Direction.NEXT));
 				break;
 			case DOCUMENT:
 				updateOnRequest(true);
@@ -289,7 +287,7 @@ public class NotePicker extends JPanel
 				deleteOnRequest(dateString, pattern);
 				break;
 			case SPELLCHECK:
-				setDirty(NotePicker.this.textArea.spellcheck() || isDirty());
+				NotePicker.this.textArea.spellcheck();
 				break;
 			case DATE:
 				pickNote(dateString, pattern);
@@ -379,7 +377,10 @@ public class NotePicker extends JPanel
 				caption, 
 				JOptionPane.YES_NO_OPTION))
 		{
-			updateOrInsert(getPattern(), dateString, !ask);
+			updateOrInsert(getPattern(), dateString);
+			
+			keyLine(searchPattern);
+			pickNote(dateString, pattern);
 			retrieveCategories();
 		}
 	}
@@ -390,7 +391,10 @@ public class NotePicker extends JPanel
 				caption, 
 				JOptionPane.YES_NO_OPTION))
 		{
-			delete(pattern, dateString, true);
+			delete(pattern, dateString);
+			
+			keyLine(searchPattern);
+			pickNote(dateString, pattern);
 			retrieveCategories();
 		}
 	}
@@ -479,10 +483,7 @@ public class NotePicker extends JPanel
 	}
 	
 	private void setTime(Long time) {
-		if (this.time.length == 2) 
-			setDate(formatWeek(time));
-		else
-			setDate(formatDate(time));
+		setDate(formatDate(this.time.length == 2, time));
 	}
 
 	private int kindOfDate(String dateString) {
@@ -562,7 +563,6 @@ public class NotePicker extends JPanel
 	}
 	
 	private Long[] ids = null;
-	private int index = -1;
 	public Object[][] records = null;
 	
 	public int registerNotes(ResultSet rs) throws SQLException {
@@ -586,7 +586,7 @@ public class NotePicker extends JPanel
 		
 		records = reclist.toArray(new Object[0][]);
 		
-		index = ids != null && idlist.size() == 1 ? 
+		int index = ids != null && idlist.size() == 1 ? 
 				Arrays.asList(ids).indexOf(idlist.get(0)) : -1;
 		if (index < 0)
 			ids = idlist.toArray(new Long[0]);
@@ -615,6 +615,10 @@ public class NotePicker extends JPanel
 	long[] time = new long[0];
 	String searchPattern = allCategories;
 	String pattern = "";
+
+	private String category(String pattern) {
+		return allCategories.equals(pattern) ? "" : pattern;
+	}
 	
 	public String[] keyLine(Object... params) {
 		ArrayList<String> keylist = new ArrayList<String>();
@@ -639,7 +643,7 @@ public class NotePicker extends JPanel
 		return Long.parseLong(key.substring(0, key.indexOf('_')));
 	}
 	
-	private String categoryFromKey(String key) {
+	public String categoryFromKey(String key) {
 		return key.substring(key.indexOf('_') + 1);
 	}
 	
@@ -670,8 +674,8 @@ public class NotePicker extends JPanel
 	private KeyComparator partialComparator = new KeyComparator(true);
 	
 	private int criterion(long time, String category) {
+		String value = keyValue(time, category(category));
 		if (allCategories.equals(category)) {
-			String value = keyValue(time, "");
 			for (int i = 0; i < this.keys.length; i++) {
 				String key = this.keys[i];
 				if (partialComparator.compare(key, value) == 0)
@@ -679,53 +683,77 @@ public class NotePicker extends JPanel
 			}
 			return -1;
 		}
-		
-		return Arrays.binarySearch(this.keys, keyValue(time, category), comparator);
+		else
+			return Arrays.binarySearch(this.keys, value, comparator);
 	}
 	
-	private int insert_point(long time, String category) {
-		int crit = criterion(time, category);
+	private int pointer(int crit) {
 		if (crit < 0)
 			crit = -crit - 1;
 		return crit;
 	}
 	
-	public boolean noteAvailable(long... time) {
-		int crit = criterion(time[0], pattern);
+	private int pointer(long time, String category) {
+		return pointer(criterion(time, category));
+	}
+	
+	private int[] index = new int[2];
+	
+	public boolean bunchAvailable(long... time) {
+		index[0] = criterion(time[0], pattern);
 		if (time.length > 1) {
-			int crit2 = criterion(time[1] - 1, pattern);
-			return crit > -1 || crit != crit2;
+			index[1] = criterion(time[1] - 1, pattern);
+			return index[0] > -1 || index[0] != index[1];
 		}
 		else
-			return crit > -1;
+			return index[0] > -1;
 	}
 	
-	public boolean nextNoteAvailable(long... time) {
+	public boolean nextBunchAvailable(long... time) {
 		if (time.length > 1) 
-			return insert_point(time[1], pattern) < keys.length;
+			return pointer(time[1], pattern) < keys.length;
 		else 
-			return insert_point(time[0], pattern) < keys.length - 1;
+			return pointer(time[0], pattern) < keys.length - 1;
 	}
 	
-	public boolean previousNoteAvailable(long... time) {
-		return insert_point(time[0], pattern) > 0;
+	public boolean previousBunchAvailable(long... time) {
+		return pointer(time[0], pattern) > 0;
 	}
 
-	public String find(boolean next, long... time) {
+	public String find(Direction direct, long... time) {
 		boolean timeAvailable = time != null && time.length > 0;
-		boolean weekMode = timeAvailable && time.length > 1;
-		
-		int crit;
-		if (next && weekMode) 
-			crit = insert_point(time[1], pattern);
-		else {
-			crit = insert_point(time[0], pattern);
-			crit += next ? 1 : -1;
-		}
-		if (crit < 0 || crit >= keys.length)
+		if (!timeAvailable)
 			return null;
 		
-		String key = keys[crit];
+		boolean weekMode = time.length > 1;
+		boolean available = bunchAvailable(time);
+		
+		int index = pointer(this.index[0]);
+		if (direct == Direction.HERE) {
+			if (available)
+				index = this.index[0];
+			else {
+				message(String.format("No '%s' on %s !", category(pattern), formatDate(weekMode, time[0])));
+				if (index >= keys.length) {
+					direct = Direction.PREV;
+					available = true;
+				}
+				else
+					direct = Direction.NEXT;
+			}
+		}
+		
+		boolean next = direct == Direction.NEXT;
+		if (next && weekMode) 
+			index = pointer(this.index[1]);
+		else {
+			if (available && direct != Direction.HERE)
+				index += next ? 1 : -1;
+		}
+		if (index < 0 || index >= keys.length)
+			return null;
+		
+		String key = keys[index];
 		
 		long t = timeFromKey(key);
 		if (weekMode)
@@ -758,15 +786,7 @@ public class NotePicker extends JPanel
 				return;
 			}
 			
-			ResultSet rs = null;
-			
-			if (noteAvailable(time)) 
-				rs = query(time);
-			
-			enableAction(buttons[1], previousNoteAvailable(time));
-			enableAction(buttons[2], nextNoteAvailable(time));
-			
-			setText(refreshWith(rs));			
+			setText(move(Direction.HERE));			
 		} catch (Exception e) {
 			handleException(e);
 		}
@@ -774,12 +794,12 @@ public class NotePicker extends JPanel
 	
 	private static final String orderClause = " order by created, title";
 	
-	public PreparedStatement preparePicking(boolean full, String pattern, long... time) throws Exception {
+	public PreparedStatement preparePicking(boolean record, String pattern, long... time) throws Exception {
 		if (con == null || time.length < 1)
 			return null;
 		
 		String sql = "select " +
-				(full ? 
+				(record ? 
 						"created,title,note" : 
 						"_id") +
 				" from notes";
@@ -817,29 +837,22 @@ public class NotePicker extends JPanel
 		return ps.executeUpdate();
 	}
 	
-	public void delete(String pattern, String dateString) throws Exception {
-		Date date = parseDate(dateString);
+	public void _delete(String pattern, String dateString) throws Exception {
 		PreparedStatement ps;
-		if (date != null) {
-			Long time = date.getTime();
-			ps = preparePicking(true, pattern, time);
-			ResultSet rs = ps.executeQuery();
-			if (rs.next()) {
-				ps = con.prepareStatement("DELETE FROM notes where title regexp ? and created = ?");
-				ps.setString(1, pattern);
-				ps.setLong(2, time);
-				ps.executeUpdate();
-			}
-			rs.close();
-		}
-		else {
+		Date date = parseDate(dateString);
+		if (date == null) {
 			ps = con.prepareStatement("DELETE FROM notes where title regexp ?");
 			ps.setString(1, pattern);
-			ps.executeUpdate();
 		}
+		else {
+			ps = con.prepareStatement("DELETE FROM notes where title regexp ? and created = ?");
+			ps.setString(1, pattern);
+			ps.setLong(2, date.getTime());
+		}
+		ps.executeUpdate();
 	}
 
-	private void delete(String pattern, String dateString, boolean refresh) {
+	private void delete(String pattern, String dateString) {
 		try {
 			long[] time = getTime(dateString);
 			PreparedStatement ps = preparePicking(false, pattern, time);
@@ -849,11 +862,6 @@ public class NotePicker extends JPanel
 					ps.setLong(1, ids[i]);
 					ps.executeUpdate();
 				}
-				
-				keyLine(searchPattern);
-			
-				if (refresh) 
-					pickNote(dateString, pattern);
 			}
 		} catch (Exception e) {
 			handleException(e);
@@ -870,7 +878,7 @@ public class NotePicker extends JPanel
 	public long updateOrInsert(String pattern, String dateString, String note) {
 		try {
 			long time = parseDate(dateString).getTime();
-			PreparedStatement ps = preparePicking(true, pattern, time);
+			PreparedStatement ps = preparePicking(false, pattern, time);
 			ResultSet rs = ps.executeQuery();
 			
 			long id;
@@ -891,21 +899,13 @@ public class NotePicker extends JPanel
 		}
 	}
 
-	private void updateOrInsert(String pattern, String dateString, boolean refresh) {
+	private void updateOrInsert(String pattern, String dateString) {
 		if (time.length == 2) {
 			for (String[] record : getRecords(getText())) 
 				updateOrInsert(record[1], record[0], record[2]);
 		}
-		else {
-			long id = updateOrInsert(pattern, dateString, getText());
-			if (ids != null)
-				index = Arrays.asList(ids).indexOf(id) - 1;
-		}
-		
-		keyLine(searchPattern);
-		
-		if (refresh) 
-			pickNote(dateString, pattern);
+		else 
+			updateOrInsert(pattern, dateString, getText());
 	}
 	
 	private ResultSet query(long... time) {
@@ -919,14 +919,16 @@ public class NotePicker extends JPanel
 		return rs;
 	}
 	
-	public String move(boolean next) {
+	public enum Direction { PREV, HERE, NEXT }
+	
+	public String move(Direction direct) {
 		ResultSet rs = null;
 		
-		if (find(next, time) != null) 
+		if (find(direct, time) != null) 
 			rs = query(time);
 		
-		enableAction(buttons[1], previousNoteAvailable(time));
-		enableAction(buttons[2], nextNoteAvailable(time));
+		enableAction(buttons[1], previousBunchAvailable(time));
+		enableAction(buttons[2], nextBunchAvailable(time));
 		
 		return refreshWith(rs);
 	}
@@ -942,14 +944,14 @@ public class NotePicker extends JPanel
 			
 			if (time.length == 2) {
 				if (registerNotes(rs) > 0) {
-					setDate(formatWeek(time[0]));
+					setDate(formatDate(true, time[0]));
 					setPattern(this.pattern);
 					note = all();
 				}
 			}
 			else {
 				if (rs.next()) {
-					setDate(formatDate(rs.getLong(1)));
+					setDate(formatDate(false, rs.getLong(1)));
 					setCategory(rs.getString(2));
 					note = rs.getString(3);
 				}
@@ -978,11 +980,14 @@ public class NotePicker extends JPanel
 		return all;
 	}
 
-	public String formatDate(long time) {
-		return Util.formatDate(time, DatePicker.dateFormat);
+	public String formatDate(boolean week, long time) {
+		if (week)
+			return formatWeek(time);
+		else
+			return Util.formatDate(time, DatePicker.dateFormat);
 	}
 
-	public String formatWeek(long time) {
+	private String formatWeek(long time) {
 		Date date = new Date();
 		date.setTime(time);
 		return DatePicker.weekDate(Util.weekInterval(date, 1));
@@ -998,7 +1003,7 @@ public class NotePicker extends JPanel
 
 	public String wrapNote(Object... params) throws Exception {
 		if (Util.isAvailable(0, params) && params[0] instanceof Long) {
-			String dateString = formatDate((Long)params[0]);
+			String dateString = formatDate(false, (Long)params[0]);
 			return String.format(noteFormat2, dateString, 
 					Util.param("", 1, params), 
 					Util.param("", 2, params));

@@ -33,9 +33,18 @@ public class BerichtsheftTextArea implements TextComponent
 	public String getText() {
 		return textArea.getText();
 	}
+    
+	boolean dirty = false;
+	
+	public boolean isDirty() {
+		return dirty;
+	}
+
+	public void setDirty(boolean dirty) {
+		this.dirty = dirty;
+	}
 
 	@Override
-	public boolean spellcheck() {
-		return false;
+	public void spellcheck() {
 	}
 }

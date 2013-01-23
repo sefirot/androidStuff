@@ -15,12 +15,14 @@ import java.net.URL;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.Statement;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.regex.MatchResult;
@@ -85,7 +87,7 @@ public class MiscTests extends XMLTestCase
 		int year = 2012;
 		int weekInYear = 53;
 		int dayInWeek = 2;
-		Long millis = Util.dateInMillis(year, weekInYear, dayInWeek);
+		long millis = Util.dateInMillis(year, weekInYear, dayInWeek);
 		assertEquals(Util.dateInMillis(2012, -Calendar.DECEMBER, 31), millis);
 		millis = Util.dateInMillis(2013, -Calendar.JANUARY, 1);
 		String kalenderWoche = String.format("%d/%d", weekInYear % 52, (year + 1) % 100);
@@ -116,7 +118,6 @@ public class MiscTests extends XMLTestCase
 	}
 
 	NotePicker np = new NotePicker(null);
-	String note_pad = Util.relativePath("databases/note_pad_2012-08.db");
 	long[] interval;
 
 	void setupNotesDb(String db, Object... params) throws ParseException {
@@ -135,7 +136,7 @@ public class MiscTests extends XMLTestCase
 		InputStream is = MiscTests.class.getResourceAsStream("Kein Fehler im System.txt");
 		
 		if (empty)
-			np.delete(NotePicker.allCategories, NotePicker.allDates);
+			np._delete(NotePicker.allCategories, NotePicker.allDates);
 		
 		MatchResult[] excerpts = Util.excerptsFrom(is, expat);
 		int cnt = 0;
@@ -147,8 +148,8 @@ public class MiscTests extends XMLTestCase
 				np.setCategory(categories[j]);
 			time = dates != null && j < dates.length ?
 					Util.dateInMillis(dates[j][0], dates[j][1], dates[j][2]) : 
-					Util.dateFromTodayInMillis(1, new Date(time));
-			String dateString = np.formatDate(time);
+					Util.dateFromTodayInMillis(1, new Date(time), true);
+			String dateString = np.formatDate(false, time);
 			String note = m.group(grp);
 			if (empty)
 				assertThat(
@@ -164,21 +165,9 @@ public class MiscTests extends XMLTestCase
 		}
 		return cnt;
 	}
-
-	int[][] dates = new int[][] {
-			{2012, 52, Calendar.SUNDAY}, 
-			{2012, 52, Calendar.SUNDAY}, 
-			{2013, 1, Calendar.SUNDAY}, 
-	};
-	
-	String[] categories = new String[] {
-			"Bemerkung", 
-			"Bericht", 
-			"Bericht", 
-	};
 	
 	public void testData() throws Exception {
-		assertTrue(new File(test_db).delete());
+		new File(test_db).delete();
 		assertTrue(np.openConnection(test_db));
 		
 		Pattern expat = Pattern.compile("(?s)\\n([^\\{\\}]+?)(?=\\n)");
@@ -196,8 +185,8 @@ public class MiscTests extends XMLTestCase
 
 	String test_db = "/tmp/test.db";
 	
-	public void testSystemData() throws Exception {
-		assertTrue(new File(test_db).delete());
+	public void testKeinFehler() throws Exception {
+		new File(test_db).delete();
 		assertTrue(np.openConnection(test_db));
 		
 		int[][] dates = new int[][] {{2012, -Calendar.DECEMBER, 24}};
@@ -243,76 +232,107 @@ public class MiscTests extends XMLTestCase
 		} catch (Exception e) {}
 	}
 
+	int[][] dates = new int[][] {
+			{2012, 52, Calendar.SUNDAY}, 
+			{2012, 52, Calendar.SUNDAY}, 
+			{2013, 1, Calendar.SUNDAY}, 
+	};
+	String[] categories = new String[] {
+			"Bemerkung", 
+			"Bericht", 
+			"Bericht", 
+	};
+
 	public void testKeyLine() throws Exception {
 		testData();
 		
 		String[] keys = np.keyLine();
 		assertThat(Arrays.asList(keys).toString(), keys.length, is(equalTo(dates.length)));
 		
-		int i = 1;
-		long time = Util.dateInMillis(dates[i][0], dates[i][1], dates[i][2]);
-		np.setPattern(categories[i]);
+		np.setPattern(categories[1]);
+		long time = Util.dateInMillis(dates[1][0], dates[1][1], dates[1][2]);
 		
-		assertThat(np.previousNoteAvailable(time),	is(true));
-		assertThat(np.noteAvailable(time - 1),		is(false));
-		assertThat(np.noteAvailable(time),			is(true));
-		assertThat(np.noteAvailable(time + 1),		is(false));
-		assertThat(np.nextNoteAvailable(time),		is(true));
+		assertThat(np.previousBunchAvailable(time),	is(true));
+		assertThat(np.bunchAvailable(time - 1),		is(false));
+		assertThat(np.bunchAvailable(time),			is(true));
+		assertThat(np.bunchAvailable(time + 1),		is(false));
+		assertThat(np.nextBunchAvailable(time),		is(true));
 		
 		long after = Util.dateInMillis(dates[2][0], dates[2][1], dates[2][2]);
 		long before = Util.dateInMillis(dates[0][0], dates[0][1], dates[0][2]);
-		assertThat(np.find(true, new long[]{time}),	is(equalTo(np.keyValue(after, categories[2]))));
-		assertThat(np.find(false, new long[]{time}), is(equalTo(np.keyValue(before, categories[0]))));
+		np.setPattern("Berich");
+		assertThat(np.find(NotePicker.Direction.HERE, new long[]{time}),	is(equalTo(np.keyValue(time, categories[1]))));
+		np.setPattern("Bericht_");
+		assertThat(np.find(NotePicker.Direction.HERE, new long[]{time}),	is(equalTo(np.keyValue(after, categories[2]))));
+		np.setPattern("xxx");
+		assertThat(np.find(NotePicker.Direction.HERE, new long[]{after}),	is(equalTo(np.keyValue(after, categories[2]))));
+		np.setPattern("Bericht");
+		assertThat(np.find(NotePicker.Direction.HERE, new long[]{time}),	is(equalTo(np.keyValue(time, categories[1]))));
+		assertThat(np.find(NotePicker.Direction.NEXT, new long[]{time}),	is(equalTo(np.keyValue(after, categories[2]))));
+		assertThat(np.find(NotePicker.Direction.PREV, new long[]{time}), 	is(equalTo(np.keyValue(before, categories[0]))));
 		
 		interval = DatePicker.weekInterval("52/12", 1);
-		time = np.timeFromKey(np.find(true, interval));
-		assertThat(np.formatWeek(time), is(equalTo("1/13")));
+		time = np.timeFromKey(np.find(NotePicker.Direction.NEXT, interval));
+		assertThat(np.formatDate(true, time), is(equalTo("1/13")));
 		
 		np.setPattern("Bemerkung");
-		assertThat(np.previousNoteAvailable(interval[0]),	is(false));
-		assertThat(np.noteAvailable(interval[0]),			is(true));
-		assertThat(np.nextNoteAvailable(interval[0]),		is(true));
+		assertThat(np.previousBunchAvailable(interval[0]),	is(false));
+		assertThat(np.bunchAvailable(interval[0]),			is(true));
+		assertThat(np.nextBunchAvailable(interval[0]),		is(true));
 		
 		np.setPattern("Bericht");
-		assertThat(np.previousNoteAvailable(interval[0]),	is(true));
-		assertThat(np.noteAvailable(interval[0]),			is(true));
-		assertThat(np.nextNoteAvailable(interval[0]),		is(true));
+		assertThat(np.previousBunchAvailable(interval[0]),	is(true));
+		assertThat(np.bunchAvailable(interval[0]),			is(true));
+		assertThat(np.nextBunchAvailable(interval[0]),		is(true));
 		
 		np.setPattern("Bemerkung");
-		assertThat(np.previousNoteAvailable(interval[1]),	is(true));
-		assertThat(np.noteAvailable(interval[1]),			is(false));
-		assertThat(np.nextNoteAvailable(interval[1]),		is(false));
+		assertThat(np.previousBunchAvailable(interval[1]),	is(true));
+		assertThat(np.bunchAvailable(interval[1]),			is(false));
+		assertThat(np.nextBunchAvailable(interval[1]),		is(false));
 		
 		np.setPattern("Bericht");
-		assertThat(np.previousNoteAvailable(interval[1]),	is(true));
-		assertThat(np.noteAvailable(interval[1]),			is(true));
-		assertThat(np.nextNoteAvailable(interval[1]),		is(false));
+		assertThat(np.previousBunchAvailable(interval[1]),	is(true));
+		assertThat(np.bunchAvailable(interval[1]),			is(true));
+		assertThat(np.nextBunchAvailable(interval[1]),		is(false));
 		
 		np.setPattern(NotePicker.allCategories);
-		assertThat(np.noteAvailable(interval[0]),			is(true));
-		assertThat(np.previousNoteAvailable(interval),	is(false));
-		assertThat(np.noteAvailable(interval),			is(true));
-		assertThat(np.nextNoteAvailable(interval),		is(true));
+		assertThat(np.bunchAvailable(interval[0]),			is(true));
+		assertThat(np.previousBunchAvailable(interval),	is(false));
+		assertThat(np.bunchAvailable(interval),			is(true));
+		assertThat(np.nextBunchAvailable(interval),		is(true));
 		
 		interval = DatePicker.weekInterval("1/13", 1);
-		time = np.timeFromKey(np.find(false, interval));
-		assertThat(np.formatWeek(time), is(equalTo("52/12")));
+		time = np.timeFromKey(np.find(NotePicker.Direction.PREV, interval));
+		assertThat(np.formatDate(true, time), is(equalTo("52/12")));
 		
-		assertThat(np.previousNoteAvailable(interval),	is(true));
-		assertThat(np.noteAvailable(interval),			is(true));
-		assertThat(np.nextNoteAvailable(interval),		is(false));
+		assertThat(np.previousBunchAvailable(interval),	is(true));
+		assertThat(np.bunchAvailable(interval),			is(true));
+		assertThat(np.nextBunchAvailable(interval),		is(false));
 	}
 
 	public void testNotePicking() throws Exception {
-		setupNotesDb(note_pad);
+		assertTrue(np.openConnection(test_db));
+		PreparedStatement ps = np.getCon().prepareStatement("select title,count(_id) from notes group by title");
+		HashMap<String,Integer> map = new HashMap<String,Integer>();
+		ResultSet rs = ps.executeQuery();
+		while (rs.next())
+			map.put(rs.getString(1), rs.getInt(2));
+		if (map.get("1.") != 19 || map.get("2.") != 7 || map.get("3.") != 10)
+			testKeinFehler();
 
-		PreparedStatement ps = np.getCon().prepareStatement("SELECT _id FROM notes where created between ? and ?");
+		interval = new long[] {
+				Util.dateInMillis(2013, 0, 1),
+				Util.dateInMillis(2013, 0, 2),
+		};
+		
+		ps = np.getCon().prepareStatement("SELECT _id FROM notes where created between ? and ?");
 		ps.setLong(1, interval[0]);
 		ps.setLong(2, interval[1]);
-		assertTrue(0 < np.registerNotes(ps.executeQuery()));
+		assertEquals(2, np.registerNotes(ps.executeQuery()));
 		
 		np.setCategory("Bericht");
 		String pattern = np.getPattern();
+		assertEquals(NotePicker.allCategories, pattern);
 		assertTrue(Util.matches("Bericht", pattern));
 		
 		ps = np.getCon().prepareStatement("SELECT _id FROM notes where title regexp ?");
@@ -331,7 +351,7 @@ public class MiscTests extends XMLTestCase
 	}
 
 	public void testNoteWrapping() throws Exception {
-		setupNotesDb(note_pad);
+		testKeinFehler();
 		
 		String text = np.wrapNote("foo", "bar");
 		assertEquals("{{{ foo\nbar\n}}}", text);
@@ -354,7 +374,7 @@ public class MiscTests extends XMLTestCase
 		for (int i = 0; i < notes.length; i++) {
 			for (int j = 0; j < notes[i].length; j++) 
 				if (j == 0)
-					assertEquals(np.formatDate((Long)np.records[i][j]), notes[i][j]);
+					assertEquals(np.formatDate(false, (Long)np.records[i][j]), notes[i][j]);
 				else
 					assertEquals(np.records[i][j], notes[i][j]);
 		}
