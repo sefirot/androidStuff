@@ -1,0 +1,77 @@
+<project name="Berichtsheft" default="pipe">
+	<description>
+    This is an ant file for performing Berichtsheft specific tasks.
+	</description>
+		
+	<property name="debug.out" location="/tmp/debug.out" />
+	<property name="out.xml" location="/tmp/temp.xml" />
+	<property name="src-dir" location="../src" />
+	<property name="bin-dir" location="../bin" />
+		
+    <path id="project.class.path">
+    	<pathelement location="${bin-dir}/"/>
+		<fileset dir="../.jedit/jars">
+			<exclude name="BerichtsheftPlugin.jar"/>
+			<filename name="*.jar" />
+		</fileset>
+    </path>
+		    	
+	<target name="compile">
+		<javac includeantruntime="false" 
+			srcdir="${src-dir}"
+			destdir="${bin-dir}">
+			<classpath refid="project.class.path" />
+		</javac>
+	</target>
+	
+	<target name="integrate.weathers">
+		<exec executable = "bash">
+			<arg value="process.sh" />
+			<arg value="integrate_weathers" />
+		</exec>
+	</target>
+		    	
+	<target name="init">
+		<touch file="/tmp/control.xml"/>
+	</target>
+		    	
+	<target name="test.debug" depends="init">
+		<delete file="${out.xml}" />
+		<xslt in="/tmp/control.xml" out="${out.xml}" style="debug.xsl" classpathref="project.class.path">
+		</xslt>
+	</target>
+	    	
+	<target name="locate.ids" depends="init">
+		<xslt in="/tmp/control.xml" out="/tmp/content.xml" style="content.xsl" classpathref="project.class.path">
+			<param name="inputfile" expression="content.xml"/>
+			<param name="control" expression="-1"/>
+		</xslt>
+		<antcall target="odt.update" />
+	</target>
+		    	
+	<target name="odt.update">
+		<zip destfile="../Dokumente/Tagesberichte.odt"
+			basedir="/tmp"
+			includes="content.xml"
+			update="true"
+		/>
+	</target>
+		    	
+	<target name="pipe.1" depends="init">
+		<delete file="/tmp/control.xml"/>
+		<xslt in="params.xml" out="/tmp/control.xml" style="control.xsl" classpathref="project.class.path">
+			<param name="debug" expression="no"/>
+		</xslt>
+	</target>
+	    	
+	<target name="pipe.2">
+		<delete file="/tmp/content.xml"/>
+		<xslt in="/tmp/control.xml" out="/tmp/content.xml" style="content.xsl" classpathref="project.class.path">
+			<param name="inputfile" expression="content.xml"/>
+			<param name="debug" expression="no"/>
+		</xslt>
+		<antcall target="odt.update" />
+	</target>
+		    	
+	<target name="pipe" depends="pipe.1, pipe.2" />
+</project>

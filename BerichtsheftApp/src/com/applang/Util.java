@@ -2,6 +2,7 @@ package com.applang;
 
 import java.awt.Component;
 import java.awt.Container;
+import java.awt.Cursor;
 import java.awt.KeyboardFocusManager;
 import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
@@ -19,14 +20,19 @@ import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.net.URL;
 import java.nio.channels.FileChannel;
-import java.text.ParseException;
+import java.nio.charset.Charset;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Random;
 import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
@@ -53,15 +59,17 @@ import javax.xml.transform.stream.StreamSource;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 
-import com.applang.berichtsheft.ui.components.NotePicker;
-
 public class Util
 {
-    public static final int millisPerDay = 1000*60*60*24;
+    private static final int millisPerDay = 1000*60*60*24;
 	private static Calendar calendar = Calendar.getInstance();
     private static Random random = new Random();
 
 	static void setWeekDate(int year, int weekOfYear, int dayOfWeek) {
+		while (dayOfWeek > 7) {
+			dayOfWeek -= 7;
+			weekOfYear += 1;
+		}
 		calendar.set(Calendar.YEAR, year);
 		calendar.set(Calendar.WEEK_OF_YEAR, weekOfYear);
 		calendar.set(Calendar.DAY_OF_WEEK, dayOfWeek);
@@ -88,11 +96,17 @@ public class Util
 	 * @param dayOfWeek or dayOfMonth
 	 * @return
 	 */
-	public static long dateInMillis(int year, int weekOrMonth, int day) {
+	public static long timeInMillis(int year, int weekOrMonth, int day) {
 		if (weekOrMonth < 1)
 			setMonthDate(year, -weekOrMonth, day);
 		else
 			setWeekDate(year, weekOrMonth, day);
+		return calendar.getTimeInMillis();
+	}
+
+	public static long timeInMillis(int year, int weekOrMonth, int day, int shift) {
+		timeInMillis(year, weekOrMonth, day);
+		calendar.add(Calendar.DATE, shift);
 		return calendar.getTimeInMillis();
 	}
 
@@ -113,6 +127,23 @@ public class Util
 		if (randomizeTimeOfDay)
 			timeInMillis += random.nextInt(millisPerDay);
 		return timeInMillis;
+	}
+
+	public static long getMillis(int days) {
+		return days * millisPerDay;
+	}
+
+	public static long[] dayInterval(long time, int days) {
+		long[] interval = new long[2];
+		if (days < 0) {
+			interval[0] = time - days * millisPerDay;
+			interval[1] = time;
+		}
+		else {
+			interval[0] = time;
+			interval[1] = time + days * millisPerDay;
+		}
+		return interval;
 	}
 
 	public static long[] weekInterval(Date start, int weeks) {
@@ -418,6 +449,16 @@ public class Util
     	}
     	return tempDir;
 	}
+	
+	public static File tempFile(String nameWithExtension, String... subdirs) {
+    	try {
+    		File tempDir = fileOf(arrayextend(subdirs, true, tempPath()));
+    		String[] parts = nameWithExtension.split("\\.");
+			return File.createTempFile(parts[0], parts.length > 1 ? "." + parts[1] : "", tempDir);
+		} catch (IOException e) {
+			return null;
+		}
+	}
 
 	public static <T> String join(String delimiter, @SuppressWarnings("unchecked") T... params) {
 	    StringBuilder sb = new StringBuilder();
@@ -668,6 +709,7 @@ public class Util
 		});
 	}
 
+	@SuppressWarnings("rawtypes")
 	public static JTextField comboEdit(JComboBox combo) {
 		return (JTextField)combo.getEditor().getEditorComponent();
 	}
@@ -732,6 +774,117 @@ public class Util
 			} catch (Exception e) {}
 		
 		return null;
+	}
+    
+    public static class Timing
+    {
+    	public Timing(Component comp) {
+    		this.comp = comp;
+    		if (this.comp != null) {
+        		this.curs = this.comp.getCursor();
+        		this.comp.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+        		this.comp.requestFocus();
+    		}
+    		this.millis = System.currentTimeMillis();
+    	}
+    	
+		private long millis;
+		
+		public long current() {
+			return System.currentTimeMillis() - millis;
+		}
+		
+    	Component comp;
+    	Cursor curs;
+    	
+    	/* (non-Javadoc)
+    	 * @see java.lang.Object#finalize()
+    	 */
+    	@Override 
+    	public void finalize() {
+    		try {
+        		this.millis -= System.currentTimeMillis();
+        		if (this.comp != null) 
+        			this.comp.setCursor(curs);
+    		}
+    		finally {
+    			try {
+					super.finalize();
+				} catch (Throwable e) {}
+    		}
+    	}
+    }
+	
+	public static long waiting(Component component, 
+			ComponentFunction<Void> func, 
+			Object... params)
+	{
+        final Timing timing = new Timing(component);
+        
+		try {
+			func.apply(component, arrayextend(params, true, timing));
+		}
+		finally {
+			timing.finalize();
+		}
+		
+		return timing.millis;
+	}
+	
+	public static class ValMap extends HashMap<String,Object>
+	{
+		public ValMap() {
+			super();
+		}
+
+		public ValMap(int initialCapacity, float loadFactor) {
+			super(initialCapacity, loadFactor);
+		}
+
+		public ValMap(int initialCapacity) {
+			super(initialCapacity);
+		}
+
+		public ValMap(Map<? extends String, ? extends Object> m) {
+			super(m);
+		}
+		
+	}
+	
+	public static ValMap getMapFromQuery(PreparedStatement ps, int keyColumn, int valueColumn) {
+		ValMap map = new ValMap();
+		try {
+			ResultSet rs = ps.executeQuery();
+			while (rs.next())
+				map.put(rs.getString(keyColumn), rs.getObject(valueColumn));
+			rs.close();
+		} catch (Exception e) {
+			return null;
+		}
+		return map;
+	}
+	
+	public static String readFromUrl(String url) throws IOException {
+		InputStream is = null;
+		try {
+			is = new URL(url).openStream();
+			BufferedReader rd = new BufferedReader(new InputStreamReader(is, Charset.forName("UTF-8")));
+			return Util.readAll(rd);
+		} finally {
+			if (is != null)
+				is.close();
+		}
+	}
+
+	public static boolean question(String text) {
+		return JOptionPane.YES_OPTION == JOptionPane.showConfirmDialog(
+				null, text, 
+				"", 
+				JOptionPane.YES_NO_OPTION);
+	}
+
+	public static void message(String text) {
+		JOptionPane.showMessageDialog(null, text);
 	}
 
 }

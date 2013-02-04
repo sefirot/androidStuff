@@ -41,7 +41,7 @@ public class BerichtsheftApp
 		jEdit.main(args);
 	}
 
-	public static boolean merge(String vorlage, String dokument, String databaseFilename, Object... params) {
+	public static boolean export(String vorlage, String dokument, String databaseFilename, Object... params) {
 		File tempDir = Util.tempDir("berichtsheft");
 		try {
 			File source = new File(vorlage);
@@ -84,7 +84,7 @@ public class BerichtsheftApp
 			
 			int zipped = ZipUtil.zipArchive(destination, tempDir.getPath(), tempDir.getPath());
 			if (unzipped != zipped)
-				throw new Exception(String.format("Dokument '%s' lacking some ingredient", dokument));
+				throw new Exception(String.format("Dokument '%s' is lacking some ingredient", dokument));
 	    	
 			return true;
 		} catch (Exception e) {

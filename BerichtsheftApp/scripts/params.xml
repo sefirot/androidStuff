@@ -1,5 +1,5 @@
 <params>
-	<dbfile>/home/lotharla/work/Niklas/note_pad.db</dbfile>
+	<dbfile>/home/lotharla/work/Niklas/androidStuff/BerichtsheftApp/databases/berichtsheft.db</dbfile>
 	<year>2012</year>
 	<weekInYear>32</weekInYear>
 	<dayInWeek>\d</dayInWeek>

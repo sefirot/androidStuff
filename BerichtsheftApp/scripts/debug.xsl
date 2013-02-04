@@ -14,22 +14,38 @@
 	<xsl:param name="debug_out">/tmp/debug.out</xsl:param>
 	
 	<xsl:template name="debug.out">
+		<xsl:param name="append" select="true()" />
 		<xsl:param name="text" select="''" />
+		<xsl:param name="text2" select="''" />
 		<xsl:param name="textOnly" select="false()" />
 		<xsl:param name="object" />
+		<xsl:param name="object2" />
 		<xsl:param name="descendants" select="true()" />
-		<xsl:param name="append" select="true()" />
 		<redirect:write select="$debug_out" append="{$append}">
 			<xsl:choose>
-				<xsl:when test="not($textOnly)">
-					<xsl:call-template name="debug.object">
-						<xsl:with-param name="text" select="$text" />
-						<xsl:with-param name="object" select="$object" />
-						<xsl:with-param name="descendants" select="$descendants" />
-					</xsl:call-template>
+				<xsl:when test="$textOnly">
+					<xsl:if test="$text">
+						<xsl:value-of select="$text" />	
+					</xsl:if>
+					<xsl:if test="$text2">
+						<xsl:value-of select="$text2" />	
+					</xsl:if>
 				</xsl:when>
 				<xsl:otherwise>
-					<xsl:value-of select="$text" />
+					<xsl:if test="$object">
+						<xsl:call-template name="debug.object">
+							<xsl:with-param name="text" select="$text" />
+							<xsl:with-param name="object" select="$object" />
+							<xsl:with-param name="descendants" select="$descendants" />
+						</xsl:call-template>
+					</xsl:if>
+					<xsl:if test="$object2">
+						<xsl:call-template name="debug.object">
+							<xsl:with-param name="text" select="$text2" />
+							<xsl:with-param name="object" select="$object2" />
+							<xsl:with-param name="descendants" select="$descendants" />
+						</xsl:call-template>
+					</xsl:if>
 				</xsl:otherwise>
 			</xsl:choose>
 		</redirect:write>
@@ -70,7 +86,7 @@
 					</xsl:otherwise>
 				</xsl:choose>
 			</xsl:when>
-			<xsl:when test="$type = 'RTF'">
+			<xsl:when test="$type = 'RTF'"><!-- result tree fragment -->
 				<xsl:variable name="node_set" select="exslt:node-set($object)" />
 				<xsl:choose>
 					<xsl:when test="count($node_set/*) > 0">
@@ -138,26 +154,14 @@
 		</xsl:if>
 	</xsl:template>
 	
-	<xsl:template match="place_value">
-	</xsl:template>
-	
 	<xsl:template match="debug">
 		<xsl:call-template name="debug.out">
 			<xsl:with-param name="text" select="name()"/>
 			<xsl:with-param name="object" select="."/>
 		</xsl:call-template>
-		<xsl:for-each select="*">
-			<xsl:choose>
-				<xsl:when test="name()='place_value'">
-					<xsl:call-template name="place_value">
-						<xsl:with-param name="params" select="*" />
-					</xsl:call-template>
-				</xsl:when>
-			</xsl:choose>
-		</xsl:for-each>
 	</xsl:template>
 	
-	<xsl:variable name="contents">
+	<xsl:variable name="content">
 		<debug>
 			<one type="number">1</one>
 			<two>two</two>
@@ -173,7 +177,12 @@
 	
 	<xsl:template match="/">
 		<xsl:call-template name="debug.out">
-			<xsl:with-param name="object" select="$contents"/>
+			<xsl:with-param name="append" select="false()"/>
+			<xsl:with-param name="text" select="concat('now : ', util:now(), $newline)"/>
+			<xsl:with-param name="textOnly" select="true()"/>
+		</xsl:call-template>
+		<xsl:call-template name="debug.out">
+			<xsl:with-param name="object" select="$content"/>
 		</xsl:call-template>
 	</xsl:template>
 	
