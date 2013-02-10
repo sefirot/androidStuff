@@ -51,7 +51,7 @@ public class WeatherManager extends ToolPanel
 						weatherManager.updateOnRequest(true);
 						weatherManager.getCon().close();
 					} catch (Exception e) {
-						weatherManager.handleException(e);
+						Util.handleException(e);
 					}
 				
 				super.processWindowEvent(we);
@@ -66,7 +66,7 @@ public class WeatherManager extends ToolPanel
 		contentPane.add(scroll, BorderLayout.CENTER);
 
 		contentPane.add(bar, BorderLayout.PAGE_END);
-		contentPane.add(weatherManager, BorderLayout.PAGE_START);
+		weatherManager.addToContainer(contentPane, BorderLayout.PAGE_START);
 		
 		frame.pack();
 		frame.setLocationRelativeTo(null);
@@ -133,7 +133,7 @@ public class WeatherManager extends ToolPanel
 							.timeout(100000)
 							.get();
 				} catch (Exception e) {
-					handleException(e);
+					Util.handleException(e);
 					doc = null;
 				}
 				
@@ -266,7 +266,7 @@ public class WeatherManager extends ToolPanel
 
 		    return true;
 		} catch (Exception e) {
-			handleException(e);
+			Util.handleException(e);
 			con = null;
 			return false;
 		}
@@ -345,7 +345,7 @@ public class WeatherManager extends ToolPanel
 			}
 			return id;
 		} catch (Exception e) {
-			handleException(e);
+			Util.handleException(e);
 			return -1;
 		}
 	}

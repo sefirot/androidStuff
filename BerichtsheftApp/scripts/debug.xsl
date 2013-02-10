@@ -24,21 +24,15 @@
 		<redirect:write select="$debug_out" append="{$append}">
 			<xsl:choose>
 				<xsl:when test="$textOnly">
-					<xsl:if test="$text">
-						<xsl:value-of select="$text" />	
-					</xsl:if>
-					<xsl:if test="$text2">
-						<xsl:value-of select="$text2" />	
-					</xsl:if>
+					<xsl:value-of select="$text" />	
+					<xsl:value-of select="$text2" />	
 				</xsl:when>
 				<xsl:otherwise>
-					<xsl:if test="$object">
-						<xsl:call-template name="debug.object">
-							<xsl:with-param name="text" select="$text" />
-							<xsl:with-param name="object" select="$object" />
-							<xsl:with-param name="descendants" select="$descendants" />
-						</xsl:call-template>
-					</xsl:if>
+					<xsl:call-template name="debug.object">
+						<xsl:with-param name="text" select="$text" />
+						<xsl:with-param name="object" select="$object" />
+						<xsl:with-param name="descendants" select="$descendants" />
+					</xsl:call-template>
 					<xsl:if test="$object2">
 						<xsl:call-template name="debug.object">
 							<xsl:with-param name="text" select="$text2" />
@@ -63,7 +57,7 @@
 			</xsl:if>
 		</xsl:variable>
 		<xsl:choose>
-			<xsl:when test="$type = 'node-set'">
+			<xsl:when test="$object and $type = 'node-set'">
 				<xsl:call-template name="println">
 					<xsl:with-param name="indent" select="$indent"/>
 					<xsl:with-param name="line" select="concat($info,$type,'(',count($object/*),')')"/>
@@ -86,7 +80,7 @@
 					</xsl:otherwise>
 				</xsl:choose>
 			</xsl:when>
-			<xsl:when test="$type = 'RTF'"><!-- result tree fragment -->
+			<xsl:when test="$object and $type = 'RTF'"><!-- result tree fragment -->
 				<xsl:variable name="node_set" select="exslt:node-set($object)" />
 				<xsl:choose>
 					<xsl:when test="count($node_set/*) > 0">
@@ -154,15 +148,23 @@
 		</xsl:if>
 	</xsl:template>
 	
-	<xsl:template match="debug">
+	<xsl:template name="debug" match="debug">
 		<xsl:call-template name="debug.out">
 			<xsl:with-param name="text" select="name()"/>
 			<xsl:with-param name="object" select="."/>
 		</xsl:call-template>
 	</xsl:template>
 	
+	<xsl:template name="begin.debug">
+		<xsl:call-template name="debug.out">
+			<xsl:with-param name="append" select="false()" />
+			<xsl:with-param name="text" select="concat(util:formatDate(util:now(), 'yyyy-MM-dd HH:mm:ss.SSS'), $newline)" />
+			<xsl:with-param name="textOnly" select="true()"/>
+		</xsl:call-template>
+	</xsl:template>
+
 	<xsl:variable name="content">
-		<debug>
+		<numbers>
 			<one type="number">1</one>
 			<two>two</two>
 			<three>
@@ -171,18 +173,16 @@
 				<three>true</three>
 				<four>3.1415</four>
 			</three>
-			<four>false</four>
-		</debug> 
+			<inch>2.54cm</inch>
+		</numbers> 
 	</xsl:variable>
 	
 	<xsl:template match="/">
+		<xsl:call-template name="begin.debug" />
+		<xsl:variable name="id" select="'control1_x'" />
 		<xsl:call-template name="debug.out">
-			<xsl:with-param name="append" select="false()"/>
-			<xsl:with-param name="text" select="concat('now : ', util:now(), $newline)"/>
-			<xsl:with-param name="textOnly" select="true()"/>
-		</xsl:call-template>
-		<xsl:call-template name="debug.out">
-			<xsl:with-param name="object" select="$content"/>
+			<xsl:with-param name="text" select="$id" />
+			<xsl:with-param name="object" select="util:mapping($id)"/>
 		</xsl:call-template>
 	</xsl:template>
 	

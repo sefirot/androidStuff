@@ -7,11 +7,16 @@ temp=/tmp/berichtsheft.sql
 
 case "$1" in
 
+stop_echo)
+	echo "shutdown" | nc -w 10 localhost 8088
+	;;
+
 21nov2012)
+#	datetime(created/1000,'unixepoch','localtime','start of day')
 	let start=1000*$(date +%s -d"Nov 21, 2012 00:00:00")
 	let end=$start+86399999
 #	sqlite3 "$db" "select strftime('%Y-%m-%d', created/1000),note from notes where created between $start and $end"
-	sqlite3 "$db" "select note from notes where date(created/1000, 'unixepoch')='2012-11-21'"
+	sqlite3 "$db" "select note from notes where date(created/1000, 'unixepoch','localtime')='2012-11-21'"
 	;;
 	
 Bericht)

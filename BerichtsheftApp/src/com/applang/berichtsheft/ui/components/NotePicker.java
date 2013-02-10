@@ -56,7 +56,7 @@ public class NotePicker extends ToolPanel
 						notePicker.handleMemoryDb(false);
 						notePicker.getCon().close();
 					} catch (Exception e) {
-						notePicker.handleException(e);
+						Util.handleException(e);
 					}
 				
 				super.processWindowEvent(we);
@@ -71,7 +71,7 @@ public class NotePicker extends ToolPanel
 		contentPane.add(scroll, BorderLayout.CENTER);
 
 		contentPane.add(bar, BorderLayout.PAGE_END);
-		contentPane.add(notePicker, BorderLayout.PAGE_START);
+		notePicker.addToContainer(contentPane, BorderLayout.PAGE_START);
 		
 		frame.pack();
 		frame.setLocationRelativeTo(null);
@@ -227,7 +227,7 @@ public class NotePicker extends ToolPanel
 				memoryDbName = "";
 			}
 		} catch (Exception e) {
-			handleException(e);
+			Util.handleException(e);
 		}
 		
 	}
@@ -330,7 +330,7 @@ public class NotePicker extends ToolPanel
 		    
 		    return true;
 		} catch (Exception e) {
-			handleException(e);
+			Util.handleException(e);
 			con = null;
 			return false;
 		}
@@ -393,7 +393,7 @@ public class NotePicker extends ToolPanel
 			while (rs.next())
 				category.addItem(rs.getString(1));
 		} catch (SQLException e) {
-			handleException(e);
+			Util.handleException(e);
 		}
 		category.addItem(itemAll);
 		setCategory(categ);
@@ -584,7 +584,7 @@ public class NotePicker extends ToolPanel
 		int index = pointer(this.index[0]);
 		if (direct == Direction.HERE) 
 			if (!available) {
-				message(String.format("No '%s' on %s !", category(pattern), formatDate(weekMode, time[0])));
+				Util.message(String.format("No '%s' on %s !", category(pattern), formatDate(weekMode, time[0])));
 				if (index >= keys.length) {
 					direct = Direction.PREV;
 					available = true;
@@ -631,14 +631,14 @@ public class NotePicker extends ToolPanel
 			this.pattern = pattern;
 			time = getTime(dateString);
 			if (timeNotAvailable()) {
-				message(String.format("value for '%s' doesn't make sense", ActionType.DATE.description()));
+				Util.message(String.format("value for '%s' doesn't make sense", ActionType.DATE.description()));
 				date.requestFocus();
 				return;
 			}
 			
 			setText(move(Direction.HERE));			
 		} catch (Exception e) {
-			handleException(e);
+			Util.handleException(e);
 			setText("");
 		}
 	}
@@ -729,7 +729,7 @@ public class NotePicker extends ToolPanel
 					}
 			}
 		} catch (Exception e) {
-			handleException(e);
+			Util.handleException(e);
 		}
 		return retval;
 	}
@@ -774,7 +774,7 @@ public class NotePicker extends ToolPanel
 			rs.close();
 			return id;
 		} catch (Exception e) {
-			handleException(e);
+			Util.handleException(e);
 			return -1;
 		}
 	}
@@ -795,7 +795,7 @@ public class NotePicker extends ToolPanel
 			PreparedStatement ps = preparePicking(true, pattern, time);
 			rs = ps.executeQuery();
 		} catch (Exception e) {
-			handleException(e);
+			Util.handleException(e);
 		}
 		return rs;
 	}
@@ -842,7 +842,7 @@ public class NotePicker extends ToolPanel
 			
 			return note;
 		} catch (Exception e) {
-			handleException(e);
+			Util.handleException(e);
 			return refreshWith(null);
 		}
 		finally {

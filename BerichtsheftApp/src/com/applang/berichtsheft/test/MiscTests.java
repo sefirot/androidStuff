@@ -20,12 +20,23 @@ import java.util.Map;
 import java.util.regex.MatchResult;
 import java.util.regex.Pattern;
 
+import javax.swing.BoxLayout;
+import javax.swing.JEditorPane;
+import javax.swing.JTextPane;
+import javax.swing.event.HyperlinkEvent;
+import javax.swing.event.HyperlinkListener;
+import javax.swing.text.html.FormSubmitEvent;
+import javax.swing.text.html.HTMLEditorKit;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.sax.SAXResult;
 import javax.xml.transform.sax.SAXSource;
 import javax.xml.transform.sax.SAXTransformerFactory;
 import javax.xml.transform.sax.TransformerHandler;
 import javax.xml.transform.stream.StreamSource;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathExpression;
+import javax.xml.xpath.XPathFactory;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
@@ -62,6 +73,7 @@ public class MiscTests extends XMLTestCase
 	@Override
 	public void setUp() throws Exception {
 		super.setUp();
+		Util.Settings.load();
 		
 		if (tempfile.exists())
 			tempfile.delete();
@@ -74,6 +86,7 @@ public class MiscTests extends XMLTestCase
 		super.tearDown();
 		if (np != null && np.getCon() != null)
 			np.getCon().close();
+		Util.Settings.save();
 	}
 
 	public void testDateTime() throws Exception {
@@ -114,6 +127,9 @@ public class MiscTests extends XMLTestCase
 		assertTrue(weekDate[1] > 2000);
 		
 		assertEquals(null, Util.parseDate("", DatePicker.dateFormat));
+		
+		assertTrue(null == null);
+		assertEquals(null, null);
 	}
 
 	BerichtsheftTextArea textArea = new BerichtsheftTextArea();
@@ -454,7 +470,7 @@ public class MiscTests extends XMLTestCase
 					"<textelement query=\"1\" param1=\"w?oop?\" day=\"0\" />" + 
 				"</control>");
 		
-		String styleSheet = "scripts/content.xsl";
+		String styleSheet = Util.Settings.get("content.xsl", "scripts/content.xsl");
 		Util.xmlTransform(inputfile, styleSheet, tempfile.getPath(), 
 				"debug", "yes", 
 				"dbfile", dbfile
@@ -543,8 +559,8 @@ public class MiscTests extends XMLTestCase
 			// Cast the TransformerFactory to SAXTransformerFactory.
 			SAXTransformerFactory saxTFactory = ((SAXTransformerFactory) tFactory);	  
 			// Create a TransformerHandler for each stylesheet.
-			TransformerHandler tHandler1 = saxTFactory.newTransformerHandler(new StreamSource("scripts/control.xsl"));
-			TransformerHandler tHandler2 = saxTFactory.newTransformerHandler(new StreamSource("scripts/content.xsl"));
+			TransformerHandler tHandler1 = saxTFactory.newTransformerHandler(new StreamSource(Util.Settings.get("control.xsl", "scripts/control.xsl")));
+			TransformerHandler tHandler2 = saxTFactory.newTransformerHandler(new StreamSource(Util.Settings.get("content.xsl", "scripts/content.xsl")));
 			tHandler2.getTransformer().setParameter("inputfile", "content.xml");
 //			TransformerHandler tHandler3 = saxTFactory.newTransformerHandler(new StreamSource("/tmp/foo3.xsl"));
 			
@@ -573,12 +589,14 @@ public class MiscTests extends XMLTestCase
 		check_documents(0, contentfile.getPath(), tempfile.getPath());
 	}
 	
-	File contentfile = new File("scripts/content.xml");
-	String paramsFilename = "scripts/params.xml";
+	File contentfile = new File(Util.Settings.get("content.xml", "scripts/content.xml"));
+	String paramsFilename = Util.Settings.get("params.xml", "scripts/params.xml");
 
 	Pattern textElementPattern = Pattern.compile("(.*form\\[1\\]/(text|textarea)\\[(\\d+)\\])");
 	
-	void check_documents(int way, String inputFilename, String testFilename) throws Exception {
+	String check_documents(int way, String inputFilename, String testFilename) throws Exception {
+		StringBuilder sb = new StringBuilder();
+		
 		assertTrue(String.format("'%s' doesn't exist", inputFilename), new File(inputFilename).exists());
 		assertTrue(String.format("'%s' doesn't exist", testFilename), new File(testFilename).exists());
 		Diff diff = compareXML(new FileReader(inputFilename), new FileReader(testFilename));
@@ -591,12 +609,18 @@ public class MiscTests extends XMLTestCase
 			List<?> allDifferences = detailedDiff.getAllDifferences();
 			for (Object detail : allDifferences) {
 				Difference df = (Difference) detail;
+				String testXpathLocation = df.getTestNodeDetail().getXpathLocation();
 				String controlXpathLocation = df.getControlNodeDetail().getXpathLocation();
 				MatchResult mr = Util.findFirstIn(controlXpathLocation, textElementPattern);
-				String xpath = mr.group(1);
+				String xpath = mr == null ? "/" : mr.group(1);
 				id = xpathEngine.evaluate(xpath + "/@id", input);
 				if (!t.equals(id)) {
 					switch (way) {
+					case 3:
+						String inputValue = xpathEngine.evaluate(controlXpathLocation, input);
+						String testValue = xpathEngine.evaluate(testXpathLocation, test);
+						sb.append(String.format("%s : %s (%s)\n", testXpathLocation, testValue, inputValue));
+						break;
 					case 1:
 						assertEquals(id, id, xpathEngine.evaluate(xpath + "/@current-value", test));
 						break;
@@ -641,7 +665,7 @@ public class MiscTests extends XMLTestCase
 						}
 						
 						if (desc.length() > 0) {
-							System.out.println(String.format("%s %s", t, desc));
+							sb.append(String.format("%s %s\n", t, desc));
 							desc = "";
 						}
 						break;
@@ -652,8 +676,10 @@ public class MiscTests extends XMLTestCase
 				desc += "|" + df.getDescription();
 			}
 			if (way == 2 && desc.length() > 0)
-				System.out.println(String.format("%s %s", id, desc));
+				sb.append(String.format("%s %s\n", id, desc));
 		}
+		
+		return sb.toString();
 	}
 	
 	SimpleXpathEngine xpathEngine = new SimpleXpathEngine();
@@ -677,24 +703,26 @@ public class MiscTests extends XMLTestCase
 			String _content = Util.pathCombine(tempDir.getPath(), "_content.xml");
 			assertTrue(new File(content).renameTo(new File(_content)));
 			
+			String styleSheet1 = Util.Settings.get("control.xsl", "scripts/control.xsl");
+			String styleSheet2 = Util.Settings.get("content.xsl", "scripts/content.xsl");
 			Class.forName("org.sqlite.JDBC");
 			for (int way = 1; way < 3; way++) {
 				switch (way) {
 				case 1:
-					Util.xmlTransform(paramsFilename, "scripts/content.xsl", content, 
+					Util.xmlTransform(paramsFilename, styleSheet2, content, 
 							"inputfile", _content, 
 							"control", -1);
 					break;
 
 				case 2:
 					assertTrue(new File(content).delete());
-					Util.xmlTransform(paramsFilename, "scripts/control.xsl", "/tmp/control.xml"); 
+					Util.xmlTransform(paramsFilename, styleSheet1, "/tmp/control.xml"); 
 					
 					control = Util.xmlDocument(new File("/tmp/control.xml"));
 					String url = xpathEngine.evaluate("/control/DBINFO/dburl", control);
 					con = DriverManager.getConnection(url);
 					
-					Util.xmlTransform("/tmp/control.xml", "scripts/content.xsl", content, 
+					Util.xmlTransform("/tmp/control.xml", styleSheet2, content, 
 							"inputfile", _content); 
 					break;
 
@@ -730,9 +758,14 @@ public class MiscTests extends XMLTestCase
 		}
 	}
 
-	public void testExport() {
+	public void testExport() throws Exception {
+		Document doc = Util.xmlDocument(new File(paramsFilename));
+		String dbName = xpathEngine.evaluate("/params/dbfile", doc);
+		int year = Util.toInt(2013, xpathEngine.evaluate("/params/year", doc));
+		int weekInYear = Util.toInt(5, xpathEngine.evaluate("/params/weekInYear", doc));
+		int dayInWeek = Util.toInt(1, xpathEngine.evaluate("/params/dayInWeek", doc));
 		String dateString = DatePicker.pickADate(
-				Util.now(), 
+				Util.timeInMillis(year, weekInYear, dayInWeek), 
 				DatePicker.weekFormat,
 				"Pick week for 'Tagesberichte'", 
 				null);
@@ -740,12 +773,61 @@ public class MiscTests extends XMLTestCase
 			return;
 		
 		int[] parts = DatePicker.parseWeekDate(dateString);
+		Util.contentsToFile(new File(paramsFilename), 
+			BerichtsheftApp.parameters(
+				dbName, 
+				parts[1], 
+				parts[0]));
+		
 		assertTrue(BerichtsheftApp.export(
 				"Vorlagen/Tagesberichte.odt", 
-				"Dokumente/Tagesberichte.odt", 
-				"databases/berichtsheft.db", 
+				"Dokumente/Tagesberichte_", 
+				dbName, 
 				parts[1], 
 				parts[0]));
 	}
 
+	public void testXPath() throws Exception {
+		Document doc = Util.xmlDocument(new File(Util.Settings.get("content.xml", "scripts/content.xml")));
+		String path = 
+				"/document-content" +
+				"/body[1]" +
+				"/text[1]" +
+				"/p[1]" +
+				"/control" +
+				"[@control='%s']";
+		String id = "control32";
+		path = String.format(path, id);
+		NodeList nodes = Util.evaluateXPath(doc, path);
+		
+		int length = nodes.getLength();
+		for (int i = 0; i < length; i++) {
+			Element el = (Element) nodes.item(i);
+			NamedNodeMap attributes = el.getAttributes();
+			for (int j = 0; j < attributes.getLength(); j++) {
+				Node node = attributes.item(j);
+				System.out.println(node.getNodeName() + " : " + node.getNodeValue());
+			}
+		}
+	}
+	
+	public void testGeometry() throws Exception {
+		String htmlPath = "/tmp/temp.html";
+		
+		Util.mappings.clear();
+		String content = Util.Settings.get("content.xml", "scripts/content.xml");
+		String geometry = Util.Settings.get("geometry.xsl", "scripts/geometry.xsl");
+		Util.xmlTransform(content, geometry, htmlPath, 
+				"mode", 1);
+		
+		String id = "control52_x";
+		double pi = 3.141592;
+		Util.mappings.put(id, pi);
+		
+		String output = "/tmp/content.xml";
+		Util.xmlTransform(content, geometry, output, 
+				"controlfile", htmlPath);
+		
+		assertTrue(check_documents(3, content, output).contains("" + pi));
+	}
 }

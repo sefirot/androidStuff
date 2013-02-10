@@ -199,6 +199,9 @@ public class DatePicker
 	}
 
 	private String getDateString(String format) {
+		if (format.equals(weekFormat) && date.contains("/"))
+			return date;
+		
 		int day = Integer.parseInt(date);
 		cal.set(year, month, day);
 		sdf.applyPattern(format);
@@ -241,9 +244,9 @@ public class DatePicker
 		return parts;
 	}
 	
-	public static String weekDate(long[] week) {
-		int[] val0 = parseWeekDate(Util.formatDate(week[0], weekFormat));
-		int[] val1 = parseWeekDate(Util.formatDate(week[1], weekFormat));
+	public static String weekDate(long[] interval) {
+		int[] val0 = parseWeekDate(Util.formatDate(interval[0], weekFormat));
+		int[] val1 = parseWeekDate(Util.formatDate(interval[1], weekFormat));
 		if (val1[0] - val0[0] == 1 && val0[1] != val1[1])
 			return val0[0] + "/" + val1[1] % 100;
 		else

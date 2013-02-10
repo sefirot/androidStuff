@@ -1,7 +1,8 @@
 <?xml version="1.0" ?>
-<xsl:stylesheet 
+<xsl:stylesheet version="1.0"
 	xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
-	version="1.0">
+	xmlns:exslt="http://exslt.org/common"
+	extension-element-prefixes="exslt">
 	
 	<xsl:variable name="tab"><xsl:text>&#x0009;</xsl:text></xsl:variable>
 	<xsl:variable name="newline"><xsl:text>&#x000A;</xsl:text></xsl:variable>
@@ -34,9 +35,17 @@
 			<xsl:apply-templates select="@*|node()" />
 		</xsl:copy>
 	</xsl:template>
-	
-	<xsl:template match="/">
-		<xsl:apply-templates />
+
+	<xsl:template match="*|@*" mode="units">
+		<xsl:param name="strip" select="false()"/>
+		<xsl:choose>
+			<xsl:when test="$strip">
+				<xsl:value-of select="translate(., 'qwertyuiopasdfghjklzxcvbnm', '')"/>
+			</xsl:when>
+			<xsl:otherwise>
+				<xsl:value-of select="translate(., '+-0123456789.,', '')"/>
+			</xsl:otherwise>
+		</xsl:choose>
 	</xsl:template>
 
 </xsl:stylesheet>

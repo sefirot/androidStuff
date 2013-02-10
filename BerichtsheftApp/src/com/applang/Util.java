@@ -8,6 +8,8 @@ import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.beans.XMLDecoder;
+import java.beans.XMLEncoder;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -19,8 +21,10 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.io.StringWriter;
+import java.io.UnsupportedEncodingException;
 import java.io.Writer;
 import java.net.URL;
+import java.net.URLDecoder;
 import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
 import java.sql.PreparedStatement;
@@ -33,6 +37,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Random;
 import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
@@ -41,6 +46,7 @@ import java.util.regex.Pattern;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JTextField;
 import javax.swing.filechooser.FileFilter;
@@ -55,9 +61,14 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathExpression;
+import javax.xml.xpath.XPathFactory;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
 public class Util
 {
@@ -196,6 +207,26 @@ public class Util
 		return true;
 	}
 
+    public static int toInt(int defaultValue, String value) {
+        int result;
+        
+        try {
+        	result = Integer.parseInt(value);
+        } catch(NumberFormatException e) { result = defaultValue; }
+        
+        return result;
+    }
+
+    public static double toDouble(double defaultValue, String value) {
+    	double result;
+        
+        try {
+        	result = Double.parseDouble(value);
+        } catch(NumberFormatException e) { result = defaultValue; }
+        
+        return result;
+    }
+
 	public static boolean matches(String s, String regex) {
 		return s.matches(regex);
 	}
@@ -205,6 +236,17 @@ public class Util
 			DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
 			DocumentBuilder db = dbf.newDocumentBuilder();
 			return db.parse(file);
+	    } catch (Exception e) {
+	    	return null;
+	    }
+	}
+	
+	public static NodeList evaluateXPath(Document doc, String path) {
+	    try {
+			XPathFactory factory = XPathFactory.newInstance();
+			XPath xpath = factory.newXPath();
+			XPathExpression expr = xpath.compile(path);
+			return (NodeList)expr.evaluate(doc, XPathConstants.NODESET);
 	    } catch (Exception e) {
 	    	return null;
 	    }
@@ -551,6 +593,18 @@ public class Util
 		return sb.toString();
 	}
 	
+	public static String readFromUrl(String url, String encoding) throws IOException {
+		InputStream is = null;
+		try {
+			is = new URL(url).openStream();
+			BufferedReader rd = new BufferedReader(new InputStreamReader(is, Charset.forName(encoding)));
+			return Util.readAll(rd);
+		} finally {
+			if (is != null)
+				is.close();
+		}
+	}
+	
 	public static MatchResult[] excerptsFrom(InputStream is, Pattern pattern) throws IOException {
 		String text = readAll(new BufferedReader(new InputStreamReader(is)));
 		is.close();
@@ -851,6 +905,30 @@ public class Util
 		
 	}
 	
+	public static ValMap mappings = new ValMap();
+	
+	public static String getMapping(String key) {
+		Object value = mappings.get(key);
+		return value == null ? "" : value.toString();
+	}
+	
+	public static String setMapping(String key, String value) {
+		mappings.put(key, value);
+		return "";
+	}
+	
+	public static void posting2mappings(String posting) {
+		String[] data = posting.split("&|=");
+		
+		try {
+			for (int i = 0; i < data.length; i+=2) {
+				String key = URLDecoder.decode(data[i], "UTF-8");
+				String value = URLDecoder.decode(data[i+1], "UTF-8");
+				setMapping(key, value);
+			}
+		} catch (UnsupportedEncodingException e) {}
+	}
+	
 	public static ValMap getMapFromQuery(PreparedStatement ps, int keyColumn, int valueColumn) {
 		ValMap map = new ValMap();
 		try {
@@ -864,27 +942,157 @@ public class Util
 		return map;
 	}
 	
-	public static String readFromUrl(String url) throws IOException {
-		InputStream is = null;
-		try {
-			is = new URL(url).openStream();
-			BufferedReader rd = new BufferedReader(new InputStreamReader(is, Charset.forName("UTF-8")));
-			return Util.readAll(rd);
-		} finally {
-			if (is != null)
-				is.close();
-		}
-	}
+	public static Container container = null;
 
 	public static boolean question(String text) {
 		return JOptionPane.YES_OPTION == JOptionPane.showConfirmDialog(
-				null, text, 
-				"", 
+				container, text, 
+				"Question", 
 				JOptionPane.YES_NO_OPTION);
 	}
 
 	public static void message(String text) {
-		JOptionPane.showMessageDialog(null, text);
+		JLabel mess = Util.findComponent(container, "mess");
+		if (mess != null)
+			mess.setText(text);
+		else
+			JOptionPane.showMessageDialog(container, text, "Message", JOptionPane.PLAIN_MESSAGE);
+	}
+
+	public static void handleException(Exception e) {
+		if (e != null) 
+        	message(e.getMessage());
+	}
+
+	/**
+	 * @param d
+	 * @param decimalPlace
+	 * @return
+	 */
+	public static double round(double d, int decimalPlace) {
+		// see the Javadoc about why we use a String in the constructor
+		// http://java.sun.com/j2se/1.5.0/docs/api/java/math/BigDecimal.html#BigDecimal(double)
+		java.math.BigDecimal bd = 
+			new java.math.BigDecimal(Double.toString(d));
+		bd = bd.setScale(decimalPlace, java.math.BigDecimal.ROUND_HALF_UP);
+		return bd.doubleValue();
+	}
+	
+	public static class Settings 
+	{
+		private static Properties properties = null;
+		
+		public static void clear() {
+			properties = new Properties();
+		}
+		
+		public static boolean contains(String key) {
+			return properties.containsKey(key);
+		}
+		
+		public static String defaultFilename() {
+			String dir = relativePath();
+			File[] array = new File(dir).listFiles();
+	    	for (File file : array) {
+	    		String path = file.getPath();
+				if (file.isFile() && path.endsWith(".properties"))
+	    			return path;
+	    	}
+	    	String[] parts = dir.split("\\\\|/");
+	    	return parts[parts.length - 1] + ".properties";
+		}
+		
+		/**
+		 * @param params
+		 * <table border="1"><tr><th>index</th><th>description</th></tr><tr><td>0</td><td>file path to settings</td></tr></table>
+		 */
+		public static void load(Object... params) {
+			String fileName = paramString(defaultFilename(), 0, params);
+			boolean decoding = paramBoolean(false, 1, params);
+			
+			if (properties == null)
+				clear();
+			
+			XMLDecoder dec = null;
+			try {
+				if (decoding) {
+					dec = new XMLDecoder(new FileInputStream(fileName));
+					properties = (Properties) dec.readObject();
+				} else {
+					FileInputStream fis = new FileInputStream(fileName);
+					properties.load(fis);
+					fis.close();
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+			} finally {
+				if (dec != null)
+					dec.close();
+			}
+		}
+		
+		/**
+		 * @param params
+		 */
+		public static void save(Object... params) {
+			String fileName = paramString(defaultFilename(), 0, params);
+			boolean encoding = paramBoolean(false, 1, params);
+			
+			if (properties == null)
+				clear();
+			
+			XMLEncoder enc = null;
+		    try {
+				if (encoding) {
+					enc = new XMLEncoder(new FileOutputStream(fileName));
+					enc.writeObject(properties);
+				}
+		        else {
+		            FileOutputStream fos = new FileOutputStream(fileName);
+		            properties.store(fos, null);
+		            fos.close();
+		        }
+			} 
+		    catch (Exception e) {
+				e.printStackTrace();
+			} 
+			finally {
+				if (enc != null)
+					enc.close();
+			}
+		}
+		
+		/**
+		 * @param <T>	the type of the value
+		 * @param key	the name under which the setting item is known
+		 * @param value	the value of the setting item
+		 * @param params
+		 * <table border="1"><tr><th>index</th><th>description</th></tr><tr><td>0</td><td>causes rounding of value if T is <code>Double</code></td></tr></table>
+		 */
+		@SuppressWarnings("unchecked")
+		public static <T extends Object> void put(String key, T value, Object... params) {
+			Object decimalPlace = param(null, 0, params);
+			if (value instanceof Double && decimalPlace instanceof Integer) {
+				value = (T)Double.valueOf(round((Double)value, (Integer)decimalPlace));
+			}
+			properties.put(key, value);
+		}
+		
+		/**
+		 * @param <T>	the type of the value
+		 * @param key	the name under which the setting item is known
+		 * @param defaultValue	the value of the setting item in case key is unknown (null)
+		 * @return	the value of the setting item
+		 */
+		@SuppressWarnings("unchecked")
+		public static <T extends Object> T get(String key, T defaultValue) {
+			try {
+				if (Settings.contains(key))
+					return (T)properties.get(key);
+			} catch (Exception e) {}
+	
+			return defaultValue;
+		}
 	}
 
 }

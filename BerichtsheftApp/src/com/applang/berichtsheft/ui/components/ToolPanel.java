@@ -1,5 +1,6 @@
 package com.applang.berichtsheft.ui.components;
 
+import java.awt.Container;
 import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyAdapter;
@@ -74,7 +75,7 @@ public class ToolPanel extends JPanel
         	if (actionBlocked)
         		return;
         	
-        	message("");
+        	Util.message("");
         	System.out.println(type.toString());
         	
         	action_Performed(ae);
@@ -97,6 +98,11 @@ public class ToolPanel extends JPanel
 		caption = Util.paramString("Database", 1, params);
 		
 		setLayout(new FlowLayout(FlowLayout.LEADING));
+	}
+	
+	public void addToContainer(Container container, Object constraints) {
+		container.add(this, constraints);
+		Util.container = container;
 	}
 
 	protected JButton[] buttons = new JButton[9];
@@ -169,19 +175,6 @@ public class ToolPanel extends JPanel
 				}
 			});
 		}
-	}
-	
-	protected void message(String text) {
-		JLabel mess = Util.findComponent(this.getParent(), "mess");
-		if (mess != null)
-			mess.setText(text);
-		else
-			System.out.println(text);
-	}
-
-	protected void handleException(Exception e) {
-		if (e != null) 
-        	message(e.getMessage());
 	}
 
 	protected Connection con = null;

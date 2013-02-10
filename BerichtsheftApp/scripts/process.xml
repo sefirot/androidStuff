@@ -1,16 +1,20 @@
-<project name="Berichtsheft" default="pipe">
+<project name="Berichtsheft" basedir=".." default="pipe">
 	<description>
     This is an ant file for performing Berichtsheft specific tasks.
 	</description>
 		
+  	<property file="berichtsheft.properties"/>
 	<property name="debug.out" location="/tmp/debug.out" />
-	<property name="out.xml" location="/tmp/temp.xml" />
-	<property name="src-dir" location="../src" />
-	<property name="bin-dir" location="../bin" />
+	<property name="content.xml" location="scripts/content.xml" />
+	<property name="content.xsl" location="scripts/content.xsl" />
+	<property name="control.xsl" location="scripts/control.xsl" />
+	<property name="geometry.xsl" location="scripts/geometry.xsl" />
+	<property name="src-dir" location="src" />
+	<property name="bin-dir" location="bin" />
 		
     <path id="project.class.path">
     	<pathelement location="${bin-dir}/"/>
-		<fileset dir="../.jedit/jars">
+		<fileset dir=".jedit/jars">
 			<exclude name="BerichtsheftPlugin.jar"/>
 			<filename name="*.jar" />
 		</fileset>
@@ -26,8 +30,23 @@
 	
 	<target name="integrate.weathers">
 		<exec executable = "bash">
-			<arg value="process.sh" />
+			<arg value="scripts/process.sh" />
 			<arg value="integrate_weathers" />
+		</exec>
+	</target>
+    
+    <target name="start.echo">
+        <java fork="true" spawn="true" classname="echo.ThreadedEchoServer">
+			<classpath>
+		    	<pathelement location="${bin-dir}/"/>
+            </classpath>
+        </java>
+    </target>
+    
+    <target name="stop.echo">
+		<exec executable = "bash">
+			<arg value="scripts/process.sh" />
+			<arg value="stop_echo" />
 		</exec>
 	</target>
 		    	
@@ -36,21 +55,21 @@
 	</target>
 		    	
 	<target name="test.debug" depends="init">
-		<delete file="${out.xml}" />
-		<xslt in="/tmp/control.xml" out="${out.xml}" style="debug.xsl" classpathref="project.class.path">
+		<delete file="/tmp/temp.xml" />
+		<xslt in="/tmp/control.xml" out="/tmp/temp.xml" style="scripts/debug.xsl" classpathref="project.class.path">
 		</xslt>
 	</target>
 	    	
 	<target name="locate.ids" depends="init">
-		<xslt in="/tmp/control.xml" out="/tmp/content.xml" style="content.xsl" classpathref="project.class.path">
-			<param name="inputfile" expression="content.xml"/>
+		<xslt in="/tmp/control.xml" out="/tmp/content.xml" style="${content.xsl}" classpathref="project.class.path">
+			<param name="inputfile" expression="${content.xml}"/>
 			<param name="control" expression="-1"/>
 		</xslt>
 		<antcall target="odt.update" />
 	</target>
 		    	
 	<target name="odt.update">
-		<zip destfile="../Dokumente/Tagesberichte.odt"
+		<zip destfile="Dokumente/Tagesberichte.odt"
 			basedir="/tmp"
 			includes="content.xml"
 			update="true"
@@ -59,19 +78,39 @@
 		    	
 	<target name="pipe.1" depends="init">
 		<delete file="/tmp/control.xml"/>
-		<xslt in="params.xml" out="/tmp/control.xml" style="control.xsl" classpathref="project.class.path">
+		<xslt in="params.xml" out="/tmp/control.xml" style="${control.xsl}" classpathref="project.class.path">
 			<param name="debug" expression="no"/>
 		</xslt>
 	</target>
 	    	
 	<target name="pipe.2">
 		<delete file="/tmp/content.xml"/>
-		<xslt in="/tmp/control.xml" out="/tmp/content.xml" style="content.xsl" classpathref="project.class.path">
-			<param name="inputfile" expression="content.xml"/>
+		<xslt in="/tmp/control.xml" out="/tmp/content.xml" style="${content.xsl}" classpathref="project.class.path">
+			<param name="inputfile" expression="${content.xml}"/>
 			<param name="debug" expression="no"/>
 		</xslt>
 		<antcall target="odt.update" />
 	</target>
 		    	
 	<target name="pipe" depends="pipe.1, pipe.2" />
+	    	
+	<target name="geometry.1">
+		<delete file="${geometry.html}" />
+		<xslt in="${content.xml}" out="${geometry.html}" style="${geometry.xsl}" classpathref="project.class.path">
+			<param name="mode" expression="1"/>
+			<param name="debug" expression="yes"/>
+		</xslt>
+	</target>
+	    	
+	<target name="geometry.2">
+		<delete file="/tmp/content.xml" />
+		<xslt in="${content.xml}" out="/tmp/content.xml" style="${geometry.xsl}" classpathref="project.class.path">
+			<param name="controlfile" expression="${geometry.html}"/>
+			<param name="debug" expression="no"/>
+		</xslt>
+	</target>
+		    	
+	<target name="geometry" depends="geometry.1">
+		<antcall target="geometry.2" />
+	</target>
 </project>

@@ -126,7 +126,8 @@ public class BerichtsheftToolBar extends JToolBar
 	{
 		removeAll();
 
-		add(new NotePicker(new JEditTextComponent(jEdit.getActiveView())));
+		NotePicker notePicker = new NotePicker(new JEditTextComponent(jEdit.getActiveView()));
+		notePicker.addToContainer(this, null);
 		add(Box.createGlue());
 	}
 	// }}}

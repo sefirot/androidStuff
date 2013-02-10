@@ -55,11 +55,7 @@
 	<xsl:template match="/">
 		<xsl:choose>
 			<xsl:when test="$debug = 'yes'">
-				<xsl:call-template name="debug.out">
-					<xsl:with-param name="append" select="false()" />
-					<xsl:with-param name="text" select="concat(util:formatDate(util:now(), 'yyyy-MM-dd HH:mm:ss.SSS'), $newline)" />
-					<xsl:with-param name="textOnly" select="true()"/>
-				</xsl:call-template>
+				<xsl:call-template name="begin.debug" />
 				<xsl:call-template name="debug.out">
 					<xsl:with-param name="text" select="'CONTROL'" />
 					<xsl:with-param name="object" select="$controlinfo" />
