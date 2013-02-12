@@ -217,6 +217,16 @@ public class Util
         return result;
     }
 
+    public static float toFloat(float defaultValue, String value) {
+    	float result;
+        
+        try {
+        	result = Float.parseFloat(value);
+        } catch(NumberFormatException e) { result = defaultValue; }
+        
+        return result;
+    }
+
     public static double toDouble(double defaultValue, String value) {
     	double result;
         
@@ -226,10 +236,6 @@ public class Util
         
         return result;
     }
-
-	public static boolean matches(String s, String regex) {
-		return s.matches(regex);
-	}
 	
 	public static Document xmlDocument(File file) {
 	    try {
@@ -459,6 +465,10 @@ public class Util
 		else
 			return null;
 	}
+
+	public static boolean matches(String s, String regex) {
+		return s.matches(regex);
+	}
     /**
      * @param parts
      * @return	a <code>File</code> object constructed out of parts of the file path
@@ -482,11 +492,15 @@ public class Util
 	public static String tempPath() {
 		return System.getProperty("java.io.tmpdir");
 	}
+
+	public static String tempPath(String subdir, String name) {
+		return pathCombine(tempDir(false, subdir).getPath(), name);
+	}
 	
-	public static File tempDir(String... subdirs) {
+	public static File tempDir(boolean deleteOnExistence, String... subdirs) {
     	File tempDir = fileOf(arrayextend(subdirs, true, tempPath()));
     	if (!tempDir.mkdirs()) {
-        	if (deleteDirectory(tempDir))
+        	if (deleteOnExistence && deleteDirectory(tempDir))
         		tempDir.mkdir();
     	}
     	return tempDir;
@@ -829,6 +843,17 @@ public class Util
 		
 		return null;
 	}
+	
+	public static Container getRootContainer(Container container) {
+		if (container == null)
+			return null;
+		Container parent = container.getParent();
+		while (parent != null) {
+			container = parent;
+			parent = container.getParent();
+		}
+		return container;
+	}
     
     public static class Timing
     {
@@ -907,6 +932,11 @@ public class Util
 	
 	public static ValMap mappings = new ValMap();
 	
+	public static int clearMappings() {
+		mappings = new ValMap();
+		return 0;
+	}
+	
 	public static String getMapping(String key) {
 		Object value = mappings.get(key);
 		return value == null ? "" : value.toString();
@@ -915,18 +945,6 @@ public class Util
 	public static String setMapping(String key, String value) {
 		mappings.put(key, value);
 		return "";
-	}
-	
-	public static void posting2mappings(String posting) {
-		String[] data = posting.split("&|=");
-		
-		try {
-			for (int i = 0; i < data.length; i+=2) {
-				String key = URLDecoder.decode(data[i], "UTF-8");
-				String value = URLDecoder.decode(data[i+1], "UTF-8");
-				setMapping(key, value);
-			}
-		} catch (UnsupportedEncodingException e) {}
 	}
 	
 	public static ValMap getMapFromQuery(PreparedStatement ps, int keyColumn, int valueColumn) {
@@ -952,7 +970,7 @@ public class Util
 	}
 
 	public static void message(String text) {
-		JLabel mess = Util.findComponent(container, "mess");
+		JLabel mess = Util.findComponent(getRootContainer(container), "mess");
 		if (mess != null)
 			mess.setText(text);
 		else

@@ -6,6 +6,7 @@
 	
 	<xsl:variable name="tab"><xsl:text>&#x0009;</xsl:text></xsl:variable>
 	<xsl:variable name="newline"><xsl:text>&#x000A;</xsl:text></xsl:variable>
+	<xsl:variable name="nbsp">&#160;</xsl:variable>
 	
 	<xsl:template name="println">
 		<xsl:param name="line"/>

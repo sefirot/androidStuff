@@ -59,7 +59,7 @@ public class BerichtsheftApp
 	}
 
 	public static boolean export(String vorlage, String dokument, String databaseFilename, Object... params) {
-		File tempDir = Util.tempDir("berichtsheft");
+		File tempDir = Util.tempDir(true, "berichtsheft");
 		try {
 			File source = new File(vorlage);
 			if (!source.exists())

@@ -17,6 +17,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.regex.MatchResult;
 import java.util.regex.Pattern;
 
@@ -687,7 +688,7 @@ public class MiscTests extends XMLTestCase
 	Connection con = null;
 
 	public void testContent() throws Exception {
-		File tempDir = Util.tempDir("berichtsheft");
+		File tempDir = Util.tempDir(true, "berichtsheft");
 		try {
 			File source = new File("Vorlagen/Tagesberichte.odt");
 			assertTrue(source.exists());
@@ -811,23 +812,35 @@ public class MiscTests extends XMLTestCase
 		}
 	}
 	
-	public void testGeometry() throws Exception {
-		String htmlPath = "/tmp/temp.html";
-		
-		Util.mappings.clear();
-		String content = Util.Settings.get("content.xml", "scripts/content.xml");
-		String geometry = Util.Settings.get("geometry.xsl", "scripts/geometry.xsl");
-		Util.xmlTransform(content, geometry, htmlPath, 
-				"mode", 1);
-		
-		String id = "control52_x";
-		double pi = 3.141592;
-		Util.mappings.put(id, pi);
-		
-		String output = "/tmp/content.xml";
-		Util.xmlTransform(content, geometry, output, 
-				"controlfile", htmlPath);
-		
-		assertTrue(check_documents(3, content, output).contains("" + pi));
+	public void testGeometry() {
+		File dir = Util.tempDir(true, "berichtsheft");
+		try {
+			String content = Util.Settings.get("content.xml", "scripts/content.xml");
+			String geometry = Util.Settings.get("geometry.xsl",	"scripts/geometry.xsl");
+			String output = "/tmp/content.xml";
+			
+			Util.clearMappings();
+			Util.xmlTransform(content, geometry, output, 
+					"mode", 1);
+			
+			File[] pages = dir.listFiles();
+			assertEquals(2, pages.length);
+			
+			String value = "xxx";
+			String[] keys = new String[] {"control1_x", "control51_x"};
+			
+			for (int i = 0; i < pages.length; i++) {
+				System.out.println(new TreeMap<String,Object>(Util.mappings));
+//				Util.mappings.put(keys[i], value);
+				Util.xmlTransform(content, geometry, output, 
+						"controlfile", pages[i]);
+				String report = check_documents(3, content, output);
+				System.out.println(report);
+//				assertTrue(report, report.contains(value));
+			}
+		} catch (Exception e) {
+			return;
+		}
+		assertTrue(Util.deleteDirectory(dir));
 	}
 }

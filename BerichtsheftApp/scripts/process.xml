@@ -27,6 +27,12 @@
 			<classpath refid="project.class.path" />
 		</javac>
 	</target>
+    
+    <target name="NotePicker">
+        <java fork="true" spawn="true" classname="com.applang.berichtsheft.ui.components.NotePicker">
+			<classpath refid="project.class.path" />
+        </java>
+    </target>
 	
 	<target name="integrate.weathers">
 		<exec executable = "bash">
@@ -36,7 +42,7 @@
 	</target>
     
     <target name="start.echo">
-        <java fork="true" spawn="true" classname="echo.ThreadedEchoServer">
+        <java fork="true" spawn="true" classname="echo.MyEchoServer">
 			<classpath>
 		    	<pathelement location="${bin-dir}/"/>
             </classpath>
@@ -44,10 +50,13 @@
     </target>
     
     <target name="stop.echo">
-		<exec executable = "bash">
-			<arg value="scripts/process.sh" />
-			<arg value="stop_echo" />
-		</exec>
+        <java fork="true" spawn="true" classname="echo.MyEchoServer">
+			<classpath>
+		    	<pathelement location="${bin-dir}/"/>
+            </classpath>
+        	<arg value=""/>
+        	<arg value="-no"/>
+        </java>
 	</target>
 		    	
 	<target name="init">
@@ -98,7 +107,7 @@
 		<delete file="${geometry.html}" />
 		<xslt in="${content.xml}" out="${geometry.html}" style="${geometry.xsl}" classpathref="project.class.path">
 			<param name="mode" expression="1"/>
-			<param name="debug" expression="yes"/>
+			<param name="debug" expression="no"/>
 		</xslt>
 	</target>
 	    	

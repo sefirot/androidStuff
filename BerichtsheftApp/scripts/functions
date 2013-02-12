@@ -1,0 +1,133 @@
+declare db=/tmp/berichtsheft.db
+declare sql=/tmp/berichtsheft.sql
+declare cnt
+
+function insert_count() {
+	while read line ; do    
+		case "$line" in
+		--*)
+			let cnt+=$(echo ${line} | awk '{print $4}')
+			;;
+		esac
+	done < "$1"
+}
+
+function note_count() {
+	cnt=$( sqlite3 "$1" "select count(*) from notes" )
+	echo "$cnt records in $1"
+}
+
+function echo_results() {
+	echo "$cnt inserts from $sql"
+	note_count $db
+}
+
+function newNotepad() {
+	if [ $# -gt 0 ] ; then
+		rm -f "$1"
+		sqlite3 "$1" \
+			"CREATE TABLE notes (_id INTEGER PRIMARY KEY AUTOINCREMENT,title TEXT,note TEXT,created INTEGER,modified INTEGER)"
+	fi
+	cnt=0
+}
+
+function exec_sql() {
+	sqlite3 "$db" < "$sql"
+}
+
+function eliminate_id() {
+	awk '
+BEGIN {
+	print "BEGIN TRANSACTION;"
+}
+/INSERT INTO [\"]*notes/ {
+	record = $0
+	while (match($0, /\)[[:space:]]*;[[:space:]]*$/) < 1) {
+		if (getline <= 0) {
+			m = "unexpected EOF or error"
+			m = (m ": " ERRNO)
+			print m > "/dev/stderr"
+			exit
+		}
+		record = record RS $0
+	}
+	print gensub(/( VALUES[[:space:]]*\()[[:space:]]*[[:digit:]]+[[:space:]]*,/, " (title,note,created,modified)\\1", 1, record)
+	n++
+}
+END {
+	print "COMMIT;"
+	print "-- inserts : " n
+}
+	'
+}
+
+function parse_notes_old() {
+	awk '
+BEGIN {
+	FS = ":"
+	RS = "\n"
+	print "BEGIN TRANSACTION;"
+	print "CREATE TABLE if not exists notes (_id INTEGER PRIMARY KEY,title TEXT,note TEXT,created INTEGER,modified INTEGER);"
+	print "DELETE FROM notes;"
+}
+{
+	spec = gensub(/.* ([[:digit:]]+)\.([[:digit:]]+)\.([[:digit:]]+).*/, "\\3 \\2 \\1", "g", $1)
+	if (match(spec, /([[:digit:]]+)/) > 0) {
+		year = substr(spec,RSTART,RLENGTH) % 100
+		if (year > 69) year += 1900; else year += 2000
+		timestamp = mktime(year substr(spec,RSTART + RLENGTH) " 0 0 0")
+		$1 = "Bericht"
+	}
+	if (length() > 0) {
+		_id++;
+		title = $1
+#		title = strftime("%d.%m.%Y", timestamp) " : " title
+		$1 = ""
+		note = $0
+		date = timestamp * 1000
+		print "INSERT INTO notes VALUES(" _id ", '" title "', '" note "', " date ", " date ");"
+	}
+}
+END {
+	print "COMMIT;"
+}
+	'
+}
+
+function parse_notes() {
+	awk '
+function chr(c)
+{
+	return sprintf("%c", c + 0)
+}
+function compose() {
+	if (length(note) > 0) {
+		apos = chr(39)
+		print "INSERT INTO notes (title,note,created,modified) VALUES(" apos title apos ", " apos note apos ", " timestamp ", " timestamp ");"
+		note = ""
+		n++
+	}
+}
+BEGIN {
+	print "BEGIN TRANSACTION;"
+}
+length() > 0 {
+	bemerk = $3 == "Bemerkung"
+	if (bemerk) {
+		compose()
+		spec = gensub(/.* ([[:digit:]]+)\.([[:digit:]]+)\.* Bemerkung/, "2012 \\2 \\1 0 0 0", "g", $0)
+		timestamp = mktime(spec) * 1000
+		title = "Bemerkung"
+#		print title,timestamp,strftime("%d.%m.%Y", timestamp / 1000)
+	}
+	else
+		note = note $0
+}
+END {
+	compose()
+	print "COMMIT;"
+	print "-- inserts : " n
+}
+	'
+}
+

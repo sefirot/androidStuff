@@ -1,15 +1,16 @@
 #!/bin/bash
 
-cd `dirname $0`/../databases
-db=berichtsheft.db
+dir=`dirname $0`
+cd $dir/../databases
+
+. $dir/functions
+
 wi=$(pwd)/weather_info.db
-temp=/tmp/berichtsheft.sql
+np=/home/lotharla/work/Niklas/note_pad.db
+ready=Ready/*.db
+raw=/home/lotharla/work/Niklas/Bemerkungen*
 
 case "$1" in
-
-stop_echo)
-	echo "shutdown" | nc -w 10 localhost 8088
-	;;
 
 21nov2012)
 #	datetime(created/1000,'unixepoch','localtime','start of day')
@@ -19,62 +20,61 @@ stop_echo)
 	sqlite3 "$db" "select note from notes where date(created/1000, 'unixepoch','localtime')='2012-11-21'"
 	;;
 	
-Bericht)
+Doppelte_Tagesberichte)
 	sqlite3 "$db" \
-		"select date(created/1000, 'unixepoch'),count(*) 
+		"select date(created/1000, 'unixepoch','localtime'),count(*) 
 		from notes 
 		where title='$1' 
-		group by date(created/1000, 'unixepoch')
+		group by date(created/1000, 'unixepoch','localtime')
 		order by count(*) desc" | \
 			zenity --title "$1" --text-info
 	;;
 	
 collect_notes)
-	rm -f "$db"
-	sqlite3 "$db" \
-		"CREATE TABLE notes (_id INTEGER PRIMARY KEY AUTOINCREMENT,title TEXT,note TEXT,created INTEGER,modified INTEGER)"
-	for f in Ready/*.db ; do 
+	newNotepad "$db"
+	$0 read_notes
+	$0 read_more_notes
+	;;
+	
+read_notes)
+	for f in $ready ; do 
 		sqlite3 $f ".dump" | \
-			awk '
-			BEGIN {
-				print "BEGIN TRANSACTION;"
-			}
-			/INSERT INTO [\"]*notes/ {
-				record = $0
-				while (match($0, /\)[[:space:]]*;[[:space:]]*$/) < 1) {
-					if (getline <= 0) {
-						m = "unexpected EOF or error"
-						m = (m ": " ERRNO)
-						print m > "/dev/stderr"
-						exit
-					}
-					record = record RS $0
-				}
-				print gensub(/( VALUES[[:space:]]*\()[[:space:]]*[[:digit:]]+[[:space:]]*,/, " (title,note,created,modified)\\1", 1, record)
-				n++
-			}
-			END {
-				print "COMMIT;"
-				print "-- "n" inserts"
-			}
-			' > $temp
-		zenity --title "$f" --text-info --filename "$temp"
-		while read line ; do    
-			case "$line" in
-			--*)
-				let cnt+=$(echo ${line} | awk '{print $2}')
-				;;
-			esac
-		done < "$temp"
-		sqlite3 "$db" < "$temp"
+			eliminate_id > $sql
+		zenity --title "$f" --text-info --filename "$sql"
+		insert_count "$sql"
+		exec_sql
 	done
-	echo "$cnt inserts"
-	cnt=$( sqlite3 "$db" "select count(*) from notes" )
-	echo "$cnt records"
+	echo_results "$db"
+	;;
+	
+read_more_notes)
+	for f in $raw ; do 
+		cat "$f" | \
+			parse_notes > $sql
+		zenity --title "$f" --text-info --filename "$sql"
+		insert_count "$sql"
+		exec_sql
+	done
+	echo_results "$db"
+	;;
+	
+integrate_notes)
+	cat > "$sql" << EOF
+attach '$db' as more;
+INSERT INTO notes (title,note,created,modified)
+SELECT title,note,created,modified
+FROM more.notes;
+EOF
+	db=berichtsheft.db
+	echo -n "before : "
+	note_count "$db"
+	exec_sql
+	echo -n "after : "
+	note_count "$db"
 	;;
 	
 integrate_weathers)
-	cat > "$temp" << EOF
+	cat > "$sql" << EOF
 DROP TABLE if exists weathers;
 CREATE TABLE weathers (
 _id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -90,8 +90,8 @@ INSERT INTO weathers (description,location,precipitation,maxtemp,mintemp,created
 SELECT description,location,precipitation,maxtemp,mintemp,created,modified
 FROM winfo.weathers;
 EOF
-	sqlite3 "$db" < "$temp"
-	echo \'weathers\' integrated into "$db"
+	exec_sql
+	echo "\'weathers\' integrated into $db"
 	;;
 	
 esac

@@ -5,9 +5,10 @@
 	xmlns:svg='urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0'
 	xmlns:text='urn:oasis:names:tc:opendocument:xmlns:text:1.0'
 	xmlns:java="http://xml.apache.org/xalan/java"
+	xmlns:redirect="http://xml.apache.org/xalan/redirect"
 	xmlns:util="com.applang.Util"
 	xmlns:exslt="http://exslt.org/common"
-	extension-element-prefixes="exslt util">
+	extension-element-prefixes="exslt util redirect">
 	
 	<xsl:include href = "debug.xsl"/>
 	
@@ -43,17 +44,9 @@
 			<xsl:otherwise>
 				<xsl:choose>
 					<xsl:when test="$mode = 1">
-						<html>
-							<body>
-								<form method="POST" action="show-params">
-									<input type='SUBMIT' value='Accept' />
-									<table border="1">
-										<xsl:copy-of select="exslt:node-set($table.header)/*" />
-										<xsl:apply-templates mode="filter" />
-									</table>
-								</form>
-							</body>
-						</html>
+						<xsl:for-each select="//text:p">
+							<xsl:call-template name="page" />
+						</xsl:for-each>
 					</xsl:when>
 					<xsl:otherwise>
 						<xsl:apply-templates />
@@ -63,8 +56,35 @@
 		</xsl:choose>
 	</xsl:template>
 	
-	<xsl:template match="@svg:*|@draw:control" mode="filter">
-		<xsl:call-template name="debug" />
+	<xsl:template name="page">
+		<xsl:variable name="pos" select="position()" />
+		<xsl:variable name="first" select="$pos = 1" />
+		<xsl:variable name="last" select="$pos = last()" />
+		<xsl:variable name="page" select="concat('page',$pos)" />
+		<xsl:variable name="filename" select="util:tempPath('berichtsheft',concat($page,'.html'))" />
+		<redirect:write select="$filename" append="false">
+			<html>
+				<body>
+					<form method="POST" action="{$page}">
+						<table>
+							<tr>
+								<td><input type='SUBMIT' value='Accept' /></td>
+								<xsl:if test="not($first)">
+									<td><a href="previous">previous</a></td>
+								</xsl:if>
+								<xsl:if test="not($last)">
+									<td><a href="next">next</a></td>
+								</xsl:if>
+							</tr>
+						</table>
+						<table id="controls" border="1">
+							<xsl:copy-of select="exslt:node-set($table.header)/*" />
+							<xsl:apply-templates mode="filter" />
+						</table>
+					</form>
+				</body>
+			</html>
+		</redirect:write>
 	</xsl:template>
 
 	<xsl:template match="draw:control" mode="filter">
@@ -106,9 +126,13 @@
 		<xsl:apply-templates mode="filter" />
 	</xsl:template>
 	
+	<xsl:template match="@svg:*|@draw:control" mode="filter">
+		<xsl:call-template name="debug" />
+	</xsl:template>
+	
 	<xsl:template match="draw:control">
 		<xsl:variable name="ctrl" select="string(@draw:control)" />
-		<xsl:variable name="tr" select="exslt:node-set($controlinfo)//tr[contains(string(.),$ctrl)]" />
+		<xsl:variable name="tr" select="exslt:node-set($controlinfo)//table[@id='controls']/tr[contains(string(.),$ctrl)]" />
 		<xsl:copy>
 			<xsl:for-each select="@*">
 				<xsl:variable name="name" select="name()" />
@@ -130,10 +154,18 @@
 										<xsl:if test="$localname = $th">
 											<xsl:variable name="pos" select="position()" />
 											<xsl:variable name="id" select="exslt:node-set($tr)/td[$pos]/input/@id" />
-											<xsl:variable name="value" select="util:getMapping($id)" />
+											<xsl:variable name="value" select="concat(util:getMapping($id),$units)" />
+<xsl:if test="$value != $oldValue">
+	<xsl:call-template name="debug.out">
+		<xsl:with-param name="text" select="$id" />
+		<xsl:with-param name="object" select="$value" />
+		<xsl:with-param name="text2" select="$localname" />
+		<xsl:with-param name="object2" select="string($oldValue)" />
+	</xsl:call-template>
+</xsl:if>
 											<xsl:choose>
 												<xsl:when test="$value">
-													<xsl:value-of select="concat($value,$units)" />
+													<xsl:value-of select="$value" />
 												</xsl:when>
 												<xsl:otherwise>
 													<xsl:value-of select="$oldValue" />
