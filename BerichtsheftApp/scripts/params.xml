@@ -1,1 +1,1 @@
-<params><dbfile>/home/lotharla/work/Niklas/androidStuff/BerichtsheftApp/databases/berichtsheft.db</dbfile><year>2012</year><weekInYear>50</weekInYear><dayInWeek>\d</dayInWeek></params>
+<params><dbfile>databases/berichtsheft.db</dbfile><year>2012</year><weekInYear>50</weekInYear><dayInWeek>\d</dayInWeek></params>

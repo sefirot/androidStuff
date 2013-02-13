@@ -14,35 +14,44 @@
 	<xsl:param name="debug_out">/tmp/debug.out</xsl:param>
 	
 	<xsl:template name="debug.out">
+		<xsl:param name="hide" select="false()" />
 		<xsl:param name="append" select="true()" />
 		<xsl:param name="text" select="''" />
 		<xsl:param name="text2" select="''" />
-		<xsl:param name="textOnly" select="false()" />
+		<xsl:param name="deep" select="false()" />
 		<xsl:param name="object" />
 		<xsl:param name="object2" />
 		<xsl:param name="descendants" select="true()" />
-		<redirect:write select="$debug_out" append="{$append}">
-			<xsl:choose>
-				<xsl:when test="$textOnly">
-					<xsl:value-of select="$text" />	
-					<xsl:value-of select="$text2" />	
-				</xsl:when>
-				<xsl:otherwise>
-					<xsl:call-template name="debug.object">
-						<xsl:with-param name="text" select="$text" />
-						<xsl:with-param name="object" select="$object" />
-						<xsl:with-param name="descendants" select="$descendants" />
-					</xsl:call-template>
-					<xsl:if test="$object2">
+		<xsl:if test="not($hide)">
+			<redirect:write select="$debug_out" append="{$append}">
+				<xsl:choose>
+					<xsl:when test="not($deep)">
+						<xsl:value-of select="$text" />	
+						<xsl:if test="$object">
+							<xsl:value-of select="concat(' : ',$object)" />	
+						</xsl:if>
+						<xsl:if test="$object2">
+							<xsl:value-of select="concat($tab,$text2,' : ',$object2)" />	
+						</xsl:if>
+						<xsl:value-of select="$newline" />	
+					</xsl:when>
+					<xsl:otherwise>
 						<xsl:call-template name="debug.object">
-							<xsl:with-param name="text" select="$text2" />
-							<xsl:with-param name="object" select="$object2" />
+							<xsl:with-param name="text" select="$text" />
+							<xsl:with-param name="object" select="$object" />
 							<xsl:with-param name="descendants" select="$descendants" />
 						</xsl:call-template>
-					</xsl:if>
-				</xsl:otherwise>
-			</xsl:choose>
-		</redirect:write>
+						<xsl:if test="$object2">
+							<xsl:call-template name="debug.object">
+								<xsl:with-param name="text" select="$text2" />
+								<xsl:with-param name="object" select="$object2" />
+								<xsl:with-param name="descendants" select="$descendants" />
+							</xsl:call-template>
+						</xsl:if>
+					</xsl:otherwise>
+				</xsl:choose>
+			</redirect:write>
+		</xsl:if>
 	</xsl:template>
 	
 	<xsl:template name="debug.object">
@@ -152,14 +161,14 @@
 		<xsl:call-template name="debug.out">
 			<xsl:with-param name="text" select="name()"/>
 			<xsl:with-param name="object" select="."/>
+			<xsl:with-param name="deep" select="true()"/>
 		</xsl:call-template>
 	</xsl:template>
 	
 	<xsl:template name="begin.debug">
 		<xsl:call-template name="debug.out">
 			<xsl:with-param name="append" select="false()" />
-			<xsl:with-param name="text" select="concat(util:formatDate(util:now(), 'yyyy-MM-dd HH:mm:ss.SSS'), $newline)" />
-			<xsl:with-param name="textOnly" select="true()"/>
+			<xsl:with-param name="text" select="util:formatDate(util:now(), 'yyyy-MM-dd HH:mm:ss.SSS')" />
 		</xsl:call-template>
 	</xsl:template>
 
@@ -180,9 +189,10 @@
 	<xsl:template match="/">
 		<xsl:call-template name="begin.debug" />
 		<xsl:variable name="id" select="'control1_x'" />
+		<xsl:variable name="nix" select="util:setMapping($id,'xxx')" />
 		<xsl:call-template name="debug.out">
 			<xsl:with-param name="text" select="$id" />
-			<xsl:with-param name="object" select="util:mapping($id)"/>
+			<xsl:with-param name="object" select="util:getMapping($id)"/>
 		</xsl:call-template>
 	</xsl:template>
 	

@@ -2,13 +2,21 @@
 	<description>
     This is an ant file for performing Berichtsheft specific tasks.
 	</description>
+	
+	<taskdef resource="net/sf/antcontrib/antcontrib.properties">
+	  <classpath>
+		<pathelement location="${ant.home}/lib/ant-contrib-1.0b3.jar"/>
+	  </classpath>
+	</taskdef>
 		
   	<property file="berichtsheft.properties"/>
 	<property name="debug.out" location="/tmp/debug.out" />
+	<property name="params.xml" location="scripts/params.xml" />
 	<property name="content.xml" location="scripts/content.xml" />
 	<property name="content.xsl" location="scripts/content.xsl" />
 	<property name="control.xsl" location="scripts/control.xsl" />
 	<property name="geometry.xsl" location="scripts/geometry.xsl" />
+	<property name="geometry.html" location="/tmp/temp.html" />
 	<property name="src-dir" location="src" />
 	<property name="bin-dir" location="bin" />
 		
@@ -87,7 +95,7 @@
 		    	
 	<target name="pipe.1" depends="init">
 		<delete file="/tmp/control.xml"/>
-		<xslt in="params.xml" out="/tmp/control.xml" style="${control.xsl}" classpathref="project.class.path">
+		<xslt in="${params.xml}" out="/tmp/control.xml" style="${control.xsl}" classpathref="project.class.path">
 			<param name="debug" expression="no"/>
 		</xslt>
 	</target>
@@ -111,15 +119,30 @@
 		</xslt>
 	</target>
 	    	
+	<target name="geometry.3">
+		<delete file="/tmp/debug.out" />
+		<ac:for param="file" xmlns:ac="antlib:net.sf.antcontrib">
+			<path>
+				<fileset dir="/tmp/berichtsheft" includes="*.html"/>
+			</path>
+			<ac:sequential>
+				<antcall target="geometry.2">
+					<param name="controlfile" value="@{file}"/>
+				</antcall>
+			</ac:sequential>
+		</ac:for>
+	</target>
+	    	
 	<target name="geometry.2">
+		<echo message="${controlfile}" />
 		<delete file="/tmp/content.xml" />
 		<xslt in="${content.xml}" out="/tmp/content.xml" style="${geometry.xsl}" classpathref="project.class.path">
-			<param name="controlfile" expression="${geometry.html}"/>
+			<param name="controlfile" expression="${controlfile}"/>
 			<param name="debug" expression="no"/>
 		</xslt>
 	</target>
 		    	
 	<target name="geometry" depends="geometry.1">
-		<antcall target="geometry.2" />
+		<antcall target="geometry.3" />
 	</target>
 </project>

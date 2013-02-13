@@ -70,10 +70,12 @@
 							<tr>
 								<td><input type='SUBMIT' value='Accept' /></td>
 								<xsl:if test="not($first)">
-									<td><a href="previous">previous</a></td>
+									<xsl:variable name="previous" select="concat('page',number($pos)-1,'.html')" />
+									<td><a href="{$previous}">previous</a></td>
 								</xsl:if>
 								<xsl:if test="not($last)">
-									<td><a href="next">next</a></td>
+									<xsl:variable name="next" select="concat('page',number($pos)+1,'.html')" />
+									<td><a href="{$next}">next</a></td>
 								</xsl:if>
 							</tr>
 						</table>
@@ -112,7 +114,7 @@
 										</xsl:when>
 										<xsl:otherwise>
 											<xsl:variable name="id" select="concat($ctrl,'_',$th)" />
-											<input id="{$id}" name="{$id}" type="text" value="{$value}" />
+											<input type="text" id="{$id}" name="{$id}" value="{$value}" />
 											<xsl:variable name="nix" select="util:setMapping($id,$value)" />
 										</xsl:otherwise>
 									</xsl:choose>
@@ -132,14 +134,21 @@
 	
 	<xsl:template match="draw:control">
 		<xsl:variable name="ctrl" select="string(@draw:control)" />
-		<xsl:variable name="tr" select="exslt:node-set($controlinfo)//table[@id='controls']/tr[contains(string(.),$ctrl)]" />
+		<xsl:variable name="table" select="exslt:node-set($controlinfo)//table[@id='controls']" />
+		<xsl:variable name="tr">
+			<xsl:for-each select="$table/*">
+				<xsl:if test="./td=$ctrl">
+					<xsl:copy-of select="." />
+				</xsl:if>
+			</xsl:for-each>
+		</xsl:variable>
 		<xsl:copy>
 			<xsl:for-each select="@*">
 				<xsl:variable name="name" select="name()" />
 				<xsl:attribute name="{$name}">
 					<xsl:variable name="localname" select="substring-after($name,':')" />
 					<xsl:choose>
-						<xsl:when test="contains(string(exslt:node-set($table.header)/tr),$localname)">
+						<xsl:when test="exslt:node-set($table.header)/tr/th[text()=$localname]">
 							<xsl:variable name="oldValue" select="." />
 							<xsl:choose>
 								<xsl:when test="$localname = 'control'">
@@ -153,19 +162,11 @@
 										<xsl:variable name="th" select="." />
 										<xsl:if test="$localname = $th">
 											<xsl:variable name="pos" select="position()" />
-											<xsl:variable name="id" select="exslt:node-set($tr)/td[$pos]/input/@id" />
-											<xsl:variable name="value" select="concat(util:getMapping($id),$units)" />
-<xsl:if test="$value != $oldValue">
-	<xsl:call-template name="debug.out">
-		<xsl:with-param name="text" select="$id" />
-		<xsl:with-param name="object" select="$value" />
-		<xsl:with-param name="text2" select="$localname" />
-		<xsl:with-param name="object2" select="string($oldValue)" />
-	</xsl:call-template>
-</xsl:if>
+											<xsl:variable name="id" select="string(exslt:node-set($tr)/tr/td[$pos]/input/@id)" />
+											<xsl:variable name="value" select="util:getMapping($id)" />
 											<xsl:choose>
 												<xsl:when test="$value">
-													<xsl:value-of select="$value" />
+													<xsl:value-of select="concat($value,$units)" />
 												</xsl:when>
 												<xsl:otherwise>
 													<xsl:value-of select="$oldValue" />

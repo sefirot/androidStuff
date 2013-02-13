@@ -21,10 +21,8 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.io.StringWriter;
-import java.io.UnsupportedEncodingException;
 import java.io.Writer;
 import java.net.URL;
-import java.net.URLDecoder;
 import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
 import java.sql.PreparedStatement;
@@ -247,12 +245,12 @@ public class Util
 	    }
 	}
 	
-	public static NodeList evaluateXPath(Document doc, String path) {
+	public static NodeList evaluateXPath(Object item, String path) {
 	    try {
 			XPathFactory factory = XPathFactory.newInstance();
 			XPath xpath = factory.newXPath();
 			XPathExpression expr = xpath.compile(path);
-			return (NodeList)expr.evaluate(doc, XPathConstants.NODESET);
+			return (NodeList)expr.evaluate(item, XPathConstants.NODESET);
 	    } catch (Exception e) {
 	    	return null;
 	    }

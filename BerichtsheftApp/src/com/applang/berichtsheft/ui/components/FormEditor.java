@@ -12,12 +12,14 @@ import java.awt.event.WindowEvent;
 import java.awt.geom.Rectangle2D;
 import java.io.File;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
+import java.net.URL;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.util.TreeSet;
+import java.util.regex.Pattern;
 
 import javax.swing.ButtonModel;
+import javax.swing.ComboBoxModel;
 import javax.swing.JEditorPane;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -38,6 +40,7 @@ import javax.swing.text.html.FormSubmitEvent;
 import javax.swing.text.html.HTML;
 import javax.swing.text.html.HTMLDocument;
 import javax.swing.text.html.HTMLEditorKit;
+import javax.swing.text.html.Option;
 
 import com.applang.Util;
 
@@ -103,7 +106,7 @@ public class FormEditor extends JSplitPane implements TextComponent
 			
 			Util.Settings.save();
 		} catch (Exception e) {
-			Util.message(e.getMessage());
+			Util.handleException(e);
 		}
 	}
 	
@@ -131,7 +134,7 @@ public class FormEditor extends JSplitPane implements TextComponent
 			
 			pages = dir.listFiles();
 			mappings = new Util.ValMap[pages.length];
-			updateSplitterComponents(page = 0);
+			updateSplitComponents(page = 0);
 		} catch (Exception e) {
 			Util.handleException(e);
 		}
@@ -146,16 +149,14 @@ public class FormEditor extends JSplitPane implements TextComponent
 	File[] pages = null;
 	int page;
 	
-	private void updateSplitterComponents(int page) {
+	private void updateSplitComponents(int page) {
 		try {
 			if (pages.length > 0) {
 				editorPanel.setPage("file:" + pages[page].getPath());
-				postData(page, getFormData());
+				postData(page, null);
 			}
 			else
 				Util.message("no mask data available");
-			
-			maskPanel.repaint();
 		} catch (IOException e) {
 			Util.handleException(e);
 		}
@@ -183,10 +184,10 @@ public class FormEditor extends JSplitPane implements TextComponent
 					maskPanel.repaint();
 		        }
 		        else if (he.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
-		    		if (he.getURL().toString().endsWith("next") && page < pages.length - 1)
-						updateSplitterComponents(++page);
-		    		else if (he.getURL().toString().endsWith("previous") && page > 0)
-						updateSplitterComponents(--page);
+		    		URL url = he.getURL();
+		    		String name = new File(url.getFile()).getName();
+					int page = Util.toInt(0, Util.findFirstIn(name, Pattern.compile("\\w+(\\d+)\\.\\w+")).group(1));
+					updateSplitComponents(page - 1);
 		        }
 		    }
 		});
@@ -201,18 +202,45 @@ public class FormEditor extends JSplitPane implements TextComponent
 	
 	private void postData(int page, String data) {
 		try {
-			String[] parts = data.split("&|=");
-			
 			mappings[page] = new Util.ValMap();
-			for (int i = 0; i < parts.length - 1; i+=2) {
-				String key = URLDecoder.decode(parts[i], "UTF-8");
-				String value = URLDecoder.decode(parts[i+1], "UTF-8");
-				mappings[page].put(key, value);
+			
+			if (data == null) 
+				pageData(page);
+			else {
+				String[] parts = data.split("&|=");
+				for (int i = 0; i < parts.length - 1; i+=2) {
+					String key = URLDecoder.decode(parts[i], "UTF-8");
+					String value = URLDecoder.decode(parts[i+1], "UTF-8");
+					mappings[page].put(key, value);
+				}
 			}
-		} catch (UnsupportedEncodingException e) {}
+			
+			this.page = page;
+			maskPanel.repaint();
+		} catch (Exception e) {
+			Util.handleException(e);
+		}
 	}
 	
-    private String getFormData() {
+    private void pageData(int page) {
+    	org.w3c.dom.Document doc = Util.xmlDocument(pages[page]);
+    	if (doc == null)
+    		return;
+    	
+    	org.w3c.dom.NodeList nodes = Util.evaluateXPath(doc, "//table[@id='controls']");
+		if (nodes.getLength() > 0) {
+			nodes = Util.evaluateXPath(nodes.item(0), ".//*[@id]");
+			for (int i = 0; i < nodes.getLength(); i++) {
+				org.w3c.dom.Element node = (org.w3c.dom.Element)nodes.item(i);
+				String key = node.getAttribute("id");
+				String value = node.getAttribute("value");
+				mappings[page].put(key, value);
+			}
+		}
+    }
+	
+    @SuppressWarnings("unused")
+	private String getFormData() {
     	StringBuilder buffer = new StringBuilder();
 		HTMLDocument doc = (HTMLDocument) editorPanel.getDocument();
 		Element table = doc.getElement("controls");
@@ -242,10 +270,10 @@ public class FormEditor extends JSplitPane implements TextComponent
 
         if (tag == HTML.Tag.INPUT) {
             value = getInputElementData(attr);
-//        } else if (tag ==  HTML.Tag.TEXTAREA) {
-//            value = getTextAreaData(attr);
-//        } else if (tag == HTML.Tag.SELECT) {
-//            loadSelectData(attr, buffer);
+        } else if (tag ==  HTML.Tag.TEXTAREA) {
+            value = getTextAreaData(attr);
+        } else if (tag == HTML.Tag.SELECT) {
+            loadSelectData(attr, buffer);
         }
 
         if (name != null && value != null) {
@@ -264,7 +292,7 @@ public class FormEditor extends JSplitPane implements TextComponent
         String encodedValue = URLEncoder.encode(value);
         buffer.append(encodedValue);
     }
-    
+
     private String getInputElementData(AttributeSet attr) {
 
         Object model = attr.getAttribute(StyleConstants.ModelAttribute);
@@ -305,6 +333,41 @@ public class FormEditor extends JSplitPane implements TextComponent
             }
         }
         return value;
+    }
+
+    private String getTextAreaData(AttributeSet attr) {
+        Document doc = (Document)attr.getAttribute(StyleConstants.ModelAttribute);
+        try {
+            return doc.getText(0, doc.getLength());
+        } catch (BadLocationException e) {
+            return null;
+        }
+    }
+
+    @SuppressWarnings("rawtypes")
+	private void loadSelectData(AttributeSet attr, StringBuilder buffer) {
+
+        String name = (String)attr.getAttribute(HTML.Attribute.NAME);
+        if (name == null) {
+            return;
+        }
+        Object m = attr.getAttribute(StyleConstants.ModelAttribute);
+        /*if (m instanceof OptionListModel) {
+            OptionListModel model = (OptionListModel)m;
+
+            for (int i = 0; i < model.getSize(); i++) {
+                if (model.isSelectedIndex(i)) {
+                    Option option = (Option) model.getElementAt(i);
+                    appendBuffer(buffer, name, option.getValue());
+                }
+            }
+        } else */if (m instanceof ComboBoxModel) {
+            ComboBoxModel model = (ComboBoxModel)m;
+            Option option = (Option)model.getSelectedItem();
+            if (option != null) {
+                appendBuffer(buffer, name, option.getValue());
+            }
+        }
     }
 
 	@Override

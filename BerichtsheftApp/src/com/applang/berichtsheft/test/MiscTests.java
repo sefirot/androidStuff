@@ -17,27 +17,15 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 import java.util.regex.MatchResult;
 import java.util.regex.Pattern;
 
-import javax.swing.BoxLayout;
-import javax.swing.JEditorPane;
-import javax.swing.JTextPane;
-import javax.swing.event.HyperlinkEvent;
-import javax.swing.event.HyperlinkListener;
-import javax.swing.text.html.FormSubmitEvent;
-import javax.swing.text.html.HTMLEditorKit;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.sax.SAXResult;
 import javax.xml.transform.sax.SAXSource;
 import javax.xml.transform.sax.SAXTransformerFactory;
 import javax.xml.transform.sax.TransformerHandler;
 import javax.xml.transform.stream.StreamSource;
-import javax.xml.xpath.XPath;
-import javax.xml.xpath.XPathConstants;
-import javax.xml.xpath.XPathExpression;
-import javax.xml.xpath.XPathFactory;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
@@ -797,8 +785,7 @@ public class MiscTests extends XMLTestCase
 				"/p[1]" +
 				"/control" +
 				"[@control='%s']";
-		String id = "control32";
-		path = String.format(path, id);
+		path = String.format(path, "control32");
 		NodeList nodes = Util.evaluateXPath(doc, path);
 		
 		int length = nodes.getLength();
@@ -813,6 +800,7 @@ public class MiscTests extends XMLTestCase
 	}
 	
 	public void testGeometry() {
+		new File("/tmp/debug.out").delete();
 		File dir = Util.tempDir(true, "berichtsheft");
 		try {
 			String content = Util.Settings.get("content.xml", "scripts/content.xml");
@@ -827,16 +815,18 @@ public class MiscTests extends XMLTestCase
 			assertEquals(2, pages.length);
 			
 			String value = "xxx";
-			String[] keys = new String[] {"control1_x", "control51_x"};
+			String[] keys = new String[] {"control1_y", "control51_x"};
 			
 			for (int i = 0; i < pages.length; i++) {
-				System.out.println(new TreeMap<String,Object>(Util.mappings));
-//				Util.mappings.put(keys[i], value);
+				String orig = Util.getMapping(keys[i]);
+				Util.mappings.put(keys[i], value);
+//				System.out.println(Util.mappings);
 				Util.xmlTransform(content, geometry, output, 
 						"controlfile", pages[i]);
 				String report = check_documents(3, content, output);
-				System.out.println(report);
-//				assertTrue(report, report.contains(value));
+//				System.out.println(report);
+				assertTrue(report, report.contains(value));
+				Util.mappings.put(keys[i], orig);
 			}
 		} catch (Exception e) {
 			return;
