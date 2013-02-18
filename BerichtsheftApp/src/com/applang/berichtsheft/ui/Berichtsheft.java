@@ -30,8 +30,10 @@ import org.gjt.sp.jedit.msg.PropertiesChanged;
 import org.gjt.sp.util.Log;
 import org.gjt.sp.util.StandardUtilities;
 
+import com.applang.SwingUtil;
 import com.applang.Util;
 // }}}
+import com.applang.berichtsheft.ui.components.TextArea;
 
 // {{{ Berichtsheft class
 /**
@@ -53,7 +55,7 @@ public class Berichtsheft extends JPanel
 
 	private boolean floating;
 
-	BerichtsheftTextArea textArea;
+	TextArea textArea;
 
 	private BerichtsheftToolPanel toolPanel;
     // }}}
@@ -71,7 +73,7 @@ public class Berichtsheft extends JPanel
 		this.view = view;
 		this.floating = position.equals(DockableWindowManager.FLOATING);
 
-		textArea = new BerichtsheftTextArea();
+		textArea = new TextArea();
 		textArea.textArea.setFont(BerichtsheftOptionPane.makeFont());
 
 		this.dbName = jEdit.getProperty(BerichtsheftPlugin.OPTION_PREFIX + "filepath");
@@ -155,7 +157,7 @@ public class Berichtsheft extends JPanel
     // {{{ chooseFile
 	public void chooseFile() {
 		String title = jEdit.getProperty(BerichtsheftPlugin.OPTION_PREFIX + "choose-file.title");
-		File file = Util.chooseFile(true, view, title, new File(dbName), null);
+		File file = SwingUtil.chooseFile(true, view, title, new File(dbName), null);
 		if (file != null) {
 			if (!file.getPath().equals(dbName)) {
 				dbName = file.getPath();

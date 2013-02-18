@@ -1,13 +1,5 @@
 package com.applang;
 
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.Cursor;
-import java.awt.KeyboardFocusManager;
-import java.awt.event.FocusEvent;
-import java.awt.event.FocusListener;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
 import java.beans.XMLDecoder;
 import java.beans.XMLEncoder;
 import java.io.BufferedReader;
@@ -37,25 +29,20 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Random;
+import java.util.Vector;
 import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.swing.JComboBox;
-import javax.swing.JComponent;
-import javax.swing.JFileChooser;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JTextField;
-import javax.swing.filechooser.FileFilter;
-import javax.swing.text.JTextComponent;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Result;
 import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerConfigurationException;
 import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.TransformerFactoryConfigurationError;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
@@ -171,6 +158,22 @@ public class Util
 		return interval;
 	}
 
+	public static long[] monthInterval(Date start, int months) {
+		calendar.setTime(start);
+		long millis = calendar.getTimeInMillis();
+		calendar.add(Calendar.MONTH, months);
+		long[] interval = new long[2];
+		if (months < 0) {
+			interval[0] = calendar.getTimeInMillis();
+			interval[1] = millis;
+		}
+		else {
+			interval[0] = millis;
+			interval[1] = calendar.getTimeInMillis();
+		}
+		return interval;
+	}
+
 	public static String formatDate(long millis, String pattern) {
 		SimpleDateFormat dateFormat = new SimpleDateFormat(pattern);
 		return dateFormat.format(new Date(millis));
@@ -189,11 +192,42 @@ public class Util
 		return new Date().getTime();
 	}
 
+	public static boolean osWindows() {
+		return System.getProperty("os.name").toLowerCase().startsWith("windows");
+	}
+	
+	public static boolean isType(Object prototype, Object o) {
+		if (o == null)
+			return prototype == null;
+		else if (prototype == null)
+			return o == null;
+		else if (prototype instanceof Class<?>)
+			return ((Class<?>)prototype).getName().equals(o.getClass().getName());
+		else
+			return prototype.getClass().getName().equals(o.getClass().getName());
+	}
+	
 	public static boolean notNullOrEmpty(String value) {
 		return value != null && !value.isEmpty();
 	}
 
 	public static <T> boolean nullOrEmpty(T[] value) {
+		return value == null || value.length < 1;
+	}
+
+	public static boolean nullOrEmpty(int[] value) {
+		return value == null || value.length < 1;
+	}
+
+	public static boolean nullOrEmpty(long[] value) {
+		return value == null || value.length < 1;
+	}
+
+	public static boolean nullOrEmpty(float[] value) {
+		return value == null || value.length < 1;
+	}
+
+	public static boolean nullOrEmpty(double[] value) {
 		return value == null || value.length < 1;
 	}
 
@@ -267,8 +301,7 @@ public class Util
 	public static String xmlNodeToString(Node node, boolean omitXmlDeclaration) {
 		StringWriter sw = new StringWriter();
 		try {
-			Transformer t = TransformerFactory.newInstance().newTransformer();
-			t.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, omitXmlDeclaration ? "yes" : "no");
+			Transformer t = xmlTransformer(omitXmlDeclaration);
 			t.transform(new DOMSource(node), new StreamResult(sw));
 		} catch (TransformerException te) {
 			return "";
@@ -276,13 +309,21 @@ public class Util
 		return sw.toString();
 	}
 
+	private static Transformer xmlTransformer(boolean omitXmlDeclaration)
+			throws TransformerConfigurationException,
+			TransformerFactoryConfigurationError {
+		Transformer t = TransformerFactory.newInstance().newTransformer();
+		t.setOutputProperty(OutputKeys.METHOD, "xml");
+		t.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, omitXmlDeclaration ? "yes" : "no");
+		return t;
+	}
+
 	public static void xmlNodeToFile(Node node, boolean omitXmlDeclaration, File file) {
 	    try {
 	    	DOMSource source = new DOMSource(node);
 	        Result result = new StreamResult(file);
 	
-	        Transformer t = TransformerFactory.newInstance().newTransformer();
-			t.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, omitXmlDeclaration ? "yes" : "no");
+	        Transformer t = xmlTransformer(omitXmlDeclaration);
 	        t.transform(source, result);
 	    } catch (Exception e) {}
 	}
@@ -441,10 +482,6 @@ public class Util
 		
 		return params;
 	} 
-	
-	public static boolean osWindows() {
-		return System.getProperty("os.name").toLowerCase().startsWith("windows");
-	}
 	
 	public static MatchResult[] findAllIn(String input, Pattern pattern) {
 		ArrayList<MatchResult> matches = new ArrayList<MatchResult>();
@@ -656,8 +693,6 @@ public class Util
 		return file;
 	}
 
-	public static int dialogResult = -1;
-
 	/**
 	 * @param params	optional parameters	
 	 * <table border="1"><tr><th>index</th><th>description</th></tr><tr><td>0</td><td>a path as <code>String</code> to relativize against 'user.dir'</td></tr></table>
@@ -676,236 +711,6 @@ public class Util
 		return file == null ? 
 				false : 
 				file.exists() && file.isFile();
-	}
-	
-	/**
-	 * @param parent
-	 * @param title
-	 * @param file
-	 * @param fileFilter
-	 * @return	the chosen <code>File</code>
-	 */
-	public static File chooseFile(boolean toOpen, Container parent, 
-			String title, 
-			File file, 
-			FileFilter fileFilter)
-	{
-		File dir = new File(relativePath());
-		try {
-			dir = file.getParentFile();
-		} catch (Exception e) {}
-		
-		JFileChooser chooser = new JFileChooser();
-		chooser.setCurrentDirectory(dir);
-	    chooser.setDialogTitle(title);
-	    chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-	    if (fileFilter != null)
-	    	setFileFilter(chooser, fileFilter);
-		
-	    if (fileExists(file))
-	    	chooser.setSelectedFile(file);
-	    
-		parent = JOptionPane.getFrameForComponent(parent);
-		dialogResult = toOpen ?
-				chooser.showOpenDialog(parent) : 
-				chooser.showSaveDialog(parent);
-	    if (dialogResult == JFileChooser.APPROVE_OPTION)
-	    	return chooser.getSelectedFile();
-	    else
-	    	return null;
-	}
-	
-	static void setFileFilter(JFileChooser chooser, FileFilter fileFilter) {
-	    if (fileFilter == null)
-	    	chooser.resetChoosableFileFilters();
-	    else {
-	    	chooser.addChoosableFileFilter(chooser.getAcceptAllFileFilter());
-	    	chooser.addChoosableFileFilter(fileFilter);
-	    }
-	    chooser.setAcceptAllFileFilterUsed(false);
-	}
-
-	/**
-	 * @param parent
-	 * @param title
-	 * @param dir
-	 * @return	the chosen directory <code>File</code>
-	 */
-	public static File chooseDirectory(Container parent, 
-			String title, 
-			File dir)
-	{
-		JFileChooser chooser = new JFileChooser();
-		chooser.setCurrentDirectory(dir);
-	    chooser.setDialogTitle(title);
-	    chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-	    chooser.setAcceptAllFileFilterUsed(false);
-		
-		parent = JOptionPane.getFrameForComponent(parent);
-		dialogResult = chooser.showOpenDialog(parent);
-	    if (dialogResult == JFileChooser.APPROVE_OPTION)
-	    	return chooser.getSelectedFile();
-	    else
-	    	return null;
-	}
-
-	public static void addFocusObserver(JTextComponent jtc) {
-	    jtc.addFocusListener(new FocusListener() {
-	        public void focusGained(FocusEvent e) {
-	            ((JTextComponent)e.getSource()).selectAll();
-	        }
-	        public void focusLost(FocusEvent arg0) {    
-	        }
-	    });
-	}
-
-	public static void addTabKeyForwarding(JComponent jc) {
-	    jc.addKeyListener(new KeyAdapter() {
-			@Override
-			public void keyPressed(KeyEvent e) {
-				if (e.getKeyCode() == KeyEvent.VK_TAB) {
-					e.consume();
-					KeyboardFocusManager.getCurrentKeyboardFocusManager().focusNextComponent();
-				}
-				if (e.getKeyCode() == KeyEvent.VK_TAB && e.isShiftDown()) {
-					e.consume();
-					KeyboardFocusManager.getCurrentKeyboardFocusManager().focusPreviousComponent();
-				}
-			}
-		});
-	}
-
-	@SuppressWarnings("rawtypes")
-	public static JTextField comboEdit(JComboBox combo) {
-		return (JTextField)combo.getEditor().getEditorComponent();
-	}
-	
-	public interface ComponentFunction<T> {
-		public T apply(Component comp, Object[] parms);
-	}
-	
-	public static <T> Object[] iterateComponents(Container container, ComponentFunction<T> func, Object... params) {
-		params = reduceDepth(params);
-		
-		if (container != null) {
-			Component[] components = params.length > 0 ? 
-				container.getComponents() : 
-				new Component[] {container};
-				
-			for (Component comp : components)
-			{
-				T t = func.apply(comp, params);
-				
-				if (comp instanceof Container)
-					iterateComponents((Container)comp, func, t);
-			}
-		}
-		
-		return params;
-	}
-    
-	/**
-	 * @param container
-	 * @param pattern
-	 * @return	an array of those child <code>Component</code> objects of container which names match the given pattern
-	 */
-	public static Component[] findComponents(Container container, final String pattern) {
-		final ArrayList<Component> al = new ArrayList<Component>();
-		
-		iterateComponents(container, new ComponentFunction<Object[]>() {
-			public Object[] apply(Component comp, Object[] parms) {
-				String name = comp.getName();
-				if (name != null && name.matches(pattern))
-					al.add(comp);
-				
-				return parms;
-			}
-		}, null, null);
-		
-		return al.toArray(new Component[al.size()]);
-	}
-    
-	/**
-	 * @param <C> the type of the return value (derived from <code>Component</code>)
-	 * @param container	the containing <code>Component</code>
-	 * @param key	the name of the <code>Component</code> searched for in the container including descending components
-	 * @return	the <code>Component</code> found if unequal <code>null</code> otherwise nothing was found
-	 */
-	@SuppressWarnings("unchecked")
-	public static <C extends Component> C findComponent(Container container, String key) {
-		Component[] comps = findComponents(container, key);
-		if (comps.length > 0) 
-			try {
-				return (C)comps[0];
-			} catch (Exception e) {}
-		
-		return null;
-	}
-	
-	public static Container getRootContainer(Container container) {
-		if (container == null)
-			return null;
-		Container parent = container.getParent();
-		while (parent != null) {
-			container = parent;
-			parent = container.getParent();
-		}
-		return container;
-	}
-    
-    public static class Timing
-    {
-    	public Timing(Component comp) {
-    		this.comp = comp;
-    		if (this.comp != null) {
-        		this.curs = this.comp.getCursor();
-        		this.comp.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-        		this.comp.requestFocus();
-    		}
-    		this.millis = System.currentTimeMillis();
-    	}
-    	
-		private long millis;
-		
-		public long current() {
-			return System.currentTimeMillis() - millis;
-		}
-		
-    	Component comp;
-    	Cursor curs;
-    	
-    	/* (non-Javadoc)
-    	 * @see java.lang.Object#finalize()
-    	 */
-    	@Override 
-    	public void finalize() {
-    		try {
-        		this.millis -= System.currentTimeMillis();
-        		if (this.comp != null) 
-        			this.comp.setCursor(curs);
-    		}
-    		finally {
-    			try {
-					super.finalize();
-				} catch (Throwable e) {}
-    		}
-    	}
-    }
-	
-	public static long waiting(Component component, 
-			ComponentFunction<Void> func, 
-			Object... params)
-	{
-        final Timing timing = new Timing(component);
-        
-		try {
-			func.apply(component, arrayextend(params, true, timing));
-		}
-		finally {
-			timing.finalize();
-		}
-		
-		return timing.millis;
 	}
 	
 	public static class ValMap extends HashMap<String,Object>
@@ -957,29 +762,53 @@ public class Util
 		}
 		return map;
 	}
+
+	@SuppressWarnings("unchecked")
+	public static class BidiMap
+	{
+		@SuppressWarnings("rawtypes")
+		Vector keys = new Vector();
+
+		@SuppressWarnings("rawtypes")
+		Vector values = new Vector();
+
+		public Object[] getKeys() {
+			return keys.toArray();
+		}
+		
+		public Object[] getValues() {
+			return values.toArray();
+		}
+
+		public void put(Object key, Object value) {
+			keys.add(key);
+			values.add(value);
+		}
+
+		public Object getKey(Object value) {
+			int index = values.indexOf(value);
+			return keys.get(index);
+		}
+		
+		public Object getValue(Object key) {
+			int index = keys.indexOf(key);
+			return values.get(index);
+		}
+
+		public void removeKey(Object key) {
+			int index = keys.indexOf(key);
+			keys.remove(index);
+			values.remove(index);
+		}
+		
+		public void removeValue(Object value) {
+			int index = values.indexOf(value);
+			keys.remove(index);
+			values.remove(index);
+		}
+		
+	}
 	
-	public static Container container = null;
-
-	public static boolean question(String text) {
-		return JOptionPane.YES_OPTION == JOptionPane.showConfirmDialog(
-				container, text, 
-				"Question", 
-				JOptionPane.YES_NO_OPTION);
-	}
-
-	public static void message(String text) {
-		JLabel mess = Util.findComponent(getRootContainer(container), "mess");
-		if (mess != null)
-			mess.setText(text);
-		else
-			JOptionPane.showMessageDialog(container, text, "Message", JOptionPane.PLAIN_MESSAGE);
-	}
-
-	public static void handleException(Exception e) {
-		if (e != null) 
-        	message(e.getMessage());
-	}
-
 	/**
 	 * @param d
 	 * @param decimalPlace
@@ -1077,38 +906,38 @@ public class Util
 					enc.close();
 			}
 		}
-		
-		/**
-		 * @param <T>	the type of the value
-		 * @param key	the name under which the setting item is known
-		 * @param value	the value of the setting item
-		 * @param params
-		 * <table border="1"><tr><th>index</th><th>description</th></tr><tr><td>0</td><td>causes rounding of value if T is <code>Double</code></td></tr></table>
-		 */
-		@SuppressWarnings("unchecked")
-		public static <T extends Object> void put(String key, T value, Object... params) {
-			Object decimalPlace = param(null, 0, params);
-			if (value instanceof Double && decimalPlace instanceof Integer) {
-				value = (T)Double.valueOf(round((Double)value, (Integer)decimalPlace));
-			}
-			properties.put(key, value);
-		}
-		
-		/**
-		 * @param <T>	the type of the value
-		 * @param key	the name under which the setting item is known
-		 * @param defaultValue	the value of the setting item in case key is unknown (null)
-		 * @return	the value of the setting item
-		 */
-		@SuppressWarnings("unchecked")
-		public static <T extends Object> T get(String key, T defaultValue) {
-			try {
-				if (Settings.contains(key))
-					return (T)properties.get(key);
-			} catch (Exception e) {}
+	}
 	
-			return defaultValue;
+	/**
+	 * @param <T>	the type of the value
+	 * @param key	the name under which the setting item is known
+	 * @param value	the value of the setting item
+	 * @param params
+	 * <table border="1"><tr><th>index</th><th>description</th></tr><tr><td>0</td><td>causes rounding of value if T is <code>Double</code></td></tr></table>
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T extends Object> void putSetting(String key, T value, Object... params) {
+		Object decimalPlace = param(null, 0, params);
+		if (value instanceof Double && decimalPlace instanceof Integer) {
+			value = (T)Double.valueOf(round((Double)value, (Integer)decimalPlace));
 		}
+		Settings.properties.put(key, value);
+	}
+	
+	/**
+	 * @param <T>	the type of the value
+	 * @param key	the name under which the setting item is known
+	 * @param defaultValue	the value of the setting item in case key is unknown (null)
+	 * @return	the value of the setting item
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T extends Object> T getSetting(String key, T defaultValue) {
+		try {
+			if (Settings.contains(key))
+				return (T)Settings.properties.get(key);
+		} catch (Exception e) {}
+		
+		return defaultValue;
 	}
 
 }

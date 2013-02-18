@@ -24,8 +24,6 @@ import org.xml.sax.XMLReader;
 import org.xml.sax.helpers.XMLReaderFactory;
 
 import com.applang.*;
-import com.applang.berichtsheft.ui.JEditTextComponent;
-import com.applang.berichtsheft.ui.components.TextComponent;
 
 public class BerichtsheftApp
 {
@@ -126,8 +124,8 @@ public class BerichtsheftApp
 			throw new Exception(String.format("TransformerFactory feature '%s' missing", SAXResult.FEATURE));
 	    
 		SAXTransformerFactory saxTFactory = ((SAXTransformerFactory) tFactory);	  
-		TransformerHandler tHandler1 = saxTFactory.newTransformerHandler(new StreamSource(Util.Settings.get("control.xsl", "scripts/control.xsl")));
-		TransformerHandler tHandler2 = saxTFactory.newTransformerHandler(new StreamSource(Util.Settings.get("content.xsl", "scripts/content.xsl")));
+		TransformerHandler tHandler1 = saxTFactory.newTransformerHandler(new StreamSource(Util.getSetting("control.xsl", "scripts/control.xsl")));
+		TransformerHandler tHandler2 = saxTFactory.newTransformerHandler(new StreamSource(Util.getSetting("content.xsl", "scripts/content.xsl")));
 		tHandler2.getTransformer().setParameter("inputfile", inputFilename);
 		tHandler1.setResult(new SAXResult(tHandler2));
 		

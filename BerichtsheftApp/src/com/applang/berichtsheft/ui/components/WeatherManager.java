@@ -1,100 +1,86 @@
 package com.applang.berichtsheft.ui.components;
 
-import java.awt.BorderLayout;
 import java.awt.Component;
-import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
-import java.awt.event.WindowEvent;
-import java.sql.DriverManager;
+import java.awt.event.ActionListener;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
 
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JScrollPane;
-import javax.swing.JToolBar;
+import javax.swing.JPopupMenu;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
+import com.applang.SwingUtil;
 import com.applang.Util;
-import com.applang.berichtsheft.ui.BerichtsheftTextArea;
 
-public class WeatherManager extends ToolPanel
+public class WeatherManager extends ToolPanel implements ActionListener
 {
 	/**
 	 * @param args
 	 * @throws Exception 
 	 */
 	public static void main(String[] args) throws Exception {
-		BerichtsheftTextArea textArea = new BerichtsheftTextArea();
-        JToolBar bar = new JToolBar();
-        bar.setFloatable(false);
-        JLabel label = new JLabel("");
-        label.setName("mess");
-        bar.add(label);
+		TextArea textArea = new TextArea();
 		
         String title = "WeatherInfo database";
 		final WeatherManager weatherManager = new WeatherManager(textArea, 
 				null,
-				title, label);
+				title);
 		
-        JFrame frame = new JFrame(title) {
-			protected void processWindowEvent(WindowEvent we) {
-				if (we.getID() == WindowEvent.WINDOW_CLOSING) 
-					try {
-						weatherManager.updateOnRequest(true);
-						weatherManager.getCon().close();
-					} catch (Exception e) {
-						Util.handleException(e);
-					}
-				
-				super.processWindowEvent(we);
-			}
-        };
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		
-		Container contentPane = frame.getContentPane();
-		contentPane.setPreferredSize(new Dimension(1000, 200));
-
-		JScrollPane scroll = new JScrollPane(textArea.textArea);
-		contentPane.add(scroll, BorderLayout.CENTER);
-
-		contentPane.add(bar, BorderLayout.PAGE_END);
-		weatherManager.addToContainer(contentPane, BorderLayout.PAGE_START);
-		
-		frame.pack();
-		frame.setLocationRelativeTo(null);
-		frame.setVisible(true);
+		ToolPanel.createAndShowGUI(title, new Dimension(1000, 200), weatherManager, textArea.textArea);
 	}
 
 	public WeatherManager(TextComponent textArea, Object... params) {
 		super(textArea, params);
 		
-		addButton(3, new InfoAction(ActionType.IMPORT));
+		addButton(3, new InfoAction("Options"));
+		
+	    JPopupMenu popupMenu = SwingUtil.newPopupMenu(
+	    	new Object[] {ToolType.IMPORT.description(), new InfoAction(ToolType.IMPORT)} 
+	    );
+	    
+	    SwingUtil.attachDropdownMenu(buttons[3], popupMenu);
+	}
+	
+	@Override
+	protected void finish(Object... params) {
+		try {
+			updateOnRequest(true);
+			getCon().close();
+		} catch (Exception e) {
+			SwingUtil.handleException(e);
+		}
 	}
     
-    public class InfoAction extends ToolAction
+    public class InfoAction extends SwingUtil.Action
     {
-		public InfoAction(ActionType type) {
+		public InfoAction(ToolType type) {
 			super(type);
+        }
+        
+		public InfoAction(String text) {
+			super(text);
         }
         
         @Override
         protected void action_Performed(ActionEvent ae) {
-        	switch (type) {
-			case IMPORT:
-				dbName = chooseDatabase(dbName);
-				if (Util.notNullOrEmpty(dbName) && openConnection(dbName))
-					retrieveWeatherData();
-				break;
-			default:
-				return;
+        	ToolType t = (ToolType)getType();
+        	if (t != null) {
+				switch (t) {
+				case IMPORT:
+					dbName = chooseDatabase(dbName);
+					if (Util.notNullOrEmpty(dbName) && openConnection(dbName))
+						retrieveWeatherData();
+					break;
+				default:
+					return;
+				}
 			}
         }
     }
@@ -126,14 +112,14 @@ public class WeatherManager extends ToolPanel
 		this.year = year;
 		this.month = month;
 		this.location = location;
-		Util.waiting(this.getParent(), new Util.ComponentFunction<Void>() {
+		SwingUtil.waiting(this.getParent(), new SwingUtil.ComponentFunction<Void>() {
 			public Void apply(Component comp, Object[] parms) {
 				try {
 					doc = Jsoup.connect(urlString(false))
 							.timeout(100000)
 							.get();
 				} catch (Exception e) {
-					Util.handleException(e);
+					SwingUtil.handleException(e);
 					doc = null;
 				}
 				
@@ -145,7 +131,7 @@ public class WeatherManager extends ToolPanel
 	Document doc = null;
 
 	void measurements(final String marker) {
-		Util.waiting(this.getParent(), new Util.ComponentFunction<Void>() {
+		SwingUtil.waiting(this.getParent(), new SwingUtil.ComponentFunction<Void>() {
 			public Void apply(Component comp, Object[] parms) {
 				storeValues(tableAfter(marker, 1));
 				storeValues(tableAfter(marker, 2));
@@ -190,20 +176,12 @@ public class WeatherManager extends ToolPanel
         	int day = Integer.parseInt(column.first().text());
         	long time = Util.timeInMillis(year, -month + 1, day);
         	if (precipitation)
-            	values.put("precipitation", parseFloat(column.get(1).text()));
+            	values.put("precipitation", Util.toFloat(Float.NaN, column.get(1).text()));
         	else {
-	        	values.put("maxtemp", parseFloat(column.get(1).text()));
-	        	values.put("mintemp", parseFloat(column.get(2).text()));
+	        	values.put("maxtemp", Util.toFloat(Float.NaN, column.get(1).text()));
+	        	values.put("mintemp", Util.toFloat(Float.NaN, column.get(2).text()));
         	}
         	updateOrInsert(location, time, values);
-		}
-	}
-
-	private float parseFloat(String text) {
-		try {
-			return Float.parseFloat(text);
-		} catch (NumberFormatException e) {
-			return Float.NaN;
 		}
 	}
 	
@@ -221,39 +199,21 @@ public class WeatherManager extends ToolPanel
 					Integer.parseInt(dateString.substring(sep + 1)), 
 					Integer.parseInt(dateString.substring(0, sep)));
 			
-			if (Util.question(String.format("Retrieve weather data from \n'%s' ?", urlString(true)))) {
+			if (SwingUtil.question(String.format("Retrieve weather data from \n'%s' ?", urlString(true)))) {
 				measurements("Daily extreme temperatures");
 				measurements("24 hours rainfall");
 			}
 			
 			time = Util.parseDate(dateString, format).getTime();
-		} while (Util.question("more"));
+		} while (SwingUtil.question("more"));
 	}
 
-	public boolean openConnection(Object... params) {
-		ResultSet rs = null;
+	@Override
+	public boolean openConnection(String dbPath, Object... params) {
 		try {
-			if (con != null && !con.isClosed())
-				con.close();
-			
-			String driver = Util.paramString("org.sqlite.JDBC", 2, params);
-			Class.forName(driver);
-			
-			String db = Util.paramString(dbName, 0, params);
-			String scheme = Util.paramString("sqlite", 1, params);
-			boolean memoryDb = "sqlite".equals(scheme) && db == null;
-			
-			String url = "jdbc:" + scheme + ":" + (memoryDb ? "" : db);
-			con = DriverManager.getConnection(url);
-			stmt = con.createStatement();
-			
-			String database = Util.paramString("sqlite_master", 3, params);
-			rs = stmt.executeQuery("select name from " + database + " where type = 'table'");
-			
-		    while (rs.next()) 
-		        if (rs.getString(1).equals("weathers")) 
-		        	return true;
-
+			if (super.openConnection(dbPath, Util.arrayextend(params, true, "weathers")))
+				return true;
+		    
 		    stmt.execute("CREATE TABLE weathers (" +
 		    		"_id INTEGER PRIMARY KEY," +
 		    		"description TEXT," +
@@ -266,18 +226,9 @@ public class WeatherManager extends ToolPanel
 
 		    return true;
 		} catch (Exception e) {
-			Util.handleException(e);
+			SwingUtil.handleException(e);
 			con = null;
 			return false;
-		}
-		finally {
-			if (rs != null) {
-				try {
-					rs.close();
-				} catch (SQLException e) {
-					e.printStackTrace();
-				}
-			}
 		}
 	}
 
@@ -345,9 +296,15 @@ public class WeatherManager extends ToolPanel
 			}
 			return id;
 		} catch (Exception e) {
-			Util.handleException(e);
+			SwingUtil.handleException(e);
 			return -1;
 		}
+	}
+
+	@Override
+	public void actionPerformed(ActionEvent e) {
+		// TODO Auto-generated method stub
+		
 	}
 
 }

@@ -6,12 +6,12 @@ import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Image;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.WindowEvent;
 import java.awt.geom.Rectangle2D;
 import java.io.File;
-import java.io.IOException;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
@@ -20,6 +20,7 @@ import java.util.regex.Pattern;
 
 import javax.swing.ButtonModel;
 import javax.swing.ComboBoxModel;
+import javax.swing.ImageIcon;
 import javax.swing.JEditorPane;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -42,6 +43,7 @@ import javax.swing.text.html.HTMLDocument;
 import javax.swing.text.html.HTMLEditorKit;
 import javax.swing.text.html.Option;
 
+import com.applang.SwingUtil;
 import com.applang.Util;
 
 public class FormEditor extends JSplitPane implements TextComponent
@@ -66,7 +68,7 @@ public class FormEditor extends JSplitPane implements TextComponent
 			bottom.add(label);
 			
 			Util.Settings.load();
-			final String xmlPath = Util.Settings.get("content.xml", "scripts/content.xml");
+			final String xmlPath = Util.getSetting("content.xml", "scripts/content.xml");
 			final FormEditor formEditor = new FormEditor(new File(xmlPath).getCanonicalPath());
 			
 			String title = "Layout manipulation";
@@ -94,23 +96,23 @@ public class FormEditor extends JSplitPane implements TextComponent
 			
 			formEditor.setDivider();
 		} catch (Exception e) {
-			Util.handleException(e);
+			SwingUtil.handleException(e);
 		}
 	}
 	
 	public void finish(String xmlPath) {
 		try {
-			allMappings();
+//			allMappings();
 			Util.xmlTransform(xmlPath, stylePath, output, 
-					"controlfile", output);
+					"mode", 2);
 			
 			Util.Settings.save();
 		} catch (Exception e) {
-			Util.handleException(e);
+			SwingUtil.handleException(e);
 		}
 	}
 	
-	String stylePath = Util.Settings.get("geometry.xsl", "scripts/geometry.xsl");
+	String stylePath = Util.getSetting("mask.xsl", "scripts/mask.xsl");
 	String htmlPath = "/tmp/temp.html";
 	String output = "/tmp/content.xml";
 	
@@ -131,12 +133,16 @@ public class FormEditor extends JSplitPane implements TextComponent
 			
 			Util.xmlTransform(xmlPath, stylePath, htmlPath, 
 					"mode", 1);
-			
+/*			
+			Util.copyFile(
+					new File(Util.relativePath("src"), "images/update_16x16.png"), 
+					new File(dir, "update_16x16.png"));
+*/			
 			pages = dir.listFiles();
 			mappings = new Util.ValMap[pages.length];
-			updateSplitComponents(page = 0);
+			updateSplitComponents(page = 0, null);
 		} catch (Exception e) {
-			Util.handleException(e);
+			SwingUtil.handleException(e);
 		}
 	}
 
@@ -149,16 +155,17 @@ public class FormEditor extends JSplitPane implements TextComponent
 	File[] pages = null;
 	int page;
 	
-	private void updateSplitComponents(int page) {
+	private void updateSplitComponents(int page, String data) {
 		try {
 			if (pages.length > 0) {
-				editorPanel.setPage("file:" + pages[page].getPath());
-				postData(page, null);
+				updateMask(page, data);
+				String url = "file:" + pages[page].getPath();
+				editorPanel.setPage(url);
 			}
 			else
-				Util.message("no mask data available");
-		} catch (IOException e) {
-			Util.handleException(e);
+				SwingUtil.message("no mask data available");
+		} catch (Exception e) {
+			SwingUtil.handleException(e);
 		}
 	}
 
@@ -176,18 +183,18 @@ public class FormEditor extends JSplitPane implements TextComponent
 		    @Override
 		    public void hyperlinkUpdate(HyperlinkEvent he)
 		    {
+		    	URL url = he.getURL();
 		        if (he instanceof FormSubmitEvent)
 		        {
 		            FormSubmitEvent fe = (FormSubmitEvent)he;
-		            postData(page, fe.getData());
+		            String data = fe.getData();
 					
-					maskPanel.repaint();
+		            updateSplitComponents(page, data);
 		        }
 		        else if (he.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
-		    		URL url = he.getURL();
 		    		String name = new File(url.getFile()).getName();
 					int page = Util.toInt(0, Util.findFirstIn(name, Pattern.compile("\\w+(\\d+)\\.\\w+")).group(1));
-					updateSplitComponents(page - 1);
+					updateSplitComponents(page - 1, null);
 		        }
 		    }
 		});
@@ -195,48 +202,109 @@ public class FormEditor extends JSplitPane implements TextComponent
 	
 	private void allMappings() {
 		Util.clearMappings();
-		for (int p = 0; p < pages.length; p++) 
+		for (int p = 0; p < pages.length; p++) {
+			getPageData(p);
 			for (String key : mappings[p].keySet())
 				Util.mappings.put(key, mappings[p].get(key));
+		}
 	}
 	
-	private void postData(int page, String data) {
+	private void updateMask(int page, String data) {
 		try {
-			mappings[page] = new Util.ValMap();
+			getPageData(page);
 			
-			if (data == null) 
-				pageData(page);
-			else {
+			if (data != null) {
+				Util.ValMap map = new Util.ValMap();
 				String[] parts = data.split("&|=");
 				for (int i = 0; i < parts.length - 1; i+=2) {
 					String key = URLDecoder.decode(parts[i], "UTF-8");
 					String value = URLDecoder.decode(parts[i+1], "UTF-8");
-					mappings[page].put(key, value);
+					map.put(key, value);
+				}
+				boolean change = false;
+				int action = 0;
+				for (String key : map.keySet()) {
+					String value = map.get(key).toString();
+					if (key.startsWith("control") && value.toLowerCase().equals("on")) {
+						change |= updateMapping(page, key, "x", map);
+						change |= updateMapping(page, key, "y", map);
+						change |= updateMapping(page, key, "width", map);
+						change |= updateMapping(page, key, "height", map);
+					}
+					else if (key.startsWith("action"))
+						action = Util.toInt(0, Util.findFirstIn(key, Pattern.compile("\\d+")).group());
+				}
+				switch (action) {
+				case 1:
+					if (change) {
+						putPageData(page);
+						forceReload();
+					}
+					break;
 				}
 			}
 			
 			this.page = page;
 			maskPanel.repaint();
 		} catch (Exception e) {
-			Util.handleException(e);
+			SwingUtil.handleException(e);
 		}
 	}
+
+	private void forceReload() {
+		Document doc = editorPanel.getDocument();
+		doc.putProperty(Document.StreamDescriptionProperty, null);
+	}
 	
-    private void pageData(int page) {
+    private boolean updateMapping(int page, String key1, String key2, Util.ValMap map) {
+    	boolean retval = false;
+    	Object value = map.get(key2);
+		float val = Util.toFloat(Float.NaN, value.toString());
+		if (!Float.isNaN(val)) {
+			mappings[page].put(key1 + "_" + key2, val);
+			retval = true;
+		}
+		return retval;
+	}
+
+	private void putPageData(int page) {
     	org.w3c.dom.Document doc = Util.xmlDocument(pages[page]);
     	if (doc == null)
     		return;
     	
-    	org.w3c.dom.NodeList nodes = Util.evaluateXPath(doc, "//table[@id='controls']");
+    	map2doc(mappings[page], doc, false);
+		
+		Util.xmlNodeToFile(doc, true, pages[page]);
+	}
+
+	public static void map2doc(Util.ValMap map, org.w3c.dom.Document doc, boolean reverse) {
+		org.w3c.dom.NodeList nodes = Util.evaluateXPath(doc, "//table[@id='controls']");
 		if (nodes.getLength() > 0) {
 			nodes = Util.evaluateXPath(nodes.item(0), ".//*[@id]");
 			for (int i = 0; i < nodes.getLength(); i++) {
 				org.w3c.dom.Element node = (org.w3c.dom.Element)nodes.item(i);
 				String key = node.getAttribute("id");
-				String value = node.getAttribute("value");
-				mappings[page].put(key, value);
+				if (key.contains("_")) {
+					if (reverse) {
+						String value = node.getTextContent();
+						map.put(key, value);
+					}
+					else {
+						String value = map.get(key).toString();
+						node.setTextContent(value);
+					}
+				}
 			}
 		}
+	}
+	
+    private void getPageData(int page) {
+    	mappings[page] = new Util.ValMap();
+    	org.w3c.dom.Document doc = Util.xmlDocument(pages[page]);
+    	if (doc == null)
+    		return;
+    	
+    	map2doc(mappings[page], doc, true);
     }
 	
     @SuppressWarnings("unused")
@@ -402,8 +470,12 @@ public class FormEditor extends JSplitPane implements TextComponent
 
 	public class MaskPanel extends JPanel
 	{
+		Image bgTextture;
+		
 		public MaskPanel() {
-			setBackground(Color.white);
+			ImageIcon ii = new ImageIcon("/home/lotharla/work/Niklas/Vorlage Tagesberichte-0.png");
+			bgTextture = ii.getImage();
+//			setBackground(Color.white);
 		}
 
 		TreeSet<String> controls;
@@ -413,6 +485,7 @@ public class FormEditor extends JSplitPane implements TextComponent
 			super.paintComponent(g);
 			Graphics2D g2 = (Graphics2D) g;
 			
+			g2.drawImage(bgTextture, 0, 0, null);
 			g2.setColor(Color.black);
 			
 			Util.ValMap map = mappings[page];
@@ -420,15 +493,18 @@ public class FormEditor extends JSplitPane implements TextComponent
 				return;
 			
 			controls = new TreeSet<String>();
-			for (String key : map.keySet()) 
-				controls.add(key.substring(0, key.indexOf('_')));
+			for (String key : map.keySet()) {
+				int underscore = key.indexOf('_');
+				if (underscore > 0)
+					controls.add(key.substring(0, underscore));
+			}
 			
 			for (String control : controls) {
 				String _x = map.get(control + "_x").toString();
 				String _y = map.get(control + "_y").toString();
 				String _width = map.get(control + "_width").toString();
 				String _height = map.get(control + "_height").toString();
-//				72 units in user space equals 1 inch in device space
+				//	72 units in user space equals 1 inch in device space
 				float x = 72 * Util.toFloat(Float.NaN, _x);
 				float y = 72 * Util.toFloat(Float.NaN, _y);
 				float width = 72 * Util.toFloat(Float.NaN, _width);

@@ -32,8 +32,11 @@
 	</xsl:template>
 
 	<xsl:template name="render" match="node()|@*">
+		<xsl:param name="param" />
 		<xsl:copy>
-			<xsl:apply-templates select="@*|node()" />
+			<xsl:apply-templates select="@*|node()">
+				<xsl:with-param name="param" select="$param"/>
+			</xsl:apply-templates>
 		</xsl:copy>
 	</xsl:template>
 

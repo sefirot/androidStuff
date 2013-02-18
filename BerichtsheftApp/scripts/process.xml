@@ -1,4 +1,4 @@
-<project name="Berichtsheft" basedir=".." default="pipe">
+<project name="BerichtsheftApp" basedir=".." default="pipe">
 	<description>
     This is an ant file for performing Berichtsheft specific tasks.
 	</description>
@@ -15,8 +15,8 @@
 	<property name="content.xml" location="scripts/content.xml" />
 	<property name="content.xsl" location="scripts/content.xsl" />
 	<property name="control.xsl" location="scripts/control.xsl" />
-	<property name="geometry.xsl" location="scripts/geometry.xsl" />
-	<property name="geometry.html" location="/tmp/temp.html" />
+	<property name="mask.xsl" location="scripts/mask.xsl" />
+	<property name="mask.html" location="/tmp/temp.html" />
 	<property name="src-dir" location="src" />
 	<property name="bin-dir" location="bin" />
 		
@@ -26,6 +26,7 @@
 			<exclude name="BerichtsheftPlugin.jar"/>
 			<filename name="*.jar" />
 		</fileset>
+    	<pathelement location="/home/lotharla/libs/junit-4.8.2/junit3.8.2.jar"/>
     </path>
 		    	
 	<target name="compile">
@@ -34,6 +35,15 @@
 			destdir="${bin-dir}">
 			<classpath refid="project.class.path" />
 		</javac>
+	</target>
+	
+	<target name="mask.test" depends="compile">
+	    <junit>
+	        <test name="com.applang.berichtsheft.test.MiscTests" methods="testMimicry" todir="/tmp"/>
+	        <sysproperty key="user.dir" value="${basedir}"/>
+	    	<classpath refid="project.class.path" />
+	        <formatter type="plain" usefile="false" />
+	    </junit>
 	</target>
     
     <target name="NotePicker">
@@ -111,38 +121,23 @@
 		    	
 	<target name="pipe" depends="pipe.1, pipe.2" />
 	    	
-	<target name="geometry.1">
-		<delete file="${geometry.html}" />
-		<xslt in="${content.xml}" out="${geometry.html}" style="${geometry.xsl}" classpathref="project.class.path">
+	<target name="mask.1">
+		<delete file="${mask.html}" />
+		<xslt in="${content.xml}" out="${mask.html}" style="${mask.xsl}" classpathref="project.class.path">
 			<param name="mode" expression="1"/>
 			<param name="debug" expression="no"/>
 		</xslt>
 	</target>
 	    	
-	<target name="geometry.3">
-		<delete file="/tmp/debug.out" />
-		<ac:for param="file" xmlns:ac="antlib:net.sf.antcontrib">
-			<path>
-				<fileset dir="/tmp/berichtsheft" includes="*.html"/>
-			</path>
-			<ac:sequential>
-				<antcall target="geometry.2">
-					<param name="controlfile" value="@{file}"/>
-				</antcall>
-			</ac:sequential>
-		</ac:for>
-	</target>
-	    	
-	<target name="geometry.2">
-		<echo message="${controlfile}" />
+	<target name="mask.2">
 		<delete file="/tmp/content.xml" />
-		<xslt in="${content.xml}" out="/tmp/content.xml" style="${geometry.xsl}" classpathref="project.class.path">
-			<param name="controlfile" expression="${controlfile}"/>
+		<xslt in="${content.xml}" out="/tmp/content.xml" style="${mask.xsl}" classpathref="project.class.path">
+			<param name="mode" expression="2"/>
 			<param name="debug" expression="no"/>
 		</xslt>
 	</target>
 		    	
-	<target name="geometry" depends="geometry.1">
-		<antcall target="geometry.3" />
+	<target name="mask" depends="mask.1">
+		<antcall target="mask.2" />
 	</target>
 </project>

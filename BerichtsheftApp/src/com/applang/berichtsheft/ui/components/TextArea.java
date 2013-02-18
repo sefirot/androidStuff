@@ -1,20 +1,19 @@
-package com.applang.berichtsheft.ui;
+package com.applang.berichtsheft.ui.components;
 
 import java.awt.event.KeyListener;
 
 import javax.swing.JTextArea;
 
-import com.applang.Util;
-import com.applang.berichtsheft.ui.components.TextComponent;
+import com.applang.SwingUtil;
 
-public class BerichtsheftTextArea implements TextComponent
+public class TextArea implements TextComponent
 {
-	public BerichtsheftTextArea() {
+	public TextArea() {
 		super();
 		textArea.setLineWrap(true);
 		textArea.setWrapStyleWord(true);
 		textArea.setTabSize(4);
-		Util.addTabKeyForwarding(textArea);
+		SwingUtil.addTabKeyForwarding(textArea);
 	}
 
 	public JTextArea textArea = new JTextArea();

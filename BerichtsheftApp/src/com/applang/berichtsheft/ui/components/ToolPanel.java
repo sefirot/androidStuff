@@ -1,93 +1,117 @@
 package com.applang.berichtsheft.ui.components;
 
+import java.awt.BorderLayout;
+import java.awt.Component;
 import java.awt.Container;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
-import java.awt.event.ActionEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.WindowEvent;
 import java.io.File;
-import java.net.URL;
 import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 
-import javax.swing.AbstractAction;
-import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JToolBar;
 
+import com.applang.SwingUtil;
 import com.applang.Util;
 
 public class ToolPanel extends JPanel
 {
-	public enum ActionType
+	public static void createAndShowGUI(String title, Dimension preferred, 
+			final ToolPanel toolPanel, Component target, final Object... params)
 	{
-		CALENDAR	("calendar_16x16.png", "pick date from calendar"), 
-		PREVIOUS	("Arrow Left_16x16.png", "previous note(s)"), 
-		NEXT		("Arrow Right_16x16.png", "next note(s)"), 
-		DATABASE	("book_open_16x16.png", "choose database"), 
-		DOCUMENT	("export_16x16.png", "export document"), 
-		ADD			("plus_16x16.png", "enter 'update' mode"), 
-		UPDATE		("update_16x16.png", "update note(s)"), 
-		DELETE		("minus_16x16.png", "delete note(s)"), 
-		SPELLCHECK	("abc_16x16.png", "spell check"), 
-		PICK		("pick_16x16.png", "pick note(s)"), 
-		DATE		("", "date or week of year"), 
-		CATEGORY	("", "category"), 
-		IMPORT		("import_16x16.png", "import data"); 
+		try {
+			JToolBar top = new JToolBar();
+			top.setName("top");
+			JToolBar bottom = new JToolBar();
+			bottom.setName("bottom");
+			bottom.setFloatable(false);
+			JLabel label = new JLabel("");
+			label.setName("mess");
+			bottom.add(label);
+			
+			JFrame frame = new JFrame(title) {
+				protected void processWindowEvent(WindowEvent we) {
+					if (we.getID() == WindowEvent.WINDOW_CLOSING)
+						toolPanel.finish(params);
+					
+					super.processWindowEvent(we);
+				}
+			};
+			frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+			
+			Container contentPane = frame.getContentPane();
+			contentPane.setPreferredSize(preferred);
+			
+			toolPanel.addToContainer(top, BorderLayout.PAGE_START);
+			contentPane.add(top, BorderLayout.PAGE_START);
+			contentPane.add(bottom, BorderLayout.PAGE_END);
+
+			JScrollPane scroll = new JScrollPane(target);
+			contentPane.add(scroll, BorderLayout.CENTER);
+			
+			frame.pack();
+			frame.setLocationRelativeTo(null);
+			frame.setVisible(true);
+			
+			toolPanel.start(params);
+		} catch (Exception e) {
+			SwingUtil.handleException(e);
+		}
+	}
+	
+	protected void start(Object... params) {
+		Util.Settings.load();
+	}
+	
+	protected void finish(Object... params) {
+		Util.Settings.save();
+	}
+	
+	public enum ToolType implements SwingUtil.ActionType
+	{
+		CALENDAR	(0, "calendar_16x16.png", "pick date from calendar"), 
+		PREVIOUS	(1, "Arrow Left_16x16.png", "previous note(s)"), 
+		NEXT		(2, "Arrow Right_16x16.png", "next note(s)"), 
+		DATABASE	(3, "book_open_16x16.png", "choose database"), 
+		DOCUMENT	(4, "export_16x16.png", "export document"), 
+		ADD			(5, "plus_16x16.png", "enter 'update' mode"), 
+		UPDATE		(6, "update_16x16.png", "update note(s)"), 
+		DELETE		(7, "minus_16x16.png", "delete note(s)"), 
+		SPELLCHECK	(8, "abc_16x16.png", "spell check"), 
+		PICK		(9, "pick_16x16.png", "pick note(s)"), 
+		DATE		(10, "", "date or week of year"), 
+		CATEGORY	(11, "", "category"), 
+		IMPORT		(12, "import_16x16.png", "import data"), 
+		TEXT		(13, "", "export text"), 
+		ACTIONS		(14, "", "Actions"); 		//	needs to stay last !
 		
 	    private final String iconName;
 	    private final String toolTip;
+	    private final int index;   
 	    
-	    ActionType(String iconName, String toolTip) {
+	    ToolType(int index, String iconName, String toolTip) {
+	    	this.index = index;
 	        this.iconName = iconName;
 	        this.toolTip = toolTip;
 	    }
-	    
+
+	    public int index() { return index; }
 	    public String iconName()   { return iconName; }
 	    public String description() { return toolTip; }
 	}
 
-	protected boolean actionBlocked = false;
-    
-    public class ToolAction extends AbstractAction
-    {
-    	ActionType type;
-    	
-        public ActionType getType() {
-			return type;
-		}
-
-		public void setType(ActionType type) {
-			this.type = type;
-			putValue(SMALL_ICON, iconFrom(this.type.iconName()));
-			putValue(SHORT_DESCRIPTION, this.type.description());
-//			putValue(MNEMONIC_KEY, KeyEvent.CHAR_UNDEFINED);
-		}
-
-		public ToolAction(ActionType type) {
-			super(null);
-			setType(type);
-        }
-        
-        @Override
-        public void actionPerformed(ActionEvent ae) {
-        	if (actionBlocked)
-        		return;
-        	
-        	Util.message("");
-        	System.out.println(type.toString());
-        	
-        	action_Performed(ae);
-        }
-        
-        protected void action_Performed(ActionEvent ae) {
-        	if (actionBlocked)
-        		return;
-        }
-    }
-
-	protected String dbName;
+    protected String dbName;
 	protected String caption;
 
 	public ToolPanel(TextComponent textArea, Object... params) {
@@ -102,24 +126,24 @@ public class ToolPanel extends JPanel
 	
 	public void addToContainer(Container container, Object constraints) {
 		container.add(this, constraints);
-		Util.container = container;
+		SwingUtil.container = container;
 	}
 
-	protected JButton[] buttons = new JButton[9];
+	protected JButton[] buttons = new JButton[1 + ToolType.ACTIONS.index()];
 	
-	public void addButton(int index, ToolAction action) {
+	public void addButton(int index, SwingUtil.Action action) {
 		if (index > -1 && index < buttons.length)
 			add(buttons[index] = new JButton(action));
 	}
 	
-	public ToolAction getAction(int index) {
+	public SwingUtil.Action getAction(int index) {
 		if (index > -1 && index < buttons.length)
-			return (ToolAction) buttons[index].getAction();
+			return (SwingUtil.Action) buttons[index].getAction();
 		else
 			return null;
 	}
 	
-	public void setAction(int index, ToolAction action) {
+	public void setAction(int index, SwingUtil.Action action) {
 		if (index > -1 && index < buttons.length)
 			buttons[index].setAction(action);
 	}
@@ -131,15 +155,6 @@ public class ToolPanel extends JPanel
 	
 	public void enableAction(int index, boolean enabled) {
 		buttons[index].getAction().setEnabled(enabled);
-	}
-
-	public ImageIcon iconFrom(String path) {
-		if (Util.notNullOrEmpty(path)) {
-			URL url = NotePicker.class.getResource("/images/" + path);
-			return new ImageIcon(url);
-		}
-		else
-			return null;
 	}
 
 	protected TextComponent textArea = null;
@@ -177,6 +192,16 @@ public class ToolPanel extends JPanel
 		}
 	}
 
+	protected String chooseDatabase(String dbName) {
+		if (dbName != null) {
+			File file = SwingUtil.chooseFile(true, this, caption, new File(dbName), null);
+			if (file != null) 
+				dbName = file.getPath();
+		}
+
+		return dbName;
+	}
+
 	protected Connection con = null;
 	protected Statement stmt = null;
 	protected String scheme = null;
@@ -185,14 +210,72 @@ public class ToolPanel extends JPanel
 		return con;
 	}
 
-	protected String chooseDatabase(String dbName) {
-		if (dbName != null) {
-			File file = Util.chooseFile(true, this, caption, new File(dbName), null);
-			if (file != null) 
-				dbName = file.getPath();
+	public boolean openConnection(String dbPath, Object... params) {
+		boolean retval = false;
+		ResultSet rs = null;
+		try {
+			if (con != null && !con.isClosed())
+				con.close();
+			
+			String driver = Util.paramString("org.sqlite.JDBC", 2, params);
+			Class.forName(driver);
+			
+			scheme = Util.paramString("sqlite", 1, params);
+			boolean memoryDb = "sqlite".equals(scheme) && dbPath == null;
+			
+			String url = "jdbc:" + scheme + ":" + (memoryDb ? "" : dbPath);
+			con = DriverManager.getConnection(url);
+			stmt = con.createStatement();
+			
+			afterOpenCon();
+			
+			String database = Util.paramString("sqlite_master", 3, params);
+			if ("sqlite".equals(scheme))
+				rs = stmt.executeQuery("select name from " + database + " where type = 'table'");
+			else if ("mysql".equals(scheme)) {
+				rs = stmt.executeQuery("show databases;");
+				boolean exists = false;
+			    while (rs.next()) 
+			        if (rs.getString(1).equals(database)) {
+			        	exists = true;
+			        	break;
+			        }
+	        	rs.close();
+	        	if (!exists)
+	        		throw new Exception(String.format("database '%s' not found", database));
+	        	else
+	        		stmt.execute(String.format("use %s;", database));
+	        	
+				rs = stmt.executeQuery("show tables in " + database + ";");
+			}
+			
+			String tableName = Util.paramString(null, 0, params);
+			if (tableName == null)
+				return true;
+			
+		    while (rs.next()) 
+		        if (rs.getString(1).equals(tableName)) 
+		        	return true;
+		    
+		    return false;
+		} catch (Exception e) {
+			SwingUtil.handleException(e);
+			return retval;
+		} 
+		finally {
+			if (rs != null) {
+				try {
+					rs.close();
+				} catch (SQLException e) {
+					SwingUtil.handleException(e);
+					retval = false;
+				}
+			}
 		}
-
-		return dbName;
+	}
+	
+	protected void afterOpenCon() throws Exception {
+		
 	}
 	
 	protected void updateOnRequest(boolean ask) {
