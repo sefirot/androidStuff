@@ -239,7 +239,7 @@ public class Util
 		return true;
 	}
 
-    public static int toInt(int defaultValue, String value) {
+    public static Integer toInt(Integer defaultValue, String value) {
         int result;
         
         try {
@@ -249,7 +249,7 @@ public class Util
         return result;
     }
 
-    public static float toFloat(float defaultValue, String value) {
+    public static Float toFloat(Float defaultValue, String value) {
     	float result;
         
         try {
@@ -259,7 +259,7 @@ public class Util
         return result;
     }
 
-    public static double toDouble(double defaultValue, String value) {
+    public static Double toDouble(Double defaultValue, String value) {
     	double result;
         
         try {
@@ -267,6 +267,16 @@ public class Util
         } catch(NumberFormatException e) { result = defaultValue; }
         
         return result;
+    }
+    
+    public static String stripUnits(String s) {
+		int i = 0;
+		while (i < s.length())
+			if (Character.isDigit(s.charAt(i)) || "-+.,".contains(s.charAt(i) + "")) 
+				i++;
+			else
+				break;
+		return s.substring(0, i);
     }
 	
 	public static Document xmlDocument(File file) {
@@ -338,7 +348,7 @@ public class Util
         for (int i = 0; i < params.length; i += 2) 
 			transformer.setParameter(params[i].toString(), params[i + 1]);
         
-        StreamResult result = new StreamResult(outFileName);
+        StreamResult result = new StreamResult(new File(outFileName));
         transformer.transform(source, result);
 	}
 	
@@ -938,6 +948,154 @@ public class Util
 		} catch (Exception e) {}
 		
 		return defaultValue;
+	}
+
+/*
+	The format specifiers for general, character, and numeric types have the following syntax:
+	 
+	   %[argument_index$][flags][width][.precision]conversion
+	   
+	The optional argument_index is a decimal integer indicating the position of the argument 
+	in the argument list. The first argument is referenced by "1$", the second by "2$", etc. 
+
+	The optional flags is a set of characters that modify the output format. The set of valid flags 
+	depends on the conversion. 
+
+	The optional width is a non-negative decimal integer indicating the minimum number of characters 
+	to be written to the output. 
+
+	The optional precision is a non-negative decimal integer usually used to restrict the number of 
+	characters. The specific behavior depends on the conversion. 
+
+	The required conversion is a character indicating how the argument should be formatted. The set 
+	of valid conversions for a given argument depends on the argument's data type. 
+
+	The format specifiers for types which are used to represents dates and times have the following syntax:
+	 
+	   %[argument_index$][flags][width]conversion
+	   
+	The optional argument_index, flags and width are defined as above. 
+
+	The required conversion is a two character sequence. The first character is 't' or 'T'. 
+	The second character indicates the format to be used. These characters are similar to but not 
+	completely identical to those defined by GNU date and POSIX strftime(3c). 
+
+	The format specifiers which do not correspond to arguments have the following syntax: 
+	
+	   %[flags][width]conversion
+	   
+	The optional flags and width is defined as above. 
+
+	The required conversion is a character indicating content to be inserted in the output.
+*/
+
+	/**
+	 * @param writer
+	 * @param params
+	 * @return
+	 * @throws IOException
+	 */
+	public static Writer format(Writer writer, Object... params) {
+		String separator = "\t";
+		
+	    try {
+			Pattern specifier = Pattern.compile("%(\\d+\\$)?([-#+ 0,(])?(\\d+(.\\d+)?)?[sfdbchox]");
+			
+			for (int i = 0; i < params.length; i++) {
+				if (i > 0)
+					writer.write(separator);
+					
+				Object o = params[i];
+				String s = o instanceof String ? (String)o : "";
+				
+				MatchResult[] specifiers = findAllIn(s, specifier);
+				int specs = specifiers.length;
+				
+				boolean useSpecifiers = specs > 0 && specs <= params.length - i - 1;
+				if (useSpecifiers) {
+					Object[] args = arrayreduce(params, i + 1, specs);
+					for (int j = 0; j < args.length; j++)
+						args[j] = 
+							Util.stringify(args[j], 
+								specifiers[j].group().toLowerCase().endsWith("s"));
+					s = String.format(s, args);
+					i += specs;
+				}
+				else
+					s = Util.stringify(o, true).toString();
+				
+				writer.write(s);
+			}
+		} catch (Exception e) {}
+		
+		return writer;
+	}
+
+	public static Object stringify(Object o, boolean stringify) {
+		if (!stringify || 
+				o instanceof String || 
+				o instanceof Short || 
+				o instanceof Long || 
+				o instanceof Integer || 
+				o instanceof Float || 
+				o instanceof Double || 
+				o instanceof Character || 
+				o instanceof Byte || 
+				o instanceof Boolean)
+			return o;
+		
+		String s;
+		
+		if (o instanceof Object[]) s = Arrays.toString((Object[])o);
+		else if (o instanceof boolean[]) s = Arrays.toString((boolean[])o);
+		else if (o instanceof byte[]) s = Arrays.toString((byte[])o);
+		else if (o instanceof char[]) s = Arrays.toString((char[])o);
+		else if (o instanceof double[]) s = Arrays.toString((double[])o);
+		else if (o instanceof float[]) s = Arrays.toString((float[])o);
+		else if (o instanceof int[]) s = Arrays.toString((int[])o);
+		else if (o instanceof long[]) s = Arrays.toString((long[])o);
+		else if (o instanceof short[]) s = Arrays.toString((short[])o);
+		else if (o instanceof String[]) s = Arrays.toString((String[])o);
+		else
+			s = o.toString();
+		
+		return s;
+	}
+
+	@SuppressWarnings("resource")
+	public static Writer formatAssociation(Writer writer, String key, Object value, int commaPos) {
+		String commaString = ", ";
+		if (commaPos > 0)
+			writer = format(writer, commaString);
+		
+		if (value == null) 
+			writer = format(writer, "%s=null", key);
+		else
+			writer = format(writer, "%s=%s", key, value);
+		
+		if (commaPos < 0)
+			writer = format(writer, commaString);
+		
+		return writer;
+	}
+
+	public static void print(Object... params) {
+		System.out.print(format(new StringWriter(), params).toString());
+	}
+
+	public static void println(Object... params) {
+		System.out.println(format(new StringWriter(), params).toString());
+	}
+
+	public static void noprint(Object... params) {}
+
+	public static void noprintln(Object... params) {}
+
+	public static String toString(String description, Object o) {
+		String value = o.toString();
+		int brac = value.indexOf('[');
+		return (notNullOrEmpty(description) ? description : "") + 
+				value.substring(brac > -1 ? brac : 0);
 	}
 
 }

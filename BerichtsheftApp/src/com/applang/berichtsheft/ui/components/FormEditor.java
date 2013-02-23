@@ -2,32 +2,50 @@ package com.applang.berichtsheft.ui.components;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Image;
+import java.awt.RenderingHints;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
-import java.awt.event.WindowEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseWheelEvent;
+import java.awt.geom.AffineTransform;
+import java.awt.geom.Dimension2D;
+import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.io.File;
+import java.io.FilenameFilter;
+import java.io.StringWriter;
+import java.io.Writer;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.util.Arrays;
+import java.util.Observable;
+import java.util.Observer;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
 
+import javax.imageio.ImageIO;
+import javax.swing.BoxLayout;
 import javax.swing.ButtonModel;
 import javax.swing.ComboBoxModel;
-import javax.swing.ImageIcon;
 import javax.swing.JEditorPane;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
+import javax.swing.JTextField;
 import javax.swing.JToolBar;
+import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.event.HyperlinkEvent;
 import javax.swing.event.HyperlinkListener;
@@ -45,85 +63,196 @@ import javax.swing.text.html.Option;
 
 import com.applang.SwingUtil;
 import com.applang.Util;
+import com.applang.SwingUtil.Bounds;
+import com.applang.Util.ValMap;
+import com.applang.berichtsheft.BerichtsheftApp;
 
-public class FormEditor extends JSplitPane implements TextComponent
+public class FormEditor extends JSplitPane
 {
 	public static void main(String[] args) throws Exception {
+		final String inputPath = Util.param("Vorlagen/Tagesberichte.odt", 0, args);
+		final String outputPath = Util.param("Dokumente/Tagesberichte.odt", 1, args);
+		
         SwingUtilities.invokeLater(new Runnable() {
 			public void run() {
-				createAndShowGUI();
+				perform(inputPath, outputPath, false);
 			}
 		});
 	}
 
-	private static void createAndShowGUI() {
+	public static boolean perform(final String inputPath, final String outputPath, final boolean deadline, Object... params) {
 		try {
-			JToolBar top = new JToolBar();
-			top.setName("top");
-			JToolBar bottom = new JToolBar();
-			bottom.setName("bottom");
-			bottom.setFloatable(false);
-			JLabel label = new JLabel("");
-			label.setName("mess");
-			bottom.add(label);
-			
 			Util.Settings.load();
-			final String xmlPath = Util.getSetting("content.xml", "scripts/content.xml");
-			final FormEditor formEditor = new FormEditor(new File(xmlPath).getCanonicalPath());
 			
-			String title = "Layout manipulation";
-			JFrame frame = new JFrame(title) {
-				protected void processWindowEvent(WindowEvent we) {
-					if (we.getID() == WindowEvent.WINDOW_CLOSING)
-						formEditor.finish(xmlPath);
+			final Util.Job<File> finish = new Util.Job<File>() {
+				public void dispatch(File _content, Object[] params) throws Exception {
+					_content.delete();
 					
-					super.processWindowEvent(we);
+					BerichtsheftApp.manipContent(-1, inputPath, outputPath, null);
+					
+					Util.Settings.save();
 				}
 			};
-			frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 			
-			Container contentPane = frame.getContentPane();
-			contentPane.setPreferredSize(new Dimension(600, 300));
+			boolean ok = BerichtsheftApp.manipContent(1, inputPath, outputPath, 
+					new Util.Job<File>() {
+						public void dispatch(final File content, final Object[] params) throws Exception {
+							inputDir = content.getParentFile();
+							final File _content = new File(inputDir, "_content.xml");
+							content.renameTo(_content);
+							
+							if (!generateMask(_content.getCanonicalPath()))
+								return;
+							
+							final FormEditor formEditor = new FormEditor();
+							
+							SwingUtil.showFrame(null, 
+									"Layout manipulation", 
+									new SwingUtil.ComponentFunction<Component[]>() {
+										public Component[] apply(Component comp, Object[] parms) {
+											JToolBar top = new JToolBar();
+											top.setName("top");
+											JToolBar bottom = new JToolBar();
+											bottom.setName("bottom");
+											bottom.setFloatable(false);
+											JLabel label = new JLabel("");
+											label.setName("mess");
+											bottom.add(label);
+											
+											JFrame frame = (JFrame)comp;
+											Container contentPane = frame.getContentPane();
+											
+											contentPane.add(top, BorderLayout.PAGE_START);
+											contentPane.add(bottom, BorderLayout.PAGE_END);
+											contentPane.add(formEditor, BorderLayout.CENTER);
+											return null;
+										}
+									}, 
+									new SwingUtil.ComponentFunction<Component[]>() {
+										public Component[] apply(Component comp, Object[] parms) {
+											JFrame frame = (JFrame)comp;
+											Bounds.load(frame, "frame", frame.getTitle());
+											formEditor.setDivider();
+											if (Util.isAvailable(0, params)) {
+												try {
+													Util.Job<FormEditor> job = Util.param(null, 0, params);
+													job.dispatch(formEditor, null);
+												} catch (Exception e) {
+													SwingUtil.handleException(e);
+												}
+											}
+											return null;
+										}
+									}, 
+									new SwingUtil.ComponentFunction<Component[]>() {
+										public Component[] apply(Component comp, Object[] parms) {
+											JFrame frame = (JFrame)comp;
+											Bounds.save(frame, "frame", frame.getTitle());
+											unmask(_content.getPath(), content.getPath());
+											try {
+												if (!deadline)
+													finish.dispatch(_content, null);
+											} catch (Exception e) {
+												SwingUtil.handleException(e);
+											}
+											return null;
+										}
+									}, 
+									deadline);
+							
+							if (deadline) {
+								if (Util.isAvailable(1, params)) {
+									Util.Job<Void> job = Util.param(null, 1, params);
+									job.dispatch(null, new Object[] {_content.getPath(), content.getPath()});
+								}
+								
+								try {
+									finish.dispatch(_content, null);
+								} catch (Exception e) {
+									SwingUtil.handleException(e);
+								}
+							}
+						}
+					}, params);
 			
-			contentPane.add(top, BorderLayout.PAGE_START);
-			contentPane.add(bottom, BorderLayout.PAGE_END);
-
-			contentPane.add(formEditor, BorderLayout.CENTER);
-			
-			frame.pack();
-			frame.setLocationRelativeTo(null);
-			frame.setVisible(true);
-			
-			formEditor.setDivider();
+			return ok;
 		} catch (Exception e) {
 			SwingUtil.handleException(e);
+			return false;
 		}
 	}
 	
-	public void finish(String xmlPath) {
+	static void unmask(String inputPath, String outputPath) {
 		try {
-//			allMappings();
-			Util.xmlTransform(xmlPath, stylePath, output, 
+			String stylePath = Util.getSetting("mask.xsl", "scripts/mask.xsl");
+			Util.xmlTransform(inputPath, stylePath, outputPath, 
 					"mode", 2);
-			
-			Util.Settings.save();
 		} catch (Exception e) {
 			SwingUtil.handleException(e);
 		}
 	}
 	
-	String stylePath = Util.getSetting("mask.xsl", "scripts/mask.xsl");
-	String htmlPath = "/tmp/temp.html";
-	String output = "/tmp/content.xml";
+	static File inputDir = null;
 	
-	public FormEditor(String xmlPath) {
-		File dir = Util.tempDir(true, "berichtsheft");
+	static boolean generateMask(String contentXml) {
+		try {
+			String stylePath = Util.getSetting("mask.xsl", "scripts/mask.xsl");
+			String dummy = "/tmp/temp.html";
+			Util.xmlTransform(contentXml, stylePath, dummy, 
+					"mode", 1);
+
+			File dir = Util.tempDir(false, "berichtsheft");
+			pages = dir.listFiles(new FilenameFilter() {
+				public boolean accept(File dir, String name) {
+					return name.matches("page\\d+\\.html");
+				}
+			});
+			images = new Image[pages.length];
+			
+			pageLayoutProperties = getElement("styles.xml", 
+					"/document-styles" +
+					"/automatic-styles" +
+					"/page-layout" +
+					"/page-layout-properties");
+			
+			return true;
+		} catch (Exception e) {
+			SwingUtil.handleException(e);
+			return false;
+		}
+	}
+	
+	static org.w3c.dom.Element getElement(String fileName, String xpath) {
+		File file = new File(inputDir, fileName);
+		if (Util.fileExists(file)) {
+			org.w3c.dom.Document doc = Util.xmlDocument(file);
+			org.w3c.dom.NodeList nodes = Util.evaluateXPath(doc, xpath);
+			if (nodes.getLength() > 0) 
+				return (org.w3c.dom.Element) nodes.item(0);
+		}
+		return null;
+	}
+	
+	static Image loadImage(String path) {
+		try {
+			Image image = ImageIO.read(new File(path));
+			return image;
+		} catch (Exception e) {
+			SwingUtil.handleException(e);
+			return null;
+		}
+	}
+
+	public static File[] pages = null;
+	public static org.w3c.dom.Element pageLayoutProperties = null;
+	public static Image[] images = null;
+	
+	public FormEditor() {
 		try {
 			setupEditor();
 			setTopComponent(new JScrollPane(maskPanel));
 			setBottomComponent(new JScrollPane(editorPanel));
 			addComponentListener(new ComponentAdapter() {
-
 				@Override
 				public void componentResized(ComponentEvent e) {
 					setDivider();
@@ -131,14 +260,6 @@ public class FormEditor extends JSplitPane implements TextComponent
 				}
 			});
 			
-			Util.xmlTransform(xmlPath, stylePath, htmlPath, 
-					"mode", 1);
-/*			
-			Util.copyFile(
-					new File(Util.relativePath("src"), "images/update_16x16.png"), 
-					new File(dir, "update_16x16.png"));
-*/			
-			pages = dir.listFiles();
 			mappings = new Util.ValMap[pages.length];
 			updateSplitComponents(page = 0, null);
 		} catch (Exception e) {
@@ -152,12 +273,11 @@ public class FormEditor extends JSplitPane implements TextComponent
 	}
 
 	Util.ValMap[] mappings = null;
-	File[] pages = null;
 	int page;
 	
-	private void updateSplitComponents(int page, String data) {
+	public void updateSplitComponents(int page, String data) {
 		try {
-			if (pages.length > 0) {
+			if (pages.length > 0 && page < pages.length) {
 				updateMask(page, data);
 				String url = "file:" + pages[page].getPath();
 				editorPanel.setPage(url);
@@ -200,20 +320,27 @@ public class FormEditor extends JSplitPane implements TextComponent
 		});
 	}
 	
+	private void forceReload() {
+		Document doc = editorPanel.getDocument();
+		doc.putProperty(Document.StreamDescriptionProperty, null);
+	}
+	
+	@SuppressWarnings("unused")
 	private void allMappings() {
-		Util.clearMappings();
+		ValMap map = new ValMap();
 		for (int p = 0; p < pages.length; p++) {
 			getPageData(p);
 			for (String key : mappings[p].keySet())
-				Util.mappings.put(key, mappings[p].get(key));
+				map.put(key, mappings[p].get(key));
 		}
+		Util.mappings = map;
 	}
 	
 	private void updateMask(int page, String data) {
 		try {
 			getPageData(page);
 			
-			if (data != null) {
+			if (Util.notNullOrEmpty(data)) {
 				Util.ValMap map = new Util.ValMap();
 				String[] parts = data.split("&|=");
 				for (int i = 0; i < parts.length - 1; i+=2) {
@@ -245,67 +372,68 @@ public class FormEditor extends JSplitPane implements TextComponent
 			}
 			
 			this.page = page;
-			maskPanel.repaint();
+			maskPanel.update(null, null);
 		} catch (Exception e) {
 			SwingUtil.handleException(e);
 		}
-	}
-
-	private void forceReload() {
-		Document doc = editorPanel.getDocument();
-		doc.putProperty(Document.StreamDescriptionProperty, null);
 	}
 	
     private boolean updateMapping(int page, String key1, String key2, Util.ValMap map) {
     	boolean retval = false;
     	Object value = map.get(key2);
-		float val = Util.toFloat(Float.NaN, value.toString());
-		if (!Float.isNaN(val)) {
-			mappings[page].put(key1 + "_" + key2, val);
-			retval = true;
+		if (value != null) {
+			float val = Util.toFloat(Float.NaN, value.toString());
+			if (!Float.isNaN(val)) {
+				mappings[page].put(key1 + "_" + key2, val);
+				retval = true;
+			}
 		}
 		return retval;
 	}
 
 	private void putPageData(int page) {
-    	org.w3c.dom.Document doc = Util.xmlDocument(pages[page]);
-    	if (doc == null)
-    		return;
-    	
-    	map2doc(mappings[page], doc, false);
-		
-		Util.xmlNodeToFile(doc, true, pages[page]);
+		org.w3c.dom.Document doc = map2page(mappings[page], page, false);
+		if (doc != null)
+			Util.xmlNodeToFile(doc, true, pages[page]);
 	}
 
-	public static void map2doc(Util.ValMap map, org.w3c.dom.Document doc, boolean reverse) {
+	public static org.w3c.dom.Document map2page(Util.ValMap map, int page, boolean reverse) {
+    	org.w3c.dom.Document doc = Util.xmlDocument(pages[page]);
+    	if (doc == null)
+    		return null;
+    	
 		org.w3c.dom.NodeList nodes = Util.evaluateXPath(doc, "//table[@id='controls']");
 		if (nodes.getLength() > 0) {
-			nodes = Util.evaluateXPath(nodes.item(0), ".//*[@id]");
+			nodes = Util.evaluateXPath(nodes.item(0), ".//*[@name]");
 			for (int i = 0; i < nodes.getLength(); i++) {
 				org.w3c.dom.Element node = (org.w3c.dom.Element)nodes.item(i);
-				String key = node.getAttribute("id");
+				String key = node.getAttribute("name");
 				if (key.contains("_")) {
+					boolean inputTag = key.endsWith("image");
 					if (reverse) {
-						String value = node.getTextContent();
+						String value = inputTag ? node.getAttribute("value") : node.getTextContent();
 						map.put(key, value);
-					}
-					else {
-						String value = map.get(key).toString();
-						node.setTextContent(value);
+						if (inputTag)
+							images[page] = loadImage(new File(inputDir, value).getPath());
+					} else {
+						Object value = map.get(key);
+						if (value != null)
+							if (inputTag)
+								node.setAttribute("value", value.toString());
+							else
+								node.setTextContent(value.toString());
 					}
 				}
 			}
 		}
+		
+		return doc;
 	}
 	
     private void getPageData(int page) {
     	mappings[page] = new Util.ValMap();
-    	org.w3c.dom.Document doc = Util.xmlDocument(pages[page]);
-    	if (doc == null)
-    		return;
-    	
-    	map2doc(mappings[page], doc, true);
-    }
+    	map2page(mappings[page], page, true);
+   }
 	
     @SuppressWarnings("unused")
 	private String getFormData() {
@@ -437,65 +565,327 @@ public class FormEditor extends JSplitPane implements TextComponent
             }
         }
     }
+	
+    private void createMaskPanelPopupMenu(final MaskPanel maskPanel) {
+    	final String[] factors = new String[]{"offsetX","offsetY","scaleX","scaleY"};
+    	final JPanel pnl = new JPanel();
+    	final Observer observer = new Observer() {
+			@Override
+			public void update(Observable o, Object arg) {
+				for (int i = 0, j = 0; i < factors.length; i++, j=i%2) {
+					JTextField field = SwingUtil.findComponent(pnl, factors[i]);
+					if (o instanceof MaskPanel.Scale && factors[i].startsWith("scale")) {
+						MaskPanel.Scale scale = (MaskPanel.Scale) o;
+						field.setText("" + Util.round(scale.getDim(j), 3));
+					}
+					if (o instanceof MaskPanel.Offset && factors[i].startsWith("offset")) {
+						MaskPanel.Offset offset = (MaskPanel.Offset) o;
+						field.setText("" + Util.round(offset.getCoord(j), 3));
+					}
+				}
+			}
+		};
+        maskPanel.addMouseListener(SwingUtil.newPopupAdapter(
+        	new Object[] {"Mask fitting ...", 
+        		new ActionListener() {
+		        	public void actionPerformed(ActionEvent ae) {
+		        		SwingUtil.showDialog(maskPanel, maskPanel, 
+		        			"Mask fitting", 
+		        			new SwingUtil.ComponentFunction<Component[]>() {
+								public Component[] apply(Component dlg, Object[] parms) {
+									pnl.setLayout(new BoxLayout(pnl, BoxLayout.PAGE_AXIS));
+									Dimension fieldSize = new Dimension(160,20);
+									for (int i = 0; i < factors.length; i++) {
+										if (SwingUtil.findComponent(pnl, factors[i]) == null) {
+											final JTextField field = new JTextField();
+											field.setName(factors[i]);
+											field.setPreferredSize(fieldSize);
+											field.setHorizontalAlignment(JTextField.CENTER);
+											JLabel label = new JLabel(
+													factors[i]);
+											label.setLabelFor(field);
+											label.setPreferredSize(fieldSize);
+											label.setHorizontalAlignment(SwingConstants.CENTER);
+											pnl.add(label);
+											label.setAlignmentX(Component.CENTER_ALIGNMENT);
+											pnl.add(field);
+											field.setAlignmentX(Component.CENTER_ALIGNMENT);
+											field.addActionListener(new ActionListener() {
+												public void actionPerformed(
+														ActionEvent e) {
+													String name = field
+															.getName();
+													int i = Arrays.asList(
+															factors).indexOf(
+															name) % 2;
+													String text = field
+															.getText();
+													if (name.startsWith("offset")) {
+														double d = maskPanel.offset
+																.getCoord(i);
+														d = Util.toDouble(d,
+																text);
+														maskPanel.offset
+																.setCoord(i, d);
+													}
+													if (name.startsWith("scale")) {
+														double d = maskPanel.scale
+																.getDim(i);
+														d = Util.toDouble(d,
+																text);
+														maskPanel.scale.setDim(
+																i, d);
+													}
+												}
+											});
+										}
+									}
+									return new Component[] {pnl};
+								}
+		        			}, 
+		        			new SwingUtil.ComponentFunction<Component[]>() {
+								public Component[] apply(Component dlg, Object[] parms) {
+									maskPanel.scale.addObserver(observer);
+									observer.update(maskPanel.scale, null);
+									maskPanel.offset.addObserver(observer);
+									observer.update(maskPanel.offset, null);
+									return null;
+								}
+		        			}, 
+		        			new SwingUtil.ComponentFunction<Component[]>() {
+								public Component[] apply(Component dlg, Object[] parms) {
+									maskPanel.scale.deleteObserver(observer);
+									maskPanel.offset.deleteObserver(observer);
+									return null;
+								}
+		        			}, 
+		        			SwingUtil.Modality.NONE);
+		        	}
+		        }, "scale", "change scale factors of the mask"}
+        ));
+    }
 
-	@Override
-	public boolean isDirty() {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	@Override
-	public void setDirty(boolean dirty) {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
-	public void spellcheck() {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
-	public void setText(String t) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public String getText() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	public class MaskPanel extends JPanel
+	public class MaskPanel extends JPanel implements Observer
 	{
-		Image bgTextture;
+		public class Scale extends Observable
+		{
+			public void setDim(int i, double d) {
+				double[] dd = new double[]{dim.getWidth(),dim.getHeight()};
+				dd[i] = d;
+				dim.setSize(dd[0], dd[1]);
+				setChanged();
+				notifyObservers(this);
+			}
+			
+			public double getDim(int i) {
+				double[] dd = new double[]{dim.getWidth(),dim.getHeight()};
+				return dd[i];
+			}
+
+			public Dimension2D dim = new Dimension2D() {
+				double width, height;
+				@Override
+				public void setSize(double width, double height) {
+					this.width = width;
+					this.height = height;
+				}
+				@Override
+				public double getWidth() {
+					return width;
+				}
+				@Override
+				public double getHeight() {
+					return height;
+				}
+			};
+
+			public String toString() {
+				Writer writer = Util.format(new StringWriter(), "[");
+				writer = Util.formatAssociation(writer, "width", dim.getWidth(), 0);
+				writer = Util.formatAssociation(writer, "height", dim.getHeight(), 1);
+				return Util.format(writer, "]").toString();
+			}
+		}
+		public class Offset extends Observable
+		{
+			public void setCoord(int i, double d) {
+				double[] cc = new double[]{point.getX(),point.getY()};
+				cc[i] = d;
+				point.setLocation(cc[0], cc[1]);
+				setChanged();
+				notifyObservers(this);
+			}
+			
+			public double getCoord(int i) {
+				double[] cc = new double[]{point.getX(),point.getY()};
+				return cc[i];
+			}
+
+			public Point2D point = new Point2D() {
+				double x, y;
+				@Override
+				public void setLocation(double x, double y) {
+					this.x = x;
+					this.y = y;
+				}
+				@Override
+				public double getY() {
+					return y;
+				}
+				@Override
+				public double getX() {
+					return x;
+				}
+			};
+
+			public String toString() {
+				Writer writer = Util.format(new StringWriter(), "[");
+				writer = Util.formatAssociation(writer, "x", point.getX(), 0);
+				writer = Util.formatAssociation(writer, "y", point.getY(), 1);
+				return Util.format(writer, "]").toString();
+			}
+		}
+		
+		public Scale scale;
+		public Offset offset;
+		 
+		class MouseHandler extends MouseAdapter {
+			private int offsetX;
+			private int offsetY;
+	 
+			public void mousePressed(MouseEvent e) {
+				offsetX = e.getX();
+				offsetY = e.getY();
+			}
+	 
+			public void mouseDragged(MouseEvent e) {
+				int deltaX = e.getX() - offsetX;
+				int deltaY = e.getY() - offsetY;
+	 
+				offsetX += deltaX;
+				offsetY += deltaY;
+	 
+				offset.setCoord(0, offset.getCoord(0) + deltaX);
+				offset.setCoord(1, offset.getCoord(1) + deltaY);
+			}
+			
+			public void mouseWheelMoved(MouseWheelEvent e) {
+				if(e.getScrollType() == MouseWheelEvent.WHEEL_UNIT_SCROLL) {
+					double delta = .005 * e.getWheelRotation();
+					
+					if (e.isShiftDown()) 
+						scale.setDim(1, Math.max(0.00001, scale.getDim(1) + delta));
+					
+					if (e.isControlDown()) 
+						scale.setDim(0, Math.max(0.00001, scale.getDim(0) + delta));
+				}
+			}
+		}
 		
 		public MaskPanel() {
-			ImageIcon ii = new ImageIcon("/home/lotharla/work/Niklas/Vorlage Tagesberichte-0.png");
-			bgTextture = ii.getImage();
-//			setBackground(Color.white);
+			setBackground(Color.white);
+			
+			offset = new Offset();
+			offset.point.setLocation(0.0, 0.0);
+			offset.addObserver(this);
+			
+			scale = new Scale();
+			scale.dim.setSize(1.0, 1.0);
+			scale.addObserver(this);
+			
+			MouseHandler mouseHandler = new MouseHandler();
+			addMouseListener(mouseHandler);
+			addMouseMotionListener(mouseHandler);
+			addMouseWheelListener(mouseHandler);
+			
+			createMaskPanelPopupMenu(this);
+			
+			addComponentListener(new ComponentAdapter() {
+				@Override
+				public void componentResized(ComponentEvent e) {
+					resizeMask();
+					update(null, null);
+				}
+			});
 		}
 
-		TreeSet<String> controls;
+		@Override
+		public void update(Observable o, Object arg) {
+//			Util.println("update offset : %s\tscale : %s", offset, scale);
+			repaint();
+		}
+
+		//	72 units in user space equals 1 inch in device space
+		private static final int device2userSpace = 72;
+		
+		private Double pageLayout(String name) {
+			if (pageLayoutProperties == null)
+				return null;
+			
+			String attribute = pageLayoutProperties.getAttribute(name);
+			return Util.toDouble(null, Util.stripUnits(attribute));
+		}
+		
+		Double[] page_dims = new Double[] {
+				pageLayout("fo:page-width"), 
+				pageLayout("fo:page-height"), 
+		};
+		
+		Double[] margins = new Double[] {
+				pageLayout("fo:margin-left"), 
+				pageLayout("fo:margin-top"), 
+		};
+		
+		public double getDim(int i) {
+			double[] dd = new double[]{this.getWidth(),this.getHeight()};
+			return dd[i];
+		}
+		
+		private void resizeMask() {
+			for (int i = 0; i < 2; i++) {
+				double user = this.getDim(i);
+				Double dim = page_dims[i];
+				if (dim == null) {
+					Object frameItem = frameItem(page, i==0 ? "width" : "height");
+					if (frameItem != null) 
+						dim = Util.toDouble(
+								new Double(1 / device2userSpace), 
+								frameItem.toString());
+				}
+				scale.setDim(i, user / device2userSpace / dim);
+				offset.setCoord(i, margins[i] == null ? 0 : device2userSpace * margins[i] * scale.getDim(i));
+			}
+		}
+	
+		private Object frameItem(int page, String item) {
+			return mappings[page].get("frame" + (page+1) + "_" + item);
+		}
 		
 		@Override
 		protected void paintComponent(Graphics g) {
 			super.paintComponent(g);
-			Graphics2D g2 = (Graphics2D) g;
 			
-			g2.drawImage(bgTextture, 0, 0, null);
+			Graphics2D g2 = (Graphics2D) g;
+			g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+			g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);			
 			g2.setColor(Color.black);
 			
 			Util.ValMap map = mappings[page];
 			if (map == null)
 				return;
 			
-			controls = new TreeSet<String>();
+			if (Util.isAvailable(page, images)) 
+				g2.drawImage(images[page], 0, 0, this.getWidth(), this.getHeight(), null);
+			
+			AffineTransform tx = new AffineTransform();
+			tx.translate(offset.point.getX(), offset.point.getY());
+			tx.scale(scale.dim.getWidth(), scale.dim.getHeight());
+			g2.setTransform(tx);
+			
+			TreeSet<String> controls = new TreeSet<String>();
 			for (String key : map.keySet()) {
 				int underscore = key.indexOf('_');
-				if (underscore > 0)
+				if (underscore > 0 && key.startsWith("control"))
 					controls.add(key.substring(0, underscore));
 			}
 			
@@ -504,11 +894,10 @@ public class FormEditor extends JSplitPane implements TextComponent
 				String _y = map.get(control + "_y").toString();
 				String _width = map.get(control + "_width").toString();
 				String _height = map.get(control + "_height").toString();
-				//	72 units in user space equals 1 inch in device space
-				float x = 72 * Util.toFloat(Float.NaN, _x);
-				float y = 72 * Util.toFloat(Float.NaN, _y);
-				float width = 72 * Util.toFloat(Float.NaN, _width);
-				float height = 72 * Util.toFloat(Float.NaN, _height);
+				float x = device2userSpace * Util.toFloat(Float.NaN, _x);
+				float y = device2userSpace * Util.toFloat(Float.NaN, _y);
+				float width = device2userSpace * Util.toFloat(Float.NaN, _width);
+				float height = device2userSpace * Util.toFloat(Float.NaN, _height);
 				
 		        Rectangle2D.Double rect = new Rectangle2D.Double(x, y, width, height);
 				g2.draw(rect);

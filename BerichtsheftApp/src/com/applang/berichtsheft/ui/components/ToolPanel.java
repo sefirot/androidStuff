@@ -227,7 +227,7 @@ public class ToolPanel extends JPanel
 			con = DriverManager.getConnection(url);
 			stmt = con.createStatement();
 			
-			afterOpenCon();
+			afterConnecting();
 			
 			String database = Util.paramString("sqlite_master", 3, params);
 			if ("sqlite".equals(scheme))
@@ -274,7 +274,7 @@ public class ToolPanel extends JPanel
 		}
 	}
 	
-	protected void afterOpenCon() throws Exception {
+	protected void afterConnecting() throws Exception {
 		
 	}
 	

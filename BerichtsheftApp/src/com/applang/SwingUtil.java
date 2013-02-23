@@ -1,10 +1,17 @@
 package com.applang;
 
+import java.awt.AWTEvent;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Cursor;
+import java.awt.Frame;
 import java.awt.KeyboardFocusManager;
 import java.awt.LayoutManager;
+import java.awt.Rectangle;
+import java.awt.Robot;
+import java.awt.Toolkit;
+import java.awt.Window;
+import java.awt.event.AWTEventListener;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.FocusEvent;
@@ -15,23 +22,33 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EventListener;
+import java.util.regex.MatchResult;
+import java.util.regex.Pattern;
 
 import javax.swing.AbstractAction;
 import javax.swing.AbstractButton;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
+import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
+import javax.swing.JDialog;
 import javax.swing.JFileChooser;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
@@ -40,15 +57,17 @@ import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JRadioButton;
 import javax.swing.JRadioButtonMenuItem;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
+import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
+import javax.swing.WindowConstants;
 import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.text.JTextComponent;
-
-import com.applang.Util.Job;
-import com.applang.berichtsheft.ui.components.NotePicker;
 
 public class SwingUtil
 {
@@ -179,9 +198,480 @@ public class SwingUtil
 		
 		return timing.millis;
 	}
+
+	public static class Deadline extends SwingWorker<Void, Void>
+	{
+		public Deadline(Window wnd, Integer[] keyEvents) {
+			this.wnd = wnd;
+			this.keyEvents = keyEvents;
+		}
+		
+		Window wnd;
+		Integer[] keyEvents = null;
+
+		@Override
+		protected Void doInBackground(){
+			Util.println(String.format("deadline %d ms", value));
+
+	        waiting(wnd, new ComponentFunction<Void>() {
+				public Void apply(Component comp, Object[] parms) {
+					Timing timing = (Timing)parms[0];
+					
+					while (timing.current() < value && !isCancelled()) 
+						Thread.yield();
+					
+					return null;
+				}
+			});
+				
+			return null;
+		}
+		
+		@Override
+		protected void done() {
+			if (isCancelled())
+				return;
+			
+			if (!Util.nullOrEmpty(keyEvents)) 
+				doKeyEvents();
+			else if (wnd != null) 
+				pullThePlug(wnd);
+		}
+		
+		public void cancel() {
+			if (this.cancel(true))
+				Util.println("deadline cancelled");
+			
+			started = false;
+		}
+
+		void doKeyEvents() {
+			try {
+				Robot robot = new Robot();
+				for (int i = 0; i < keyEvents.length; i++) {
+					if (keyEvents[i] != null) {
+						robot.keyPress(keyEvents[i]);
+					}
+				}
+				
+				robot.delay(delay);
+				
+				for (int i = 0; i < keyEvents.length; i++) {
+					if (keyEvents[i] != null) {
+						robot.keyRelease(keyEvents[i]);
+					}
+				}
+				
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		
+		public static int delay = 1000;
+		public static int value = 1000;
+		
+		public static Deadline start(Window wnd, Integer... keyEvents) {
+			if ((wnd == null && keyEvents.length < 1))
+				return null;
+				
+			final Deadline deadline = new Deadline(wnd, keyEvents);
+			deadline.execute();
+			
+			Toolkit.getDefaultToolkit().addAWTEventListener(new AWTEventListener() {
+				public void eventDispatched(AWTEvent ev) {
+		            deadline.cancel();
+				}
+			}, AWTEvent.MOUSE_MOTION_EVENT_MASK);
+			
+			started = true;
+			
+			return deadline;
+		}
+		
+		public static boolean started = false;
+		
+		public static void finish() {
+			if (started) {
+				try {
+					SwingUtilities.invokeAndWait(doEvents);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+				
+				started = false;
+				
+				Util.println("deadline finished");
+			}
+		}
+
+		static Runnable doEvents = new Runnable() {
+			public void run() {
+				Deadline deadline = new Deadline(null, null);
+				deadline.execute();
+			}
+		};
+	}
+	
+	public static class Bounds extends Rectangle
+	{
+		public Bounds() {}
+		
+		public Bounds(Window window, Object... params) {
+			super(window != null ? 
+				window.getBounds() : 
+				Util.param(new Rectangle(300,300,400,400), 0, params));
+		}
+		
+		public static Rectangle load(Window window, 
+				String category, String title,
+				Object... params)
+		{
+			String key = key(category, title);
+			Bounds rect = new Bounds(null, params);
+			for (MatchResult mr : Util.findAllIn(Util.getSetting(key, ""), Pattern.compile("(\\w+)=(\\d+)"))) {
+				if ("x".equals(mr.group(1)))
+					rect.x = Util.toInt(-1, mr.group(2));
+				else if ("y".equals(mr.group(1)))
+					rect.y = Util.toInt(-1, mr.group(2));
+				else if ("width".equals(mr.group(1)))
+					rect.width = Util.toInt(-1, mr.group(2));
+				else if ("height".equals(mr.group(1)))
+					rect.height = Util.toInt(-1, mr.group(2));
+			}
+			
+			Rectangle bounds = new Bounds(window, params);
+			
+			if (rect.x > -1)
+				bounds.x = rect.x;
+			if (rect.y > -1)
+				bounds.y = rect.y;
+			if (rect.width > -1)
+				bounds.width = rect.width;
+			if (rect.height > -1)
+				bounds.height = rect.height;
+			
+			
+			if (window != null)
+				window.setBounds(bounds);
+			
+			return bounds;
+		}
+		
+		static String key(String category, String title) {
+			return category + "." + title.replaceAll("\\s+", "") + ".bounds";
+		}
+		
+		public static void save(Window window, 
+				String category, String title,
+				Object... params)
+		{
+			String key = key(category, title);
+			Util.putSetting(key, Util.toString("", new Bounds(window, params)));
+		}
+	}
+
+	static boolean finished = false;
+	
+	public static void showFrame(Component relative, 
+			String title, 
+    		ComponentFunction<Component[]> assembleUI,
+    		ComponentFunction<Component[]> arrangeUI,
+    		final ComponentFunction<Component[]> completeUI,
+    		boolean deadline, 
+    		Integer... keyEvents)
+	{
+		try {
+			final JFrame frame = new JFrame(title);
+			frame.setName(title);
+			
+			if (assembleUI != null) {
+				Component[] widgets = assembleUI.apply(frame, null);
+				if (widgets != null)
+					if (widgets.length == 1 && widgets[0] instanceof Container)
+						frame.setContentPane((Container)widgets[0]);
+					else
+						for (Component widget : widgets)
+							frame.getContentPane().add(widget);
+			}
+			
+			frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+			frame.setLocationRelativeTo(relative);
+			frame.pack();
+			
+			frame.setVisible(true);
+			
+			if (arrangeUI != null)
+				arrangeUI.apply(frame, null);
+			
+			frame.addWindowListener(new WindowAdapter() {
+				public void windowClosing(WindowEvent event) {
+					if (completeUI != null)
+						completeUI.apply(frame, null);
+					
+					finished = true;
+				}
+			});
+			
+			if (deadline || keyEvents.length > 0) {
+				Deadline.start(
+						deadline ? frame : null, 
+						keyEvents);
+				
+				finished = false;
+				
+				while (!finished) {
+					Thread.yield();
+				}
+			}
+		} catch (Exception e) {
+			handleException(e);
+		}
+	}
+	
+    /**
+     * closes the <code>Window</code> programmatically
+     * @param wnd
+     */
+    public static void pullThePlug(Window wnd) {
+        WindowEvent wev = new WindowEvent(wnd, WindowEvent.WINDOW_CLOSING);
+        Toolkit.getDefaultToolkit().getSystemEventQueue().postEvent(wev);
+    }
 	
 	public static int dialogResult = -1;
 	
+    public static int showDialog(Component parent, Component relative, 
+    		String title, 
+    		ComponentFunction<Component[]> assembleUI,
+    		ComponentFunction<Component[]> arrangeUI,
+    		final ComponentFunction<Component[]> completeUI,
+    		Modality modality, 
+    		Integer... keyEvents)
+    {
+    	dialogResult = -1;
+    	
+		Frame frame = JOptionPane.getFrameForComponent(parent);
+		final JDialog dlg = new JDialog(frame, title, modality.flags(Modality.MODAL));
+		
+		if (assembleUI != null) {
+			Component[] widgets = assembleUI.apply(dlg, null);
+			if (widgets != null)
+				if (widgets.length == 1 && widgets[0] instanceof Container)
+					dlg.setContentPane((Container) widgets[0]);
+				else
+					for (Component widget : widgets)
+						dlg.getContentPane().add(widget);
+		}
+		
+		boolean deadline = modality.flags(Modality.TIMEOUT);
+		if (deadline)
+			Deadline.start(dlg);
+		
+		dlg.pack();
+		dlg.setLocationRelativeTo(relative);
+		dlg.setDefaultCloseOperation(WindowConstants.HIDE_ON_CLOSE);
+
+		if (!deadline)
+			Deadline.start(null, keyEvents);
+		
+		dlg.setVisible(true);
+		
+		if (arrangeUI != null)
+			arrangeUI.apply(dlg, null);
+		
+		dlg.addWindowListener(new WindowAdapter() {
+			public void windowClosing(WindowEvent event) {
+				if (completeUI != null)
+					completeUI.apply(dlg, null);
+			}
+		});
+    	
+		Util.noprintln("dialogResult", dialogResult);
+		
+		return dialogResult;
+	}
+	
+    public enum Modality {
+    	NONE(0), MODAL(4), TIMEOUT(8), MODAL_TIMEOUT(12);
+
+        int index;   
+
+        Modality(int index) {
+            this.index = index;
+        }
+
+        public boolean flags(Modality flag) { 
+            return (index & flag.index) > 0; 
+        }
+
+        //
+        // Option types
+        //
+        /*
+         * Type meaning Look and Feel should not supply any options -- only
+         * use the options from the <code>JOptionPane</code>.
+         */
+        public static final int         DEFAULT_OPTION = -1;
+        /* Type used for <code>showConfirmDialog</code>. */
+        public static final int         YES_NO_OPTION = 0;
+        /* Type used for <code>showConfirmDialog</code>. */
+        public static final int         YES_NO_CANCEL_OPTION = 1;
+        /* Type used for <code>showConfirmDialog</code>. */
+        public static final int         OK_CANCEL_OPTION = 2;
+
+        //
+        // Return values.
+        //
+        /* Return value from class method if YES is chosen. */
+        public static final int         YES_OPTION = 0;
+        /* Return value from class method if NO is chosen. */
+        public static final int         NO_OPTION = 1;
+        /* Return value from class method if CANCEL is chosen. */
+        public static final int         CANCEL_OPTION = 2;
+        /* Return value form class method if OK is chosen. */
+        public static final int         OK_OPTION = 0;
+        /* Return value from class method if user closes window without selecting
+         * anything, more than likely this should be treated as either a
+         * <code>CANCEL_OPTION</code> or <code>NO_OPTION</code>. */
+        public static final int         CLOSED_OPTION = -1;
+    }
+	
+    public static int showOptionDialog(Component parent, 
+    		final Object message, String title,
+            int optionType, final int messageType,
+            Icon icon,
+            final Object[] options, final Object initialOption, 
+            Integer... keyEvents) 
+    {
+    	int type = Math.abs(optionType);
+    	if (type > 3) {
+    		Modality modality = Modality.NONE;
+    		modality.index = type & ~3;
+    		final int option_Type = optionType < 0 ? -1 : type & 3;
+    		
+    		return showDialog(parent, parent, 
+					title,
+    				new ComponentFunction<Component[]>() {
+						public Component[] apply(final Component dlg, Object[] parms) {
+				    		final JOptionPane optionPane = new JOptionPane(message, 
+				    				messageType,
+				    				option_Type,
+				    				null,
+				    				options, 
+				    				initialOption);
+				            optionPane.addPropertyChangeListener(new PropertyChangeListener() {
+				                public void propertyChange(PropertyChangeEvent e) {
+				                    String prop = e.getPropertyName();
+
+				                    if (dlg.isVisible() && optionPane.equals(e.getSource()) && 
+				                    	JOptionPane.VALUE_PROPERTY.equals(prop))
+				                    {
+				                        Object value = optionPane.getValue();
+				                        if (value == JOptionPane.UNINITIALIZED_VALUE) {
+				                        	dialogResult = -1;
+				                        	return;
+				                        }
+				                        else
+				                        	optionPane.setValue(JOptionPane.UNINITIALIZED_VALUE);
+				                        
+				                        dialogResult = Arrays.asList(options).indexOf(value);
+				                		dlg.setVisible(false);
+				                	};
+				                }
+				            });
+							return new Component[] {optionPane};
+						}
+					},
+					null, null, 
+					modality,
+    				keyEvents);
+    	}
+    	else {
+    		Deadline.start(null, keyEvents);
+    		
+    		parent = JOptionPane.getFrameForComponent(parent);
+        	return JOptionPane.showOptionDialog(parent, 
+        			message, title, 
+        			optionType, messageType, 
+        			icon, 
+        			options, initialOption);
+    	}
+	}
+	
+    public static Object showInputDialog(Component parent, 
+    		Object message, String title,
+            int optionType, int messageType,
+            Icon icon,
+            Object[] selections, Object initialSelection, 
+            Integer... keyEvents) 
+    {
+        Object[] options = selections;
+        Object initialOption = initialSelection;
+        
+        Object[] widgets = null;
+    	JTextComponent textComponent = null;
+    	
+		parent = JOptionPane.getFrameForComponent(parent);
+		
+    	switch (optionType) {
+    	default:
+    		Deadline.start(null, keyEvents);
+    		
+        	return JOptionPane.showInputDialog(parent, 
+        			message, title, 
+        			messageType, 
+        			icon, 
+        			selections, initialSelection);
+        	
+    	case JOptionPane.DEFAULT_OPTION:
+    		widgets = new Object[] {
+    				new JScrollPane(new JTextArea(message.toString()))};
+    	    break;
+    	    
+    	case JOptionPane.YES_NO_OPTION:
+    	case JOptionPane.YES_NO_CANCEL_OPTION:
+    	case JOptionPane.OK_CANCEL_OPTION:
+    		JTextField textField = new JTextField(initialSelection.toString());
+    		textField.setHorizontalAlignment(JTextField.CENTER);
+    		addFocusObserver(textField);
+    		
+	    	JLabel label = new JLabel(message.toString());
+    	    label.setDisplayedMnemonic(KeyEvent.VK_I);
+		    label.setLabelFor(textField);
+    		
+    		textComponent = textField;
+		    
+    	    initialOption = options.length > 0 ? options[0] : null;
+    		widgets = new Object[] {label, textComponent};
+    	    break;
+    	}
+	    
+    	Object selection = null;
+    	
+	    int ans;
+		switch (ans = showOptionDialog(parent, 
+				widgets, title, 
+				optionType,
+				messageType,
+				icon,
+				options, initialOption, 
+				keyEvents)) {
+		case 0:
+			if (textComponent != null) {
+				selection = textComponent.getText();
+				break;
+			}
+
+		default:
+			if (optionType == JOptionPane.OK_CANCEL_OPTION)
+				selection = "";
+			else
+				selection = ans;
+			break;
+		}
+		
+    	return selection;
+	}
+
 	/**
 	 * @param parent
 	 * @param title
@@ -299,7 +789,7 @@ public class SwingUtil
 		if (mess != null)
 			mess.setText(text);
 		else if (underTest)
-			System.out.println(text);
+			Util.println(text);
 		else
 			JOptionPane.showMessageDialog(container, text, "Message", JOptionPane.PLAIN_MESSAGE);
 	}
@@ -318,7 +808,7 @@ public class SwingUtil
 
 	public static ImageIcon iconFrom(String path) {
 		if (Util.notNullOrEmpty(path)) {
-			URL url = NotePicker.class.getResource("/images/" + path);
+			URL url = SwingUtil.class.getResource("/images/" + path);
 			return new ImageIcon(url);
 		}
 		else
@@ -365,7 +855,7 @@ public class SwingUtil
         		return;
         	
         	message("");
-        	System.out.println(type == null ? ae.getActionCommand() : type.toString());
+        	Util.println(type == null ? ae.getActionCommand() : type.toString());
         	
         	action_Performed(ae);
         }
@@ -541,15 +1031,15 @@ public class SwingUtil
     public static class PopupMenuAdapter implements PopupMenuListener
     {
 		public void popupMenuCanceled(PopupMenuEvent e) {
-		//	System.out.println("Canceled");
+		//	println("Canceled");
 		}
 		
 		public void popupMenuWillBecomeInvisible(PopupMenuEvent e) {
-		//	System.out.println("Becoming invisible");
+		//	println("Becoming invisible");
 		}
 		
 		public void popupMenuWillBecomeVisible(PopupMenuEvent e) {
-		//	System.out.println("Becoming visible");
+		//	println("Becoming visible");
 		}
     }
     
@@ -590,6 +1080,15 @@ public class SwingUtil
 			}
         }
 	}
+    
+    public static void mouseEventOutput(String eventDescription, MouseEvent e) {
+        Util.println(eventDescription
+                + " (" + e.getX() + "," + e.getY() + ")"
+                + " with button "
+                + e.getButton()
+                + " detected on "
+                + e.getComponent().getClass().getName());
+    }
     
     /**
      *

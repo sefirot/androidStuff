@@ -5,6 +5,7 @@
 	xmlns:draw='urn:oasis:names:tc:opendocument:xmlns:drawing:1.0'
 	xmlns:svg='urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0'
 	xmlns:text='urn:oasis:names:tc:opendocument:xmlns:text:1.0'
+	xmlns:xlink='http://www.w3.org/1999/xlink'
 	xmlns:java="http://xml.apache.org/xalan/java"
 	xmlns:redirect="http://xml.apache.org/xalan/redirect"
 	xmlns:util="com.applang.Util"
@@ -33,10 +34,10 @@
 		<tr>
 			<th></th>
 			<th>Input :</th>
-			<th><input type="text" id="x" name="x" value="" /></th>
-			<th><input type="text" id="y" name="y" value="" /></th>
-			<th><input type="text" id="width" name="width" value="" /></th>
-			<th><input type="text" id="height" name="height" value="" /></th>
+			<th><input type="text" name="x" value="" /></th>
+			<th><input type="text" name="y" value="" /></th>
+			<th><input type="text" name="width" value="" /></th>
+			<th><input type="text" name="height" value="" /></th>
 		</tr>
 	</xsl:variable>
 
@@ -106,6 +107,33 @@
 							<xsl:copy-of select="exslt:node-set($table.row1)/*" />
 							<xsl:copy-of select="exslt:node-set($table.header)/*" />
 							<xsl:apply-templates mode="filter" />
+							<tr>
+								<td><input type="checkbox" name="frame" /></td>
+								<td>frame</td>
+								<xsl:variable name="prefix" select="concat('frame',$pos,'_')" />
+								<xsl:variable name="name" select="concat($prefix,'image')" />
+								<xsl:variable name="image" select="draw:frame[1]/draw:image/@xlink:href" />
+								<td colspan="2" align="center">image : <input type="text" name="{$name}" value="{$image}" /></td>
+								<xsl:variable name="nix" select="util:setMapping($name,$image)" />
+								
+								<xsl:variable name="name1" select="concat($prefix,'width')" />
+								<xsl:variable name="width">
+									<xsl:apply-templates select="draw:frame[1]/@svg:width" mode="units">
+										<xsl:with-param name="strip" select="true()" />
+									</xsl:apply-templates>
+								</xsl:variable>
+								<td name="{$name1}" align="center"><xsl:value-of select="$width" /></td>
+								<xsl:variable name="nix1" select="util:setMapping($name1,$width)" />
+								
+								<xsl:variable name="name2" select="concat($prefix,'height')" />
+								<xsl:variable name="height">
+									<xsl:apply-templates select="draw:frame[1]/@svg:height" mode="units">
+										<xsl:with-param name="strip" select="true()" />
+									</xsl:apply-templates>
+								</xsl:variable>
+								<td name="{$name2}" align="center"><xsl:value-of select="$height" /></td>
+								<xsl:variable name="nix2" select="util:setMapping($name2,$height)" />
+							</tr>
 						</table>
 					</form>
 				</body>
@@ -131,8 +159,10 @@
 		<xsl:param name="num" />
 		<xsl:param name="nam" />
 		<xsl:variable name="action" select="util:getSetting(concat('mask.action',$num), $nam)" />
-		<xsl:variable name="name" select="concat('action',$num)" />
-		<td><input type='SUBMIT' name="{$name}" value="{$action}" /></td>
+		<xsl:if test="$action != $nam">
+			<xsl:variable name="name" select="concat('action',$num)" />
+			<td><input type='SUBMIT' name="{$name}" value="{$action}" /></td>
+		</xsl:if>
 	</xsl:template>
 
 	<xsl:template name="pageswitch">
@@ -184,12 +214,11 @@
 											<xsl:value-of select="." />
 										</xsl:when>
 										<xsl:otherwise>
-											<xsl:variable name="id" select="concat($ctrl,'_',$th)" />
-											<xsl:attribute name="id"><xsl:value-of select="$id" /></xsl:attribute>
-											<xsl:attribute name="name"><xsl:value-of select="$id" /></xsl:attribute>
+											<xsl:variable name="name" select="concat($ctrl,'_',$th)" />
+											<xsl:attribute name="name"><xsl:value-of select="$name" /></xsl:attribute>
 											<xsl:attribute name="align"><xsl:value-of select="'center'" /></xsl:attribute>
 											<xsl:value-of select="$value" />
-											<xsl:variable name="nix" select="util:setMapping($id,$value)" />
+											<xsl:variable name="nix" select="util:setMapping($name,$value)" />
 										</xsl:otherwise>
 									</xsl:choose>
 								</xsl:element>
@@ -249,12 +278,12 @@
 										<xsl:if test="$localname = $th">
 											<xsl:variable name="pos" select="position()" />
 											<xsl:variable name="td" select="exslt:node-set($tr)/tr/td[$pos]" />
-											<xsl:variable name="id" select="string($td/@id)" />
+											<xsl:variable name="name" select="string($td/@name)" />
 											<xsl:variable name="value" select="string($td)" />
-											<xsl:variable name="value3" select="util:getMapping($id)" />
+											<xsl:variable name="value3" select="util:getMapping($name)" />
 <xsl:call-template name="debug.out">
 	<xsl:with-param name="hide" select="true()" />
-	<xsl:with-param name="text" select="concat($id,$tab,$tab,$tab,$tab)" />
+	<xsl:with-param name="text" select="concat($name,$tab,$tab,$tab,$tab)" />
 	<xsl:with-param name="object" select="$value" />
 	<xsl:with-param name="text2" select="concat($tab,$tab,'oldValue')" />
 	<xsl:with-param name="object2" select="$oldValue" />

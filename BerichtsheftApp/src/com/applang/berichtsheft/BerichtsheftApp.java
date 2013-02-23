@@ -56,62 +56,89 @@ public class BerichtsheftApp
 			Util.paramString("\\d", 3, params));
 	}
 
-	public static boolean export(String vorlage, String dokument, String databaseFilename, Object... params) {
-		File tempDir = Util.tempDir(true, "berichtsheft");
+	public static boolean manipContent(int phase, String vorlage, String dokument, Util.Job<File> manipulation, Object... params) {
+		boolean begin = phase > -1;
+		boolean end = phase < 1;
+		File tempDir = Util.tempDir(begin, "berichtsheft", "odt");
 		try {
-			File source = new File(vorlage);
-			if (!source.exists())
-				throw new Exception(String.format("Vorlage '%s' missing", vorlage));
+			int unzipped = 0;
+			if (begin) {
+				File source = new File(vorlage);
+				if (!source.exists())
+					throw new Exception(String.format("Vorlage '%s' missing",
+							vorlage));
+				File archive = new File(tempDir, "Vorlage.zip");
+				Util.copyFile(source, archive);
+				unzipped = ZipUtil.unzipArchive(archive, new ZipUtil.UnzipJob(
+						tempDir.getPath()), false);
+				archive.delete();
+			}
 			
-			File database = new File(databaseFilename);
-			if (!database.exists())
-				throw new Exception(String.format("Database '%s' missing", database));
+			if (manipulation != null)
+				manipulation.dispatch(new File(tempDir, "content.xml"), params);
 			
-			File archive = new File(tempDir, "Vorlage.zip");
-			Util.copyFile(source, archive);
-			int unzipped = ZipUtil.unzipArchive(archive, 
-					new ZipUtil.UnzipJob(tempDir.getPath()), 
-					false);
-			archive.delete();
-
-			String content = Util.pathCombine(tempDir.getPath(), "content.xml");
-			String _content = Util.pathCombine(tempDir.getPath(), "_content.xml");
-			new File(content).renameTo(new File(_content));
-			
-			Integer year = Util.paramInteger(2013, 0, params);
-			Integer weekInYear = Util.paramInteger(1, 1, params);
-			String dayInWeek = Util.paramString("\\d", 2, params);
-			String parameters = parameters(
-				databaseFilename,
-				year,
-				weekInYear,
-				dayInWeek);
-			pipe(_content, content, new StringReader(parameters));
-			
-			new File(_content).delete();
-			
-			if (dokument.endsWith("_"))
-				dokument = dokument + String.format("%d_%d", year, weekInYear) + ".odt";
-			
-			File destination = new File(dokument);
-			if (destination.exists())
-				destination.delete();
-			
-			int zipped = ZipUtil.zipArchive(destination, tempDir.getPath(), tempDir.getPath());
-			if (unzipped != zipped)
-				throw new Exception(String.format("Dokument '%s' is lacking some ingredient", dokument));
-			else
-				logger.info(String.format("'%s' generated", dokument));
-	    	
+			if (end) {
+				File destination = new File(dokument);
+				if (destination.exists())
+					destination.delete();
+				int zipped = ZipUtil.zipArchive(destination, tempDir.getPath(),
+						tempDir.getPath());
+				if (phase == 0 && unzipped > zipped)
+					throw new Exception(
+							String.format(
+									"Dokument '%s' is lacking some ingredient after manipulation",
+									dokument));
+				else if (phase == 0 && unzipped < zipped)
+					throw new Exception(
+							String.format(
+									"Dokument '%s' has more ingredients than before manipulation",
+									dokument));
+				else
+					logger.info(String.format("'%s' generated", dokument));
+			}
 			return true;
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			SwingUtil.handleException(e);
 			return false;
 		}
 		finally {
-			Util.deleteDirectory(tempDir);
+			if (end)
+				Util.deleteDirectory(tempDir);
 		}
+	}
+
+	public static boolean export(String vorlage, String dokument, final String databaseFilename, Object... params) {
+		final Integer year = Util.paramInteger(2013, 0, params);
+		final Integer weekInYear = Util.paramInteger(1, 1, params);
+		final String dayInWeek = Util.paramString("\\d", 2, params);
+		
+		if (dokument.endsWith("_"))
+			dokument = dokument + String.format("%d_%d", year, weekInYear) + ".odt";
+		
+		return manipContent(
+				0, 
+				vorlage, 
+				dokument, 
+				new Util.Job<File>() {
+					public void dispatch(File content, Object[] params) throws Exception {
+						File _content = new File(content.getParent(), "_content.xml");
+						content.renameTo(_content);
+						
+						File database = new File(databaseFilename);
+						if (!database.exists())
+							throw new Exception(String.format("Database '%s' missing", database));
+						
+						String parameters = parameters(
+							databaseFilename,
+							year,
+							weekInYear,
+							dayInWeek);
+						
+						pipe(_content.getPath(), content.getPath(), new StringReader(parameters));
+						
+						_content.delete();
+					}
+				});
 	}
 
 	public static boolean pipe(String inputFilename, String outputFilename, Reader params) throws Exception {

@@ -1,10 +1,12 @@
 package com.applang.berichtsheft.test;
 
+import java.awt.Component;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.StringReader;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -50,6 +52,7 @@ import org.xml.sax.helpers.XMLReaderFactory;
 import com.applang.SwingUtil;
 import com.applang.Util;
 import com.applang.ZipUtil;
+import com.applang.SwingUtil.ComponentFunction;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.ui.components.DatePicker;
 import com.applang.berichtsheft.ui.components.FormEditor;
@@ -238,7 +241,7 @@ public class MiscTests extends XMLTestCase
 		assertEquals(36, np.finder.keyLine(NotePicker.allCategories).length);
 	}
 	
-	public void testMysql() throws Exception {
+	public void testMySql() throws Exception {
 		setupNotes("//localhost/note_pad?user=lotharla&password=gnalppA", 
 				"mysql", 
 				"com.mysql.jdbc.Driver", 
@@ -718,7 +721,7 @@ public class MiscTests extends XMLTestCase
 	Connection con = null;
 
 	public void testContent() throws Exception {
-		File tempDir = Util.tempDir(true, "berichtsheft");
+		File tempDir = Util.tempDir(true, "berichtsheft", "odt");
 		try {
 			File source = new File("Vorlagen/Tagesberichte.odt");
 			assertTrue(source.exists());
@@ -820,7 +823,9 @@ public class MiscTests extends XMLTestCase
 
 	public void testXPath() throws Exception {
 		Document doc = Util.xmlDocument(new File(Util.getSetting("content.xml", "scripts/content.xml")));
-		String path = 
+//		Document doc = Util.xmlDocument(new File("Vorlagen/Tagesberichte_2012/styles.xml"));
+		
+/*		String path = 
 				"/document-content" +
 				"/body[1]" +
 				"/text[1]" +
@@ -828,7 +833,21 @@ public class MiscTests extends XMLTestCase
 				"/control" +
 				"[@control='%s']";
 		path = String.format(path, "control32");
+		String path = 
+				"/document-styles" +
+				"/automatic-styles" +
+				"/page-layout" +
+				"/page-layout-properties";
+*/		String path = 
+				"/document-content" +
+				"/body" +
+				"/text" +
+				"/p" +
+				"/frame[1]" +
+				"/image";
+
 		NodeList nodes = Util.evaluateXPath(doc, path);
+//		NodeList nodes = xpathEngine.getMatchingNodes(path, doc);
 		
 		int length = nodes.getLength();
 		for (int i = 0; i < length; i++) {
@@ -847,14 +866,20 @@ public class MiscTests extends XMLTestCase
 
 		String content = Util.getSetting("content.xml", "scripts/content.xml");
 		String mask = Util.getSetting("mask.xsl", "scripts/mask.xsl");
-		String output = "tmp/content.xml";
+		String output = "/tmp/content.xml";
 		
 		Util.clearMappings();
 		Util.xmlTransform(content, mask, output, 
 				"mode", 1);
 		
-		File[] pages = dir.listFiles();
-		assertEquals(2, pages.length);
+		FormEditor.pages = dir.listFiles();
+		int length = FormEditor.pages.length;
+		assertEquals(2, length);
+		for (int i = 0; i < length; i++) {
+			assertTrue(Util.mappings.containsKey("frame" + (i+1) + "_image"));
+			assertTrue(Util.mappings.containsKey("frame" + (i+1) + "_width"));
+			assertTrue(Util.mappings.containsKey("frame" + (i+1) + "_height"));
+		}
 		
 		String[] keys = new String[] {"control32_x"};
 		String[] values = new String[] {"xxx"};
@@ -864,9 +889,8 @@ public class MiscTests extends XMLTestCase
 //		System.out.println(Util.mappings);
 		
 		for (int i = 0; i < keys.length; i++) {
-			Document doc = Util.xmlDocument(pages[i]);
-			FormEditor.map2doc(Util.mappings, doc, false);
-			Util.xmlNodeToFile(doc, true, pages[i]);
+			Document doc = FormEditor.map2page(Util.mappings, i, false);
+			Util.xmlNodeToFile(doc, true, FormEditor.pages[i]);
 		}
 		
 		Util.xmlTransform(content, mask, output, 
@@ -879,5 +903,24 @@ public class MiscTests extends XMLTestCase
 			assertTrue(report, report.contains(values[i]));
 			
 		assertTrue(Util.deleteDirectory(dir));
+	}
+	
+	public void testFormEdit() throws Exception {
+		String inputPath = "Vorlagen/Tagesberichte.odt";
+		String outputPath = "Dokumente/Tagesberichte.odt";
+		assertTrue(FormEditor.perform(inputPath, outputPath, true, 
+			new Util.Job<FormEditor>() {
+				public void dispatch(FormEditor formEditor, Object[] params) throws Exception {
+					formEditor.updateSplitComponents(0, "action1=&control1=on&x=.5&y=.2&width=&height=");
+				}
+			}, 
+			new Util.Job<Void>() {
+				public void dispatch(Void t, Object[] params) throws Exception {
+					String report = check_documents(3, params[0].toString(), params[1].toString());
+					assertTrue(report, report.contains("@x"));
+					assertTrue(report, report.contains("0.5"));
+				}
+			}
+		));
 	}
 }

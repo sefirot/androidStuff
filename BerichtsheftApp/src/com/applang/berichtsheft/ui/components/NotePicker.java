@@ -320,7 +320,7 @@ public class NotePicker extends ToolPanel
 	}
 	
 	@Override
-	protected void afterOpenCon() throws Exception {
+	protected void afterConnecting() throws Exception {
 		if (memoryDb && Util.fileExists(new File(memoryDbName)))
 			stmt.executeUpdate("restore from " + memoryDbName);
 	}
