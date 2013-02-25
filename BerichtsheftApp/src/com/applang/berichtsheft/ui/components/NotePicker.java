@@ -23,6 +23,7 @@ import javax.swing.JTextField;
 
 import com.applang.SwingUtil;
 import com.applang.Util;
+import com.applang.Util2;
 import com.applang.berichtsheft.BerichtsheftApp;
 
 public class NotePicker extends ToolPanel
@@ -46,7 +47,7 @@ public class NotePicker extends ToolPanel
 		if (memoryDb)
 			handleMemoryDb(true);
 		else {
-			dbName = Util.getSetting("database", "databases/*");
+			dbName = Util2.getSetting("database", "databases/*");
 			if (Util.fileExists(new File(dbName)))
 				initialize(dbName);
 		}
@@ -60,7 +61,7 @@ public class NotePicker extends ToolPanel
 		} catch (SQLException e) {
 			SwingUtil.handleException(e);
 		}
-		Util.putSetting("database", dbName);
+		Util2.putSetting("database", dbName);
 		super.finish(params);
 	}
 	
@@ -255,7 +256,7 @@ public class NotePicker extends ToolPanel
 	private String pickDate(String dateString) {
 		Long[] times = timeLine();
 		if (times.length > 0)
-			times = Util.arrayextend(times, true, times[0] - Util.getMillis(1) + 1);
+			times = Util2.arrayextend(times, true, times[0] - Util.getMillis(1) + 1);
 		dateString = new DatePicker(NotePicker.this, dateString, times).getDateString();
 		NotePicker.this.requestFocus();
 		setDate(dateString);
@@ -293,7 +294,7 @@ public class NotePicker extends ToolPanel
 	@Override
 	public boolean openConnection(String dbPath, Object... params) {
 		try {
-			if (super.openConnection(dbPath, Util.arrayextend(params, true, "notes")))
+			if (super.openConnection(dbPath, Util2.arrayextend(params, true, "notes")))
 				return true;
 		    
 			if ("sqlite".equals(scheme))

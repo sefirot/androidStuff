@@ -24,6 +24,7 @@ import javax.swing.JToolBar;
 
 import com.applang.SwingUtil;
 import com.applang.Util;
+import com.applang.Util2;
 
 public class ToolPanel extends JPanel
 {
@@ -71,11 +72,11 @@ public class ToolPanel extends JPanel
 	}
 	
 	protected void start(Object... params) {
-		Util.Settings.load();
+		Util2.Settings.load();
 	}
 	
 	protected void finish(Object... params) {
-		Util.Settings.save();
+		Util2.Settings.save();
 	}
 	
 	public enum ToolType implements SwingUtil.ActionType

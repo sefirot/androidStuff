@@ -51,6 +51,7 @@ import org.xml.sax.helpers.XMLReaderFactory;
 
 import com.applang.SwingUtil;
 import com.applang.Util;
+import com.applang.Util2;
 import com.applang.ZipUtil;
 import com.applang.SwingUtil.ComponentFunction;
 import com.applang.berichtsheft.BerichtsheftApp;
@@ -69,7 +70,7 @@ public class MiscTests extends XMLTestCase
 	public void setUp() throws Exception {
 		super.setUp();
 		SwingUtil.underTest = true;
-		Util.Settings.load();
+		Util2.Settings.load();
 		
 		if (tempfile.exists())
 			tempfile.delete();
@@ -82,7 +83,7 @@ public class MiscTests extends XMLTestCase
 		super.tearDown();
 		if (np != null && np.getCon() != null)
 			np.getCon().close();
-		Util.Settings.save();
+		Util2.Settings.save();
 		SwingUtil.underTest = false;
 	}
 
@@ -388,7 +389,7 @@ public class MiscTests extends XMLTestCase
 		};
 		
 		ps = np.preparePicking(true, NotePicker.allCategories, interval);
-		Util.ValMap map = Util.getMapFromQuery(ps, 1, 2);
+		Util.ValMap map = Util2.getMapFromQuery(ps, 1, 2);
 		assertEquals(2, map.size());
 		long[] ids = new long[2];
 		int i = 0;
@@ -411,7 +412,7 @@ public class MiscTests extends XMLTestCase
 
 	private void setupKeinFehler() throws Exception {
 		assertTrue(np.openConnection(test_db));
-		Util.ValMap map = Util.getMapFromQuery(
+		Util.ValMap map = Util2.getMapFromQuery(
 				np.getCon().prepareStatement("select title,count(_id) from notes group by title"), 
 				1, 2);
 		if (!map.containsKey("1.") || !map.get("1.").toString().equals("19") || 
@@ -504,13 +505,13 @@ public class MiscTests extends XMLTestCase
 					"<textelement query=\"1\" param1=\"w?oop?\" day=\"0\" />" + 
 				"</control>");
 		
-		String styleSheet = Util.getSetting("content.xsl", "scripts/content.xsl");
-		Util.xmlTransform(inputfile, styleSheet, tempfile.getPath(), 
+		String styleSheet = Util2.getSetting("content.xsl", "scripts/content.xsl");
+		Util2.xmlTransform(inputfile, styleSheet, tempfile.getPath(), 
 				"debug", "yes", 
 				"dbfile", dbfile
 		);
 		
-		Document doc = Util.xmlDocument(tempfile);
+		Document doc = Util2.xmlDocument(tempfile);
 		NodeList tables = doc.getElementsByTagName("table");
 		assertEquals(3, tables.getLength());
 		for (int i = 0; i < tables.getLength(); i++) {
@@ -593,8 +594,8 @@ public class MiscTests extends XMLTestCase
 			// Cast the TransformerFactory to SAXTransformerFactory.
 			SAXTransformerFactory saxTFactory = ((SAXTransformerFactory) tFactory);	  
 			// Create a TransformerHandler for each stylesheet.
-			TransformerHandler tHandler1 = saxTFactory.newTransformerHandler(new StreamSource(Util.getSetting("control.xsl", "scripts/control.xsl")));
-			TransformerHandler tHandler2 = saxTFactory.newTransformerHandler(new StreamSource(Util.getSetting("content.xsl", "scripts/content.xsl")));
+			TransformerHandler tHandler1 = saxTFactory.newTransformerHandler(new StreamSource(Util2.getSetting("control.xsl", "scripts/control.xsl")));
+			TransformerHandler tHandler2 = saxTFactory.newTransformerHandler(new StreamSource(Util2.getSetting("content.xsl", "scripts/content.xsl")));
 			tHandler2.getTransformer().setParameter("inputfile", "content.xml");
 //			TransformerHandler tHandler3 = saxTFactory.newTransformerHandler(new StreamSource("/tmp/foo3.xsl"));
 			
@@ -623,8 +624,8 @@ public class MiscTests extends XMLTestCase
 		check_documents(0, contentfile.getPath(), tempfile.getPath());
 	}
 	
-	File contentfile = new File(Util.getSetting("content.xml", "scripts/content.xml"));
-	String paramsFilename = Util.getSetting("params.xml", "scripts/params.xml");
+	File contentfile = new File(Util2.getSetting("content.xml", "scripts/content.xml"));
+	String paramsFilename = Util2.getSetting("params.xml", "scripts/params.xml");
 
 	Pattern textElementPattern = Pattern.compile("(.*form\\[1\\]/(text|textarea)\\[(\\d+)\\])");
 	
@@ -635,8 +636,8 @@ public class MiscTests extends XMLTestCase
 		assertTrue(String.format("'%s' doesn't exist", outputFilename), new File(outputFilename).exists());
 		Diff diff = compareXML(new FileReader(inputFilename), new FileReader(outputFilename));
 		if (!diff.similar()) {
-			Document input = Util.xmlDocument(new File(inputFilename));
-			Document test = Util.xmlDocument(new File(outputFilename));
+			Document input = Util2.xmlDocument(new File(inputFilename));
+			Document test = Util2.xmlDocument(new File(outputFilename));
 			
 			String t = "", desc = "", id = "";
 	        DetailedDiff detailedDiff = new DetailedDiff(diff);
@@ -721,7 +722,7 @@ public class MiscTests extends XMLTestCase
 	Connection con = null;
 
 	public void testContent() throws Exception {
-		File tempDir = Util.tempDir(true, "berichtsheft", "odt");
+		File tempDir = Util2.tempDir(true, "berichtsheft", "odt");
 		try {
 			File source = new File("Vorlagen/Tagesberichte.odt");
 			assertTrue(source.exists());
@@ -733,30 +734,30 @@ public class MiscTests extends XMLTestCase
 	    			false);
 	    	assertTrue(archive.delete());
 	
-	    	String content = Util.pathCombine(tempDir.getPath(), "content.xml");
-			String _content = Util.pathCombine(tempDir.getPath(), "_content.xml");
+	    	String content = Util2.pathCombine(tempDir.getPath(), "content.xml");
+			String _content = Util2.pathCombine(tempDir.getPath(), "_content.xml");
 			assertTrue(new File(content).renameTo(new File(_content)));
 			
-			String styleSheet1 = Util.getSetting("control.xsl", "scripts/control.xsl");
-			String styleSheet2 = Util.getSetting("content.xsl", "scripts/content.xsl");
+			String styleSheet1 = Util2.getSetting("control.xsl", "scripts/control.xsl");
+			String styleSheet2 = Util2.getSetting("content.xsl", "scripts/content.xsl");
 			Class.forName("org.sqlite.JDBC");
 			for (int way = 1; way < 3; way++) {
 				switch (way) {
 				case 1:
-					Util.xmlTransform(paramsFilename, styleSheet2, content, 
+					Util2.xmlTransform(paramsFilename, styleSheet2, content, 
 							"inputfile", _content, 
 							"control", -1);
 					break;
 
 				case 2:
 					assertTrue(new File(content).delete());
-					Util.xmlTransform(paramsFilename, styleSheet1, "/tmp/control.xml"); 
+					Util2.xmlTransform(paramsFilename, styleSheet1, "/tmp/control.xml"); 
 					
-					control = Util.xmlDocument(new File("/tmp/control.xml"));
+					control = Util2.xmlDocument(new File("/tmp/control.xml"));
 					String url = xpathEngine.evaluate("/control/DBINFO/dburl", control);
 					con = DriverManager.getConnection(url);
 					
-					Util.xmlTransform("/tmp/control.xml", styleSheet2, content, 
+					Util2.xmlTransform("/tmp/control.xml", styleSheet2, content, 
 							"inputfile", _content); 
 					break;
 
@@ -793,7 +794,7 @@ public class MiscTests extends XMLTestCase
 	}
 
 	public void testExport() throws Exception {
-		Document doc = Util.xmlDocument(new File(paramsFilename));
+		Document doc = Util2.xmlDocument(new File(paramsFilename));
 		String dbName = xpathEngine.evaluate("/params/dbfile", doc);
 		int year = Util.toInt(2013, xpathEngine.evaluate("/params/year", doc));
 		int weekInYear = Util.toInt(5, xpathEngine.evaluate("/params/weekInYear", doc));
@@ -822,7 +823,7 @@ public class MiscTests extends XMLTestCase
 	}
 
 	public void testXPath() throws Exception {
-		Document doc = Util.xmlDocument(new File(Util.getSetting("content.xml", "scripts/content.xml")));
+		Document doc = Util2.xmlDocument(new File(Util2.getSetting("content.xml", "scripts/content.xml")));
 //		Document doc = Util.xmlDocument(new File("Vorlagen/Tagesberichte_2012/styles.xml"));
 		
 /*		String path = 
@@ -846,7 +847,7 @@ public class MiscTests extends XMLTestCase
 				"/frame[1]" +
 				"/image";
 
-		NodeList nodes = Util.evaluateXPath(doc, path);
+		NodeList nodes = Util2.evaluateXPath(doc, path);
 //		NodeList nodes = xpathEngine.getMatchingNodes(path, doc);
 		
 		int length = nodes.getLength();
@@ -862,14 +863,14 @@ public class MiscTests extends XMLTestCase
 	
 	public void testMimicry() throws Exception {
 		new File("/tmp/debug.out").delete();
-		File dir = Util.tempDir(true, "berichtsheft");
+		File dir = Util2.tempDir(true, "berichtsheft");
 
-		String content = Util.getSetting("content.xml", "scripts/content.xml");
-		String mask = Util.getSetting("mask.xsl", "scripts/mask.xsl");
+		String content = Util2.getSetting("content.xml", "scripts/content.xml");
+		String mask = Util2.getSetting("mask.xsl", "scripts/mask.xsl");
 		String output = "/tmp/content.xml";
 		
 		Util.clearMappings();
-		Util.xmlTransform(content, mask, output, 
+		Util2.xmlTransform(content, mask, output, 
 				"mode", 1);
 		
 		FormEditor.pages = dir.listFiles();
@@ -890,10 +891,10 @@ public class MiscTests extends XMLTestCase
 		
 		for (int i = 0; i < keys.length; i++) {
 			Document doc = FormEditor.map2page(Util.mappings, i, false);
-			Util.xmlNodeToFile(doc, true, FormEditor.pages[i]);
+			Util2.xmlNodeToFile(doc, true, FormEditor.pages[i]);
 		}
 		
-		Util.xmlTransform(content, mask, output, 
+		Util2.xmlTransform(content, mask, output, 
 				"mode", 2);
 		
 		String report = check_documents(3, content, output);

@@ -18,6 +18,7 @@ import org.jsoup.select.Elements;
 
 import com.applang.SwingUtil;
 import com.applang.Util;
+import com.applang.Util2;
 
 public class WeatherManager extends ToolPanel implements ActionListener
 {
@@ -211,7 +212,7 @@ public class WeatherManager extends ToolPanel implements ActionListener
 	@Override
 	public boolean openConnection(String dbPath, Object... params) {
 		try {
-			if (super.openConnection(dbPath, Util.arrayextend(params, true, "weathers")))
+			if (super.openConnection(dbPath, Util2.arrayextend(params, true, "weathers")))
 				return true;
 		    
 		    stmt.execute("CREATE TABLE weathers (" +

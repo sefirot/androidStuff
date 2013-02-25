@@ -59,7 +59,7 @@ public class BerichtsheftApp
 	public static boolean manipContent(int phase, String vorlage, String dokument, Util.Job<File> manipulation, Object... params) {
 		boolean begin = phase > -1;
 		boolean end = phase < 1;
-		File tempDir = Util.tempDir(begin, "berichtsheft", "odt");
+		File tempDir = Util2.tempDir(begin, "berichtsheft", "odt");
 		try {
 			int unzipped = 0;
 			if (begin) {
@@ -151,8 +151,8 @@ public class BerichtsheftApp
 			throw new Exception(String.format("TransformerFactory feature '%s' missing", SAXResult.FEATURE));
 	    
 		SAXTransformerFactory saxTFactory = ((SAXTransformerFactory) tFactory);	  
-		TransformerHandler tHandler1 = saxTFactory.newTransformerHandler(new StreamSource(Util.getSetting("control.xsl", "scripts/control.xsl")));
-		TransformerHandler tHandler2 = saxTFactory.newTransformerHandler(new StreamSource(Util.getSetting("content.xsl", "scripts/content.xsl")));
+		TransformerHandler tHandler1 = saxTFactory.newTransformerHandler(new StreamSource(Util2.getSetting("control.xsl", "scripts/control.xsl")));
+		TransformerHandler tHandler2 = saxTFactory.newTransformerHandler(new StreamSource(Util2.getSetting("content.xsl", "scripts/content.xsl")));
 		tHandler2.getTransformer().setParameter("inputfile", inputFilename);
 		tHandler1.setResult(new SAXResult(tHandler2));
 		

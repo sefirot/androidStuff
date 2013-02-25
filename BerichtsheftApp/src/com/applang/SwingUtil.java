@@ -190,7 +190,7 @@ public class SwingUtil
         final Timing timing = new Timing(component);
         
 		try {
-			func.apply(component, Util.arrayextend(params, true, timing));
+			func.apply(component, Util2.arrayextend(params, true, timing));
 		}
 		finally {
 			timing.finalize();
@@ -211,7 +211,7 @@ public class SwingUtil
 
 		@Override
 		protected Void doInBackground(){
-			Util.println(String.format("deadline %d ms", value));
+			Util2.println(String.format("deadline %d ms", value));
 
 	        waiting(wnd, new ComponentFunction<Void>() {
 				public Void apply(Component comp, Object[] parms) {
@@ -240,7 +240,7 @@ public class SwingUtil
 		
 		public void cancel() {
 			if (this.cancel(true))
-				Util.println("deadline cancelled");
+				Util2.println("deadline cancelled");
 			
 			started = false;
 		}
@@ -300,7 +300,7 @@ public class SwingUtil
 				
 				started = false;
 				
-				Util.println("deadline finished");
+				Util2.println("deadline finished");
 			}
 		}
 
@@ -328,7 +328,7 @@ public class SwingUtil
 		{
 			String key = key(category, title);
 			Bounds rect = new Bounds(null, params);
-			for (MatchResult mr : Util.findAllIn(Util.getSetting(key, ""), Pattern.compile("(\\w+)=(\\d+)"))) {
+			for (MatchResult mr : Util.findAllIn(Util2.getSetting(key, ""), Pattern.compile("(\\w+)=(\\d+)"))) {
 				if ("x".equals(mr.group(1)))
 					rect.x = Util.toInt(-1, mr.group(2));
 				else if ("y".equals(mr.group(1)))
@@ -366,7 +366,7 @@ public class SwingUtil
 				Object... params)
 		{
 			String key = key(category, title);
-			Util.putSetting(key, Util.toString("", new Bounds(window, params)));
+			Util2.putSetting(key, Util2.toString("", new Bounds(window, params)));
 		}
 	}
 
@@ -485,7 +485,7 @@ public class SwingUtil
 			}
 		});
     	
-		Util.noprintln("dialogResult", dialogResult);
+		Util2.noprintln("dialogResult", dialogResult);
 		
 		return dialogResult;
 	}
@@ -789,7 +789,7 @@ public class SwingUtil
 		if (mess != null)
 			mess.setText(text);
 		else if (underTest)
-			Util.println(text);
+			Util2.println(text);
 		else
 			JOptionPane.showMessageDialog(container, text, "Message", JOptionPane.PLAIN_MESSAGE);
 	}
@@ -855,7 +855,7 @@ public class SwingUtil
         		return;
         	
         	message("");
-        	Util.println(type == null ? ae.getActionCommand() : type.toString());
+        	Util2.println(type == null ? ae.getActionCommand() : type.toString());
         	
         	action_Performed(ae);
         }
@@ -1082,7 +1082,7 @@ public class SwingUtil
 	}
     
     public static void mouseEventOutput(String eventDescription, MouseEvent e) {
-        Util.println(eventDescription
+        Util2.println(eventDescription
                 + " (" + e.getX() + "," + e.getY() + ")"
                 + " with button "
                 + e.getButton()

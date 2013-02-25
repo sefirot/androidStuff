@@ -11,7 +11,7 @@ public class ZipUtil
 	}
 	
 	static String entryPath(Object file, String base) throws Exception {
-		return Util.pathDivide(basePath(file), base);
+		return Util2.pathDivide(basePath(file), base);
 	}
 
 	public static class ZipJob implements Util.Job<Object>
@@ -151,7 +151,7 @@ public class ZipUtil
 			for (int i = 0; i < nDelete; i++) 
 				filter.add(entryPath(params[i], path));
 			
-			File temp = File.createTempFile("zip", ".zip", new File(Util.tempPath()));
+			File temp = File.createTempFile("zip", ".zip", new File(Util2.tempPath()));
 			final ZipOutputStream out = new ZipOutputStream(new FileOutputStream(temp));
 			
 			cnt = unzipArchive(archive, new Util.Job<ZipEntry>() {
@@ -164,7 +164,7 @@ public class ZipUtil
 			}, true, filter.toArray(new String[0]));
 			
 			cnt += zipArchive(out, base, 
-					Util.arrayreduce(params, nDelete, params.length - nDelete));
+					Util2.arrayreduce(params, nDelete, params.length - nDelete));
 
 			if (archive.delete())
 				temp.renameTo(archive);

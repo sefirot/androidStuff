@@ -65,6 +65,7 @@ import com.applang.SwingUtil;
 import com.applang.Util;
 import com.applang.SwingUtil.Bounds;
 import com.applang.Util.ValMap;
+import com.applang.Util2;
 import com.applang.berichtsheft.BerichtsheftApp;
 
 public class FormEditor extends JSplitPane
@@ -82,7 +83,7 @@ public class FormEditor extends JSplitPane
 
 	public static boolean perform(final String inputPath, final String outputPath, final boolean deadline, Object... params) {
 		try {
-			Util.Settings.load();
+			Util2.Settings.load();
 			
 			final Util.Job<File> finish = new Util.Job<File>() {
 				public void dispatch(File _content, Object[] params) throws Exception {
@@ -90,7 +91,7 @@ public class FormEditor extends JSplitPane
 					
 					BerichtsheftApp.manipContent(-1, inputPath, outputPath, null);
 					
-					Util.Settings.save();
+					Util2.Settings.save();
 				}
 			};
 			
@@ -184,8 +185,8 @@ public class FormEditor extends JSplitPane
 	
 	static void unmask(String inputPath, String outputPath) {
 		try {
-			String stylePath = Util.getSetting("mask.xsl", "scripts/mask.xsl");
-			Util.xmlTransform(inputPath, stylePath, outputPath, 
+			String stylePath = Util2.getSetting("mask.xsl", "scripts/mask.xsl");
+			Util2.xmlTransform(inputPath, stylePath, outputPath, 
 					"mode", 2);
 		} catch (Exception e) {
 			SwingUtil.handleException(e);
@@ -196,12 +197,12 @@ public class FormEditor extends JSplitPane
 	
 	static boolean generateMask(String contentXml) {
 		try {
-			String stylePath = Util.getSetting("mask.xsl", "scripts/mask.xsl");
+			String stylePath = Util2.getSetting("mask.xsl", "scripts/mask.xsl");
 			String dummy = "/tmp/temp.html";
-			Util.xmlTransform(contentXml, stylePath, dummy, 
+			Util2.xmlTransform(contentXml, stylePath, dummy, 
 					"mode", 1);
 
-			File dir = Util.tempDir(false, "berichtsheft");
+			File dir = Util2.tempDir(false, "berichtsheft");
 			pages = dir.listFiles(new FilenameFilter() {
 				public boolean accept(File dir, String name) {
 					return name.matches("page\\d+\\.html");
@@ -225,8 +226,8 @@ public class FormEditor extends JSplitPane
 	static org.w3c.dom.Element getElement(String fileName, String xpath) {
 		File file = new File(inputDir, fileName);
 		if (Util.fileExists(file)) {
-			org.w3c.dom.Document doc = Util.xmlDocument(file);
-			org.w3c.dom.NodeList nodes = Util.evaluateXPath(doc, xpath);
+			org.w3c.dom.Document doc = Util2.xmlDocument(file);
+			org.w3c.dom.NodeList nodes = Util2.evaluateXPath(doc, xpath);
 			if (nodes.getLength() > 0) 
 				return (org.w3c.dom.Element) nodes.item(0);
 		}
@@ -394,17 +395,17 @@ public class FormEditor extends JSplitPane
 	private void putPageData(int page) {
 		org.w3c.dom.Document doc = map2page(mappings[page], page, false);
 		if (doc != null)
-			Util.xmlNodeToFile(doc, true, pages[page]);
+			Util2.xmlNodeToFile(doc, true, pages[page]);
 	}
 
 	public static org.w3c.dom.Document map2page(Util.ValMap map, int page, boolean reverse) {
-    	org.w3c.dom.Document doc = Util.xmlDocument(pages[page]);
+    	org.w3c.dom.Document doc = Util2.xmlDocument(pages[page]);
     	if (doc == null)
     		return null;
     	
-		org.w3c.dom.NodeList nodes = Util.evaluateXPath(doc, "//table[@id='controls']");
+		org.w3c.dom.NodeList nodes = Util2.evaluateXPath(doc, "//table[@id='controls']");
 		if (nodes.getLength() > 0) {
-			nodes = Util.evaluateXPath(nodes.item(0), ".//*[@name]");
+			nodes = Util2.evaluateXPath(nodes.item(0), ".//*[@name]");
 			for (int i = 0; i < nodes.getLength(); i++) {
 				org.w3c.dom.Element node = (org.w3c.dom.Element)nodes.item(i);
 				String key = node.getAttribute("name");
@@ -700,10 +701,10 @@ public class FormEditor extends JSplitPane
 			};
 
 			public String toString() {
-				Writer writer = Util.format(new StringWriter(), "[");
-				writer = Util.formatAssociation(writer, "width", dim.getWidth(), 0);
-				writer = Util.formatAssociation(writer, "height", dim.getHeight(), 1);
-				return Util.format(writer, "]").toString();
+				Writer writer = Util2.format(new StringWriter(), "[");
+				writer = Util2.formatAssociation(writer, "width", dim.getWidth(), 0);
+				writer = Util2.formatAssociation(writer, "height", dim.getHeight(), 1);
+				return Util2.format(writer, "]").toString();
 			}
 		}
 		public class Offset extends Observable
@@ -739,10 +740,10 @@ public class FormEditor extends JSplitPane
 			};
 
 			public String toString() {
-				Writer writer = Util.format(new StringWriter(), "[");
-				writer = Util.formatAssociation(writer, "x", point.getX(), 0);
-				writer = Util.formatAssociation(writer, "y", point.getY(), 1);
-				return Util.format(writer, "]").toString();
+				Writer writer = Util2.format(new StringWriter(), "[");
+				writer = Util2.formatAssociation(writer, "x", point.getX(), 0);
+				writer = Util2.formatAssociation(writer, "y", point.getY(), 1);
+				return Util2.format(writer, "]").toString();
 			}
 		}
 		
