@@ -1,5 +1,6 @@
 package com.applang.berichtsheft;
 
+import com.applang.pflanzen.PlantsList;
 import com.applang.provider.*;
 import com.applang.tagesberichte.*;
 

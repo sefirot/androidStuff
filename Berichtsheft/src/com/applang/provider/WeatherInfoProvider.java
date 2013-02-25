@@ -67,6 +67,7 @@ public class WeatherInfoProvider extends ContentProvider {
             db.execSQL("CREATE TABLE " + WEATHERS_TABLE_NAME + " ("
                     + Weathers._ID + " INTEGER PRIMARY KEY,"
                     + Weathers.DESCRIPTION + " TEXT,"
+                    + Weathers.LOCATION + " TEXT,"
                     + Weathers.PRECIPITATION + " FLOAT,"
                     + Weathers.MAXTEMP + " FLOAT,"
                     + Weathers.MINTEMP + " FLOAT,"
@@ -169,10 +170,14 @@ public class WeatherInfoProvider extends ContentProvider {
             values.put(Weathers.MODIFIED_DATE, now);
         }
 
+        if (values.containsKey(Weathers.LOCATION) == false) {
+            values.put(Weathers.LOCATION, (String) null);
+        }
+
         if (values.containsKey(Weathers.DESCRIPTION) == false) {
             values.put(Weathers.DESCRIPTION, (String) null);
         }
-
+        
         if (values.containsKey(Weathers.PRECIPITATION) == false) {
             values.put(Weathers.PRECIPITATION, (Float) null);
         }
@@ -244,12 +249,13 @@ public class WeatherInfoProvider extends ContentProvider {
 
     static {
         sUriMatcher = new UriMatcher(UriMatcher.NO_MATCH);
-        sUriMatcher.addURI(NotePad.AUTHORITY, "notes", WEATHERS);
-        sUriMatcher.addURI(NotePad.AUTHORITY, "notes/#", WEATHER_ID);
+        sUriMatcher.addURI(WeatherInfo.AUTHORITY, "weathers", WEATHERS);
+        sUriMatcher.addURI(WeatherInfo.AUTHORITY, "weathers/#", WEATHER_ID);
 
         sWeathersProjectionMap = new HashMap<String, String>();
         sWeathersProjectionMap.put(Weathers._ID, Weathers._ID);
         sWeathersProjectionMap.put(Weathers.DESCRIPTION, Weathers.DESCRIPTION);
+        sWeathersProjectionMap.put(Weathers.LOCATION, Weathers.LOCATION);
         sWeathersProjectionMap.put(Weathers.PRECIPITATION, Weathers.PRECIPITATION);
         sWeathersProjectionMap.put(Weathers.MAXTEMP, Weathers.MAXTEMP);
         sWeathersProjectionMap.put(Weathers.MINTEMP, Weathers.MINTEMP);

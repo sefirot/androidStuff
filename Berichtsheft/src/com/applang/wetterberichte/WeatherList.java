@@ -14,15 +14,14 @@
  * limitations under the License.
  */
 
-package com.applang.berichtsheft;
+package com.applang.wetterberichte;
 
 import com.applang.berichtsheft.R;
-import com.applang.provider.PlantInfo.Plants;
-import com.applang.tagesberichte.TitleEditor;
+import com.applang.pflanzen.SortBySpinner;
+import com.applang.provider.WeatherInfo.Weathers;
 
 
 import android.app.ListActivity;
-import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
 import android.content.ContentUris;
 import android.content.Intent;
@@ -36,10 +35,8 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
-import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -48,7 +45,7 @@ import android.widget.Toast;
  * provided in the intent if there is one, otherwise defaults to displaying the
  * contents of the {@link NotePadProvider}
  */
-public class PlantsList extends ListActivity {
+public class WeatherList extends ListActivity {
     private static final String TAG = "PlantsList";
 
     // Menu item ids
@@ -57,19 +54,19 @@ public class PlantsList extends ListActivity {
     public static final int MENU_ITEM_SORTBY = Menu.FIRST + 2;
     public static final int MENU_ITEM_QUERY = Menu.FIRST + 3;
     private static final int ACTIVITY_TOGGLE_ORDER=5;
-    int language, order;
+    int location;
     
 
     /**
      * The columns we are interested in from the database
      */
     private static final String[] PROJECTION = new String[] {
-            Plants._ID, // 0
-            Plants.NAME, // 1
-            Plants.FAMILY, // 2
-            Plants.BOTNAME, // 3
-            Plants.BOTFAMILY, // 4
-            Plants.GROUP, // 5
+            Weathers._ID, // 0
+            Weathers.DESCRIPTION, // 1
+            Weathers.LOCATION, // 2
+            Weathers.PRECIPITATION, // 3
+            Weathers.MINTEMP, // 4
+            Weathers.MAXTEMP, // 5
     };
 
     /** The index of the title column */
@@ -86,10 +83,10 @@ public class PlantsList extends ListActivity {
         // as a MAIN activity), then use our default content provider.
         Intent intent = getIntent();
         if (intent.getData() == null) {
-            intent.setData(Plants.CONTENT_URI);
+            intent.setData(Weathers.CONTENT_URI);
         }
-        language = 0; 
-        order = 0;
+        location = 0; 
+       
         setListView();   
     } 
        
@@ -98,25 +95,16 @@ public class PlantsList extends ListActivity {
     	String UpperString = null, LowerString = null;	
     	int UpperViewId = -1, LowerViewId = -1;
     	
-    	switch (language){
+    	switch (location){
     	case 0:
-    		UpperString = Plants.NAME; 
-    		LowerString = Plants.FAMILY;
+    		UpperString = Weathers.DESCRIPTION; 
+    		LowerString = Weathers.LOCATION;
     	break;
     	case 1:
-    		UpperString = Plants.BOTNAME; 
-    		LowerString = Plants.BOTFAMILY;
+    		UpperString = Weathers.PRECIPITATION; 
+    		LowerString = Weathers.MINTEMP;
     	}
     
-    	switch (order){
-    	case 0:
-    		UpperViewId = R.id.upper_text; 
-    		LowerViewId = R.id.lower_text;
-    	break;
-    	case 1:
-    		UpperViewId = R.id.lower_text; 
-    		LowerViewId = R.id.upper_text;
-    	}
     	
     	
     	
@@ -126,7 +114,7 @@ public class PlantsList extends ListActivity {
         // Perform a managed query. The Activity will handle closing and requerying the cursor
         // when needed.
         Cursor cursor = managedQuery(getIntent().getData(), PROJECTION, null, null,
-                Plants.DEFAULT_SORT_ORDER);
+                Weathers.DEFAULT_SORT_ORDER);
 
         // Used to map notes entries from the database to views
         SimpleCursorAdapter adapter = new SimpleCursorAdapter(this, R.layout.plantslist_item, cursor,
@@ -144,8 +132,8 @@ public class PlantsList extends ListActivity {
         };
         setListAdapter(adapter);
     	
-        Toast.makeText(this, "Language:" + language 
-        		+"Order:" + order, 
+        Toast.makeText(this, "location:" + location,
+        		
 				Toast.LENGTH_LONG).show();
         
     }
@@ -175,7 +163,7 @@ public class PlantsList extends ListActivity {
         Intent intent = new Intent(null, getIntent().getData());
         intent.addCategory(Intent.CATEGORY_ALTERNATIVE);
         menu.addIntentOptions(Menu.CATEGORY_ALTERNATIVE, 0, 0,
-                new ComponentName(this, PlantsList.class), null, intent, 0, null);
+                new ComponentName(this, WeatherList.class), null, intent, 0, null);
 
         return true;
     }
@@ -228,8 +216,8 @@ public class PlantsList extends ListActivity {
 			// Launch activity to choose option in order to sort list entries
         		Intent sortOrder = new Intent(this, SortBySpinner.class);
         		Bundle sortBundle = new Bundle();
-        		sortBundle.putInt("language", language);
-        		sortBundle.putInt("order", order);
+        		sortBundle.putInt("location", location);
+        		
         		sortOrder.putExtras(sortBundle);
         		startActivityForResult(sortOrder,ACTIVITY_TOGGLE_ORDER);
 			/*	return true; 
@@ -239,7 +227,7 @@ public class PlantsList extends ListActivity {
 			} **/
         case MENU_ITEM_QUERY:
             // Launch activity to insert a new item
-            startActivity(new Intent(this, PlantsQuery.class));
+//            startActivity(new Intent(this, PlantsQuery.class));
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -252,8 +240,7 @@ public class PlantsList extends ListActivity {
         if(sortOrder != null)
         {
         	Bundle sortBundle = sortOrder.getExtras();
-        	language = sortBundle.getInt("language");
-        	order = sortBundle.getInt("order");
+        	location = sortBundle.getInt("location");
         }
         
         setListView();

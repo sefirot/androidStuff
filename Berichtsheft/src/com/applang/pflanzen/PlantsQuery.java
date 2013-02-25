@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
-package com.applang.berichtsheft;
+package com.applang.pflanzen;
 
 import com.applang.berichtsheft.R;
+import com.applang.berichtsheft.R.layout;
 import com.applang.provider.NotePad.Notes;
 import com.applang.provider.PlantInfo.Plants;
 

@@ -16,6 +16,8 @@
 
 package com.applang.tagesberichte;
 
+import org.apache.velocity.app.Velocity;
+
 import com.applang.berichtsheft.R;
 import com.applang.provider.NotePad.Notes;
 
@@ -44,6 +46,15 @@ import android.widget.EditText;
 public class NoteEditor extends Activity {
     private static final String TAG = "Notes";
 
+    private void setupVelocity() throws Exception {
+  		Velocity.setProperty(Velocity.RUNTIME_LOG_LOGSYSTEM_CLASS, "com.cereslogic.velocity.VelocityLogger");
+  		Velocity.setProperty("resource.loader", "android");
+  		Velocity.setProperty("android.resource.loader.class", "com.cereslogic.velocity.AndroidResourceLoader");
+  		Velocity.setProperty("android.content.res.Resources",getResources());
+  		Velocity.setProperty("packageName", "com.applang.tagesberichte");
+  		Velocity.init();
+    }
+    
     /**
      * Standard projection for the interesting columns of a normal note.
      */

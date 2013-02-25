@@ -2,6 +2,7 @@ package com.applang.berichtsheft.test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Date;
 import java.util.concurrent.CountDownLatch;
 
 import android.app.Service;
@@ -17,6 +18,7 @@ import com.applang.provider.NotePad.Notes;
 import com.applang.provider.PlantInfo;
 import com.applang.provider.PlantInfo.Plants;
 import com.applang.provider.PlantInfoProvider;
+import com.applang.provider.WeatherInfo.Weathers;
 
 public class ProviderTest extends ActivityInstrumentationTestCase2<BerichtsheftActivity>  {
 
@@ -56,6 +58,73 @@ public class ProviderTest extends ActivityInstrumentationTestCase2<BerichtsheftA
         assertNotNull(cursor);
     }
 
+    private String[] PROJECTION_WEATHERS = new String[] {
+            Weathers._ID, // 0
+            Weathers.DESCRIPTION, // 1
+            Weathers.LOCATION, // 2
+            Weathers.PRECIPITATION, // 3
+            Weathers.MAXTEMP, // 4
+            Weathers.MINTEMP, // 5
+            Weathers.CREATED_DATE, // 6
+            Weathers.MODIFIED_DATE, // 7
+    };
+
+    public void testWeatherInfoProvider() throws IOException {
+    	assertTrue(getActivity() instanceof BerichtsheftActivity);
+    	
+        ContentResolver contentResolver = getActivity().getContentResolver();
+        contentResolver.delete(Weathers.CONTENT_URI, Weathers.LOCATION + "=?", new String[]{"here"});
+        
+        Cursor cursor = contentResolver.query(
+        		Weathers.CONTENT_URI, 
+        		PROJECTION_WEATHERS, 
+        		Weathers.LOCATION + "=?", new String[]{"here"},
+        		Weathers.DEFAULT_SORT_ORDER);
+		assertEquals(0, cursor.getCount());
+        cursor.close();
+    	
+    	String fileName = "databases/weather_info.db";
+        ImpexTask.doImpex(getActivity(), new String[]{fileName}, false);	//	Export
+        
+        ContentValues values = new ContentValues();
+        values.put(Weathers.LOCATION, "here");
+        values.put(Weathers.DESCRIPTION, "overcast");
+        values.put(Weathers.PRECIPITATION, 11.1);
+        values.put(Weathers.MAXTEMP, 1.0);
+        values.put(Weathers.MINTEMP, -1.0);
+        values.put(Weathers.CREATED_DATE, 0);
+		Uri uri = contentResolver.insert(Weathers.CONTENT_URI, values);
+        assertEquals(Weathers.CONTENT_ITEM_TYPE, contentResolver.getType(uri));
+    	
+        values = new ContentValues();
+        values.put(Weathers.MODIFIED_DATE, new Date().getTime());
+        assertEquals(1, contentResolver.update(Weathers.CONTENT_URI, 
+				values, 
+				Weathers.LOCATION + "=?", new String[]{"here"}));
+    	
+        cursor = contentResolver.query(
+        		Weathers.CONTENT_URI, 
+        		PROJECTION_WEATHERS, 
+        		Weathers.LOCATION + "=?", new String[]{"here"},
+        		Weathers.DEFAULT_SORT_ORDER);
+        assertEquals(1, cursor.getCount());
+        assertTrue(cursor.moveToFirst());
+        assertEquals("here", cursor.getString(2));
+        assertEquals("overcast", cursor.getString(1));
+        assertEquals(11.1f, cursor.getFloat(3));
+        cursor.close();
+    	
+        ImpexTask.doImpex(getActivity(), new String[]{fileName}, true);	//	Import
+        
+        cursor = contentResolver.query(
+        		Weathers.CONTENT_URI, 
+        		PROJECTION_WEATHERS, 
+        		Weathers.LOCATION + "=?", new String[]{"here"},
+        		Weathers.DEFAULT_SORT_ORDER);
+        assertEquals(0, cursor.getCount());
+        cursor.close();
+    };
+
     private String[] PROJECTION_PLANTS = new String[] {
             Plants._ID, // 0
             Plants.NAME, // 1
@@ -71,11 +140,13 @@ public class ProviderTest extends ActivityInstrumentationTestCase2<BerichtsheftA
         ContentResolver contentResolver = getActivity().getContentResolver();
         contentResolver.delete(Plants.CONTENT_URI, Plants.NAME + "=?", new String[]{"Paradeiser"});
         
-        assertEquals(0, contentResolver.query(
+        Cursor cursor = contentResolver.query(
         		Plants.CONTENT_URI, 
         		PROJECTION_PLANTS, 
         		Plants.NAME + "=?", new String[]{"Paradeiser"},
-                Plants.DEFAULT_SORT_ORDER).getCount());
+                Plants.DEFAULT_SORT_ORDER);
+        assertEquals(0, cursor.getCount());
+        cursor.close();
     	
     	String fileName = "databases/plant_info.db";
         ImpexTask.doImpex(getActivity(), new String[]{fileName}, false);	//	Export
@@ -94,7 +165,7 @@ public class ProviderTest extends ActivityInstrumentationTestCase2<BerichtsheftA
 				values, 
         		Plants.NAME + "=?", new String[]{"Paradeiser"}));
     	
-        Cursor cursor = contentResolver.query(
+        cursor = contentResolver.query(
         		Plants.CONTENT_URI, 
         		PROJECTION_PLANTS, 
         		Plants.NAME + "=?", new String[]{"Paradeiser"},
@@ -104,14 +175,17 @@ public class ProviderTest extends ActivityInstrumentationTestCase2<BerichtsheftA
         assertEquals("Paradeiser", cursor.getString(1));
         assertEquals("Solanum lycopersicum", cursor.getString(3));
         assertEquals("xitomatl", cursor.getString(5));
+        cursor.close();
     	
-       // ImpexTask.doImpex(getActivity(), new String[]{fileName}, true);	//	Import
+        ImpexTask.doImpex(getActivity(), new String[]{fileName}, true);	//	Import
         
-//        assertEquals(0, contentResolver.query(
-//        		Plants.CONTENT_URI, 
-//        		PROJECTION_PLANTS, 
-//        		Plants.NAME + "=?", new String[]{"Paradeiser"},
-//                Plants.DEFAULT_SORT_ORDER).getCount());
+        cursor = contentResolver.query(
+        		Plants.CONTENT_URI, 
+        		PROJECTION_PLANTS, 
+        		Plants.NAME + "=?", new String[]{"Paradeiser"},
+                Plants.DEFAULT_SORT_ORDER);
+        assertEquals(0, cursor.getCount());
+        cursor.close();
     };
 
     private String[] PROJECTION_ID = new String[] {
@@ -122,47 +196,44 @@ public class ProviderTest extends ActivityInstrumentationTestCase2<BerichtsheftA
     public void testgetAllEntries() throws IOException {
       	assertTrue(getActivity() instanceof BerichtsheftActivity);
       	
-          ContentResolver contentResolver = getActivity().getContentResolver();
-          String fileName = "databases/plant_info.db";
-          ImpexTask.doImpex(getActivity(), new String[]{fileName}, false);	//	Export 
-          contentResolver.delete(Plants.CONTENT_URI, null, null);
-          
-          assertEquals(0, contentResolver.query(
-         		Plants.CONTENT_URI, 
-        		PROJECTION_PLANTS, 
-        		null, null, null).getCount());
-    	
-    	    
-          for (int i = 1; i < 21; i++) {
-        	
-        	String insertName = "testName" + i;
-        	ContentValues values = new ContentValues();
-        	values.put(Plants.NAME, insertName);
-        	contentResolver.insert(Plants.CONTENT_URI, values);
-        	
-        	if (i%2 == 0) {
-        		String deleteName = "testName" + (i - 1);
-        		contentResolver.delete(Plants.CONTENT_URI, Plants.NAME + "=?", new String[]{deleteName});
-        	}	
-          }
-    	
-          Cursor cursor = contentResolver.query(
-        		Plants.CONTENT_URI, 
-        		PROJECTION_ID, 
-        		null, null,
-                Plants.ROWID_SORT_ORDER);
-          assertEquals(10, cursor.getCount());
-          assertTrue(cursor.moveToFirst());
-          for ( int i= 1; i < 21;i++) {
-        	if (i%2 == 0) {
-        		assertEquals(i, cursor.getInt(0));
-        		cursor.moveToNext(); 
-            } 
-          }
-        
-       ImpexTask.doImpex(getActivity(), new String[]{fileName}, true);	//	Import
-        
-
+      	ContentResolver contentResolver = getActivity().getContentResolver();
+		String fileName = "databases/plant_info.db";
+		ImpexTask.doImpex(getActivity(), new String[]{fileName}, false);	//	Export 
+		contentResolver.delete(Plants.CONTENT_URI, null, null);
+		
+		assertEquals(0, contentResolver.query(
+			Plants.CONTENT_URI, 
+			PROJECTION_PLANTS, 
+			null, null, null).getCount());
+		
+		  
+		for (int i = 1; i < 21; i++) {
+			String insertName = "testName" + i;
+			ContentValues values = new ContentValues();
+			values.put(Plants.NAME, insertName);
+			contentResolver.insert(Plants.CONTENT_URI, values);
+			
+			if (i%2 == 0) {
+				String deleteName = "testName" + (i - 1);
+				contentResolver.delete(Plants.CONTENT_URI, Plants.NAME + "=?", new String[]{deleteName});
+			}	
+		}
+		
+		Cursor cursor = contentResolver.query(
+			Plants.CONTENT_URI, 
+			PROJECTION_ID, 
+			null, null,
+			Plants.ROWID_SORT_ORDER);
+		assertEquals(10, cursor.getCount());
+		assertTrue(cursor.moveToFirst());
+		for ( int i= 1; i < 21;i++) {
+			if (i%2 == 0) {
+				assertEquals(i, cursor.getInt(0));
+				cursor.moveToNext(); 
+			} 
+		}
+		
+		ImpexTask.doImpex(getActivity(), new String[]{fileName}, true);	//	Import
     };
     
     public void impexTest(boolean flag) throws InterruptedException {

@@ -63,6 +63,12 @@ public final class WeatherInfo {
         public static final String DESCRIPTION = "description";
 
         /**
+         * The location of the weather
+         * <P>Type: TEXT</P>
+         */
+        public static final String LOCATION = "location";
+
+        /**
          * The precipitation
          * <P>Type: FLOAT</P>
          */

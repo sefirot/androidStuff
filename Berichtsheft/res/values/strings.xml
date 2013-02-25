@@ -23,6 +23,7 @@
     
     <string name="title_create">Create note</string>
     <string name="title_edit">Edit note</string>
+	<string name="title_weathers_list">Wetterberichte</string>   
 	<string name="title_notes_list">Tagesberichte</string>   
 	<string name="title_plants_list">Pflanze der Woche</string>
 	<string name="title_note">Note</string>  
