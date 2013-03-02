@@ -33,8 +33,13 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        
-        <activity android:name="com.applang.tagesberichte.WeatherList" 
+         
+        <activity
+            android:name="com.applang.wetterberichte.WeatherView"
+            android:theme="@android:style/Theme.NoTitleBar">
+        </activity>
+       
+        <activity android:name="com.applang.wetterberichte.WeatherList" 
         	android:label="@string/title_weathers_list"
         >
             <intent-filter>
@@ -67,7 +72,7 @@
             </intent-filter>
         </activity>
         
-        <activity android:name="com.applang.berichtsheft.PlantsList" 
+        <activity android:name="com.applang.pflanzen.PlantsList" 
         	android:label="@string/title_plants_list"
         >
             <intent-filter>
@@ -107,10 +112,9 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="vnd.android.cursor.dir/vnd.applang.note" />
             </intent-filter>
-
         </activity>
         
-        <activity android:name="com.applang.berichtsheft.PlantEditor"
+        <activity android:name="com.applang.pflanzen.PlantEditor"
             android:theme="@android:style/Theme.Light"
             android:label="@string/plant_note"
             android:screenOrientation="sensor"
@@ -133,7 +137,6 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="vnd.android.cursor.dir/vnd.applang.plant" />
             </intent-filter>
-
         </activity>
         
 		<activity android:name="com.applang.tagesberichte.TitleEditor" 
@@ -163,7 +166,7 @@
             </intent-filter>
         </activity>
         
-		<activity android:name="com.applang.berichtsheft.SortBySpinner" 
+		<activity android:name="com.applang.pflanzen.SortBySpinner" 
 			android:label="@string/sort_by"
 			android:theme="@android:style/Theme.Dialog"
             android:windowSoftInputMode="stateVisible"
@@ -190,7 +193,7 @@
             </intent-filter>
         </activity>
         
-		<activity android:name="com.applang.berichtsheft.PlantsQuery"
+		<activity android:name="com.applang.pflanzen.PlantsQuery"
             android:theme="@android:style/Theme.Light"
             android:label="@string/plant_note"
             android:screenOrientation="sensor"
