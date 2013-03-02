@@ -10,9 +10,6 @@ import java.awt.event.KeyEvent;
 import java.awt.event.WindowEvent;
 import java.io.File;
 import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Statement;
 
 import javax.swing.JButton;
@@ -22,14 +19,15 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JToolBar;
 
+import com.applang.DataBaseConnection;
 import com.applang.SwingUtil;
 import com.applang.Util;
 import com.applang.Util2;
 
-public class ToolPanel extends JPanel
+public class ActionPanel extends JPanel
 {
 	public static void createAndShowGUI(String title, Dimension preferred, 
-			final ToolPanel toolPanel, Component target, final Object... params)
+			final ActionPanel actionPanel, Component target, final Object... params)
 	{
 		try {
 			JToolBar top = new JToolBar();
@@ -44,7 +42,7 @@ public class ToolPanel extends JPanel
 			JFrame frame = new JFrame(title) {
 				protected void processWindowEvent(WindowEvent we) {
 					if (we.getID() == WindowEvent.WINDOW_CLOSING)
-						toolPanel.finish(params);
+						actionPanel.finish(params);
 					
 					super.processWindowEvent(we);
 				}
@@ -54,7 +52,7 @@ public class ToolPanel extends JPanel
 			Container contentPane = frame.getContentPane();
 			contentPane.setPreferredSize(preferred);
 			
-			toolPanel.addToContainer(top, BorderLayout.PAGE_START);
+			actionPanel.addToContainer(top, BorderLayout.PAGE_START);
 			contentPane.add(top, BorderLayout.PAGE_START);
 			contentPane.add(bottom, BorderLayout.PAGE_END);
 
@@ -65,7 +63,7 @@ public class ToolPanel extends JPanel
 			frame.setLocationRelativeTo(null);
 			frame.setVisible(true);
 			
-			toolPanel.start(params);
+			actionPanel.start(params);
 		} catch (Exception e) {
 			SwingUtil.handleException(e);
 		}
@@ -79,7 +77,7 @@ public class ToolPanel extends JPanel
 		Util2.Settings.save();
 	}
 	
-	public enum ToolType implements SwingUtil.ActionType
+	public enum ActionType implements SwingUtil.IActionType
 	{
 		CALENDAR	(0, "calendar_16x16.png", "pick date from calendar"), 
 		PREVIOUS	(1, "Arrow Left_16x16.png", "previous note(s)"), 
@@ -101,7 +99,7 @@ public class ToolPanel extends JPanel
 	    private final String toolTip;
 	    private final int index;   
 	    
-	    ToolType(int index, String iconName, String toolTip) {
+	    ActionType(int index, String iconName, String toolTip) {
 	    	this.index = index;
 	        this.iconName = iconName;
 	        this.toolTip = toolTip;
@@ -115,7 +113,7 @@ public class ToolPanel extends JPanel
     protected String dbName;
 	protected String caption;
 
-	public ToolPanel(TextComponent textArea, Object... params) {
+	public ActionPanel(TextComponent textArea, Object... params) {
 		this.textArea = textArea;
 		setupTextArea();
 		
@@ -130,7 +128,7 @@ public class ToolPanel extends JPanel
 		SwingUtil.container = container;
 	}
 
-	protected JButton[] buttons = new JButton[1 + ToolType.ACTIONS.index()];
+	protected JButton[] buttons = new JButton[1 + ActionType.ACTIONS.index()];
 	
 	public void addButton(int index, SwingUtil.Action action) {
 		if (index > -1 && index < buttons.length)
@@ -202,81 +200,31 @@ public class ToolPanel extends JPanel
 
 		return dbName;
 	}
+	
+	DataBaseConnection dbContext = new DataBaseConnection() {
+		@Override
+		public void postConnect() throws Exception {
+			afterConnecting();
+		}
+	};
 
-	protected Connection con = null;
-	protected Statement stmt = null;
-	protected String scheme = null;
+	public Statement getStmt() {
+		return dbContext.stmt;
+	}
+
+	public String getScheme() {
+		return dbContext.scheme;
+	}
 
 	public Connection getCon() {
-		return con;
+		return dbContext.con;
 	}
 
 	public boolean openConnection(String dbPath, Object... params) {
-		boolean retval = false;
-		ResultSet rs = null;
-		try {
-			if (con != null && !con.isClosed())
-				con.close();
-			
-			String driver = Util.paramString("org.sqlite.JDBC", 2, params);
-			Class.forName(driver);
-			
-			scheme = Util.paramString("sqlite", 1, params);
-			boolean memoryDb = "sqlite".equals(scheme) && dbPath == null;
-			
-			String url = "jdbc:" + scheme + ":" + (memoryDb ? "" : dbPath);
-			con = DriverManager.getConnection(url);
-			stmt = con.createStatement();
-			
-			afterConnecting();
-			
-			String database = Util.paramString("sqlite_master", 3, params);
-			if ("sqlite".equals(scheme))
-				rs = stmt.executeQuery("select name from " + database + " where type = 'table'");
-			else if ("mysql".equals(scheme)) {
-				rs = stmt.executeQuery("show databases;");
-				boolean exists = false;
-			    while (rs.next()) 
-			        if (rs.getString(1).equals(database)) {
-			        	exists = true;
-			        	break;
-			        }
-	        	rs.close();
-	        	if (!exists)
-	        		throw new Exception(String.format("database '%s' not found", database));
-	        	else
-	        		stmt.execute(String.format("use %s;", database));
-	        	
-				rs = stmt.executeQuery("show tables in " + database + ";");
-			}
-			
-			String tableName = Util.paramString(null, 0, params);
-			if (tableName == null)
-				return true;
-			
-		    while (rs.next()) 
-		        if (rs.getString(1).equals(tableName)) 
-		        	return true;
-		    
-		    return false;
-		} catch (Exception e) {
-			SwingUtil.handleException(e);
-			return retval;
-		} 
-		finally {
-			if (rs != null) {
-				try {
-					rs.close();
-				} catch (SQLException e) {
-					SwingUtil.handleException(e);
-					retval = false;
-				}
-			}
-		}
+		return dbContext.open(dbPath, params);
 	}
 	
 	protected void afterConnecting() throws Exception {
-		
 	}
 	
 	protected void updateOnRequest(boolean ask) {

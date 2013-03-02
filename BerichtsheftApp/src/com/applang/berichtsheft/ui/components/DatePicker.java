@@ -191,13 +191,13 @@ public class DatePicker
 	private void setCalendar(String text) {
 		try {
 			switch (kindOfDate(text)) {
-			case 1: 	sdf.applyPattern(dateFormat);	break;
+			case 1: 	sdf.applyPattern(calendarFormat);	break;
 			case 2: 	sdf.applyPattern(weekFormat);	break;
 			case 3: 	sdf.applyPattern(monthFormat);	break;
 			default:
 				int day = Integer.parseInt(date);
 				cal.set(year, monthOfYear, day);
-				sdf.applyPattern(dateFormat);
+				sdf.applyPattern(calendarFormat);
 				return;
 			}
 			
@@ -210,7 +210,7 @@ public class DatePicker
 		if (date.equals("") || kindOfDate(date) > 0)
 			return date;
 		else
-			return getDateString(dateFormat);
+			return getDateString(calendarFormat);
 	}
 
 	private String getDateString(String format) {
@@ -219,7 +219,7 @@ public class DatePicker
 			return date;
 		if (format.equals(monthFormat) && kind == 3)
 			return date;
-		if (format.equals(dateFormat) && kind == 1)
+		if (format.equals(calendarFormat) && kind == 1)
 			return date;
 		
 		setCalendar(date);
@@ -229,13 +229,13 @@ public class DatePicker
 
 	public static void main(String[] args) {
 		long time = Util.now();
-		System.out.println(pickADate(time, dateFormat, "", 
+		System.out.println(pickADate(time, calendarFormat, "", 
 				new Long[]{time - Util.getMillis(1) - 1, time}));
 	}
 
 	public static String pickADate(long time, String format, String title, Long[] timeLine) {
 		try {
-			String dateString = Util.formatDate(time, dateFormat);
+			String dateString = Util.formatDate(time, calendarFormat);
 			return new DatePicker(null, dateString, timeLine, title)
 					.getDateString(format);
 		} catch (Exception e) {
@@ -245,7 +245,7 @@ public class DatePicker
 	
 	public static final String monthFormat = "MMMM yyyy";
 	public static final String weekFormat = "w/yy";
-	public static final String dateFormat = "EEEEE, dd.MMM.yyyy";
+	public static final String calendarFormat = "EEEEE, dd.MMM.yyyy";
 	
 	public static int kindOfDate(String dateString) {
 		if (isWeekDate(dateString))
@@ -284,6 +284,15 @@ public class DatePicker
 		}
 		return parts;
 	}
+	
+	public static String weekDate(long[] interval) {
+		int[] val0 = parseWeekDate(Util.formatDate(interval[0], weekFormat));
+		int[] val1 = parseWeekDate(Util.formatDate(interval[1], weekFormat));
+		if (val1[0] - val0[0] == 1 && val0[1] != val1[1])
+			return val0[0] + "/" + val1[1] % 100;
+		else
+			return val0[0] + "/" + val0[1] % 100;
+	}
 
 	public static int[] parseMonthDate(String dateString) {
 		int blank = dateString.indexOf(" ");
@@ -297,33 +306,18 @@ public class DatePicker
 		return parts;
 	}
 	
-	public static String weekDate(long[] interval) {
-		int[] val0 = parseWeekDate(Util.formatDate(interval[0], weekFormat));
-		int[] val1 = parseWeekDate(Util.formatDate(interval[1], weekFormat));
-		if (val1[0] - val0[0] == 1 && val0[1] != val1[1])
-			return val0[0] + "/" + val1[1] % 100;
-		else
-			return val0[0] + "/" + val0[1] % 100;
-	}
-	
 	public static String monthDate(long[] interval) {
 		return Util.formatDate(interval[0], monthFormat);
 	}
 	
 	public static long[] dayInterval(String dateString, int days) {
-		Date date = Util.parseDate(dateString, dateFormat);
-		return Util.dayInterval(date.getTime(), days);
+		Long date = Util.toTime(dateString, calendarFormat);
+		return Util.dayInterval(date, days);
 	}
 	
 	public static long[] weekInterval(String dateString, int weeks) {
-		Date date = Util.parseDate(dateString, weekFormat);
+		Date date = Util.toDate(dateString, weekFormat);
 		return weekInterval(date, weeks);
-	}
-	
-	public static long[] monthInterval(String dateString, int months) {
-		Date date = Util.parseDate(dateString, monthFormat);
-		long[] interval = monthInterval(date, months);
-		return new long[] {interval[0], interval[1], interval[1]};
 	}
 	
 	private static long[] weekInterval(Date date, int weeks) {
@@ -333,11 +327,30 @@ public class DatePicker
 			return Util.weekInterval(date, weeks);
 	}
 	
+	public static long[] monthInterval(String dateString, int months) {
+		Date date = Util.toDate(dateString, monthFormat);
+		long[] interval = monthInterval(date, months);
+		return new long[] {interval[0], interval[1], interval[1]};
+	}
+	
 	private static long[] monthInterval(Date date, int months) {
 		if (date == null)
 			return null;
 		else
 			return Util.monthInterval(date, months);
+	}
+	
+	public static long[] toInterval(String dateString, int size) {
+		switch (kindOfDate(dateString)) {
+		case 3:
+			return monthInterval(dateString, size);
+		case 2:
+			return weekInterval(dateString, size);
+		case 1:
+			return dayInterval(dateString, size);
+		default:
+			return Util.dayInterval(Util.toTime(dateString), size);
+		}
 	}
 	
 	public static long[] nextWeekInterval(String dateString) {

@@ -1,12 +1,10 @@
 package com.applang.berichtsheft.test;
 
-import java.awt.Component;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.StringReader;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -53,7 +51,6 @@ import com.applang.SwingUtil;
 import com.applang.Util;
 import com.applang.Util2;
 import com.applang.ZipUtil;
-import com.applang.SwingUtil.ComponentFunction;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.ui.components.DatePicker;
 import com.applang.berichtsheft.ui.components.FormEditor;
@@ -101,7 +98,7 @@ public class MiscTests extends XMLTestCase
 		long sevenDaysAWeek = Util.timeInMillis(2013, 1, 7);
 		assertEquals(Util.timeInMillis(2013, 1, 6) + millisPerDay, sevenDaysAWeek);
 		long eightDaysAWeek = Util.timeInMillis(2013, 1, 8);
-		assertEquals(eightDaysAWeek - Util.getMillis(1), sevenDaysAWeek);
+		assertEquals(eightDaysAWeek - millisPerDay, sevenDaysAWeek);
 		
 		long[] week = DatePicker.weekInterval("53/12", 1);
 		assertEquals("2/13", Util.formatDate(week[1], DatePicker.weekFormat));
@@ -124,7 +121,7 @@ public class MiscTests extends XMLTestCase
 		weekDate = DatePicker.parseWeekDate(dateString);
 		assertTrue(weekDate[1] > 2000);
 		
-		assertEquals(null, Util.parseDate("", DatePicker.dateFormat));
+		assertEquals(null, Util.toDate("", DatePicker.calendarFormat));
 		
 		assertTrue(null == null);
 		assertEquals(null, null);
@@ -389,7 +386,7 @@ public class MiscTests extends XMLTestCase
 		};
 		
 		ps = np.preparePicking(true, NotePicker.allCategories, interval);
-		Util.ValMap map = Util2.getMapFromQuery(ps, 1, 2);
+		Util.ValMap map = Util2.getResultMap(ps);
 		assertEquals(2, map.size());
 		long[] ids = new long[2];
 		int i = 0;
@@ -412,9 +409,8 @@ public class MiscTests extends XMLTestCase
 
 	private void setupKeinFehler() throws Exception {
 		assertTrue(np.openConnection(test_db));
-		Util.ValMap map = Util2.getMapFromQuery(
-				np.getCon().prepareStatement("select title,count(_id) from notes group by title"), 
-				1, 2);
+		Util.ValMap map = Util2.getResultMap(
+				np.getCon().prepareStatement("select title,count(_id) from notes group by title"));
 		if (!map.containsKey("1.") || !map.get("1.").toString().equals("19") || 
 				!map.containsKey("2.") || !map.get("2.").toString().equals("7") || 
 				!map.containsKey("3.") || !map.get("3.").toString().equals("10"))

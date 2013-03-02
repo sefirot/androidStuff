@@ -12,7 +12,10 @@ import java.io.StringWriter;
 import java.io.Writer;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
 import java.util.regex.MatchResult;
 import java.util.regex.Pattern;
@@ -40,6 +43,8 @@ import org.w3c.dom.NodeList;
 
 import com.applang.Util.ValMap;
 
+import static com.applang.Util.*;
+
 public class Util2
 {
 	public static class Settings 
@@ -55,7 +60,7 @@ public class Util2
 		}
 		
 		public static String defaultFilename() {
-			String dir = Util.relativePath();
+			String dir = relativePath();
 			File[] array = new File(dir).listFiles();
 	    	for (File file : array) {
 	    		String path = file.getPath();
@@ -71,8 +76,8 @@ public class Util2
 		 * <table border="1"><tr><th>index</th><th>description</th></tr><tr><td>0</td><td>file path to settings</td></tr></table>
 		 */
 		public static void load(Object... params) {
-			String fileName = Util.paramString(defaultFilename(), 0, params);
-			boolean decoding = Util.paramBoolean(false, 1, params);
+			String fileName = paramString(defaultFilename(), 0, params);
+			boolean decoding = paramBoolean(false, 1, params);
 			
 			if (properties == null)
 				clear();
@@ -99,8 +104,8 @@ public class Util2
 		 * @param params
 		 */
 		public static void save(Object... params) {
-			String fileName = Util.paramString(defaultFilename(), 0, params);
-			boolean encoding = Util.paramBoolean(false, 1, params);
+			String fileName = paramString(defaultFilename(), 0, params);
+			boolean encoding = paramBoolean(false, 1, params);
 			
 			if (properties == null)
 				clear();
@@ -136,9 +141,9 @@ public class Util2
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T extends Object> void putSetting(String key, T value, Object... params) {
-		Object decimalPlace = Util.param(null, 0, params);
+		Object decimalPlace = param(null, 0, params);
 		if (value instanceof Double && decimalPlace instanceof Integer) {
-			value = (T)Double.valueOf(Util.round((Double)value, (Integer)decimalPlace));
+			value = (T)Double.valueOf(round((Double)value, (Integer)decimalPlace));
 		}
 		Settings.properties.put(key, value);
 	}
@@ -217,7 +222,7 @@ public class Util2
 				Object o = params[i];
 				String s = o instanceof String ? (String)o : "";
 				
-				MatchResult[] specifiers = Util.findAllIn(s, specifier);
+				MatchResult[] specifiers = findAllIn(s, specifier);
 				int specs = specifiers.length;
 				
 				boolean useSpecifiers = specs > 0 && specs <= params.length - i - 1;
@@ -303,16 +308,27 @@ public class Util2
 	public static String toString(String description, Object o) {
 		String value = o.toString();
 		int brac = value.indexOf('[');
-		return (Util.notNullOrEmpty(description) ? description : "") + 
+		return (notNullOrEmpty(description) ? description : "") + 
 				value.substring(brac > -1 ? brac : 0);
 	}
 
-	public static ValMap getMapFromQuery(PreparedStatement ps, int keyColumn, int valueColumn) {
+	public static ValMap getResultMap(PreparedStatement ps, Object...params) {
 		ValMap map = new ValMap();
+		Function<String> conversion = param(null, 0, params);
+		Function<Object> conversion2 = param(null, 1, params);
 		try {
+			int keyColumn = 1;
+			int valueColumn = 2;
 			ResultSet rs = ps.executeQuery();
-			while (rs.next())
-				map.put(rs.getString(keyColumn), rs.getObject(valueColumn));
+			while (rs.next()) {
+				String key = rs.getString(keyColumn);
+				if (conversion != null) 
+					key = conversion.apply(key, rs);
+				Object value = rs.getObject(valueColumn);
+				if (conversion2 != null) 
+					value = conversion2.apply(value, rs);
+				map.put(key, value);
+			}
 			rs.close();
 		} catch (Exception e) {
 			return null;
@@ -320,6 +336,29 @@ public class Util2
 		return map;
 	}
 
+	public static List<ValMap> getResultMapList(PreparedStatement ps, Object...params) {
+		List<ValMap> list = new ArrayList<ValMap>();
+		try {
+			ResultSet rs = ps.executeQuery();
+			ResultSetMetaData rsmd = rs.getMetaData();
+			while (rs.next()) {
+				ValMap map = new ValMap();
+				for (int i = 1; i <= rsmd.getColumnCount(); i++) {
+					Object value = rs.getObject(i);
+					Function<Object> conversion = param(null, i-1, params);
+					if (conversion != null) 
+						value = conversion.apply(value, rs);
+					map.put(rsmd.getColumnName(i), value);
+				}
+				list.add(map);
+			}
+			rs.close();
+		} catch (Exception e) {
+			return null;
+		}
+		return list;
+	}
+	
 	public static void xmlTransform(String fileName, String styleSheet, String outFileName, Object... params) throws Exception {
 	    StreamSource source = new StreamSource(fileName);
 	    StreamSource stylesource = new StreamSource(styleSheet);
@@ -406,9 +445,9 @@ public class Util2
 	}
 
 	public static File tempDir(boolean deleteOnExistence, String... subdirs) {
-		File tempDir = Util.fileOf(Util2.arrayextend(subdirs, true, tempPath()));
+		File tempDir = fileOf(Util2.arrayextend(subdirs, true, tempPath()));
 		if (!tempDir.mkdirs()) {
-	    	if (deleteOnExistence && Util.deleteDirectory(tempDir))
+	    	if (deleteOnExistence && deleteDirectory(tempDir))
 	    		tempDir.mkdir();
 		}
 		return tempDir;
@@ -416,7 +455,7 @@ public class Util2
 
 	public static File tempFile(String nameWithExtension, String... subdirs) {
 		try {
-			File tempDir = Util.fileOf(Util2.arrayextend(subdirs, true, tempPath()));
+			File tempDir = fileOf(Util2.arrayextend(subdirs, true, tempPath()));
 			String[] parts = nameWithExtension.split("\\.");
 			return File.createTempFile(parts[0], parts.length > 1 ? "." + parts[1] : "", tempDir);
 		} catch (IOException e) {
@@ -460,7 +499,7 @@ public class Util2
 	}
 
 	public static String pathCombine(String... parts) {
-		File combined = Util.fileOf(Util.join(File.separator, parts));
+		File combined = fileOf(join(File.separator, parts));
 		if (combined == null)
 			return "";
 		
@@ -475,7 +514,7 @@ public class Util2
 		String pat = prefix.replaceAll(
 				osWindows() ? File.separator + File.separator : File.separator, 
 				"(\\\\\\\\|/)");
-		MatchResult m = Util.findFirstIn(path, Pattern.compile("^" + pat + "(\\\\|/)"));
+		MatchResult m = findFirstIn(path, Pattern.compile("^" + pat + "(\\\\|/)"));
 		if (m != null)
 			return path.substring(m.group().length(), path.length());
 		else

@@ -21,6 +21,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Vector;
@@ -28,8 +29,15 @@ import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 public class Util
 {
+	static {
+		Locale.setDefault(Locale.GERMAN);
+	}
+	
     private static final int millisPerDay = 1000*60*60*24;
 	private static Calendar calendar = Calendar.getInstance();
     private static Random random = new Random();
@@ -61,8 +69,8 @@ public class Util
 	/**
 	 * calculates the milliseconds after 1970-01-01 for a given start of a day (midnight)
 	 * @param year
-	 * @param weekOfYear (1..7) or -month (-11..0)
-	 * @param dayOfWeek or dayOfMonth
+	 * @param weekOrMonth week of year (1..53) or if negative number of month (-11..0)
+	 * @param day day of week or day of month
 	 * @return
 	 */
 	public static long timeInMillis(int year, int weekOrMonth, int day) {
@@ -87,8 +95,8 @@ public class Util
 	}
 
 	public static long dateFromTodayInMillis(int days, Object... params) {
-	    Date today = Util.param(new Date(), 0, params);
-	    boolean randomizeTimeOfDay = Util.param(false, 1, params);
+	    Date today = param(new Date(), 0, params);
+	    boolean randomizeTimeOfDay = param(false, 1, params);
 	    calendar.setTime(today);
 		setMidnight();
 		calendar.add(Calendar.DATE, days);
@@ -147,18 +155,28 @@ public class Util
 		return interval;
 	}
 
-	public static String formatDate(long millis, String pattern) {
+	public static String formatDate(long millis, Object...params) {
+		String pattern = param("yyyy-MM-dd",0,params);
 		SimpleDateFormat dateFormat = new SimpleDateFormat(pattern);
 		return dateFormat.format(new Date(millis));
 	}
 
-	public static Date parseDate(String dateString, String pattern) {
+	public static Date toDate(String dateString, Object...params) {
 		try {
+			String pattern = param("yyyy-MM-dd",0,params);
 			SimpleDateFormat dateFormat = new SimpleDateFormat(pattern);
 			return dateFormat.parse(dateString);
 		} catch (Exception e) {
 			return null;
 		}
+	}
+	
+	public static Long toTime(String dateString, Object...params) {
+		Date date = toDate(dateString, params);
+		if (date == null)
+			return null;
+		else
+			return date.getTime();
 	}
 
 	public static long now() {
@@ -209,7 +227,7 @@ public class Util
 	}
 
     public static Integer toInt(Integer defaultValue, String value) {
-        int result;
+    	Integer result;
         
         try {
         	result = Integer.parseInt(value);
@@ -218,8 +236,18 @@ public class Util
         return result;
     }
 
+    public static Long toLong(Long defaultValue, String value) {
+    	Long result;
+        
+        try {
+        	result = Long.parseLong(value);
+        } catch(NumberFormatException e) { result = defaultValue; }
+        
+        return result;
+    }
+
     public static Float toFloat(Float defaultValue, String value) {
-    	float result;
+    	Float result;
         
         try {
         	result = Float.parseFloat(value);
@@ -229,7 +257,7 @@ public class Util
     }
 
     public static Double toDouble(Double defaultValue, String value) {
-    	double result;
+    	Double result;
         
         try {
         	result = Double.parseDouble(value);
@@ -321,12 +349,16 @@ public class Util
 		return defaultParam;
 	}
 	
-	public interface Job<T> {
-		public void dispatch(T t, Object[] params) throws Exception;
+	public interface Function<T> {
+		public T apply(Object...params);
 	}
 	
 	public interface Callback {
-		public void perform(Object... params);
+		public void perform(Object...params);
+	}
+	
+	public interface Job<T> {
+		public void dispatch(T t, Object[] params) throws Exception;
 	}
 		 
 	public static Object[] iterateFiles(boolean includeDirs, File dir, Job<Object> job, Object... params) throws Exception {
@@ -395,7 +427,7 @@ public class Util
     	return file;
     }
 
-	public static <T> String join(String delimiter, T... params) {
+	public static <T> String join(String delimiter, @SuppressWarnings("unchecked") T... params) {
 	    StringBuilder sb = new StringBuilder();
 	    Iterator<T> iter = new ArrayList<T>(Arrays.asList(params)).iterator();
 	    if (iter.hasNext())
@@ -468,7 +500,7 @@ public class Util
 		try {
 			is = new URL(url).openStream();
 			BufferedReader rd = new BufferedReader(new InputStreamReader(is, Charset.forName(encoding)));
-			return Util.readAll(rd);
+			return readAll(rd);
 		} finally {
 			if (is != null)
 				is.close();
@@ -629,6 +661,41 @@ public class Util
 			new java.math.BigDecimal(Double.toString(d));
 		bd = bd.setScale(decimalPlace, java.math.BigDecimal.ROUND_HALF_UP);
 		return bd.doubleValue();
+	}
+
+	@SuppressWarnings("unchecked")
+	public static Object walkJSON(String prefix, Object o, Function<Object> function, Object...params) throws Exception {
+		Object retval = o;
+		
+		if (o instanceof JSONObject) {
+			JSONObject jo = (JSONObject) o;
+			ValMap map = new ValMap();
+			Iterator<String> it = jo.keys();
+			while (it.hasNext()) {
+				String key = it.next();
+				String name = prefix + (prefix.length() > 0 ? "." : "") + key;
+				Object value = jo.get(key);
+				if (value.toString().startsWith("[")) 
+					value = walkJSON(name, jo.getJSONArray(key), function, params);
+				else if (value.toString().startsWith("{"))
+					value = walkJSON(name, jo.getJSONObject(key), function, params);
+				else if (function != null)
+					value = function.apply(name, value, params);
+				map.put(key, value);
+			}
+			retval = map;
+		}
+		else if (o instanceof JSONArray) {
+			JSONArray ja = (JSONArray) o;
+			ArrayList<Object> list = new ArrayList<Object>();
+			for (int i = 0; i < ja.length(); i++) 
+				list.add(walkJSON(prefix + String.format("(%d)", i), ja.get(i), function, params));
+			retval = list;
+		}
+		else if (function != null)
+			retval = function.apply(prefix, o, params);
+		
+		return retval;
 	}
 
 }

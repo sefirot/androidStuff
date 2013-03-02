@@ -799,7 +799,7 @@ public class SwingUtil
         	message(e.getMessage());
 	}
 	
-	public interface ActionType 
+	public interface IActionType 
 	{
 		public int index();
 	    public String iconName();
@@ -827,20 +827,20 @@ public class SwingUtil
     		actionBlocked = false;
     	}
     	
-    	private ActionType type = null;
+    	private IActionType type = null;
     	
-        public ActionType getType() {
+        public IActionType getType() {
         	return type;
 		}
 
-		public void setType(ActionType type) {
+		public void setType(IActionType type) {
 			this.type = type;
 			putValue(SMALL_ICON, iconFrom(this.type.iconName()));
 			putValue(SHORT_DESCRIPTION, this.type.description());
 //			putValue(MNEMONIC_KEY, KeyEvent.CHAR_UNDEFINED);
 		}
 
-		public Action(ActionType type) {
+		public Action(IActionType type) {
 			super(null);
 			setType(type);
         }

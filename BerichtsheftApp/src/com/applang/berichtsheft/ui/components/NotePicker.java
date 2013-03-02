@@ -5,6 +5,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.io.File;
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -26,7 +27,7 @@ import com.applang.Util;
 import com.applang.Util2;
 import com.applang.berichtsheft.BerichtsheftApp;
 
-public class NotePicker extends ToolPanel
+public class NotePicker extends ActionPanel
 {
 	public static void main(String[] args) {
 		TextArea textArea = new TextArea();
@@ -36,7 +37,7 @@ public class NotePicker extends ToolPanel
 				null,
 				title);
 		
-		ToolPanel.createAndShowGUI(title, new Dimension(1000, 200), notePicker, textArea.textArea);
+		ActionPanel.createAndShowGUI(title, new Dimension(1000, 200), notePicker, textArea.textArea);
 	}
 	
 	static boolean memoryDb = false;
@@ -56,8 +57,8 @@ public class NotePicker extends ToolPanel
 	@Override
 	protected void finish(Object... params) {
 		try {
-			if (con != null)
-				con.close();
+			if (getCon() != null)
+				getCon().close();
 		} catch (SQLException e) {
 			SwingUtil.handleException(e);
 		}
@@ -73,7 +74,7 @@ public class NotePicker extends ToolPanel
 	public NotePicker(TextComponent textArea, Object... params) {
 		super(textArea, params);
 		
-		addButton(ToolType.DATABASE.index(), new NoteAction(ToolType.DATABASE));
+		addButton(ActionType.DATABASE.index(), new NoteAction(ActionType.DATABASE));
 		
 		date.setHorizontalAlignment(JTextField.CENTER);
 		SwingUtil.addFocusObserver(date);
@@ -93,7 +94,7 @@ public class NotePicker extends ToolPanel
 			}
 		});
 		
-		addButton(ToolType.CALENDAR.index(), new NoteAction(ToolType.CALENDAR));
+		addButton(ActionType.CALENDAR.index(), new NoteAction(ActionType.CALENDAR));
 		
 		category.setEditable(true);
 		SwingUtil.addFocusObserver(categoryEdit);
@@ -106,18 +107,18 @@ public class NotePicker extends ToolPanel
 			}
 		});
 		
-		addButton(ToolType.PICK.index(), new NoteAction(ToolType.PICK));
+		addButton(ActionType.PICK.index(), new NoteAction(ActionType.PICK));
 		
-		addButton(ToolType.PREVIOUS.index(), new NoteAction(ToolType.PREVIOUS));
-		addButton(ToolType.NEXT.index(), new NoteAction(ToolType.NEXT));
-		addButton(ToolType.SPELLCHECK.index(), new NoteAction(ToolType.SPELLCHECK));
-		addButton(ToolType.ADD.index(), new NoteAction(ToolType.ADD));
-		addButton(ToolType.DELETE.index(), new NoteAction(ToolType.DELETE));
-		addButton(ToolType.ACTIONS.index(), new NoteAction(ToolType.ACTIONS.description()));
+		addButton(ActionType.PREVIOUS.index(), new NoteAction(ActionType.PREVIOUS));
+		addButton(ActionType.NEXT.index(), new NoteAction(ActionType.NEXT));
+		addButton(ActionType.SPELLCHECK.index(), new NoteAction(ActionType.SPELLCHECK));
+		addButton(ActionType.ADD.index(), new NoteAction(ActionType.ADD));
+		addButton(ActionType.DELETE.index(), new NoteAction(ActionType.DELETE));
+		addButton(ActionType.ACTIONS.index(), new NoteAction(ActionType.ACTIONS.description()));
 		
-		SwingUtil.attachDropdownMenu(buttons[ToolType.ACTIONS.index()], SwingUtil.newPopupMenu(
-		    	new Object[] {ToolType.DOCUMENT.description(), documentActions[0]}, 
-		    	new Object[] {ToolType.DOCUMENT.description(), documentActions[1]} 
+		SwingUtil.attachDropdownMenu(buttons[ActionType.ACTIONS.index()], SwingUtil.newPopupMenu(
+		    	new Object[] {ActionType.DOCUMENT.description(), documentActions[0]}, 
+		    	new Object[] {ActionType.DOCUMENT.description(), documentActions[1]} 
 	    ));
 		
 		clear();
@@ -125,7 +126,7 @@ public class NotePicker extends ToolPanel
 	
 	class NoteAction extends SwingUtil.Action
     {
-		public NoteAction(ToolType type) {
+		public NoteAction(ActionType type) {
 			super(type);
         }
         
@@ -138,7 +139,7 @@ public class NotePicker extends ToolPanel
         	String dateString = getDate();
         	String pattern = getPattern();
         	
-        	switch ((ToolType)getType()) {
+        	switch ((ActionType)getType()) {
 			case DATABASE:
 				updateOnRequest(true);
 				dbName = chooseDatabase(dbName);
@@ -161,11 +162,11 @@ public class NotePicker extends ToolPanel
 				fillDocument(dateString);
 				break;
 			case ADD:
-				setAction(5, new NoteAction(ToolType.UPDATE));
+				setAction(5, new NoteAction(ActionType.UPDATE));
 				break;
 			case UPDATE:
 				updateOnRequest(false);
-				setAction(5, new NoteAction(ToolType.ADD));
+				setAction(5, new NoteAction(ActionType.ADD));
 				break;
 			case DELETE:
 				deleteOnRequest(dateString, pattern);
@@ -191,8 +192,8 @@ public class NotePicker extends ToolPanel
 	}
 	
 	private NoteAction[] documentActions = new NoteAction[] {
-			new NoteAction(ToolType.DOCUMENT), 
-			new NoteAction(ToolType.TEXT),
+			new NoteAction(ActionType.DOCUMENT), 
+			new NoteAction(ActionType.TEXT),
 	};
 
 	private void checkDocumentPossible() {
@@ -202,12 +203,12 @@ public class NotePicker extends ToolPanel
 	
 	private void clear() {
 		refreshWith(null);
-		enableAction(ToolType.PREVIOUS.index(), false);
-		enableAction(ToolType.NEXT.index(), false);
-		enableAction(ToolType.ADD.index(), hasTextArea());
-		enableAction(ToolType.DELETE.index(), false);
-		enableAction(ToolType.ACTIONS.index(), true);
-		enableAction(ToolType.SPELLCHECK.index(), hasTextArea());
+		enableAction(ActionType.PREVIOUS.index(), false);
+		enableAction(ActionType.NEXT.index(), false);
+		enableAction(ActionType.ADD.index(), hasTextArea());
+		enableAction(ActionType.DELETE.index(), false);
+		enableAction(ActionType.ACTIONS.index(), true);
+		enableAction(ActionType.SPELLCHECK.index(), hasTextArea());
 	}
 
 	private void initialize(String dbName) {
@@ -243,8 +244,8 @@ public class NotePicker extends ToolPanel
 				memoryDbName = "/tmp/memory.db";
 				initialize(memoryDbName);
 			}
-			else if ("sqlite".equals(scheme) && memoryDbName.length() > 0) {
-				stmt.executeUpdate("backup to " + memoryDbName);
+			else if ("sqlite".equals(getScheme()) && memoryDbName.length() > 0) {
+				getStmt().executeUpdate("backup to " + memoryDbName);
 				memoryDbName = "";
 			}
 		} catch (Exception e) {
@@ -264,7 +265,7 @@ public class NotePicker extends ToolPanel
 	}
 
 	private boolean updateMode() {
-		return getAction(5).getType() == ToolType.UPDATE;
+		return getAction(5).getType() == ActionType.UPDATE;
 	}
 
 	@Override
@@ -297,15 +298,15 @@ public class NotePicker extends ToolPanel
 			if (super.openConnection(dbPath, Util2.arrayextend(params, true, "notes")))
 				return true;
 		    
-			if ("sqlite".equals(scheme))
-			    stmt.execute("CREATE TABLE notes (" +
+			if ("sqlite".equals(getScheme()))
+				getStmt().execute("CREATE TABLE notes (" +
 			    		"_id INTEGER PRIMARY KEY," +
 			    		"title TEXT," +
 			    		"note TEXT," +
 			    		"created INTEGER," +
 			    		"modified INTEGER, UNIQUE (created, title))");
-			else if ("mysql".equals(scheme)) 
-			    stmt.execute("CREATE TABLE notes (" +
+			else if ("mysql".equals(getScheme())) 
+				getStmt().execute("CREATE TABLE notes (" +
 			    		"_id BIGINT PRIMARY KEY," +
 			    		"title VARCHAR(40)," +
 			    		"note TEXT," +
@@ -315,7 +316,6 @@ public class NotePicker extends ToolPanel
 		    return true;
 		} catch (Exception e) {
 			SwingUtil.handleException(e);
-			con = null;
 			return false;
 		}
 	}
@@ -323,7 +323,7 @@ public class NotePicker extends ToolPanel
 	@Override
 	protected void afterConnecting() throws Exception {
 		if (memoryDb && Util.fileExists(new File(memoryDbName)))
-			stmt.executeUpdate("restore from " + memoryDbName);
+			getStmt().executeUpdate("restore from " + memoryDbName);
 	}
 
 	private long[] getTime(String dateString) {
@@ -360,7 +360,7 @@ public class NotePicker extends ToolPanel
 			String categ = getCategory();
 			category.removeAllItems();
 			
-			PreparedStatement ps = con.prepareStatement("select distinct title from notes order by title");
+			PreparedStatement ps = getCon().prepareStatement("select distinct title from notes order by title");
 			ResultSet rs = ps.executeQuery();
 			while (rs.next())
 				category.addItem(rs.getString(1));
@@ -445,7 +445,7 @@ public class NotePicker extends ToolPanel
 		ArrayList<Long> timelist = new ArrayList<Long>();
 		try {
 			String pattern = Util.param(allCategories, 0, params);
-			PreparedStatement ps = con.prepareStatement("select distinct created FROM notes where title regexp ? order by created");
+			PreparedStatement ps = getCon().prepareStatement("select distinct created FROM notes where title regexp ? order by created");
 			ps.setString(1, pattern);
 			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
@@ -474,7 +474,7 @@ public class NotePicker extends ToolPanel
 		public String[] keyLine(String pattern) {
 			ArrayList<String> keylist = new ArrayList<String>();
 			try {
-				PreparedStatement ps = con.prepareStatement("select created,title FROM notes where title regexp ? order by created,title");
+				PreparedStatement ps = getCon().prepareStatement("select created,title FROM notes where title regexp ? order by created,title");
 				ps.setString(1, pattern);
 				ResultSet rs = ps.executeQuery();
 				while (rs.next()) {
@@ -646,7 +646,7 @@ public class NotePicker extends ToolPanel
 			finder.pattern = pattern;
 			finder.epoch = getTime(dateString);
 			if (Util.nullOrEmpty(finder.epoch)) {
-				SwingUtil.message(String.format("value for '%s' doesn't make sense", ToolType.DATE.description()));
+				SwingUtil.message(String.format("value for '%s' doesn't make sense", ActionType.DATE.description()));
 				date.requestFocus();
 				return;
 			}
@@ -669,12 +669,12 @@ public class NotePicker extends ToolPanel
 		
 		PreparedStatement ps;
 		if (time.length < 2) {
-			ps = con.prepareStatement(sql + " where title regexp ? and created = ?");
+			ps = getCon().prepareStatement(sql + " where title regexp ? and created = ?");
 			ps.setString(1, pattern);
 			ps.setLong(2, time[0]);
 		}
 		else {
-			ps = con.prepareStatement(sql + " where created between ? and ? and title regexp ?" + orderClause);
+			ps = getCon().prepareStatement(sql + " where created between ? and ? and title regexp ?" + orderClause);
 			ps.setLong(1, time[0]);
 			ps.setLong(2, time[1] - 1);
 			ps.setString(3, pattern);
@@ -683,7 +683,7 @@ public class NotePicker extends ToolPanel
 	}
 
 	public int update(long id, String note) throws Exception {
-		PreparedStatement ps = con.prepareStatement("UPDATE notes SET note = ?, modified = ? where _id = ?");
+		PreparedStatement ps = getCon().prepareStatement("UPDATE notes SET note = ?, modified = ? where _id = ?");
 		ps.setString(1, note);
 		ps.setLong(2, Util.now());
 		ps.setLong(3, id);
@@ -691,7 +691,7 @@ public class NotePicker extends ToolPanel
 	}
 
 	public int insert(long id, String note, String category, long time) throws Exception {
-		PreparedStatement ps = con.prepareStatement("INSERT INTO notes (_id,title,note,created,modified) VALUES (?,?,?,?,?)");
+		PreparedStatement ps = getCon().prepareStatement("INSERT INTO notes (_id,title,note,created,modified) VALUES (?,?,?,?,?)");
 		ps.setLong(1, id);
 		ps.setString(2, category);
 		ps.setString(3, note);
@@ -701,6 +701,7 @@ public class NotePicker extends ToolPanel
 	}
 	
 	public int delete(String pattern, String dateString, boolean delete) throws Exception {
+		Connection con = getCon();
 		PreparedStatement ps;
 		Date date = parseDate(dateString);
 		if (date == null) {
@@ -737,7 +738,7 @@ public class NotePicker extends ToolPanel
 			if (registerNotes(ps.executeQuery()) > 0) {
 				for (int i = 0; i < ids.length; i++) 
 					if (!ask || confirmDelete(ids[i])) {
-						ps = con.prepareStatement("DELETE FROM notes where _id = ?");
+						ps = getCon().prepareStatement("DELETE FROM notes where _id = ?");
 						ps.setLong(1, ids[i]);
 						ps.executeUpdate();
 						retval = true;
@@ -750,7 +751,7 @@ public class NotePicker extends ToolPanel
 	}
 
 	private boolean confirmDelete(long id) throws SQLException {
-		PreparedStatement ps = con.prepareStatement("select title,created,note from notes where _id = ?");
+		PreparedStatement ps = getCon().prepareStatement("select title,created,note from notes where _id = ?");
 		ps.setLong(1, id);
 		ResultSet rs = ps.executeQuery();
 		boolean retval = false;
@@ -764,7 +765,7 @@ public class NotePicker extends ToolPanel
 	}
 
 	public long newId() throws Exception {
-		ResultSet rs = con.createStatement().executeQuery("SELECT max(_id) FROM notes");
+		ResultSet rs = getStmt().executeQuery("SELECT max(_id) FROM notes");
 		long id = rs.next() ? rs.getLong(1) : -1;
 		rs.close();
 		return 1 + id;
@@ -823,8 +824,8 @@ public class NotePicker extends ToolPanel
 		if (finder.find(direct, finder.epoch) != null) 
 			rs = query(finder.epoch);
 		
-		enableAction(ToolType.PREVIOUS.index(), finder.previousBunchAvailable(finder.epoch));
-		enableAction(ToolType.NEXT.index(), finder.nextBunchAvailable(finder.epoch));
+		enableAction(ActionType.PREVIOUS.index(), finder.previousBunchAvailable(finder.epoch));
+		enableAction(ActionType.NEXT.index(), finder.nextBunchAvailable(finder.epoch));
 		
 		return refreshWith(rs);
 	}
@@ -863,7 +864,7 @@ public class NotePicker extends ToolPanel
 		}
 		finally {
 			setDirty(false);
-			enableAction(ToolType.DELETE.index(), hasTextArea() && note != null);
+			enableAction(ActionType.DELETE.index(), hasTextArea() && note != null);
 		}
 	}
 
@@ -884,7 +885,7 @@ public class NotePicker extends ToolPanel
 		case 3:
 			return formatMonth(time);
 		default:
-			return Util.formatDate(time, DatePicker.dateFormat);
+			return Util.formatDate(time, DatePicker.calendarFormat);
 		}
 	}
 
@@ -898,7 +899,7 @@ public class NotePicker extends ToolPanel
 
 	public Date parseDate(String dateString) {
 		try {
-			return Util.parseDate(dateString, DatePicker.dateFormat);
+			return Util.toDate(dateString, DatePicker.calendarFormat);
 		} catch (Exception e) {
 			return null;
 		}

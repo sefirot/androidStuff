@@ -20,7 +20,7 @@ import com.applang.SwingUtil;
 import com.applang.Util;
 import com.applang.Util2;
 
-public class WeatherManager extends ToolPanel implements ActionListener
+public class WeatherManager extends ActionPanel implements ActionListener
 {
 	/**
 	 * @param args
@@ -34,7 +34,7 @@ public class WeatherManager extends ToolPanel implements ActionListener
 				null,
 				title);
 		
-		ToolPanel.createAndShowGUI(title, new Dimension(1000, 200), weatherManager, textArea.textArea);
+		ActionPanel.createAndShowGUI(title, new Dimension(1000, 200), weatherManager, textArea.textArea);
 	}
 
 	public WeatherManager(TextComponent textArea, Object... params) {
@@ -43,7 +43,7 @@ public class WeatherManager extends ToolPanel implements ActionListener
 		addButton(3, new InfoAction("Options"));
 		
 	    JPopupMenu popupMenu = SwingUtil.newPopupMenu(
-	    	new Object[] {ToolType.IMPORT.description(), new InfoAction(ToolType.IMPORT)} 
+	    	new Object[] {ActionType.IMPORT.description(), new InfoAction(ActionType.IMPORT)} 
 	    );
 	    
 	    SwingUtil.attachDropdownMenu(buttons[3], popupMenu);
@@ -61,7 +61,7 @@ public class WeatherManager extends ToolPanel implements ActionListener
     
     public class InfoAction extends SwingUtil.Action
     {
-		public InfoAction(ToolType type) {
+		public InfoAction(ActionType type) {
 			super(type);
         }
         
@@ -71,7 +71,7 @@ public class WeatherManager extends ToolPanel implements ActionListener
         
         @Override
         protected void action_Performed(ActionEvent ae) {
-        	ToolType t = (ToolType)getType();
+        	ActionType t = (ActionType)getType();
         	if (t != null) {
 				switch (t) {
 				case IMPORT:
@@ -205,7 +205,7 @@ public class WeatherManager extends ToolPanel implements ActionListener
 				measurements("24 hours rainfall");
 			}
 			
-			time = Util.parseDate(dateString, format).getTime();
+			time = Util.toDate(dateString, format).getTime();
 		} while (SwingUtil.question("more"));
 	}
 
@@ -215,7 +215,7 @@ public class WeatherManager extends ToolPanel implements ActionListener
 			if (super.openConnection(dbPath, Util2.arrayextend(params, true, "weathers")))
 				return true;
 		    
-		    stmt.execute("CREATE TABLE weathers (" +
+			getStmt().execute("CREATE TABLE weathers (" +
 		    		"_id INTEGER PRIMARY KEY," +
 		    		"description TEXT," +
 		    		"location TEXT," +
@@ -228,7 +228,6 @@ public class WeatherManager extends ToolPanel implements ActionListener
 		    return true;
 		} catch (Exception e) {
 			SwingUtil.handleException(e);
-			con = null;
 			return false;
 		}
 	}
@@ -237,7 +236,7 @@ public class WeatherManager extends ToolPanel implements ActionListener
 		String sql = "update weathers set";
 		for (Map.Entry<String,Object> entry : values.entrySet())
 			sql += " " + entry.getKey() + "='" + entry.getValue().toString() + "',";
-		PreparedStatement ps = con.prepareStatement(sql + " modified = ? where _id = ?");
+		PreparedStatement ps = getCon().prepareStatement(sql + " modified = ? where _id = ?");
 		ps.setLong(1, Util.now());
 		ps.setLong(2, id);
 		return ps.executeUpdate();
@@ -252,7 +251,7 @@ public class WeatherManager extends ToolPanel implements ActionListener
 		String sql = String.format(
 				"insert into weathers (_id%s,location,created,modified) VALUES (?%s,?,?,?)", 
 				keys, vals);
-		PreparedStatement ps = con.prepareStatement(sql);
+		PreparedStatement ps = getCon().prepareStatement(sql);
 		ps.setLong(1, id);
 		ps.setString(2, location);
 		ps.setLong(3, time);
@@ -261,7 +260,7 @@ public class WeatherManager extends ToolPanel implements ActionListener
 	}
 
 	public long newId() throws Exception {
-		ResultSet rs = con.createStatement().executeQuery("select max(_id) from weathers");
+		ResultSet rs = getStmt().executeQuery("select max(_id) from weathers");
 		long id = rs.next() ? rs.getLong(1) : -1;
 		rs.close();
 		return 1 + id;
@@ -269,7 +268,7 @@ public class WeatherManager extends ToolPanel implements ActionListener
 
 	public long getIdOfDay(String location, long time) throws SQLException {
 		long[] interval = Util.dayInterval(time, 1);
-		PreparedStatement ps = con.prepareStatement(
+		PreparedStatement ps = getCon().prepareStatement(
 				"select _id from weathers " +
 				"where created between ? and ? and location=? " +
 				"order by created, location");
