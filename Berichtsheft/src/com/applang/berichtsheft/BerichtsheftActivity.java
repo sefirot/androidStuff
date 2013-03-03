@@ -1,26 +1,26 @@
 package com.applang.berichtsheft;
 
+import com.applang.ImpexTask;
 import com.applang.pflanzen.PlantsList;
 import com.applang.provider.*;
 import com.applang.tagesberichte.*;
+import com.applang.wetterberichte.WeatherList;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
-public class BerichtsheftActivity extends Activity {
-    private String mButtonMessageTemplate;
-
+public class BerichtsheftActivity extends Activity
+{
 	@Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
-        
-        mButtonMessageTemplate =
-        		getString(R.string.button_message_template);
         
         for (final int id : new int[] {R.id.button1, R.id.button2, R.id.button3, R.id.button4}) {
         	Button btn = (Button) findViewById(id);
@@ -45,51 +45,58 @@ public class BerichtsheftActivity extends Activity {
         	});	
         }
         
-		// showToast(android.os.Build.VERSION.SDK);
+//		String mButtonMessage = android.os.Build.VERSION.SDK;	//		getString(R.string.button_message_template)
+//		Toast.makeText(this, mButtonMessage, Toast.LENGTH_LONG).show();	 
 	}
 	
 	public void showTagesberichte(View clickedButton) {
-		Button button = (Button)clickedButton;
 		Intent activityIntent =
 				new Intent(this, NotesList.class);
 		startActivity(activityIntent);
 		}
 
 	public void showPflanze(View clickedButton) {
-		Button button = (Button)clickedButton;
 		Intent activityIntent =
 				new Intent(this, PlantsList.class);
 		startActivity(activityIntent);
 		}
 	
 	public void showMore(View clickedButton) {
-		Button button = (Button)clickedButton;
-		CharSequence text = button.getText();
-		String message =
-				String.format(mButtonMessageTemplate, text);
-		impex(false);
+		Intent activityIntent =
+				new Intent(this, WeatherList.class);
+		startActivity(activityIntent);
 		}
 	
 	public void showEvenMore(View clickedButton) {
-		Button button = (Button)clickedButton;
-		CharSequence text = button.getText();
-		String message =
-				String.format(mButtonMessageTemplate, text);
-		impex(true);
+		impex();
 		}
 	
-    public void impex(boolean flag) {
-    	String[] fileNames = new String[]{"databases/" + PlantInfoProvider.DATABASE_NAME, "databases/" + NotePadProvider.DATABASE_NAME};
+    public void impex() {
+    	final String[] fileNames = new String[]{
+    			"databases/" + WeatherInfoProvider.DATABASE_NAME, 
+    			"databases/" + PlantInfoProvider.DATABASE_NAME, 
+    			"databases/" + NotePadProvider.DATABASE_NAME};
 		
-    	if (flag) 
-			ImpexTask.doImport(this, fileNames, null);
-		else
-			ImpexTask.doExport(this, fileNames, null);
+		AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(this);
+		alertDialogBuilder.setTitle("Application data");
+		alertDialogBuilder
+				.setMessage("Export copies data to SD card\nImport copies data from SD card")
+				.setCancelable(false)
+				.setPositiveButton("Export",
+						new DialogInterface.OnClickListener() {
+							public void onClick(DialogInterface dialog,	int id) {
+								ImpexTask.doExport(BerichtsheftActivity.this, fileNames, null);
+							}
+						})
+				.setNegativeButton("Import",
+						new DialogInterface.OnClickListener() {
+							public void onClick(DialogInterface dialog,	int id) {
+								ImpexTask.doImport(BerichtsheftActivity.this, fileNames, null);
+							}
+						})
+				.setNeutralButton("Cancel", null);
+		AlertDialog alertDialog = alertDialogBuilder.create();
+		alertDialog.show();
     }
-	
-	
-	private void showToast(String text) {
-		Toast.makeText(this, text, Toast.LENGTH_LONG).show();	 
-		}
 
 }

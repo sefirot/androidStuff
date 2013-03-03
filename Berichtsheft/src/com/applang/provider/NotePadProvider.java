@@ -170,7 +170,7 @@ public class NotePadProvider extends ContentProvider {
 
         if (values.containsKey(NotePad.Notes.TITLE) == false) {
             Resources r = Resources.getSystem();
-            values.put(NotePad.Notes.TITLE, r.getString(android.R.string.untitled));
+            values.put(NotePad.Notes.TITLE, ""/*r.getString(android.R.string.untitled)*/);
         }
 
         if (values.containsKey(NotePad.Notes.NOTE) == false) {

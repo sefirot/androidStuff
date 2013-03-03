@@ -17,7 +17,6 @@
 package com.applang.wetterberichte;
 
 import com.applang.berichtsheft.R;
-import com.applang.pflanzen.SortBySpinner;
 import com.applang.provider.WeatherInfo.Weathers;
 
 
@@ -214,12 +213,12 @@ public class WeatherList extends ListActivity {
         case MENU_ITEM_SORTBY:
         	/*	try {  **/
 			// Launch activity to choose option in order to sort list entries
-        		Intent sortOrder = new Intent(this, SortBySpinner.class);
-        		Bundle sortBundle = new Bundle();
-        		sortBundle.putInt("location", location);
-        		
-        		sortOrder.putExtras(sortBundle);
-        		startActivityForResult(sortOrder,ACTIVITY_TOGGLE_ORDER);
+//        		Intent sortOrder = new Intent(this, SortBySpinner.class);
+//        		Bundle sortBundle = new Bundle();
+//        		sortBundle.putInt("location", location);
+//        		
+//        		sortOrder.putExtras(sortBundle);
+//        		startActivityForResult(sortOrder,ACTIVITY_TOGGLE_ORDER);
 			/*	return true; 
 			} catch (ActivityNotFoundException e) {
 				// TODO Auto-generated catch block

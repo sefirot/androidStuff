@@ -1,4 +1,4 @@
-package com.applang.provider;
+package com.applang;
 
 import java.io.*;
 import java.nio.channels.FileChannel;
@@ -13,8 +13,8 @@ import android.os.Environment;
 import android.util.Log;
 import android.widget.Toast;
 
-public class ImpexTask extends AsyncTask<String, Void, Boolean> {
-	
+public class ImpexTask extends AsyncTask<String, Void, Boolean>
+{
     private static final String TAG = ImpexTask.class.getSimpleName();
     
     public interface AsyncCallback{

@@ -12,8 +12,8 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.test.*;
 
+import com.applang.ImpexTask;
 import com.applang.berichtsheft.*;
-import com.applang.provider.ImpexTask;
 import com.applang.provider.NotePad.Notes;
 import com.applang.provider.PlantInfo;
 import com.applang.provider.PlantInfo.Plants;

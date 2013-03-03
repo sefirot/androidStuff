@@ -9,7 +9,7 @@ import org.apache.velocity.runtime.resource.loader.FileResourceLoader;
  
 import android.content.res.Resources;
  
-public class AndroidResourceLoader extends FileResourceLoader {
+public class VelocityResourceLoader extends FileResourceLoader {
 	private Resources resources;
 	private String packageName;
  

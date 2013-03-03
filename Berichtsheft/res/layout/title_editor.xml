@@ -21,16 +21,11 @@
     android:paddingLeft="6dip"
     android:paddingRight="6dip"
     android:paddingBottom="3dip">
-   					  
-    <EditText android:id="@+id/title" 
-        android:maxLines="1" 
-        android:layout_marginTop="2dip"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content" 
-      	android:ems="25"
-        android:autoText="true"
-        android:capitalize="sentences"
-        android:scrollHorizontally="true" />
+
+    <AutoCompleteTextView android:id="@+id/title"
+		android:layout_width="fill_parent"
+		android:layout_height="wrap_content"
+	/>
 
     <DatePicker
         android:id="@+id/date"

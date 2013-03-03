@@ -29,9 +29,10 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.DatePicker;
-import android.widget.EditText;
+import android.widget.AutoCompleteTextView;
 
 /**
  * An activity that will edit the title of a note. Displays a floating
@@ -63,7 +64,7 @@ public class TitleEditor extends Activity implements View.OnClickListener {
      */
     private Cursor mCursor;
 
-    private EditText mText;
+    private AutoCompleteTextView mText;
     private DatePicker mDate;
 
     /**
@@ -84,7 +85,10 @@ public class TitleEditor extends Activity implements View.OnClickListener {
         mCursor = managedQuery(mUri, PROJECTION, null, null, null);
 
         // Set up click handlers for the text field and button
-        mText = (EditText) this.findViewById(R.id.title);
+        mText = (AutoCompleteTextView) this.findViewById(R.id.title);
+        mText.setThreshold(1);
+        String[] categories = getResources().getStringArray(R.array.category_array);
+        mText.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_dropdown_item_1line,categories));
         mText.setOnClickListener(this);
         
         mDate = (DatePicker) this.findViewById(R.id.date);
