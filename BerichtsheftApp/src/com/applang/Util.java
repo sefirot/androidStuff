@@ -663,6 +663,8 @@ public class Util
 		return bd.doubleValue();
 	}
 
+	public static double absoluteZero = -273.15;
+
 	@SuppressWarnings("unchecked")
 	public static Object walkJSON(String prefix, Object o, Function<Object> function, Object...params) throws Exception {
 		Object retval = o;

@@ -267,8 +267,6 @@ public class VelocityTests extends TestCase {
 				"openweather");
 	}
 	
-	double absoluteZero = -273.15;
-
 	public void testOpenWeather2() throws Exception {
     	int days = 4;	//	Util.daysToTodayFrom(2012, 40, 2);
 	    String url = String.format(
