@@ -3,6 +3,7 @@ package com.applang.berichtsheft.test;
 import java.io.StringWriter;
 import java.sql.PreparedStatement;
 import java.text.DateFormat;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -16,9 +17,6 @@ import org.apache.velocity.app.tools.VelocityFormatter;
 import org.apache.velocity.context.AbstractContext;
 import org.apache.velocity.context.Context;
 import org.apache.velocity.runtime.RuntimeSingleton;
-
-import com.applang.DataBaseConnection;
-import com.applang.Util;
 
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
@@ -115,7 +113,7 @@ public class VelocityTests extends TestCase {
 		assertEquals(expected, writer.getBuffer().toString());
 	}
 
-	DataBaseConnection dbCon = new DataBaseConnection();
+	DataBaseConnect dbCon = new DataBaseConnect();
 	
 	public class WeatherContext extends AbstractContext
 	{
@@ -125,7 +123,7 @@ public class VelocityTests extends TestCase {
 			sql += " where created between ? and ? and location = ?";
 			try {
 				long[] interval = DatePicker.toInterval(dateString, 1);
-				PreparedStatement ps = dbCon.con.prepareStatement(sql);
+				PreparedStatement ps = dbCon.getCon().prepareStatement(sql);
 				ps.setLong(1, interval[0]);
 				ps.setLong(2, interval[1] - 1);
 				ps.setString(3, location);
@@ -193,7 +191,7 @@ public class VelocityTests extends TestCase {
 		sql += " where created between ? and ? and location = ?";
 		try {
 			long[] interval = DatePicker.toInterval("50/2012", 1);
-			PreparedStatement ps = dbCon.con.prepareStatement(sql);
+			PreparedStatement ps = dbCon.getCon().prepareStatement(sql);
 			ps.setLong(1, interval[0]);
 			ps.setLong(2, interval[1] - 1);
 			ps.setString(3, "10519");
@@ -238,7 +236,7 @@ public class VelocityTests extends TestCase {
 		println(w.toString());
 	}
 
-	public void testOpenWeather() throws Exception {
+	public void testOpenWeather1() throws Exception {
 		String url = "http://api.openweathermap.org/data/2.1/weather/city/2931361?type=json";
 	    String jsonText = readFromUrl(url, "UTF-8");
 //		println(jsonText);
@@ -246,22 +244,22 @@ public class VelocityTests extends TestCase {
 		JSONObject json = new JSONObject(jsonText);
 //		println(json.toString(4));
 		
-		Object openweather = Util.walkJSON("", json, new Function<Object>() {
+		Object openweather = walkJSON(null, json, new Function<Object>() {
 			public Object apply(Object...params) {
-				String name = paramString(null, 0, params);
+				Object[] path = param(null, 0, params);
 				Object value = param(null, 1, params);
-				println("%s : %s", name, value);
+				println("%s : %s", Arrays.toString(path), value);
 				return value;
 			}
 		});
 //		println(openweather);
 		
 		VelocityContext vc = new VelocityContext();
-		vc.put("openweather", openweather);
+		vc.put("weather", openweather);
 		
 		printEvaluatedTemplate(vc, 
-				"\n$openweather.name, $openweather.date\n" +
-				"#foreach ($w in $openweather.weather) " +
+				"\n$weather.name, $weather.date\n" +
+				"#foreach ($w in $weather.weather) " +
 					"$w.description \n" +
 				"#end", 
 				"openweather");
@@ -278,15 +276,16 @@ public class VelocityTests extends TestCase {
 		JSONObject json = new JSONObject(jsonText);
 //		println(json.toString(4));
 		
-		Object openweather = Util.walkJSON("", json, new Function<Object>() {
+		Object openweather = walkJSON(null, json, new Function<Object>() {
 			public Object apply(Object...params) {
-				String name = paramString(null, 0, params);
+				Object[] path = param(null, 0, params);
 				Object value = param(null, 1, params);
-				if (name.endsWith("dt"))
+				String name = Arrays.toString(path);
+				if ("dt".equals(path[path.length - 1])) 
 					value = formatDate(toLong(0L,value.toString()) * 1000);
 				else if (name.contains("temp"))
-					value = round(toDouble(0D, value.toString()) + absoluteZero, 2);
-				println("%s : %s", name, value);
+					value = kelvin2celsius(value);
+//				println("%s : %s", name, value);
 				return value;
 			}
 		});
@@ -301,5 +300,34 @@ public class VelocityTests extends TestCase {
 					"$day.dt temperature between $day.main.temp.v and $day.main.temp_max °C\n" +
 				"#end", 
 				"openweather");
+	}
+	
+	public void testOpenWeather3() throws Exception {
+    	int cnt = 2;	//	Util.daysToTodayFrom(2012, 40, 2);
+	    String url = String.format(
+	    		"http://api.openweathermap.org/data/2.1/history/station/4885?cnt=%d&type=hour", 
+	    		1 + cnt);
+	    String text = readFromUrl(url, "UTF-8");
+		println(text);
+		
+		walkJSON(null, new JSONObject(text), new Function<Object>() {
+			public Object apply(Object...params) {
+				Object[] path = param(null, 0, params);
+				Object value = param(null, 1, params);
+				String name = Arrays.toString(path);
+				if ("dt".equals(path[path.length - 1])) {
+					value = formatDate(toLong(0L,value.toString()) * 1000);
+					println("%s : %s", name, value);
+				}
+				else if (name.contains("temp"))
+					value = kelvin2celsius(value);
+				
+				if ("list".equals(path[0]) && name.contains("rain")) {
+					println("%s : %s", name, value);
+				}
+				
+				return value;
+			}
+		});
 	}
 }

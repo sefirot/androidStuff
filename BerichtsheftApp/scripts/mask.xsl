@@ -9,8 +9,9 @@
 	xmlns:java="http://xml.apache.org/xalan/java"
 	xmlns:redirect="http://xml.apache.org/xalan/redirect"
 	xmlns:util="com.applang.Util"
+	xmlns:util2="com.applang.Util2"
 	xmlns:exslt="http://exslt.org/common"
-	extension-element-prefixes="exslt util redirect">
+	extension-element-prefixes="exslt util util2 redirect">
 	
 	<xsl:include href = "debug.xsl"/>
 	
@@ -89,7 +90,7 @@
 									<td>
 										<xsl:call-template name="pageswitch">
 											<xsl:with-param name="pos" select="number($pos)-1" />
-											<xsl:with-param name="switch" select="util:getSetting('mask.action4', 'previous')" />
+											<xsl:with-param name="switch" select="util2:getSetting('mask.action4', 'previous')" />
 										</xsl:call-template>
 									</td>
 								</xsl:if>
@@ -97,7 +98,7 @@
 									<td>
 										<xsl:call-template name="pageswitch">
 											<xsl:with-param name="pos" select="number($pos)+1" />
-											<xsl:with-param name="switch" select="util:getSetting('mask.action5', 'next')" />
+											<xsl:with-param name="switch" select="util2:getSetting('mask.action5', 'next')" />
 										</xsl:call-template>
 									</td>
 								</xsl:if>
@@ -147,7 +148,7 @@
 		<xsl:variable name="name" select="concat('page',$pos,'.html')" />
 		<xsl:choose>
 			<xsl:when test="$fullpath">
-				<xsl:value-of select="util:tempPath('berichtsheft',$name)" />
+				<xsl:value-of select="util2:tempPath(util2:getSetting('temp.subdir','/tmp'),$name)" />
 			</xsl:when>
 			<xsl:otherwise>
 				<xsl:value-of select="$name" />
@@ -158,7 +159,7 @@
 	<xsl:template name="submit">
 		<xsl:param name="num" />
 		<xsl:param name="nam" />
-		<xsl:variable name="action" select="util:getSetting(concat('mask.action',$num), $nam)" />
+		<xsl:variable name="action" select="util2:getSetting(concat('mask.action',$num), $nam)" />
 		<xsl:if test="$action != $nam">
 			<xsl:variable name="name" select="concat('action',$num)" />
 			<td><input type='SUBMIT' name="{$name}" value="{$action}" /></td>
@@ -174,7 +175,7 @@
 				<xsl:with-param name="fullpath" select="false()" />
 			</xsl:call-template>
 		</xsl:variable>
-		<xsl:variable name="pageswitch" select="util:getSetting('mask.pageswitch', '')" />
+		<xsl:variable name="pageswitch" select="util2:getSetting('mask.pageswitch', '')" />
 		<xsl:choose>
 			<xsl:when test="$pageswitch = 'hyperlink'">
 				<a href="{$page}"><xsl:value-of select="$switch" /></a>

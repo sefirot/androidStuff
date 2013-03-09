@@ -16,9 +16,9 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
-import com.applang.SwingUtil;
-import com.applang.Util;
-import com.applang.Util2;
+import static com.applang.SwingUtil.*;
+import static com.applang.Util.*;
+import static com.applang.Util2.*;
 
 public class WeatherManager extends ActionPanel implements ActionListener
 {
@@ -42,11 +42,11 @@ public class WeatherManager extends ActionPanel implements ActionListener
 		
 		addButton(3, new InfoAction("Options"));
 		
-	    JPopupMenu popupMenu = SwingUtil.newPopupMenu(
+	    JPopupMenu popupMenu = newPopupMenu(
 	    	new Object[] {ActionType.IMPORT.description(), new InfoAction(ActionType.IMPORT)} 
 	    );
 	    
-	    SwingUtil.attachDropdownMenu(buttons[3], popupMenu);
+	    attachDropdownMenu(buttons[3], popupMenu);
 	}
 	
 	@Override
@@ -55,11 +55,11 @@ public class WeatherManager extends ActionPanel implements ActionListener
 			updateOnRequest(true);
 			getCon().close();
 		} catch (Exception e) {
-			SwingUtil.handleException(e);
+			handleException(e);
 		}
 	}
     
-    public class InfoAction extends SwingUtil.Action
+    public class InfoAction extends Action
     {
 		public InfoAction(ActionType type) {
 			super(type);
@@ -76,7 +76,7 @@ public class WeatherManager extends ActionPanel implements ActionListener
 				switch (t) {
 				case IMPORT:
 					dbName = chooseDatabase(dbName);
-					if (Util.notNullOrEmpty(dbName) && openConnection(dbName))
+					if (notNullOrEmpty(dbName) && openConnection(dbName))
 						retrieveWeatherData();
 					break;
 				default:
@@ -86,41 +86,86 @@ public class WeatherManager extends ActionPanel implements ActionListener
         }
     }
 	
-	int year, month;
+	int year, month, day, ndays = -1;
 	String location;
 	
-	private static final String SYNOP_MONTH = "http://www.mundomanz.com/meteo_p/monthrep?" +
+	private static final String URL_MONTHREP = "http://www.mundomanz.com/meteo_p/monthrep?" +
 			"countr=GERMANY&" +
 			"ind=%s&" +
 			"year=%s&" +
 			"month=%s&" +
 			"l=1&" +
 			"action=display";
+/*
+	D: observation day.
+	h: UTC observation time.
+	T: air temperature (ºC).
+	RH: air relative humidity (%).
+	P/Gh: sea level pressure (hpa) or geopotential height (m).
+	WI: wind direction and speed (km/h).
+	CC: total cloud cover(eighths).
+	LC: cover and type of low clouds.
+	MC: cover and type of middle clouds.
+	HC: type of high clouds.
+	PR: amount of precipitation and measuring period.
+	MT: maximun temperature.
+	mT: minimum temperature.
+	WE: weather.
+*/
+	private static final String URL_SUMMARY = "http://www.mundomanz.com/meteo_p/byind?" +
+			"countr=GERMANY&" +
+			"ind=%s&" +
+			"year=%s&" +
+			"month=%s&" +
+			"day=%s&" +
+			"n_days=%d&" +
+			"trans=PA&" +
+			"time=all&" +
+			"l=1&action=display";
 	
-	String urlString(boolean broken) {
+	String urlString(int type, boolean broken) {
+		String url;
 		String monthString = "0" + this.month;
 		monthString = monthString.substring(monthString.length() - 2, monthString.length());
-		String url = String.format(SYNOP_MONTH, 
-				this.location, 
-				"" + this.year, 
-				monthString);
+		switch (type) {
+		case -1:
+			url = String.format(URL_MONTHREP, 
+					this.location, 
+					"" + this.year, 
+					monthString);
+			break;
+
+		case 1:
+			url = String.format(URL_SUMMARY, 
+					this.location, 
+					"" + this.year, 
+					monthString,
+					"" + day,
+					ndays);
+			break;
+
+		default:
+			return "";
+		}
 		if (broken)
 			url = url.replaceAll("(\\?|\\&)", "$1\n");
 		return url;
 	}
 	
-	public void connectWeatherURL(String location, int year, int month) {
+	public void connectWeatherSite(String location, int year, int month, int day, int ndays) {
 		this.year = year;
 		this.month = month;
+		this.day = day;
+		this.ndays = ndays;
 		this.location = location;
-		SwingUtil.waiting(this.getParent(), new SwingUtil.ComponentFunction<Void>() {
+		waiting(this.getParent(), new ComponentFunction<Void>() {
 			public Void apply(Component comp, Object[] parms) {
 				try {
-					doc = Jsoup.connect(urlString(false))
+					doc = Jsoup.connect(urlString(WeatherManager.this.ndays, false))
 							.timeout(100000)
 							.get();
 				} catch (Exception e) {
-					SwingUtil.handleException(e);
+					handleException(e);
 					doc = null;
 				}
 				
@@ -132,7 +177,7 @@ public class WeatherManager extends ActionPanel implements ActionListener
 	Document doc = null;
 
 	void measurements(final String marker) {
-		SwingUtil.waiting(this.getParent(), new SwingUtil.ComponentFunction<Void>() {
+		waiting(this.getParent(), new ComponentFunction<Void>() {
 			public Void apply(Component comp, Object[] parms) {
 				storeValues(tableAfter(marker, 1));
 				storeValues(tableAfter(marker, 2));
@@ -168,27 +213,27 @@ public class WeatherManager extends ActionPanel implements ActionListener
  	}
 
     void storeValues(Element table) {
-    	Util.ValMap values = new Util.ValMap();
+    	ValMap values = new ValMap();
     	Elements column = table.select("td:eq(0)");
     	boolean precipitation = column.get(1).text().toLowerCase().startsWith("prec");
     	Element row = table.select("tr").first();
 		for (int i = 1; i < row.select("td").size(); i++) {
         	column = table.select(String.format("td:eq(%d)", i));
         	int day = Integer.parseInt(column.first().text());
-        	long time = Util.timeInMillis(year, -month + 1, day);
+        	long time = timeInMillis(year, -month + 1, day);
         	if (precipitation)
-            	values.put("precipitation", Util.toFloat(Float.NaN, column.get(1).text()));
+            	values.put("precipitation", toFloat(Float.NaN, column.get(1).text()));
         	else {
-	        	values.put("maxtemp", Util.toFloat(Float.NaN, column.get(1).text()));
-	        	values.put("mintemp", Util.toFloat(Float.NaN, column.get(2).text()));
+	        	values.put("maxtemp", toFloat(Float.NaN, column.get(1).text()));
+	        	values.put("mintemp", toFloat(Float.NaN, column.get(2).text()));
         	}
         	updateOrInsert(location, time, values);
 		}
 	}
 	
 	public void retrieveWeatherData() {
-		long time = Util.now();
-		String format = "MM yyyy";
+		long time = now();
+		String format = "";
 		do {
 			String dateString = DatePicker.pickADate(time, format,
 					"Pick month for weather info", null);
@@ -196,23 +241,23 @@ public class WeatherManager extends ActionPanel implements ActionListener
 				return;
 			
 			int sep = dateString.indexOf(' ');
-			connectWeatherURL("10519", 
+			connectWeatherSite("10519", 
 					Integer.parseInt(dateString.substring(sep + 1)), 
-					Integer.parseInt(dateString.substring(0, sep)));
+					Integer.parseInt(dateString.substring(0, sep)), 0, -1);
 			
-			if (SwingUtil.question(String.format("Retrieve weather data from \n'%s' ?", urlString(true)))) {
+			if (question(String.format("Retrieve weather data from \n'%s' ?", urlString(ndays, true)))) {
 				measurements("Daily extreme temperatures");
 				measurements("24 hours rainfall");
 			}
 			
-			time = Util.toDate(dateString, format).getTime();
-		} while (SwingUtil.question("more"));
+			time = toDate(dateString, format).getTime();
+		} while (question("more"));
 	}
 
 	@Override
 	public boolean openConnection(String dbPath, Object... params) {
 		try {
-			if (super.openConnection(dbPath, Util2.arrayextend(params, true, "weathers")))
+			if (super.openConnection(dbPath, arrayextend(params, true, "weathers")))
 				return true;
 		    
 			getStmt().execute("CREATE TABLE weathers (" +
@@ -227,22 +272,22 @@ public class WeatherManager extends ActionPanel implements ActionListener
 
 		    return true;
 		} catch (Exception e) {
-			SwingUtil.handleException(e);
+			handleException(e);
 			return false;
 		}
 	}
 
-	public int update(long id, Util.ValMap values) throws Exception {
+	public int update(long id, ValMap values) throws Exception {
 		String sql = "update weathers set";
 		for (Map.Entry<String,Object> entry : values.entrySet())
 			sql += " " + entry.getKey() + "='" + entry.getValue().toString() + "',";
 		PreparedStatement ps = getCon().prepareStatement(sql + " modified = ? where _id = ?");
-		ps.setLong(1, Util.now());
+		ps.setLong(1, now());
 		ps.setLong(2, id);
 		return ps.executeUpdate();
 	}
 
-	public int insert(long id, Util.ValMap values, String location, long time) throws Exception {
+	public int insert(long id, ValMap values, String location, long time) throws Exception {
 		String keys = "", vals = "";
 		for (String key : values.keySet())
 			keys += "," + key;
@@ -255,7 +300,7 @@ public class WeatherManager extends ActionPanel implements ActionListener
 		ps.setLong(1, id);
 		ps.setString(2, location);
 		ps.setLong(3, time);
-		ps.setLong(4, Util.now());
+		ps.setLong(4, now());
 		return ps.executeUpdate();
 	}
 
@@ -267,7 +312,7 @@ public class WeatherManager extends ActionPanel implements ActionListener
 	}
 
 	public long getIdOfDay(String location, long time) throws SQLException {
-		long[] interval = Util.dayInterval(time, 1);
+		long[] interval = dayInterval(time, 1);
 		PreparedStatement ps = getCon().prepareStatement(
 				"select _id from weathers " +
 				"where created between ? and ? and location=? " +
@@ -285,7 +330,7 @@ public class WeatherManager extends ActionPanel implements ActionListener
 		return id;
 	}
 
-	public long updateOrInsert(String location, long time, Util.ValMap values) {
+	public long updateOrInsert(String location, long time, ValMap values) {
 		try {
 			long id = getIdOfDay(location, time);
 			if (id > -1) 
@@ -296,7 +341,7 @@ public class WeatherManager extends ActionPanel implements ActionListener
 			}
 			return id;
 		} catch (Exception e) {
-			SwingUtil.handleException(e);
+			handleException(e);
 			return -1;
 		}
 	}

@@ -18,6 +18,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -29,8 +30,13 @@ import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.json.JSONStringer;
+import org.w3c.dom.Document;
 
 public class Util
 {
@@ -39,7 +45,7 @@ public class Util
 	}
 	
     private static final int millisPerDay = 1000*60*60*24;
-	private static Calendar calendar = Calendar.getInstance();
+	private static Calendar calendar = Calendar.getInstance(Locale.US);
     private static Random random = new Random();
 
 	static void setWeekDate(int year, int weekOfYear, int dayOfWeek) {
@@ -155,17 +161,24 @@ public class Util
 		return interval;
 	}
 
+	public static String timestampFormat = "yyyy-MM-dd HH:mm:ss.SSS";
+
+	//	used in xsl scripts
+	public static String formatDate(long millis, String pattern) {
+		return new SimpleDateFormat(pattern, Locale.US).format(new Date(millis));
+	}
+
 	public static String formatDate(long millis, Object...params) {
-		String pattern = param("yyyy-MM-dd",0,params);
-		SimpleDateFormat dateFormat = new SimpleDateFormat(pattern);
-		return dateFormat.format(new Date(millis));
+//		return String.format("%1$tY-%1$tm-%1$td %1$tH:%1$tM:%1$tS.%1$tL", millis);
+		String pattern = param(timestampFormat,0,params);
+		Locale locale = param(Locale.US,1,params);
+		return new SimpleDateFormat(pattern, locale).format(new Date(millis));
 	}
 
 	public static Date toDate(String dateString, Object...params) {
 		try {
 			String pattern = param("yyyy-MM-dd",0,params);
-			SimpleDateFormat dateFormat = new SimpleDateFormat(pattern);
-			return dateFormat.parse(dateString);
+			return new SimpleDateFormat(pattern, Locale.US).parse(dateString);
 		} catch (Exception e) {
 			return null;
 		}
@@ -179,6 +192,7 @@ public class Util
 			return date.getTime();
 	}
 
+	//	used in xsl scripts
 	public static long now() {
 		return new Date().getTime();
 	}
@@ -193,7 +207,7 @@ public class Util
 		else
 			return prototype.getClass().getName().equals(o.getClass().getName());
 	}
-	
+
 	public static boolean notNullOrEmpty(String value) {
 		return value != null && value.length() > 0;
 	}
@@ -218,6 +232,7 @@ public class Util
 		return value == null || value.length < 1;
 	}
 
+	//	used in xsl scripts
 	public static boolean isWhiteSpace(String s) {
 		for (int i = 0; i < s.length(); i++) 
 			if (!Character.isWhitespace(s.charAt(i)))
@@ -353,10 +368,6 @@ public class Util
 		public T apply(Object...params);
 	}
 	
-	public interface Callback {
-		public void perform(Object...params);
-	}
-	
 	public interface Job<T> {
 		public void dispatch(T t, Object[] params) throws Exception;
 	}
@@ -404,6 +415,7 @@ public class Util
 			return null;
 	}
 
+	//	used in xsl scripts
 	public static boolean matches(String s, String regex) {
 		return s.matches(regex);
 	}
@@ -440,7 +452,7 @@ public class Util
 	}
     
     public static void copyContents(InputStream in, OutputStream out, Object... params) throws IOException {
-		byte scoop[] = new byte[paramInteger(8192, 0, params)];
+		byte scoop[] = new byte[paramInteger(4096, 0, params)];
 		
 		int n;
 		while ((n = in.read(scoop, 0, scoop.length)) > -1) 
@@ -566,24 +578,33 @@ public class Util
 				file.exists() && file.isFile();
 	}
 	
+	public static class ValList extends ArrayList<Object>
+	{
+		public ValList() {
+			super();
+		}
+		public ValList(Collection<? extends Object> c) {
+			super(c);
+		}
+		public ValList(int initialCapacity) {
+			super(initialCapacity);
+		}
+	}
+	
 	public static class ValMap extends HashMap<String,Object>
 	{
 		public ValMap() {
 			super();
 		}
-
 		public ValMap(int initialCapacity, float loadFactor) {
 			super(initialCapacity, loadFactor);
 		}
-
 		public ValMap(int initialCapacity) {
 			super(initialCapacity);
 		}
-
 		public ValMap(Map<? extends String, ? extends Object> m) {
 			super(m);
 		}
-		
 	}
 	
 	public static ValMap mappings = new ValMap();
@@ -593,11 +614,13 @@ public class Util
 		return 0;
 	}
 	
+	//	used in xsl scripts
 	public static String getMapping(String key) {
 		Object value = mappings.get(key);
 		return value == null ? "" : value.toString();
 	}
 	
+	//	used in xsl scripts
 	public static String setMapping(String key, String value) {
 		mappings.put(key, value);
 		return "";
@@ -664,40 +687,118 @@ public class Util
 	}
 
 	public static double absoluteZero = -273.15;
+	
+	public static double kelvin2celsius(Object value) {
+		double d;
+		if (value instanceof Double)
+			d = (Double) value;
+		else 
+			d = toDouble(Double.NaN, value.toString());
+		return round(d + absoluteZero, 2);
+	}
+
+	/**
+	 * @param <T>	type of the given array
+	 * @param <U>	type of the cast array
+	 * @param array	the given array
+	 * @param a	prototype of the cast array
+	 * @return	the cast array
+	 */
+	public static <T, U> U[] arraycast(T[] array, U[] a) {
+		return Arrays.asList(array).toArray(a);
+	}
 
 	@SuppressWarnings("unchecked")
-	public static Object walkJSON(String prefix, Object o, Function<Object> function, Object...params) throws Exception {
-		Object retval = o;
+	public static <T> T[] arrayappend(T[] array, T... params) {
+		ArrayList<T> list = new ArrayList<T>(Arrays.asList(array));
+		list.addAll(new ArrayList<T>(Arrays.asList(params)));
+		return list.toArray(array);
+	}
+
+	@SuppressWarnings("unchecked")
+	public static Object walkJSON(Object[] path, Object json, Function<Object> filter, Object...params) throws Exception {
+		Object object = json;
 		
-		if (o instanceof JSONObject) {
-			JSONObject jo = (JSONObject) o;
+		if (path == null)
+			path = new Object[0];
+		
+		if (json instanceof JSONObject) {
+			JSONObject jo = (JSONObject) json;
 			ValMap map = new ValMap();
 			Iterator<String> it = jo.keys();
 			while (it.hasNext()) {
 				String key = it.next();
-				String name = prefix + (prefix.length() > 0 ? "." : "") + key;
 				Object value = jo.get(key);
+				Object[] path2 = arrayappend(path, key);
 				if (value.toString().startsWith("[")) 
-					value = walkJSON(name, jo.getJSONArray(key), function, params);
+					value = walkJSON(path2, jo.getJSONArray(key), filter, params);
 				else if (value.toString().startsWith("{"))
-					value = walkJSON(name, jo.getJSONObject(key), function, params);
-				else if (function != null)
-					value = function.apply(name, value, params);
+					value = walkJSON(path2, jo.getJSONObject(key), filter, params);
+				else
+					value = walkJSON(path2, value, filter, params);
 				map.put(key, value);
 			}
-			retval = map;
+			object = map;
 		}
-		else if (o instanceof JSONArray) {
-			JSONArray ja = (JSONArray) o;
-			ArrayList<Object> list = new ArrayList<Object>();
+		else if (json instanceof JSONArray) {
+			JSONArray ja = (JSONArray) json;
+			ValList list = new ValList();
 			for (int i = 0; i < ja.length(); i++) 
-				list.add(walkJSON(prefix + String.format("(%d)", i), ja.get(i), function, params));
-			retval = list;
+				list.add(walkJSON(arrayappend(path, i), ja.get(i), filter, params));
+			object = list;
 		}
-		else if (function != null)
-			retval = function.apply(prefix, o, params);
+		else if (filter != null)
+			object = filter.apply(path, json, params);
 		
-		return retval;
+		return object;
+	}
+
+	public static Object member(Object[] path, Object object) {
+		for (int i = 0; i < path.length; i++) {
+			if (path[i] instanceof Integer) 
+				object = ((ValList)object).get((Integer) path[i]);
+			else
+				object = ((ValMap)object).get(path[i].toString());
+		}
+		return object;
+	}
+	
+	@SuppressWarnings("rawtypes")
+	public static void toJSON(JSONStringer stringer, String string, Object object, Function<Object> filter, Object...params) throws Exception {
+		if (notNullOrEmpty(string))
+			stringer.key(string);
+		
+		if (object instanceof Map) {
+			stringer.object();
+			Map map = (Map) object;
+			for (Object key : map.keySet()) 
+				toJSON(stringer, key.toString(), map.get(key), filter, params);
+			stringer.endObject();
+		}
+		else if (object instanceof Collection) {
+			stringer.array();
+			Iterator it = ((Collection) object).iterator();
+			while (it.hasNext()) 
+				toJSON(stringer, "", it.next(), filter, params);
+			stringer.endArray();
+		}
+		else {
+			if (filter != null)
+				object = filter.apply(object, params);
+			
+			if (object != null) 
+				stringer.value(object);
+		}
+	}
+
+	public static Document xmlDocument(File file) {
+	    try {
+			DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+			DocumentBuilder db = dbf.newDocumentBuilder();
+			return db.parse(file);
+	    } catch (Exception e) {
+	    	return null;
+	    }
 	}
 
 }

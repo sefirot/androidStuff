@@ -7,28 +7,30 @@ import java.awt.event.*;
 
 import javax.swing.*;
 
-import com.applang.Util;
+import static com.applang.Util.*;
 
 public class DatePicker
 {
-	SimpleDateFormat sdf = new SimpleDateFormat();
 	int monthOfYear, year;
 	int rows = 7, cols = 8;
 	String date;
 	JButton month = new JButton("");
 	JButton[] weeks, days;
-	Calendar cal = Calendar.getInstance();
+	Calendar cal = Calendar.getInstance(Locale.US);
+	SimpleDateFormat sdf = new SimpleDateFormat();
 	
 	Long[] timeLine = null;
 
 	public DatePicker(Component relative, Object... params) {
-		date = Util.paramString("", 0, params);
-		timeLine = Util.param(null, 1, params);
-		String title = Util.paramString("Date Picker", 2, params);
+		date = paramString("", 0, params);
+		timeLine = param(null, 1, params);
+		String title = paramString("Date Picker", 2, params);
+		
+		sdf.setCalendar(cal);
+		String[] header = { "", "S", "M", "T", "W", "T", "F", "S" };
 		
 		final JDialog dialog = new JDialog();
 		dialog.setModal(true);
-		String[] header = { "", "S", "M", "T", "W", "T", "F", "S" };
 		JPanel p1 = new JPanel(new GridLayout(rows, cols));
 		p1.setPreferredSize(new Dimension(600, 200));
 		final JButton[] buttons = new JButton[rows*cols];
@@ -124,8 +126,9 @@ public class DatePicker
 	};
 	
 	void displayDate() {
-		sdf.applyPattern(monthFormat);
 		cal.set(year, monthOfYear, 1);
+		sdf.applyPattern(monthFormat);
+		weekOfMonthOfFirstDayOfMonth = cal.get(Calendar.WEEK_OF_MONTH);
 		month.setText(sdf.format(cal.getTime()));
 		month.setToolTipText(month.getText());
 		clearDisplay();
@@ -144,6 +147,8 @@ public class DatePicker
 		for (int x = 0; x < days.length; x++) days[x].setText("");
 		for (int x = 0; x < weeks.length; x++) weeks[x].setText("");
 	}
+	
+	int weekOfMonthOfFirstDayOfMonth = 1;
 
 	private int setWeek(int weekInYear) {
 		int week = weekInYear;
@@ -152,11 +157,11 @@ public class DatePicker
 			int weekOfMonth = cal.get(Calendar.WEEK_OF_MONTH);
 			long time;
 			if (week > weekInYear && weekOfMonth > 1)
-				time = Util.timeInMillis(year + 1, Calendar.JANUARY, 1);
+				time = timeInMillis(year + 1, Calendar.JANUARY, 1);
 			else
 				time = cal.getTimeInMillis();
 			String format = sdf.format(time);
-			weeks[weekOfMonth - 1].setText(format);
+			weeks[weekOfMonth - weekOfMonthOfFirstDayOfMonth].setText(format);
 		}
 		return weekInYear;
 	}
@@ -166,7 +171,7 @@ public class DatePicker
 		boolean flag = false;
 		int crit = -1;
 		if (timeLine != null) {
-			long time = Util.timeInMillis(year, -monthOfYear, day);
+			long time = timeInMillis(year, -monthOfYear, day);
 			crit = Arrays.binarySearch(timeLine, time);
 			if (crit < 0) {
 				crit = -crit - 2; 
@@ -215,12 +220,18 @@ public class DatePicker
 
 	private String getDateString(String format) {
 		int kind = kindOfDate(date);
-		if (format.equals(weekFormat) && kind == 2)
+		if (weekFormat.equals(format) && kind == 2)
 			return date;
-		if (format.equals(monthFormat) && kind == 3)
+		if (monthFormat.equals(format) && kind == 3)
 			return date;
-		if (format.equals(calendarFormat) && kind == 1)
+		if (calendarFormat.equals(format) && kind == 1)
 			return date;
+		
+		if (!notNullOrEmpty(format))
+			if (kind > 0 || date.length() < 1)
+				return date;
+			else 
+				format = calendarFormat;
 		
 		setCalendar(date);
 		sdf.applyPattern(format);
@@ -228,14 +239,14 @@ public class DatePicker
 	}
 
 	public static void main(String[] args) {
-		long time = Util.now();
-		System.out.println(pickADate(time, calendarFormat, "", 
-				new Long[]{time - Util.getMillis(1) - 1, time}));
+		long time = now();
+		System.out.println(pickADate(time, "", "", 
+				new Long[]{time - getMillis(1) - 1, time}));
 	}
 
 	public static String pickADate(long time, String format, String title, Long[] timeLine) {
 		try {
-			String dateString = Util.formatDate(time, calendarFormat);
+			String dateString = formatDate(time, calendarFormat, Locale.getDefault());
 			return new DatePicker(null, dateString, timeLine, title)
 					.getDateString(format);
 		} catch (Exception e) {
@@ -286,8 +297,8 @@ public class DatePicker
 	}
 	
 	public static String weekDate(long[] interval) {
-		int[] val0 = parseWeekDate(Util.formatDate(interval[0], weekFormat));
-		int[] val1 = parseWeekDate(Util.formatDate(interval[1], weekFormat));
+		int[] val0 = parseWeekDate(formatDate(interval[0], weekFormat));
+		int[] val1 = parseWeekDate(formatDate(interval[1], weekFormat));
 		if (val1[0] - val0[0] == 1 && val0[1] != val1[1])
 			return val0[0] + "/" + val1[1] % 100;
 		else
@@ -307,16 +318,16 @@ public class DatePicker
 	}
 	
 	public static String monthDate(long[] interval) {
-		return Util.formatDate(interval[0], monthFormat);
+		return formatDate(interval[0], monthFormat);
 	}
 	
 	public static long[] dayInterval(String dateString, int days) {
-		Long date = Util.toTime(dateString, calendarFormat);
-		return Util.dayInterval(date, days);
+		Long date = toTime(dateString, calendarFormat);
+		return com.applang.Util.dayInterval(date, days);
 	}
 	
 	public static long[] weekInterval(String dateString, int weeks) {
-		Date date = Util.toDate(dateString, weekFormat);
+		Date date = toDate(dateString, weekFormat);
 		return weekInterval(date, weeks);
 	}
 	
@@ -324,11 +335,11 @@ public class DatePicker
 		if (date == null)
 			return null;
 		else
-			return Util.weekInterval(date, weeks);
+			return com.applang.Util.weekInterval(date, weeks);
 	}
 	
 	public static long[] monthInterval(String dateString, int months) {
-		Date date = Util.toDate(dateString, monthFormat);
+		Date date = toDate(dateString, monthFormat);
 		long[] interval = monthInterval(date, months);
 		return new long[] {interval[0], interval[1], interval[1]};
 	}
@@ -337,7 +348,7 @@ public class DatePicker
 		if (date == null)
 			return null;
 		else
-			return Util.monthInterval(date, months);
+			return com.applang.Util.monthInterval(date, months);
 	}
 	
 	public static long[] toInterval(String dateString, int size) {
@@ -349,13 +360,13 @@ public class DatePicker
 		case 1:
 			return dayInterval(dateString, size);
 		default:
-			return Util.dayInterval(Util.toTime(dateString), size);
+			return com.applang.Util.dayInterval(toTime(dateString), size);
 		}
 	}
 	
 	public static long[] nextWeekInterval(String dateString) {
 		long[] week = weekInterval(dateString, 2);
-		return Util.weekInterval(new Date(week[1]), -1);
+		return com.applang.Util.weekInterval(new Date(week[1]), -1);
 	}
 	
 	public static long[] previousWeekInterval(String dateString) {

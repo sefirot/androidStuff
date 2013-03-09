@@ -19,10 +19,9 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JToolBar;
 
-import com.applang.DataBaseConnection;
-import com.applang.SwingUtil;
-import com.applang.Util;
-import com.applang.Util2;
+import static com.applang.SwingUtil.*;
+import static com.applang.Util.*;
+import static com.applang.Util2.*;
 
 public class ActionPanel extends JPanel
 {
@@ -65,19 +64,19 @@ public class ActionPanel extends JPanel
 			
 			actionPanel.start(params);
 		} catch (Exception e) {
-			SwingUtil.handleException(e);
+			handleException(e);
 		}
 	}
 	
 	protected void start(Object... params) {
-		Util2.Settings.load();
+		Settings.load();
 	}
 	
 	protected void finish(Object... params) {
-		Util2.Settings.save();
+		Settings.save();
 	}
 	
-	public enum ActionType implements SwingUtil.IActionType
+	public enum ActionType implements IActionType
 	{
 		CALENDAR	(0, "calendar_16x16.png", "pick date from calendar"), 
 		PREVIOUS	(1, "Arrow Left_16x16.png", "previous note(s)"), 
@@ -117,32 +116,32 @@ public class ActionPanel extends JPanel
 		this.textArea = textArea;
 		setupTextArea();
 		
-		dbName = Util.paramString("databases/*", 0, params);
-		caption = Util.paramString("Database", 1, params);
+		dbName = com.applang.Util.paramString("databases/*", 0, params);
+		caption = com.applang.Util.paramString("Database", 1, params);
 		
 		setLayout(new FlowLayout(FlowLayout.LEADING));
 	}
 	
 	public void addToContainer(Container container, Object constraints) {
 		container.add(this, constraints);
-		SwingUtil.container = container;
+		container = container;
 	}
 
 	protected JButton[] buttons = new JButton[1 + ActionType.ACTIONS.index()];
 	
-	public void addButton(int index, SwingUtil.Action action) {
+	public void addButton(int index, Action action) {
 		if (index > -1 && index < buttons.length)
 			add(buttons[index] = new JButton(action));
 	}
 	
-	public SwingUtil.Action getAction(int index) {
+	public Action getAction(int index) {
 		if (index > -1 && index < buttons.length)
-			return (SwingUtil.Action) buttons[index].getAction();
+			return (Action) buttons[index].getAction();
 		else
 			return null;
 	}
 	
-	public void setAction(int index, SwingUtil.Action action) {
+	public void setAction(int index, Action action) {
 		if (index > -1 && index < buttons.length)
 			buttons[index].setAction(action);
 	}
@@ -193,7 +192,7 @@ public class ActionPanel extends JPanel
 
 	protected String chooseDatabase(String dbName) {
 		if (dbName != null) {
-			File file = SwingUtil.chooseFile(true, this, caption, new File(dbName), null);
+			File file = chooseFile(true, this, caption, new File(dbName), null);
 			if (file != null) 
 				dbName = file.getPath();
 		}
@@ -201,7 +200,11 @@ public class ActionPanel extends JPanel
 		return dbName;
 	}
 	
-	DataBaseConnection dbContext = new DataBaseConnection() {
+	DataBaseConnect dbConnect = new DataBaseConnect() {
+		@Override
+		public void preConnect(String path) throws Exception {
+			beforeConnecting(path);
+		}
 		@Override
 		public void postConnect() throws Exception {
 			afterConnecting();
@@ -209,19 +212,24 @@ public class ActionPanel extends JPanel
 	};
 
 	public Statement getStmt() {
-		return dbContext.stmt;
+		return dbConnect.getStmt();
 	}
 
 	public String getScheme() {
-		return dbContext.scheme;
+		return dbConnect.getScheme();
 	}
 
 	public Connection getCon() {
-		return dbContext.con;
+		return dbConnect.getCon();
 	}
 
-	public boolean openConnection(String dbPath, Object... params) {
-		return dbContext.open(dbPath, params);
+	public boolean openConnection(String dbPath, Object... params) throws Exception {
+		return dbConnect.open(dbPath, params);
+	}
+	
+	protected void beforeConnecting(String path) throws Exception {
+		if (path.endsWith("*"))
+			throw new Exception(String.format("'%s' is not a legal database name", path));
 	}
 	
 	protected void afterConnecting() throws Exception {

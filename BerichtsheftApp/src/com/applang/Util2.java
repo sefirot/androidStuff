@@ -10,9 +10,13 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -20,8 +24,6 @@ import java.util.Properties;
 import java.util.regex.MatchResult;
 import java.util.regex.Pattern;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Result;
 import javax.xml.transform.Transformer;
@@ -37,7 +39,6 @@ import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpression;
 import javax.xml.xpath.XPathFactory;
 
-import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
@@ -140,6 +141,7 @@ public class Util2
 	 * <table border="1"><tr><th>index</th><th>description</th></tr><tr><td>0</td><td>causes rounding of value if T is <code>Double</code></td></tr></table>
 	 */
 	@SuppressWarnings("unchecked")
+	//	used in xsl scripts
 	public static <T extends Object> void putSetting(String key, T value, Object... params) {
 		Object decimalPlace = param(null, 0, params);
 		if (value instanceof Double && decimalPlace instanceof Integer) {
@@ -155,6 +157,7 @@ public class Util2
 	 * @return	the value of the setting item
 	 */
 	@SuppressWarnings("unchecked")
+	//	used in xsl scripts
 	public static <T extends Object> T getSetting(String key, T defaultValue) {
 		try {
 			if (Settings.contains(key))
@@ -227,7 +230,7 @@ public class Util2
 				
 				boolean useSpecifiers = specs > 0 && specs <= params.length - i - 1;
 				if (useSpecifiers) {
-					Object[] args = Util2.arrayreduce(params, i + 1, specs);
+					Object[] args = arrayreduce(params, i + 1, specs);
 					for (int j = 0; j < args.length; j++)
 						args[j] = 
 							Util2.stringify(args[j], 
@@ -311,7 +314,105 @@ public class Util2
 		return (notNullOrEmpty(description) ? description : "") + 
 				value.substring(brac > -1 ? brac : 0);
 	}
+	
+	public static class DataBaseConnect
+	{
+		public boolean open(String dbPath, Object... params) {
+			boolean retval = false;
+			ResultSet rs = null;
+			try {
+				close();
+				
+				String driver = Util.paramString("org.sqlite.JDBC", 2, params);
+				Class.forName(driver);
+				
+				scheme = Util.paramString("sqlite", 1, params);
+				boolean memoryDb = "sqlite".equals(scheme) && dbPath == null;
+				
+				preConnect(dbPath);
+				
+				String url = "jdbc:" + scheme + ":" + (memoryDb ? "" : dbPath);
+				con = DriverManager.getConnection(url);
+				stmt = con.createStatement();
+				
+				postConnect();
+				
+				String database = Util.paramString("sqlite_master", 3, params);
+				if ("sqlite".equals(scheme))
+					rs = stmt.executeQuery("select name from " + database + " where type = 'table'");
+				else if ("mysql".equals(scheme)) {
+					rs = stmt.executeQuery("show databases;");
+					boolean exists = false;
+				    while (rs.next()) 
+				        if (rs.getString(1).equals(database)) {
+				        	exists = true;
+				        	break;
+				        }
+		        	rs.close();
+		        	if (!exists)
+		        		throw new Exception(String.format("database '%s' not found", database));
+		        	else
+		        		stmt.execute(String.format("use %s;", database));
+		        	
+					rs = stmt.executeQuery("show tables in " + database + ";");
+				}
+				
+				String tableName = Util.paramString(null, 0, params);
+				if (tableName == null)
+					return true;
+				
+			    while (rs.next()) 
+			        if (rs.getString(1).equals(tableName)) 
+			        	return true;
+			    
+			    return false;
+			} catch (Exception e) {
+				SwingUtil.handleException(e);
+				return retval;
+			} 
+			finally {
+				if (rs != null) {
+					try {
+						rs.close();
+					} catch (SQLException e) {
+						SwingUtil.handleException(e);
+						retval = false;
+					}
+				}
+			}
+		}
+		
+		public void preConnect(String path) throws Exception {
+		}
+		
+		public void postConnect() throws Exception {
+		}
 
+		public void close() {
+			try {
+				if (con != null && !con.isClosed())
+					con.close();
+			} catch (SQLException e) {
+				SwingUtil.handleException(e);
+			}
+		}
+		
+		private String scheme = null;
+		public String getScheme() {
+			return scheme;
+		}
+
+		private Connection con = null;
+		public Connection getCon() {
+			return con;
+		}
+
+		private Statement stmt = null;
+		public Statement getStmt() {
+			return stmt;
+		}
+	}
+	
 	public static ValMap getResultMap(PreparedStatement ps, Object...params) {
 		ValMap map = new ValMap();
 		Function<String> conversion = param(null, 0, params);
@@ -403,30 +504,12 @@ public class Util2
 		return sw.toString();
 	}
 
-	public static String xmlContent(Reader reader) throws Exception {
-		BufferedReader bufferedReader = new BufferedReader(reader);
-		String line, text = "";
-		while((line = bufferedReader.readLine()) != null)
-			text += line;
-		return text;
-	}
-
 	public static NodeList evaluateXPath(Object item, String path) {
 	    try {
 			XPathFactory factory = XPathFactory.newInstance();
 			XPath xpath = factory.newXPath();
 			XPathExpression expr = xpath.compile(path);
 			return (NodeList)expr.evaluate(item, XPathConstants.NODESET);
-	    } catch (Exception e) {
-	    	return null;
-	    }
-	}
-
-	public static Document xmlDocument(File file) {
-	    try {
-			DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-			DocumentBuilder db = dbf.newDocumentBuilder();
-			return db.parse(file);
 	    } catch (Exception e) {
 	    	return null;
 	    }
@@ -440,12 +523,13 @@ public class Util2
 		return System.getProperty("java.io.tmpdir");
 	}
 
+	//	used in xsl scripts
 	public static String tempPath(String subdir, String name) {
 		return Util2.pathCombine(Util2.tempDir(false, subdir).getPath(), name);
 	}
 
 	public static File tempDir(boolean deleteOnExistence, String... subdirs) {
-		File tempDir = fileOf(Util2.arrayextend(subdirs, true, tempPath()));
+		File tempDir = fileOf(arrayextend(subdirs, true, tempPath()));
 		if (!tempDir.mkdirs()) {
 	    	if (deleteOnExistence && deleteDirectory(tempDir))
 	    		tempDir.mkdir();
@@ -455,7 +539,7 @@ public class Util2
 
 	public static File tempFile(String nameWithExtension, String... subdirs) {
 		try {
-			File tempDir = fileOf(Util2.arrayextend(subdirs, true, tempPath()));
+			File tempDir = fileOf(arrayextend(subdirs, true, tempPath()));
 			String[] parts = nameWithExtension.split("\\.");
 			return File.createTempFile(parts[0], parts.length > 1 ? "." + parts[1] : "", tempDir);
 		} catch (IOException e) {
@@ -463,15 +547,27 @@ public class Util2
 		}
 	}
 
-	/**
-	 * @param <T>	type of the given array
-	 * @param <U>	type of the cast array
-	 * @param array	the given array
-	 * @param a	prototype of the cast array
-	 * @return	the cast array
-	 */
-	public static <T, U> U[] arraycast(T[] array, U[] a) {
-		return Arrays.asList(array).toArray(a);
+	public static String pathCombine(String... parts) {
+		File combined = fileOf(join(File.separator, parts));
+		if (combined == null)
+			return "";
+		
+		try {
+			return combined.getCanonicalPath();
+		} catch (IOException e) {
+			return combined.getPath();
+		}
+	}
+
+	public static String pathDivide(String path, String prefix) {
+		String pat = prefix.replaceAll(
+				osWindows() ? File.separator + File.separator : File.separator, 
+				"(\\\\\\\\|/)");
+		MatchResult m = findFirstIn(path, Pattern.compile("^" + pat + "(\\\\|/)"));
+		if (m != null)
+			return path.substring(m.group().length(), path.length());
+		else
+			return path;
 	}
 
 	public static <T> T[] arrayreduce(T[] array, int start, int length) {
@@ -496,29 +592,6 @@ public class Util2
 			System.arraycopy(params, 0, a, array.length, params.length);
 		}
 		return a;
-	}
-
-	public static String pathCombine(String... parts) {
-		File combined = fileOf(join(File.separator, parts));
-		if (combined == null)
-			return "";
-		
-		try {
-			return combined.getCanonicalPath();
-		} catch (IOException e) {
-			return combined.getPath();
-		}
-	}
-
-	public static String pathDivide(String path, String prefix) {
-		String pat = prefix.replaceAll(
-				osWindows() ? File.separator + File.separator : File.separator, 
-				"(\\\\\\\\|/)");
-		MatchResult m = findFirstIn(path, Pattern.compile("^" + pat + "(\\\\|/)"));
-		if (m != null)
-			return path.substring(m.group().length(), path.length());
-		else
-			return path;
 	}
 
 }
