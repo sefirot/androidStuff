@@ -17,8 +17,9 @@
 package com.applang.wetterberichte;
 
 import com.applang.berichtsheft.R;
+import com.applang.provider.NotePad.Notes;
 import com.applang.provider.WeatherInfo.Weathers;
-
+import com.applang.tagesberichte.NotesList;
 
 import android.app.ListActivity;
 import android.content.ComponentName;
@@ -37,7 +38,6 @@ import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
-import android.widget.Toast;
 
 /**
  * Displays a list of notes. Will display notes from the {@link Uri}
@@ -45,32 +45,28 @@ import android.widget.Toast;
  * contents of the {@link NotePadProvider}
  */
 public class WeatherList extends ListActivity {
-    private static final String TAG = "PlantsList";
+    private static final String TAG = "WeatherList";
 
     // Menu item ids
     public static final int MENU_ITEM_DELETE = Menu.FIRST;
     public static final int MENU_ITEM_INSERT = Menu.FIRST + 1;
-    public static final int MENU_ITEM_SORTBY = Menu.FIRST + 2;
-    public static final int MENU_ITEM_QUERY = Menu.FIRST + 3;
-    private static final int ACTIVITY_TOGGLE_ORDER=5;
-    int location;
-    
 
     /**
      * The columns we are interested in from the database
      */
     private static final String[] PROJECTION = new String[] {
             Weathers._ID, // 0
-            Weathers.DESCRIPTION, // 1
-            Weathers.LOCATION, // 2
-            Weathers.PRECIPITATION, // 3
-            Weathers.MINTEMP, // 4
-            Weathers.MAXTEMP, // 5
+            Weathers.LOCATION, // 1
+            Weathers.CREATED_DATE, // 2
+            Weathers.DESCRIPTION, // 3
+            Weathers.PRECIPITATION, // 4
+            Weathers.MINTEMP, // 5
+            Weathers.MAXTEMP, // 6
     };
 
     /** The index of the title column */
-    private static final int COLUMN_INDEX_TITLE = 1;
-    private static final int COLUMN_INDEX_FAMILY = 2;
+    private static final int COLUMN_INDEX_LOCAION = 1;
+    private static final int COLUMN_INDEX_CREATED = 2;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -84,30 +80,8 @@ public class WeatherList extends ListActivity {
         if (intent.getData() == null) {
             intent.setData(Weathers.CONTENT_URI);
         }
-        location = 0; 
-       
-        setListView();   
-    } 
-       
-    private void setListView() {
-    	
-    	String UpperString = null, LowerString = null;	
-    	int UpperViewId = -1, LowerViewId = -1;
-    	
-    	switch (location){
-    	case 0:
-    		UpperString = Weathers.DESCRIPTION; 
-    		LowerString = Weathers.LOCATION;
-    	break;
-    	case 1:
-    		UpperString = Weathers.PRECIPITATION; 
-    		LowerString = Weathers.MINTEMP;
-    	}
-    
-    	
-    	
-    	
-    	// Inform the list we provide context menus for items
+
+        // Inform the list we provide context menus for items
         getListView().setOnCreateContextMenuListener(this);
         
         // Perform a managed query. The Activity will handle closing and requerying the cursor
@@ -116,13 +90,13 @@ public class WeatherList extends ListActivity {
                 Weathers.DEFAULT_SORT_ORDER);
 
         // Used to map notes entries from the database to views
-        SimpleCursorAdapter adapter = new SimpleCursorAdapter(this, R.layout.plantslist_item, cursor,
-                new String[] {UpperString,LowerString}, new int[] {UpperViewId,LowerViewId}){
+        SimpleCursorAdapter adapter = new SimpleCursorAdapter(this, R.layout.weatherlist_item, cursor,
+                new String[] { Weathers.LOCATION, Weathers.CREATED_DATE }, new int[] { R.id.location, R.id.date }) {
         	@Override
         	public void setViewText(TextView v, String text) {
         		switch (v.getId()) {
-				case R.id.lower_text:
-					super.setStringConversionColumn(1);
+				case R.id.date:
+					text = NotesList.getDateString(Long.parseLong(text));
 
 				default:
 	        		super.setViewText(v, text);
@@ -130,12 +104,7 @@ public class WeatherList extends ListActivity {
         	}
         };
         setListAdapter(adapter);
-    	
-        Toast.makeText(this, "location:" + location,
-        		
-				Toast.LENGTH_LONG).show();
-        
-    }
+    } 
     
 
 	@Override
@@ -147,14 +116,7 @@ public class WeatherList extends ListActivity {
         menu.add(0, MENU_ITEM_INSERT, 0, R.string.menu_insert)
                 .setShortcut('3', 'a')
                 .setIcon(android.R.drawable.ic_menu_add);
-        
-        menu.add(0, MENU_ITEM_SORTBY, 0, R.string.menu_sort_by)
-        .setShortcut('4', 'a')
-        .setIcon(android.R.drawable.ic_menu_add);
 
-        menu.add(0, MENU_ITEM_QUERY, 0, R.string.query)
-        .setShortcut('4', 'a')
-        .setIcon(android.R.drawable.ic_menu_add);
         // Generate any additional actions that can be performed on the
         // overall list.  In a normal install, there are no additional
         // actions found here, but this allows other applications to extend
@@ -210,39 +172,8 @@ public class WeatherList extends ListActivity {
             // Launch activity to insert a new item
             startActivity(new Intent(Intent.ACTION_INSERT, getIntent().getData()));
             return true;
-        case MENU_ITEM_SORTBY:
-        	/*	try {  **/
-			// Launch activity to choose option in order to sort list entries
-//        		Intent sortOrder = new Intent(this, SortBySpinner.class);
-//        		Bundle sortBundle = new Bundle();
-//        		sortBundle.putInt("location", location);
-//        		
-//        		sortOrder.putExtras(sortBundle);
-//        		startActivityForResult(sortOrder,ACTIVITY_TOGGLE_ORDER);
-			/*	return true; 
-			} catch (ActivityNotFoundException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} **/
-        case MENU_ITEM_QUERY:
-            // Launch activity to insert a new item
-//            startActivity(new Intent(this, PlantsQuery.class));
-            return true;
         }
         return super.onOptionsItemSelected(item);
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent sortOrder) {
-        super.onActivityResult(requestCode, resultCode, sortOrder);
-        
-        if(sortOrder != null)
-        {
-        	Bundle sortBundle = sortOrder.getExtras();
-        	location = sortBundle.getInt("location");
-        }
-        
-        setListView();
     }
     
     @Override
@@ -262,7 +193,7 @@ public class WeatherList extends ListActivity {
         }
 
         // Setup the menu header
-        menu.setHeaderTitle(cursor.getString(COLUMN_INDEX_TITLE));
+        menu.setHeaderTitle(cursor.getString(COLUMN_INDEX_LOCAION));
 
         // Add a menu item to delete the note
         menu.add(0, MENU_ITEM_DELETE, 0, R.string.menu_delete);

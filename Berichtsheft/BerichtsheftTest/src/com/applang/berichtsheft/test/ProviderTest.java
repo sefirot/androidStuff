@@ -3,9 +3,7 @@ package com.applang.berichtsheft.test;
 import java.io.File;
 import java.io.IOException;
 import java.util.Date;
-import java.util.concurrent.CountDownLatch;
 
-import android.app.Service;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.database.Cursor;
@@ -15,13 +13,12 @@ import android.test.*;
 import com.applang.ImpexTask;
 import com.applang.berichtsheft.*;
 import com.applang.provider.NotePad.Notes;
-import com.applang.provider.PlantInfo;
 import com.applang.provider.PlantInfo.Plants;
-import com.applang.provider.PlantInfoProvider;
 import com.applang.provider.WeatherInfo.Weathers;
 
-public class ProviderTest extends ActivityInstrumentationTestCase2<BerichtsheftActivity>  {
-
+@SuppressWarnings("deprecation")
+public class ProviderTest extends ActivityInstrumentationTestCase<BerichtsheftActivity>
+{
 	public ProviderTest() {
 		super("com.applang.berichtsheft", BerichtsheftActivity.class);
 	}

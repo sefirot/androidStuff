@@ -8,36 +8,17 @@ import android.util.Log;
 public class VelocityLogger implements LogChute {
 	private final static String tag = "Velocity";
  
-	@Override
 	public void init(RuntimeServices arg0) throws Exception {
 	}
  
-	@Override
 	public boolean isLevelEnabled(int level) {
 		return level > LogChute.DEBUG_ID;
 	}
  
-	@Override
 	public void log(int level, String msg) {
-		switch(level) {
-			case LogChute.DEBUG_ID:
-				Log.d(tag,msg);
-				break;
-			case LogChute.ERROR_ID:
-				Log.e(tag,msg);
-				break;
-			case LogChute.INFO_ID:
-				Log.i(tag,msg);
-				break;
-			case LogChute.TRACE_ID:
-				Log.d(tag,msg);
-				break;
-			case LogChute.WARN_ID:
-				Log.w(tag,msg);
-		}
+		log(level, msg, null);
 	}
  
-	@Override
 	public void log(int level, String msg, Throwable t) {
 		switch(level) {
 			case LogChute.DEBUG_ID:

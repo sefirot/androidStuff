@@ -1,6 +1,7 @@
 package com.applang.wetterberichte;
 
 import java.io.StringWriter;
+import java.util.Arrays;
 
 import org.apache.velocity.Template;
 import org.apache.velocity.VelocityContext;
@@ -47,35 +48,36 @@ public class WeatherView extends Activity
 			String jsonText = readFromUrl(url, "UTF-8");
 			JSONObject json = new JSONObject(jsonText);
 			
-			Object openweather = walkJSON("", json, new Function<Object>() {
+			Object openweather = walkJSON(null, json, new Function<Object>() {
 				public Object apply(Object...params) {
-					String name = paramString(null, 0, params);
+					Object[] path = param(null, 0, params);
 					Object value = param(null, 1, params);
-					if (name.endsWith("dt"))
+					String name = Arrays.toString(path);
+					if ("dt".equals(path[path.length - 1]))
 						value = formatDate(toLong(0L,value.toString()) * 1000);
 					else if (name.contains("temp"))
-						value = round(toDouble(0D, value.toString()) + absoluteZero, 2);
+						value = kelvin2celsius(value);
 					return value;
 				}
 			});
 			
 			VelocityContext vc = new VelocityContext();
-			vc.put("openweather", openweather);
+			vc.put("weather", openweather);
 			
-			mergeAndLoadTemplate(vc, "weather");
+			mergeTemplateAndLoad(vc, "weather");
 		} catch (Exception e) {
             Log.e(TAG, "URL read", e);
 		}
 	}
 	
-	void mergeAndLoadTemplate(Context vc, String templateName) {
+	void mergeTemplateAndLoad(Context vc, String templateName) {
 		StringWriter sw = new StringWriter();
 		Template template = Velocity.getTemplate(templateName);
 		template.merge(vc, sw);
 		webView.loadData(sw.toString(), "text/html", "UTF-8");
 	}
 	
-	void evaluateAndLoadTemplate(Context vc, String template, String logTag) {
+	void evaluateTemplateAndLoad(Context vc, String template, String logTag) {
 		StringWriter sw = new StringWriter();
 		Velocity.evaluate( vc, sw, logTag, template );
 		webView.loadData(sw.toString(), "text/html", "UTF-8");

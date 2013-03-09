@@ -48,7 +48,7 @@ import android.widget.TextView;
  * contents of the {@link NotePadProvider}
  */
 public class NotesList extends ListActivity {
-    private static final String TAG = "PlantsList";
+    private static final String TAG = "NotesList";
 
     // Menu item ids
     public static final int MENU_ITEM_DELETE = Menu.FIRST;
@@ -111,12 +111,12 @@ public class NotesList extends ListActivity {
         // Used to map notes entries from the database to views
 //        SimpleCursorAdapter adapter = new SimpleCursorAdapter(this, R.layout.noteslist_item, cursor,
 //                new String[] { Notes.TITLE }, new int[] { android.R.id.text1 });
-        SimpleCursorAdapter adapter = new SimpleCursorAdapter(this, R.layout.noteslist_item2, cursor,
-                new String[] { Notes.TITLE, Notes.CREATED_DATE }, new int[] { R.id.textView1, R.id.textView2 }) {
+        SimpleCursorAdapter adapter = new SimpleCursorAdapter(this, R.layout.noteslist_item, cursor,
+                new String[] { Notes.TITLE, Notes.CREATED_DATE }, new int[] { R.id.category, R.id.created }) {
         	@Override
         	public void setViewText(TextView v, String text) {
         		switch (v.getId()) {
-				case R.id.textView2:
+				case R.id.created:
 					text = getDateString(Long.parseLong(text));
 
 				default:
