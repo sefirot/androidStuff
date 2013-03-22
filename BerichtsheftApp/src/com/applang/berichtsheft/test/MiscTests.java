@@ -139,17 +139,17 @@ public class MiscTests extends XMLTestCase
 	}
 	
 	public void _testAllNotesIn2012() throws Exception {
-		assertTrue(np.openConnection("databases/berichtsheft.db"));
+		assertTrue(np.openConnection("/home/sephirot/Dropbox/Projekt_Berichtsheft/note_pad_jan-feb-2013.db"));
 		long[] time = new long[]{
-				timeInMillis(2012, -7, 1),
 				timeInMillis(2013, 0, 1),
+				timeInMillis(2013, -2, 1),
 		};
-		PreparedStatement ps = np.preparePicking(true, NotePicker.bAndB, time);
+		PreparedStatement ps = np.preparePicking(true, NotePicker.allCategories, time);
 		ResultSet rs = ps.executeQuery();
 		np.registerNotes(rs);
 		String text = np.all();
 //		System.out.println(text);
-		contentsToFile(new File("/tmp/allBAndB.txt"), text);
+		contentsToFile(new File("/tmp/allBnB_jan_feb2.txt"), text);
 	}
 	
 	int test_data(boolean empty, 

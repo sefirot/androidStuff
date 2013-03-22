@@ -242,7 +242,8 @@ public class PlantsList extends ListActivity {
 			} **/
         case MENU_ITEM_QUERY:
             // Launch activity to insert a new item
-            startActivity(new Intent(this, PlantsQuery.class));
+            // startActivity(new Intent(this, PlantsQuery.class));
+            startActivity(new Intent(Intent.ACTION_VIEW, getIntent().getData(), getApplicationContext(), PlantsQuery.class));
             return true;
         }
         return super.onOptionsItemSelected(item);
