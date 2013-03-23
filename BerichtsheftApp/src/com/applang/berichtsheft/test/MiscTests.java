@@ -139,20 +139,20 @@ public class MiscTests extends XMLTestCase
 	}
 	
 	public void _testAllNotesIn2012() throws Exception {
-		assertTrue(np.openConnection("/home/sephirot/Dropbox/Projekt_Berichtsheft/note_pad_jan-feb-2013.db"));
+		assertTrue(np.openConnection("databases/berichtsheft.db"));
 		long[] time = new long[]{
+				timeInMillis(2012, -7, 1),
 				timeInMillis(2013, 0, 1),
-				timeInMillis(2013, -2, 1),
 		};
-		PreparedStatement ps = np.preparePicking(true, NotePicker.allCategories, time);
+		PreparedStatement ps = np.preparePicking(true, NotePicker.bAndB, time);
 		ResultSet rs = ps.executeQuery();
 		np.registerNotes(rs);
 		String text = np.all();
 //		System.out.println(text);
-		contentsToFile(new File("/tmp/allBnB_jan_feb2.txt"), text);
+		contentsToFile(new File("/tmp/allBAndB.txt"), text);
 	}
 	
-	int test_data(boolean empty, 
+	int generateData(boolean empty, 
 			Pattern expat, int grp, 
 			int[][] dates, String[] categories, 
 			Integer... params) throws Exception 
@@ -199,15 +199,8 @@ public class MiscTests extends XMLTestCase
 		new File(test_db).delete();
 		assertTrue(np.openConnection(test_db));
 		
-		int cnt = test_data(true, expat, 1, dates, categories, 2);
+		int cnt = generateData(true, expat, 1, dates, categories, 2);
 		assertEquals(dates.length, cnt);
-		
-		try {
-			assertThat(
-					np.insert(4, "", np.getCategory(), timeInMillis(dates[2][0], dates[2][1], dates[2][2])), 
-					is(greaterThan(-1)));
-			fail("expected to fail on UNIQUE constraint in the notes table");
-		} catch (Exception e) {}
 	}
 
 	String test_db = "/tmp/test.db";
@@ -220,19 +213,19 @@ public class MiscTests extends XMLTestCase
 		
 		int length = 19;
 		assertEquals(length, 
-				test_data(true, expat, 1, 
+				generateData(true, expat, 1, 
 				dates, 
 				new String[] {"1."}, 
 				2, length));
 		length = 7;
 		assertEquals(length, 
-				test_data(false, expat, 1, 
+				generateData(false, expat, 1, 
 				dates, 
 				new String[] {"2."}, 
 				21, length));
 		length = 10;
 		assertEquals(length, 
-				test_data(false, expat, 1, 
+				generateData(false, expat, 1, 
 				dates, 
 				new String[] {"3."}, 
 				28, length));
@@ -246,7 +239,7 @@ public class MiscTests extends XMLTestCase
 				"com.mysql.jdbc.Driver", 
 				"note_pad");
 		
-		int cnt = test_data(true, NotePicker.notePattern1, 2, dates, categories);
+		int cnt = generateData(true, NotePicker.notePattern1, 2, dates, categories);
 		
 		PreparedStatement ps = np.getCon().prepareStatement("select _id from notes");
 		assertEquals(cnt, np.registerNotes(ps.executeQuery()));
@@ -323,7 +316,7 @@ public class MiscTests extends XMLTestCase
 		assertTrue(finder.bunchAvailable(interval[1]));
 		assertFalse(finder.nextBunchAvailable(interval[1]));
 		
-		test_data(false, expat, 1, new int[][] {
+		generateData(false, expat, 1, new int[][] {
 				{2012, 51, Calendar.THURSDAY}, 
 				{2012, 52, Calendar.THURSDAY}, 
 				{2013, 2, Calendar.THURSDAY}, 

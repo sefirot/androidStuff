@@ -304,14 +304,16 @@ public class NotePicker extends ActionPanel
 			    		"title TEXT," +
 			    		"note TEXT," +
 			    		"created INTEGER," +
-			    		"modified INTEGER, UNIQUE (created, title))");
+			    		"modified INTEGER, " +
+			    		"UNIQUE (created, title))");
 			else if ("mysql".equals(getScheme())) 
 				getStmt().execute("CREATE TABLE notes (" +
 			    		"_id BIGINT PRIMARY KEY," +
 			    		"title VARCHAR(40)," +
 			    		"note TEXT," +
 			    		"created BIGINT," +
-			    		"modified BIGINT, UNIQUE (created, title))");
+			    		"modified BIGINT, " +
+			    		"UNIQUE (created, title))");
 		    
 		    return true;
 		} catch (Exception e) {

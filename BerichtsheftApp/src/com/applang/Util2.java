@@ -2,12 +2,16 @@ package com.applang;
 
 import java.beans.XMLDecoder;
 import java.beans.XMLEncoder;
-import java.io.BufferedReader;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.Reader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.sql.Connection;
@@ -45,6 +49,7 @@ import org.w3c.dom.NodeList;
 import com.applang.Util.ValMap;
 
 import static com.applang.Util.*;
+import static com.applang.SwingUtil.*;
 
 public class Util2
 {
@@ -367,7 +372,7 @@ public class Util2
 			    
 			    return false;
 			} catch (Exception e) {
-				SwingUtil.handleException(e);
+				handleException(e);
 				return retval;
 			} 
 			finally {
@@ -375,7 +380,7 @@ public class Util2
 					try {
 						rs.close();
 					} catch (SQLException e) {
-						SwingUtil.handleException(e);
+						handleException(e);
 						retval = false;
 					}
 				}
@@ -393,7 +398,7 @@ public class Util2
 				if (con != null && !con.isClosed())
 					con.close();
 			} catch (SQLException e) {
-				SwingUtil.handleException(e);
+				handleException(e);
 			}
 		}
 		
@@ -411,23 +416,66 @@ public class Util2
 		public Statement getStmt() {
 			return stmt;
 		}
+		
+		public static boolean bulkSqlite(File db, File sql) {
+        	try {
+				ProcessBuilder builder = new ProcessBuilder(
+					"sqlite3", 
+					db.getCanonicalPath())
+						.redirectErrorStream(true);
+				
+				Process process = builder.start();
+				OutputStream outputStream = process.getOutputStream();
+				OutputStreamWriter osw = new OutputStreamWriter(new BufferedOutputStream(outputStream));
+				osw.write(contentsFromFile(sql));
+				osw.close();
+				
+				int exitcode = process.waitFor();
+				return exitcode == 0;
+			} catch (Exception e) {
+				handleException(e);
+				return false;
+			}
+		}
+		
+		public static boolean dumpSqlite(File db, File dump) {
+        	try {
+				ProcessBuilder builder = new ProcessBuilder(
+					"sqlite3", 
+					db.getCanonicalPath(),
+					".dump")
+						.redirectErrorStream(true);
+				
+				Process process = builder.start();
+				InputStream inputStream = process.getInputStream();
+				InputStreamReader isw = new InputStreamReader(new BufferedInputStream(inputStream));
+				contentsToFile(dump, readAll(isw));
+				isw.close();
+				
+				int exitcode = process.waitFor();
+				return exitcode == 0;
+			} catch (Exception e) {
+				handleException(e);
+				return false;
+			}
+		}
 	}
 	
 	public static ValMap getResultMap(PreparedStatement ps, Object...params) {
 		ValMap map = new ValMap();
-		Function<String> conversion = param(null, 0, params);
-		Function<Object> conversion2 = param(null, 1, params);
+		Function<String> keyConversion = param(null, 0, params);
+		Function<Object> valueConversion = param(null, 1, params);
 		try {
 			int keyColumn = 1;
 			int valueColumn = 2;
 			ResultSet rs = ps.executeQuery();
 			while (rs.next()) {
 				String key = rs.getString(keyColumn);
-				if (conversion != null) 
-					key = conversion.apply(key, rs);
+				if (keyConversion != null) 
+					key = keyConversion.apply(key, rs);
 				Object value = rs.getObject(valueColumn);
-				if (conversion2 != null) 
-					value = conversion2.apply(value, rs);
+				if (valueConversion != null) 
+					value = valueConversion.apply(value, rs);
 				map.put(key, value);
 			}
 			rs.close();
@@ -485,8 +533,7 @@ public class Util2
 	}
 
 	static Transformer xmlTransformer(boolean omitXmlDeclaration)
-			throws TransformerConfigurationException,
-			TransformerFactoryConfigurationError {
+			throws TransformerConfigurationException, TransformerFactoryConfigurationError {
 		Transformer t = TransformerFactory.newInstance().newTransformer();
 		t.setOutputProperty(OutputKeys.METHOD, "xml");
 		t.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, omitXmlDeclaration ? "yes" : "no");

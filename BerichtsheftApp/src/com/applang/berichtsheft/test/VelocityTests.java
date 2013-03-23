@@ -1,7 +1,10 @@
 package com.applang.berichtsheft.test;
 
+import java.io.File;
 import java.io.StringWriter;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.text.DateFormat;
 import java.util.Arrays;
 import java.util.Date;
@@ -13,13 +16,12 @@ import java.util.Properties;
 import org.json.JSONObject;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.Velocity;
-import org.apache.velocity.app.tools.VelocityFormatter;
-import org.apache.velocity.context.AbstractContext;
 import org.apache.velocity.context.Context;
 import org.apache.velocity.runtime.RuntimeSingleton;
 
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
+import static com.applang.VelocityUtil.*;
 import com.applang.berichtsheft.ui.components.DatePicker;
 
 import junit.framework.TestCase;
@@ -102,7 +104,7 @@ public class VelocityTests extends TestCase {
 		Date today = new Date();
 		
 		VelocityContext context = new VelocityContext();
-		context.put("formatter", new VelocityFormatter(context));
+		context.put("formatter", new org.apache.velocity.app.tools.VelocityFormatter(context));
 		context.put("today", today);
 		
 		StringWriter writer = new StringWriter();
@@ -114,80 +116,105 @@ public class VelocityTests extends TestCase {
 	}
 
 	DataBaseConnect dbCon = new DataBaseConnect();
+	String test_db = "/tmp/test.db", test_sql = "/tmp/test.sql";
 	
-	public class WeatherContext extends AbstractContext
-	{
-		public WeatherContext(String dateString, String location, String itemName) {
-			assertTrue(dbCon.open("databases/weather_info.db"));
-			String sql = String.format("select created,%s from weathers", itemName);
-			sql += " where created between ? and ? and location = ?";
-			try {
-				long[] interval = DatePicker.toInterval(dateString, 1);
-				PreparedStatement ps = dbCon.getCon().prepareStatement(sql);
-				ps.setLong(1, interval[0]);
-				ps.setLong(2, interval[1] - 1);
-				ps.setString(3, location);
-				map = getResultMap(ps,
-					new Function<String>() {
-						public String apply(Object... params) {
-							return formatDate(Long.parseLong(params[0].toString()));
-						}
-					}, 
-					new Function<Object>() {
-						public Object apply(Object... params) {
-							return params[0] + " mm";
-						}
-					}
-				);
-			} catch (Exception e) {
-				fail(e.getMessage());
-			}
-			dbCon.close();
-		}
-
-		ValMap map = null;
+	String sqlTemplate = "PRAGMA foreign_keys=OFF;" +
+			"BEGIN TRANSACTION;" +
+			"DROP TABLE if exists notes;" +
+			"CREATE TABLE notes (_id INTEGER PRIMARY KEY AUTOINCREMENT,title TEXT,note TEXT,created INTEGER,modified INTEGER);" +
+			"%s" +
+			"COMMIT;";
+	String insertTemplate = 
+			"INSERT INTO notes (title,note,created,modified) VALUES ('%s', '%s', %s, 1000*strftime('%%s','now'));";
+	
+	public void testNoteContext() throws SQLException {
+		String[] args = {
+				"ein", "kein", "null", 
+				"Kein", "$ein", "null", 
+				"Fehler", "efhler", "null", 
+				"eFhler", "ehfler", "null", 
+				"ehFler", "ehlfer", "null", 
+				"Im", "im", "null", 
+				"System", "system", "null", 
+				"Bemerkung", "$Kein $Fehler $Im $System", "" + now(), 	
+				"Bemerkung", "$Kein $eFhler $Im $System", "" + now(), 	
+				"Bemerkung", "$Kein $ehFler $Im $System", "" + now(), 	
+		};
+		String insert = "";
+		for (int i = 0; i < args.length - 2; i+=3) 
+			insert += String.format(insertTemplate, args[i], args[i+1], args[i+2]);
 		
-		@Override
-		public Object internalGet(String key) {
-			return map == null ? null : map.get(key.substring(1));
+		File db = new File(test_db);
+		File sql = new File(test_sql);
+		contentsToFile(sql, String.format(sqlTemplate, insert));
+		assertTrue(DataBaseConnect.bulkSqlite(db, sql));
+		assertTrue(DataBaseConnect.dumpSqlite(db, sql));
+//		println(contentsFromFile(sql));
+		
+		ValMap map = null;
+		assertTrue(dbCon.open(test_db));
+		try {
+			String s = "select title,note from notes where created is null group by title order by modified desc";
+			PreparedStatement ps = dbCon.getCon().prepareStatement(s);
+			map = getResultMap(ps);
+		} catch (Exception e) {
+			fail(e.getMessage());
 		}
+		dbCon.close();
 
-		@Override
-		public Object internalPut(String key, Object value) {
-			return map == null ? null : map.put(key, value);
+		MapContext nc = new MapContext(map);
+		assertEquals(args.length / 3 - 3, nc.getKeys().length);
+		
+		assertTrue(dbCon.open(test_db));
+		ResultSet rs = dbCon.getStmt().executeQuery("select note from notes where created not null");
+		while (rs.next()) {
+			String s = rs.getString(1);
+			while ((s = evaluation(nc, s, "notes")).contains("$")) ;
+			println(s);
 		}
-
-		@Override
-		public boolean internalContainsKey(Object key) {
-			return map == null ? false : map.containsKey(key);
-		}
-
-		@Override
-		public Object[] internalGetKeys() {
-			return map == null ? new Object[0] : map.keySet().toArray();
-		}
-
-		@Override
-		public Object internalRemove(Object key) {
-			return map == null ? null : map.remove(key);
-		}
+		dbCon.close();
 	}
 
 	public void testWeatherContext() {
         RuntimeSingleton.init( new Properties() );
+
+		ValMap map = null;
+		assertTrue(dbCon.open("databases/weather_info.db"));
+		String sql = "select created,precipitation from weathers";
+		sql += " where created between ? and ? and location = ?";
+		try {
+			String dateString = "2012-12-01", location = "10519";
+			long[] interval = DatePicker.toInterval(dateString, 1);
+			PreparedStatement ps = dbCon.getCon().prepareStatement(sql);
+			ps.setLong(1, interval[0]);
+			ps.setLong(2, interval[1] - 1);
+			ps.setString(3, location);
+			map = getResultMap(ps,
+				new Function<String>() {
+					public String apply(Object... params) {
+						return formatDate(Long.parseLong(params[0].toString()));
+					}
+				}, 
+				new Function<Object>() {
+					public Object apply(Object... params) {
+						return params[0] + " mm";
+					}
+				}
+			);
+		} catch (Exception e) {
+			fail(e.getMessage());
+		}
+		dbCon.close();
+
+		MapContext wc = new MapContext(map);
 		
-		WeatherContext wc = new WeatherContext(
-				"2012-12-01", 
-				"10519", 
-				"precipitation");
-		
-        printEvaluatedTemplate(wc, 
+		println(evaluation(wc, 
         		"Niederschlag am 2012-12-01 : $D2012-12-01", 
-        		"weather");
+        		"weather"));
 
 		VelocityContext vc = new VelocityContext();
 		assertTrue(dbCon.open("databases/weather_info.db"));
-		String sql = "select created,precipitation,maxtemp,mintemp,description from weathers";
+		sql = "select created,precipitation,maxtemp,mintemp,description from weathers";
 		sql += " where created between ? and ? and location = ?";
 		try {
 			long[] interval = DatePicker.toInterval("50/2012", 1);
@@ -223,17 +250,11 @@ public class VelocityTests extends TestCase {
 		}
 		dbCon.close();
 		
-		printEvaluatedTemplate(vc, 
+		println(evaluation(vc, 
 				"#foreach ($result in $results) " +
 				"am $result.created $result.description bei zwischen $result.mintemp und $result.maxtemp \n" +
 				"#end", 
-				"weather");
-	}
-	
-	void printEvaluatedTemplate(Context vc, String template, String logTag) {
-		StringWriter w = new StringWriter();
-		Velocity.evaluate( vc, w, logTag, template );
-		println(w.toString());
+				"weather"));
 	}
 
 	public void testOpenWeather1() throws Exception {
@@ -257,12 +278,12 @@ public class VelocityTests extends TestCase {
 		VelocityContext vc = new VelocityContext();
 		vc.put("weather", openweather);
 		
-		printEvaluatedTemplate(vc, 
+		println(evaluation(vc, 
 				"\n$weather.name, $weather.date\n" +
 				"#foreach ($w in $weather.weather) " +
 					"$w.description \n" +
 				"#end", 
-				"openweather");
+				"openweather"));
 	}
 	
 	public void testOpenWeather2() throws Exception {
@@ -294,12 +315,12 @@ public class VelocityTests extends TestCase {
 		VelocityContext vc = new VelocityContext();
 		vc.put("openweather", openweather);
 		
-		printEvaluatedTemplate(vc, 
+		println(evaluation(vc, 
 				"\n$openweather.station_id\n" +
 				"#foreach ($day in $openweather.list) " +
 					"$day.dt temperature between $day.main.temp.v and $day.main.temp_max °C\n" +
 				"#end", 
-				"openweather");
+				"openweather"));
 	}
 	
 	public void testOpenWeather3() throws Exception {

@@ -211,7 +211,8 @@
 		<activity android:name="com.applang.pflanzen.SortBySpinner" 
 			android:label="@string/sort_by"
 			android:theme="@android:style/Theme.Dialog"
-            android:windowSoftInputMode="stateVisible">
+            android:windowSoftInputMode="stateVisible"
+        >
             <!-- This activity implements an alternative action that can be
                  performed on notes: editing their title.  It can be used as
                  a default operation if the user invokes this action, and is
@@ -238,16 +239,7 @@
             android:theme="@android:style/Theme.Light"
             android:label="@string/plant_note"
             android:screenOrientation="sensor"
-            android:configChanges="keyboardHidden|orientation">
-            
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <action android:name="android.intent.action.EDIT" />
-                <action android:name="android.intent.action.PICK" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="vnd.android.cursor.dir/vnd.applang.plant" />
-            </intent-filter>    
-        </activity>
+            android:configChanges="keyboardHidden|orientation"/>
 		
 	</application>
 

@@ -16,8 +16,6 @@
 
 package com.applang.pflanzen;
 
-import java.util.Random;
-
 import com.applang.berichtsheft.R;
 import com.applang.berichtsheft.R.layout;
 import com.applang.provider.NotePad.Notes;
@@ -39,7 +37,6 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.EditText;
-import android.widget.TextView;
 import android.widget.Toast;
 
 /**
@@ -53,21 +50,21 @@ public class PlantsQuery extends Activity {
 //    /**
 //     * Standard projection for the interesting columns of a normal note.
 //     */
-    private static final String[] PROJECTION = new String[] {
-    	Plants._ID, // 0
-        Plants.NAME, // 1
-        Plants.FAMILY, // 2
-        Plants.BOTNAME, // 3
-        Plants.BOTFAMILY, // 4
-        Plants.GROUP, // 5
-    };
-   
-    private static final String[] PROJECTION_ID = new String[] {
-    	Plants._ID, // 0 
-    };
-    
+//    private static final String[] PROJECTION = new String[] {
+//    	Plants._ID, // 0
+//        Plants.NAME, // 1
+//        Plants.FAMILY, // 2
+//        Plants.BOTNAME, // 3
+//        Plants.BOTFAMILY, // 4
+//        Plants.GROUP, // 5
+//    };
+//   
+//    private static final String[] PROJECTION_ID = new String[] {
+//    	Plants._ID, // 0 
+//    };
+//    
 //    /** The index of the note column */
-    private static final int COLUMN_INDEX_NOTE = 1;
+//    private static final int COLUMN_INDEX_NOTE = 1;
 //    private static final int COLUMN_INDEX_FAMILY = 2;
 //    private static final int COLUMN_INDEX_BOTNAME = 3;
 //    private static final int COLUMN_INDEX_BOTFAMILY = 4;
@@ -87,12 +84,12 @@ public class PlantsQuery extends Activity {
 //
 //    private int mState;
 //    private boolean mNoteOnly = false;
-    private Uri mUri;
-    private Cursor mCursor;
+//    private Uri mUri;
+//    private Cursor mCursor;
 //    private EditText mText;
 //    private String mOriginalContent;
 //
-	private TextView mLargeText;
+//	private EditText mPlantNameText;
 //
 //	private EditText mPlantFamilyText;
 //
@@ -108,7 +105,7 @@ public class PlantsQuery extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        final Intent intent = getIntent();
+//        final Intent intent = getIntent();
 //
 //        // Do some setup based on the action being performed.
 //
@@ -116,7 +113,7 @@ public class PlantsQuery extends Activity {
 //        if (Intent.ACTION_EDIT.equals(action)) {
 //            // Requested to edit: set that state, and the data being edited.
 //            mState = STATE_EDIT;
-            mUri = intent.getData();
+//            mUri = intent.getData();
 //        } else if (Intent.ACTION_INSERT.equals(action)) {
 //            // Requested to insert: set that state, and create a new entry
 //            // in the container.
@@ -150,20 +147,14 @@ public class PlantsQuery extends Activity {
         setContentView(R.layout.plants_query_view);
         
 //     // The text view for our note, identified by its ID in the XML file.
-        mLargeText = (TextView) findViewById(R.id.largeText);
+//        mPlantNameText = (EditText) findViewById(R.id.PlantName);
 //        mPlantFamilyText = (EditText) findViewById(R.id.PlantFamily);
 //        mBotNameText = (EditText) findViewById(R.id.BotName);
 //        mBotFamilyText = (EditText) findViewById(R.id.BotFamily);
 //        mPlantGroupText = (EditText) findViewById(R.id.PlantGroup);
 //        
 //        // Get the note!
-        mCursor = managedQuery(mUri, PROJECTION, null, null, null);
-        mCursor.moveToFirst();
-		// mLargeText.setText(mCursor.getString(1));
-        
-        String randomString = "";
-        randomString = randomString + getRandomId(); 
-        mLargeText.setText(randomString);
+//        mCursor = managedQuery(mUri, PROJECTION, null, null, null);
 //
 //        // If an instance of this activity had previously stopped, we can
 //        // get the original text it started with.
@@ -172,15 +163,6 @@ public class PlantsQuery extends Activity {
 //        }
     }
 
-    protected Random getRandomId() {
-    	mCursor = managedQuery(mUri, PROJECTION_ID, null, null, null);
-    	int allEntries = mCursor.getCount();
-    	Random randomId = new Random();
-    	randomId.nextInt(allEntries);
-    	return randomId;
-    }
-    
-    
 //    @Override
 //    protected void onResume() {
 //        super.onResume();
