@@ -16,13 +16,7 @@
 
 package com.applang.tagesberichte;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
-
-import com.applang.berichtsheft.R;
-import com.applang.provider.NotePad.Notes;
+import java.util.Locale;
 
 import android.app.ListActivity;
 import android.content.ComponentName;
@@ -42,15 +36,19 @@ import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
 
+import static com.applang.Util.*;
+import com.applang.berichtsheft.R;
+import com.applang.provider.NotePadProvider;
+import com.applang.provider.NotePad.Notes;
+
 /**
  * Displays a list of notes. Will display notes from the {@link Uri}
  * provided in the intent if there is one, otherwise defaults to displaying the
  * contents of the {@link NotePadProvider}
  */
 public class NotesList extends ListActivity {
-    private static final String TAG = "NotesList";
+    private static final String TAG = NotesList.class.getSimpleName();
 
-    // Menu item ids
     public static final int MENU_ITEM_DELETE = Menu.FIRST;
     public static final int MENU_ITEM_INSERT = Menu.FIRST + 1;
 
@@ -63,29 +61,15 @@ public class NotesList extends ListActivity {
             Notes.CREATED_DATE, 
     };
 
-    /** The index of the title column */
     private static final int COLUMN_INDEX_TITLE = 1;
-    private static final int COLUMN_INDEX_CREATED = 2;
     
-    public static String getDateString(long millis) {
-		Date date = new Date(millis);
-		return dateFormat.format(date);
+    public static String dateFormat = "d.MMM.yyyy";
+    
+    public static String formatDate(long time) {
+    	return com.applang.Util.formatDate(time, dateFormat, Locale.getDefault());
     }
-    
-    private static SimpleDateFormat dateFormat = new SimpleDateFormat("d.MMM.yyyy");
-    
-    public static long getMillis(String dateString) {
-        Date date;
-		try {
-			date = dateFormat.parse(dateString);
-		} catch (ParseException e) {
-			return -1L;
-		}
-		
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTime(date);
-		return calendar.getTimeInMillis();
-    }
+
+    int table = 0;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -99,25 +83,35 @@ public class NotesList extends ListActivity {
         if (intent.getData() == null) {
             intent.setData(Notes.CONTENT_URI);
         }
+        
+        Bundle extras = intent.getExtras();
+        if (extras != null && extras.containsKey("table")) {
+        	table = extras.getInt("table", 0);
+        }
 
         // Inform the list we provide context menus for items
         getListView().setOnCreateContextMenuListener(this);
         
         // Perform a managed query. The Activity will handle closing and requerying the cursor
         // when needed.
-        Cursor cursor = managedQuery(getIntent().getData(), PROJECTION, null, null,
+        Cursor cursor = managedQuery(intent.getData(), 
+        		PROJECTION, 
+        		NotePadProvider.selection(table, ""), null,
                 Notes.DEFAULT_SORT_ORDER);
 
         // Used to map notes entries from the database to views
-//        SimpleCursorAdapter adapter = new SimpleCursorAdapter(this, R.layout.noteslist_item, cursor,
-//                new String[] { Notes.TITLE }, new int[] { android.R.id.text1 });
-        SimpleCursorAdapter adapter = new SimpleCursorAdapter(this, R.layout.noteslist_item, cursor,
-                new String[] { Notes.TITLE, Notes.CREATED_DATE }, new int[] { R.id.category, R.id.created }) {
+        SimpleCursorAdapter adapter = new SimpleCursorAdapter(this, 
+        		new int[] {R.layout.noteslist_item,R.layout.noteslist_item1,R.layout.noteslist_item2}[table], 
+        		cursor,
+                new String[] { Notes.TITLE, Notes.CREATED_DATE }, 
+                new int[] { R.id.title, R.id.date })
+        {
         	@Override
         	public void setViewText(TextView v, String text) {
         		switch (v.getId()) {
-				case R.id.created:
-					text = getDateString(Long.parseLong(text));
+				case R.id.date:
+					Long time = toLong(null, text);
+					text = time == null ? "" : formatDate(time);
 
 				default:
 	        		super.setViewText(v, text);
@@ -127,6 +121,12 @@ public class NotesList extends ListActivity {
         setListAdapter(adapter);
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+    	NotePadProvider.saveTableIndex(this, table);
+    }
+    
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         super.onCreateOptionsMenu(menu);
@@ -152,8 +152,8 @@ public class NotesList extends ListActivity {
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
         super.onPrepareOptionsMenu(menu);
-        final boolean haveItems = getListAdapter().getCount() > 0;
 
+        final boolean haveItems = getListAdapter().getCount() > 0;
         // If there are any notes in the list (which implies that one of
         // them is selected), then we need to generate the actions that
         // can be performed on the current selection.  This will be a combination
@@ -190,7 +190,8 @@ public class NotesList extends ListActivity {
         switch (item.getItemId()) {
         case MENU_ITEM_INSERT:
             // Launch activity to insert a new item
-            startActivity(new Intent(Intent.ACTION_INSERT, getIntent().getData()));
+            Uri data = getIntent().getData();
+			startActivity(new Intent(Intent.ACTION_INSERT, data).putExtra("table", table));
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -249,9 +250,10 @@ public class NotesList extends ListActivity {
             // The caller is waiting for us to return a note selected by
             // the user.  The have clicked on one, so return it now.
             setResult(RESULT_OK, new Intent().setData(uri));
-        } else {
+        } 
+        else {
             // Launch activity to view/edit the currently selected item
-            startActivity(new Intent(Intent.ACTION_EDIT, uri));
+            startActivity(new Intent(Intent.ACTION_EDIT, uri).putExtra("table", table));
         }
     }
 }

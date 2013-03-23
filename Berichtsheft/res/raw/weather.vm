@@ -1,0 +1,6 @@
+<br>
+$weather.name, $weather.date<br>
+#foreach ($w in $weather.weather)
+	$w.description <br>
+#end
+Temperatur $weather.main.temp &deg;C

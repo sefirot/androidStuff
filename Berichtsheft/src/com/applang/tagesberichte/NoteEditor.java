@@ -16,9 +16,8 @@
 
 package com.applang.tagesberichte;
 
-import org.apache.velocity.app.Velocity;
-
 import com.applang.berichtsheft.R;
+import com.applang.provider.NotePadProvider;
 import com.applang.provider.NotePad.Notes;
 
 import android.app.Activity;
@@ -43,8 +42,9 @@ import android.widget.EditText;
  * either to simply view a note {@link Intent#ACTION_VIEW}, view and edit a note
  * {@link Intent#ACTION_EDIT}, or create a new note {@link Intent#ACTION_INSERT}.  
  */
-public class NoteEditor extends Activity {
-    private static final String TAG = "Notes";
+public class NoteEditor extends Activity
+{
+    private static final String TAG = NoteEditor.class.getSimpleName();
     
     /**
      * Standard projection for the interesting columns of a normal note.
@@ -114,18 +114,19 @@ public class NoteEditor extends Activity {
 
         final Intent intent = getIntent();
 
-        // Do some setup based on the action being performed.
+        Bundle extras = intent.getExtras();
+        if (extras != null && extras.containsKey("table"))
+        	table = extras.getInt("table", 0);
 
         final String action = intent.getAction();
         if (Intent.ACTION_EDIT.equals(action)) {
-            // Requested to edit: set that state, and the data being edited.
             mState = STATE_EDIT;
             mUri = intent.getData();
-        } else if (Intent.ACTION_INSERT.equals(action)) {
-            // Requested to insert: set that state, and create a new entry
-            // in the container.
+        } 
+        else if (Intent.ACTION_INSERT.equals(action)) {
             mState = STATE_INSERT;
-            mUri = getContentResolver().insert(intent.getData(), null);
+            mUri = getContentResolver().insert(intent.getData(), 
+            		NotePadProvider.selection(table, new ContentValues()));
 
             // If we were unable to create a new note, then just finish
             // this activity.  A RESULT_CANCELED will be sent back to the
@@ -136,33 +137,38 @@ public class NoteEditor extends Activity {
                 return;
             }
 
-            startActivity(new Intent(TitleEditor.EDIT_TITLE_ACTION, mUri));
-            
-            // The new entry was created, so assume all will end well and
-            // set the result to be returned.
-            setResult(RESULT_OK, (new Intent()).setAction(mUri.toString()));
-
-        } else {
+            startActivityForResult(new Intent(TitleEditor.EDIT_TITLE_ACTION, mUri).putExtra("table", table), 0);
+        } 
+        else {
             // Whoops, unknown action!  Bail.
             Log.e(TAG, "Unknown action, exiting");
             finish();
             return;
         }
+    	
+    	setContentView(R.layout.note_editor);
+    	
+    	mText = (EditText) findViewById(R.id.note);
+    	
+    	mCursor = managedQuery(mUri, 
+    			PROJECTION, 
+    			NotePadProvider.selection(table, ""), null, 
+    			null);
+    	
+    	if (savedInstanceState != null) {
+    		mOriginalContent = savedInstanceState.getString(ORIGINAL_CONTENT);
+    	}
+    }
 
-        // Set the layout for this activity.  You can find it in res/layout/note_editor.xml
-        setContentView(R.layout.note_editor);
-        
-        // The text view for our note, identified by its ID in the XML file.
-        mText = (EditText) findViewById(R.id.note);
-
-        // Get the note!
-        mCursor = managedQuery(mUri, PROJECTION, null, null, null);
-
-        // If an instance of this activity had previously stopped, we can
-        // get the original text it started with.
-        if (savedInstanceState != null) {
-            mOriginalContent = savedInstanceState.getString(ORIGINAL_CONTENT);
-        }
+    int table = 0;
+    
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+    	setResult(resultCode, (new Intent()).setAction(mUri.toString()));
+    	if (resultCode == RESULT_CANCELED) {
+            deleteNote();
+    		finish();
+    	}
     }
 
     @Override
@@ -194,8 +200,8 @@ public class NoteEditor extends Activity {
             if (mOriginalContent == null) {
                 mOriginalContent = note;
             }
-
-        } else {
+        } 
+        else {
             setTitle(getText(R.string.error_title));
             mText.setText(getText(R.string.error_message));
         }
@@ -228,27 +234,15 @@ public class NoteEditor extends Activity {
                 deleteNote();
 
             // Get out updates into the provider.
-            } else {
+            } 
+            else {
                 ContentValues values = new ContentValues();
 
                 // This stuff is only done when working with a full-fledged note.
                 if (!mNoteOnly) {
                     // Bump the modification time to now.
                     values.put(Notes.MODIFIED_DATE, System.currentTimeMillis());
-
-                    // If we are creating a new note, then we want to also create
-                    // an initial title for it.
-/*					if (mState == STATE_INSERT) {
-                        String title = text.substring(0, Math.min(30, length));
-                        if (length > 30) {
-                            int lastSpace = title.lastIndexOf(' ');
-                            if (lastSpace > 0) {
-                                title = title.substring(0, lastSpace);
-                            }
-                        }
-                        values.put(Notes.TITLE, title);
-                    }
-*/				}
+				}
 
                 // Write our text back into the provider.
                 values.put(Notes.NOTE, text);
@@ -256,7 +250,9 @@ public class NoteEditor extends Activity {
                 // Commit all of our changes to persistent storage. When the update completes
                 // the content provider will notify the cursor of the change, which will
                 // cause the UI to be updated.
-                getContentResolver().update(mUri, values, null, null);
+                getContentResolver().update(mUri, 
+                		NotePadProvider.selection(table, values), 
+                		null, null);
             }
         }
     }
@@ -328,7 +324,9 @@ public class NoteEditor extends Activity {
                 mCursor = null;
                 ContentValues values = new ContentValues();
                 values.put(Notes.NOTE, mOriginalContent);
-                getContentResolver().update(mUri, values, null, null);
+                getContentResolver().update(mUri, 
+                		NotePadProvider.selection(table, values), 
+                		null, null);
             } else if (mState == STATE_INSERT) {
                 // We inserted an empty note, make sure to delete it
                 deleteNote();
@@ -338,14 +336,13 @@ public class NoteEditor extends Activity {
         finish();
     }
 
-    /**
-     * Take care of deleting a note.  Simply deletes the entry.
-     */
     private final void deleteNote() {
         if (mCursor != null) {
             mCursor.close();
             mCursor = null;
-            getContentResolver().delete(mUri, null, null);
+            getContentResolver().delete(mUri, 
+            		NotePadProvider.selection(table, ""), 
+            		null);
             mText.setText("");
         }
     }

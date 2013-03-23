@@ -20,8 +20,8 @@
             android:exported="false"
             android:authorities="com.applang.provider.PlantInfo"
         />
-         <provider android:name="com.applang.provider.WeatherInfoProvider"
-            android:exported="false"
+        <provider android:name="com.applang.provider.WeatherInfoProvider"
+            android:exported="true"
             android:authorities="com.applang.provider.WeatherInfo"
         />
         
@@ -50,13 +50,21 @@
             </intent-filter>
         </activity>
          
-        <activity
-            android:name="com.applang.wetterberichte.WeatherView"
+        <activity android:name="com.applang.wetterberichte.WeatherView"
             android:theme="@android:style/Theme.NoTitleBar">
             <intent-filter>
                 <action android:name="android.intent.action.INSERT" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="vnd.android.cursor.dir/vnd.applang.weather" />
+            </intent-filter>
+        </activity>
+        
+        <activity android:name="com.applang.tagesberichte.Tagesberichte"
+            android:label="@string/tagesberichte" 
+        >
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
         
@@ -76,6 +84,23 @@
                 <data android:mimeType="vnd.android.cursor.item/vnd.applang.note" />
             </intent-filter>
         </activity>
+        
+		<activity android:name="com.applang.tagesberichte.Glossary" 
+			android:label="@string/title_glossary"
+        >
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <action android:name="android.intent.action.EDIT" />
+                <action android:name="android.intent.action.PICK" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="vnd.android.cursor.dir/vnd.applang.note" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.GET_CONTENT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="vnd.android.cursor.item/vnd.applang.note" />
+            </intent-filter>
+		</activity>
         
         <activity android:name="com.applang.tagesberichte.NoteEditor"
             android:theme="@android:style/Theme.Light"
@@ -102,12 +127,24 @@
             </intent-filter>
         </activity>
         
+		<activity android:name="com.applang.tagesberichte.NoteEvaluator" 
+			android:label="@string/title_evaluator"
+			android:theme="@android:style/Theme.Dialog"
+            android:windowSoftInputMode="stateVisible"
+        >
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="vnd.android.cursor.item/vnd.applang.note" />
+            </intent-filter>
+		</activity>
+        
 		<activity android:name="com.applang.tagesberichte.TitleEditor" 
 			android:label="@string/title_edit_title"
 			android:theme="@android:style/Theme.Dialog"
             android:windowSoftInputMode="stateVisible"
         >
-            <!-- This activity implements an alternative action that can be
+		    		    <!-- This activity implements an alternative action that can be
                  performed on notes: editing their title.  It can be used as
                  a default operation if the user invokes this action, and is
                  available as an alternative action for any note data. -->
@@ -115,7 +152,7 @@
                 <!-- This is the action we perform.  It is a custom action we
                      define for our application, not a generic VIEW or EDIT
                      action since we are not a general note viewer/editor. -->
-                <action android:name="com.android.notepad.action.EDIT_TITLE" />
+                <action android:name="com.applang.tagesberichte.action.EDIT_TITLE" />
                 <!-- DEFAULT: execute if being directly invoked. -->
                 <category android:name="android.intent.category.DEFAULT" />
                 <!-- ALTERNATIVE: show as an alternative action when the user is
@@ -211,7 +248,6 @@
                 <data android:mimeType="vnd.android.cursor.dir/vnd.applang.plant" />
             </intent-filter>    
         </activity>
-       
 		
 	</application>
 

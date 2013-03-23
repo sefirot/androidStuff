@@ -51,7 +51,7 @@ public class BerichtsheftActivity extends Activity
 	
 	public void showTagesberichte(View clickedButton) {
 		Intent activityIntent =
-				new Intent(this, NotesList.class);
+				new Intent(this, Tagesberichte.class);
 		startActivity(activityIntent);
 		}
 

@@ -16,10 +16,11 @@
 
 package com.applang.wetterberichte;
 
+import java.util.Locale;
+
+import com.applang.Util;
 import com.applang.berichtsheft.R;
-import com.applang.provider.NotePad.Notes;
 import com.applang.provider.WeatherInfo.Weathers;
-import com.applang.tagesberichte.NotesList;
 
 import android.app.ListActivity;
 import android.content.ComponentName;
@@ -64,9 +65,15 @@ public class WeatherList extends ListActivity {
             Weathers.MAXTEMP, // 6
     };
 
-    /** The index of the title column */
     private static final int COLUMN_INDEX_LOCAION = 1;
     private static final int COLUMN_INDEX_CREATED = 2;
+    
+    String dateFormat = "d.MMM.yyyy HH:mm";
+
+	private String formatDate(String text) {
+		String formatted = Util.formatDate(Util.toLong(0L, text), dateFormat, Locale.getDefault());
+		return formatted.endsWith("00:00") ? formatted.substring(0, formatted.length() - 5) : formatted;
+	}
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -84,23 +91,50 @@ public class WeatherList extends ListActivity {
         // Inform the list we provide context menus for items
         getListView().setOnCreateContextMenuListener(this);
         
-        // Perform a managed query. The Activity will handle closing and requerying the cursor
-        // when needed.
-        Cursor cursor = managedQuery(getIntent().getData(), PROJECTION, null, null,
+        Cursor cursor = managedQuery(getIntent().getData(), 
+        		PROJECTION, 
+        		null, null,
                 Weathers.DEFAULT_SORT_ORDER);
 
-        // Used to map notes entries from the database to views
-        SimpleCursorAdapter adapter = new SimpleCursorAdapter(this, R.layout.weatherlist_item, cursor,
-                new String[] { Weathers.LOCATION, Weathers.CREATED_DATE }, new int[] { R.id.location, R.id.date }) {
+        SimpleCursorAdapter adapter = new SimpleCursorAdapter(this, 
+        		R.layout.wetterbericht, cursor,
+                new String[] { 
+        			Weathers.LOCATION, 
+        			Weathers.CREATED_DATE, 
+        			Weathers.DESCRIPTION, 
+                    Weathers.PRECIPITATION, 
+                    Weathers.MINTEMP, 
+                    Weathers.MAXTEMP
+        		}, 
+                new int[] { 
+        			R.id.location, 
+        			R.id.date, 
+        			R.id.description, 
+        			R.id.precipitation, 
+        			R.id.minTemp, 
+        			R.id.maxTemp }
+        ) {
         	@Override
         	public void setViewText(TextView v, String text) {
         		switch (v.getId()) {
 				case R.id.date:
-					text = NotesList.getDateString(Long.parseLong(text));
-
-				default:
-	        		super.setViewText(v, text);
+					text = formatDate(text);
+					break;
+				case R.id.precipitation:
+					if ("NaN".equals(text))
+						text = "";
+					else
+						text += " mm";
+					break;
+				case R.id.minTemp:
+				case R.id.maxTemp:
+					if ("NaN".equals(text))
+						text = "";
+					else
+						text += " °C";
+					break;
 				}
+        		super.setViewText(v, text);
         	}
         };
         setListAdapter(adapter);
@@ -234,4 +268,5 @@ public class WeatherList extends ListActivity {
             startActivity(new Intent(Intent.ACTION_EDIT, uri));
         }
     }
+
 }

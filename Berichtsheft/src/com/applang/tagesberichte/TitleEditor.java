@@ -17,11 +17,12 @@
 package com.applang.tagesberichte;
 
 import java.util.Calendar;
-import java.util.Date;
 
+import com.applang.Util;
 import com.applang.berichtsheft.R;
 import com.applang.provider.NotePad;
 import com.applang.provider.NotePad.Notes;
+import com.applang.provider.NotePadProvider;
 
 import android.app.Activity;
 import android.content.ContentValues;
@@ -31,28 +32,29 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.DatePicker;
 import android.widget.AutoCompleteTextView;
 
 /**
- * An activity that will edit the title of a note. Displays a floating
- * window with a text field.
+ * An activity that will edit the title of a note. Displays a floating window
  */
 public class TitleEditor extends Activity implements View.OnClickListener {
 
     /**
      * This is a special intent action that means "edit the title of a note".
      */
-    public static final String EDIT_TITLE_ACTION = "com.android.notepad.action.EDIT_TITLE";
+    public static final String EDIT_TITLE_ACTION = "com.applang.tagesberichte.action.EDIT_TITLE";
 
     /**
      * An array of the columns we are interested in.
      */
     private static final String[] PROJECTION = new String[] {
-            NotePad.Notes._ID, // 0
-            NotePad.Notes.TITLE, // 1
+            Notes._ID, // 0
+            Notes.TITLE, // 1
             Notes.CREATED_DATE, 
     };
+    
     /** Index of the title column */
     private static final int COLUMN_INDEX_TITLE = 1;
     private static final int COLUMN_INDEX_CREATED = 2;
@@ -64,7 +66,7 @@ public class TitleEditor extends Activity implements View.OnClickListener {
      */
     private Cursor mCursor;
 
-    private AutoCompleteTextView mText;
+    private AutoCompleteTextView mTitle;
     private DatePicker mDate;
 
     /**
@@ -78,37 +80,49 @@ public class TitleEditor extends Activity implements View.OnClickListener {
 
         setContentView(R.layout.title_editor);
 
-        // Get the uri of the note whose title we want to edit
+        Bundle extras = getIntent().getExtras();
+        if (extras != null && extras.containsKey("table"))
+        	table = extras.getInt("table", 0);
+        else
+        	table = NotePadProvider.restoreTableIndex(this, 0);
+
         mUri = getIntent().getData();
+        mCursor = managedQuery(mUri, PROJECTION, 
+        		NotePadProvider.selection(table, ""), null, 
+        		null);
 
-        // Get a cursor to access the note
-        mCursor = managedQuery(mUri, PROJECTION, null, null, null);
-
-        // Set up click handlers for the text field and button
-        mText = (AutoCompleteTextView) this.findViewById(R.id.title);
-        mText.setThreshold(1);
-        String[] categories = getResources().getStringArray(R.array.category_array);
-        mText.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_dropdown_item_1line,categories));
-        mText.setOnClickListener(this);
+        mTitle = (AutoCompleteTextView) this.findViewById(R.id.title);
+        mTitle.setThreshold(1);
+        if (table == 0) {
+			String[] categories = getResources().getStringArray(
+					R.array.category_array);
+			mTitle.setAdapter(new ArrayAdapter<String>(this,
+					android.R.layout.simple_dropdown_item_1line, categories));
+		}
+		mDate = (DatePicker) this.findViewById(R.id.datePicker);
+		mDate.setEnabled(table == 0);
         
-        mDate = (DatePicker) this.findViewById(R.id.date);
-        mDate.setOnClickListener(this);
-        
-        Button b = (Button) findViewById(R.id.ok);
-        b.setOnClickListener(this);
+		for (int id : new int[] {R.id.ok,R.id.cancel}) {
+			Button b = (Button) findViewById(id);
+			b.setOnClickListener(this);
+		}
     }
+
+    int table = 0;
 
     @Override
     protected void onResume() {
         super.onResume();
 
-        // Initialize the text with the title column from the cursor
         if (mCursor != null) {
             mCursor.moveToFirst();
-            mText.setText(mCursor.getString(COLUMN_INDEX_TITLE));
-    		Date date = new Date(mCursor.getLong(COLUMN_INDEX_CREATED));
-    		calendar.setTime(date);
-            mDate.init(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH), null);
+            mTitle.setText(mCursor.getString(COLUMN_INDEX_TITLE));
+			if (!mCursor.isNull(COLUMN_INDEX_CREATED)) {
+				calendar.setTimeInMillis(mCursor.getLong(COLUMN_INDEX_CREATED));
+				mDate.init(calendar.get(Calendar.YEAR),
+						calendar.get(Calendar.MONTH),
+						calendar.get(Calendar.DAY_OF_MONTH), null);
+			}
         }
     }
 
@@ -116,19 +130,23 @@ public class TitleEditor extends Activity implements View.OnClickListener {
     protected void onPause() {
         super.onPause();
 
-        if (mCursor != null) {
-            // Write the title back to the note 
+        if (mCursor != null && resultCode != RESULT_CANCELED) {
             ContentValues values = new ContentValues();
-            values.put(Notes.TITLE, mText.getText().toString());
-            calendar.set(mDate.getYear(), mDate.getMonth(), mDate.getDayOfMonth());
-            values.put(Notes.CREATED_DATE, calendar.getTimeInMillis());
-            getContentResolver().update(mUri, values, null, null);
+            values.put(Notes.TITLE, mTitle.getText().toString());
+			calendar.set(mDate.getYear(), mDate.getMonth(), mDate.getDayOfMonth());
+			values.put(Notes.CREATED_DATE, calendar.getTimeInMillis());
+			
+            getContentResolver().update(mUri, 
+            		NotePadProvider.selection(table, values), 
+            		null, null);
         }
     }
+    
+    int resultCode = RESULT_FIRST_USER;
 
-    public void onClick(View v) {
-        // When the user clicks, just finish this activity.
-        // onPause will be called, and we save our data there.
+    public void onClick(View view) {
+    	resultCode = view.getId() == R.id.ok ? RESULT_OK : RESULT_CANCELED;
+		setResult(resultCode);
         finish();
     }
 }

@@ -1,0 +1,4 @@
+<br>
+#foreach ($w in $weather.list)
+	$w.dt <br>
+#end

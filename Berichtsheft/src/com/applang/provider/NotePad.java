@@ -33,7 +33,7 @@ public final class NotePad {
      * Notes table
      */
     public static final class Notes implements BaseColumns {
-        // This class cannot be instantiated
+		// This class cannot be instantiated
         private Notes() {}
 
         /**
@@ -79,5 +79,13 @@ public final class NotePad {
          * <P>Type: INTEGER (long from System.curentTimeMillis())</P>
          */
         public static final String MODIFIED_DATE = "modified";
+        
+        public static String[] FULL_PROJECTION = new String[] {
+			_ID, // 0
+			TITLE, // 1
+			NOTE, // 2
+			CREATED_DATE, // 3
+			MODIFIED_DATE, // 4
+		};
     }
 }

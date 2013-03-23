@@ -27,12 +27,15 @@
 	<string name="title_notes_list">Tagesberichte</string>   
 	<string name="title_plants_list">Pflanze der Woche</string>
 	<string name="title_note">Note</string>  
+	<string name="title_glossary">Glossar</string>  
+	<string name="title_evaluator">Evaluation</string>  
 	<string name="plant_note">Neue Pflanze eingeben</string>
 	<string name="plant_edit">Eingaben zur Pflanze ändern</string>
-	<string name="title_edit_title">Note title:</string>  
-	
+	<string name="title_edit_title">Title :</string>  
+		
 	<string name="button_ok">OK</string>  
-	
+	<string name="button_cancel">Cancel</string>
+		
 	<string name="error_title">Error</string>
 	<string name="error_message">Error loading note</string>
 	<string name="bot_name">Botanischer Pflanzenname</string>
@@ -65,5 +68,11 @@
         <item>Bemerkung</item>
         <item>Berufsschule</item>
     </string-array>
+        <string name="min_temperature">Temperatur min. </string>
+        <string name="max_temperature">max. </string>
+        <string name="precipitation">"Niederschlag "</string>
+        <string name="description">"Beschreibung "</string>
+        <string name="baustein">Textbaustein</string>
+        <string name="tagesberichte">Tagesberichte</string>
 	
 </resources>
