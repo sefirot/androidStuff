@@ -452,7 +452,7 @@ public class Util
 	}
     
     public static void copyContents(InputStream in, OutputStream out, Object... params) throws IOException {
-		byte scoop[] = new byte[paramInteger(4096, 0, params).intValue()];
+		byte scoop[] = new byte[paramInteger(4096, 0, params)];
 		
 		int n;
 		while ((n = in.read(scoop, 0, scoop.length)) > -1) 
