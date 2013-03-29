@@ -301,6 +301,16 @@ public class Util
 
 		return params;
 	}
+
+	@SuppressWarnings("unchecked")
+	public static <T extends Object> T valueOrElse(T elseValue, Object value) {
+		if (value != null)
+			try {
+				return (T)value;
+			} catch (Exception e) {}
+
+		return elseValue;
+	}
 	/**
 	 * @param <P>	type of the values in the parameter array
 	 * @param <T>	genericized return type
@@ -449,6 +459,30 @@ public class Util
 		    }
 		    while (iter.hasNext());
 	    return sb.toString();
+	}
+
+    public static String enclose(String pad, String string, Object... params) {
+    	pad = valueOrElse("", pad);
+    	string = pad.concat(valueOrElse("", string));
+    	if (params.length < 1)
+    		return string.concat(pad);
+    	
+    	for (int i = 0; i < params.length; i++) 
+    		string = string.concat(param("", i, params));
+		
+    	return string;
+	}
+
+    public static String strip(boolean atStart, String string, Object... params) {
+    	for (int i = 0; i < params.length; i++) {
+    		String pad = param("", i, params);
+	    	if (atStart && string.startsWith(pad))
+	    		string = string.substring(pad.length());
+	    	if (!atStart && string.endsWith(pad))
+	    		string = string.substring(0, string.length() - pad.length());
+    	}
+		
+    	return string;
 	}
     
     public static void copyContents(InputStream in, OutputStream out, Object... params) throws IOException {
