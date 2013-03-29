@@ -6,7 +6,7 @@ import org.apache.velocity.app.Velocity;
 import org.apache.velocity.context.AbstractContext;
 import org.apache.velocity.context.Context;
 
-import com.applang.Util.ValMap;
+import static com.applang.Util.*;
  
 public class VelocityUtil
 {

@@ -1,0 +1,12 @@
+<html>
+<body>
+#foreach ($word in $words)
+	<h3>$word.title</h3>
+	<ul>
+		#foreach ($note in $word.notes)
+	  		<li>$note</li>
+		#end
+	</ul>
+#end
+</body>
+</html>

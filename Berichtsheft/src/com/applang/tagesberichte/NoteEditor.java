@@ -31,11 +31,18 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.view.ContextMenu;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.view.ContextMenu.ContextMenuInfo;
 import android.widget.EditText;
+
+import static com.applang.Util.*;
 
 /**
  * A generic activity for editing a note in a database.  This can be used
@@ -63,16 +70,20 @@ public class NoteEditor extends Activity
     private static final int REVERT_ID = Menu.FIRST;
     private static final int DISCARD_ID = Menu.FIRST + 1;
     private static final int DELETE_ID = Menu.FIRST + 2;
+    private static final int BAUSTEIN_ID = Menu.FIRST + 3;
+    private static final int EVALUATE_ID = Menu.FIRST + 4;
 
     // The different distinct states the activity can be run in.
     private static final int STATE_EDIT = 0;
     private static final int STATE_INSERT = 1;
+    
+    private static final Character BAUSTEIN_IDENTIFICATOR = '$';
 
     private int mState;
     private boolean mNoteOnly = false;
     private Uri mUri;
     private Cursor mCursor;
-    private EditText mText;
+    private LinedEditText mText;
     private String mOriginalContent;
 
     /**
@@ -90,7 +101,7 @@ public class NoteEditor extends Activity
             mPaint = new Paint();
             mPaint.setStyle(Paint.Style.STROKE);
             mPaint.setColor(0x800000FF);
-        }
+		}
         
         @Override
         protected void onDraw(Canvas canvas) {
@@ -106,7 +117,20 @@ public class NoteEditor extends Activity
 
             super.onDraw(canvas);
         }
+
+        public void insertAtCaretPosition(CharSequence text) {
+        	int length = text.length();
+    		if (length > 0) {
+				int start = getSelectionStart();
+				int end = getSelectionEnd();
+				setText(getText().replace(Math.min(start, end),
+						Math.max(start, end), text, 0, length));
+				setSelection(start + length);
+			}
+    	}
     }
+
+    int table = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -148,7 +172,34 @@ public class NoteEditor extends Activity
     	
     	setContentView(R.layout.note_editor);
     	
-    	mText = (EditText) findViewById(R.id.note);
+    	mText = (LinedEditText) findViewById(R.id.note);
+    	mText.addTextChangedListener(new TextWatcher(){
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            boolean first = true;
+            
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            	if (first)
+            		mText.setSelection(Math.max(0, s.length() - 1));
+            	else if (count - before == 1 && start + count > 0 && 
+						BAUSTEIN_IDENTIFICATOR.equals(s.charAt(start + count - 1))) {
+/*					Toast.makeText(NoteEditor.this, 
+							String.format("change in '%s' start %d before %d count %d", s, start, before, count), 
+							Toast.LENGTH_LONG).show();
+*/
+					requestBaustein(1);
+				}
+				first = false;
+            }
+
+			@Override
+			public void afterTextChanged(Editable s) {
+			}
+        });
+    	registerForContextMenu(mText);
     	
     	mCursor = managedQuery(mUri, 
     			PROJECTION, 
@@ -159,8 +210,46 @@ public class NoteEditor extends Activity
     		mOriginalContent = savedInstanceState.getString(ORIGINAL_CONTENT);
     	}
     }
+    
+    int bausteinRequested = 0;
 
-    int table = 0;
+	private void requestBaustein(int requestCode) {
+		bausteinRequested = requestCode;
+		NoteEditor.this.openContextMenu(mText);
+	}
+
+    @Override
+    public void onCreateContextMenu(ContextMenu menu, View view, ContextMenuInfo menuInfo) {
+        super.onCreateContextMenu(menu, view, menuInfo);
+        if (bausteinRequested > 0) {
+			menu.clear();
+			menu.setHeaderTitle(getResources().getString(R.string.baustein));
+			for (String title : TitleEditor.wordSet(this, 1, "")) {
+				menu.add(title);
+			}
+		}
+        else
+        	bausteinRequested = 0;
+        
+		bausteinRequested = -bausteinRequested;
+    }
+    
+    @Override
+    public boolean onContextItemSelected(MenuItem item) {
+        if (bausteinRequested < 0) {
+        	String text = item.getTitle().toString();
+        	if (bausteinRequested < -1)
+        		text = BAUSTEIN_IDENTIFICATOR + enclose("{", text, "}");
+        	
+        	mText.insertAtCaretPosition(text);
+        	
+        	bausteinRequested = 0;
+        }
+        else
+        	return super.onContextItemSelected(item);
+        
+    	return false;
+    }
     
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -279,6 +368,11 @@ public class NoteEditor extends Activity
                     .setIcon(android.R.drawable.ic_menu_delete);
         }
 
+        menu.add(0, BAUSTEIN_ID, 0, R.string.menu_baustein)
+    		.setShortcut('2', 'b');
+        menu.add(0, EVALUATE_ID, 0, R.string.menu_evaluate)
+    		.setShortcut('3', 'e');
+        
         // If we are working on a full note, then append to the
         // menu items for any other activities that can do stuff with it
         // as well.  This does a query on the system for any activities that
@@ -307,6 +401,15 @@ public class NoteEditor extends Activity
             break;
         case REVERT_ID:
             cancelNote();
+            break;
+        case BAUSTEIN_ID:
+			requestBaustein(2);
+            break;
+        case EVALUATE_ID:
+			startActivity(new Intent()
+				.setClass(this, NoteEvaluator.class)
+				.setData(mUri)
+				.putExtra("table", table));
             break;
         }
         return super.onOptionsItemSelected(item);

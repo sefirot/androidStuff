@@ -11,17 +11,28 @@
     <string name="more">Wetter Info</string>
     <string name="more2">Import / Export</string>
     
+    <string name="menu_schlagwort">Schlagwort</string>
     <string name="menu_delete">Löschen</string>
+    <string name="menu_remove">Entfernen</string>
+    <string name="menu_evaluate">Evaluation</string>
     <string name="menu_insert">Neuer Eintrag</string>
-    <string name="menu_revert">Revert</string>
+    <string name="menu_revert">Zurück</string>
     <string name="menu_discard">Discard</string>
+    <string name="menu_baustein">Baustein</string>
+    <string name="menu_view">Ansichtssache</string>
     <string name="menu_sort_by">Sortieren nach</string>
 
     <string name="resolve_edit">Edit note</string>
     <string name="resolve_title">Edit title</string>  
 	<string name="resolve_order">Sortieren nach</string>
     
-    <string name="title_create">Create note</string>
+    <string-array name="title_edit_array">
+        <item>Kategorie :</item>
+        <item>Textbaustein :</item>
+        <item>Schlagwort :</item>
+    </string-array>
+	
+	<string name="title_create">Create note</string>
     <string name="title_edit">Edit note</string>
 	<string name="title_weathers_list">Wetterberichte</string>   
 	<string name="title_notes_list">Tagesberichte</string>   
@@ -29,9 +40,10 @@
 	<string name="title_note">Note</string>  
 	<string name="title_glossary">Glossar</string>  
 	<string name="title_evaluator">Evaluation</string>  
+	<string name="title_edit_title">Title :</string>  
+	
 	<string name="plant_note">Neue Pflanze eingeben</string>
 	<string name="plant_edit">Eingaben zur Pflanze ändern</string>
-	<string name="title_edit_title">Title :</string>  
 		
 	<string name="button_ok">OK</string>  
 	<string name="button_cancel">Cancel</string>
@@ -68,11 +80,13 @@
         <item>Bemerkung</item>
         <item>Berufsschule</item>
     </string-array>
+    
         <string name="min_temperature">Temperatur min. </string>
         <string name="max_temperature">max. </string>
         <string name="precipitation">"Niederschlag "</string>
         <string name="description">"Beschreibung "</string>
         <string name="baustein">Textbaustein</string>
+        <string name="baustein_exists">Textbaustein \'%s\' schon vorhanden</string>
         <string name="tagesberichte">Tagesberichte</string>
 	
 </resources>

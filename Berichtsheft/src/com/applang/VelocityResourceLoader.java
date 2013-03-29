@@ -24,8 +24,16 @@ public class VelocityResourceLoader extends FileResourceLoader {
 	}
  
 	public InputStream getResourceStream(String templateName) {
-		int id = resources.getIdentifier(templateName, "raw", this.packageName);
-		return resources.openRawResource(id);
+		try {
+			if (packageName.length() > 0) {
+				int id = resources.getIdentifier(templateName, "raw", packageName);
+				return resources.openRawResource(id);
+			}
+			else
+				return resources.getAssets().open(templateName + ".vm");
+		} catch (Exception e) {
+			return null;
+		}
 	}
  
 	public boolean	isSourceModified(Resource resource) {

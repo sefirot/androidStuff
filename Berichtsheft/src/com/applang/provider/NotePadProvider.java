@@ -34,6 +34,9 @@ import android.text.TextUtils;
 import android.util.Log;
 
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 /**
  *	Provides access to a database of notes. Each note has a title, the note
@@ -55,6 +58,28 @@ public class NotePadProvider extends ContentProvider {
     		return "";
     }
 
+	public static boolean isTableDirty(Context context, int index) {
+        SharedPreferences prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE);
+        return prefs.getString("dirty", "").indexOf("" + index) > -1;
+    }
+
+	public static void setTableState(Context context, int index, boolean dirty) {
+		boolean isDirty = isTableDirty(context, index);
+		if (dirty == isDirty)
+			return;
+        SharedPreferences prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE);
+        String dirt = prefs.getString("dirt", "");
+        if (dirty)
+        	dirt += index;
+        else {
+        	int i = dirt.indexOf("" + index);
+        	dirt = dirt.substring(0, i) + dirt.substring(i + 1);
+        }
+        SharedPreferences.Editor prefsEditor = prefs.edit();
+        prefsEditor.putString("dirt", dirt);
+        prefsEditor.commit();
+    }
+
 	public static void saveTableIndex(Context context, int index) {
         SharedPreferences prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE);
         SharedPreferences.Editor prefsEditor = prefs.edit();
@@ -62,7 +87,7 @@ public class NotePadProvider extends ContentProvider {
         prefsEditor.commit();
 	}
 
-	public static int restoreTableIndex(Context context, int defaultIndex) {
+	public static int savedTableIndex(Context context, int defaultIndex) {
         SharedPreferences prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE);
         int index = prefs.getInt("table", defaultIndex);
 		return index;
@@ -124,14 +149,25 @@ public class NotePadProvider extends ContentProvider {
 		if (args.length > i+2) values.put(Notes.CREATED_DATE, (Long)args[i+2]);
 		if (args.length > i+3) values.put(Notes.MODIFIED_DATE, (Long)args[i+3]);
 		return values;
+    }
+
+	private static HashMap<String, String> sNotesProjectionMap, sNotesProjectionMap2;
+
+    public static Map<String, String> projectionMap(int type) {
+    	switch (type) {
+		case NOTES_WORDS:
+			return sNotesProjectionMap2;
+		default:
+			return sNotesProjectionMap;
+		}
 	};
 
-	private static HashMap<String, String> sNotesProjectionMap;
-
-    private static final int NOTES = 1;
-    private static final int NOTE_ID = 2;
+	public static final int NOTES = 1;
+	public static final int NOTE_ID = 2;
+	public static final int NOTES_WORDS = 3;
 
     private static final UriMatcher sUriMatcher;
+
 
     /**
      * This class helps open, create, and upgrade the database file.
@@ -183,22 +219,35 @@ public class NotePadProvider extends ContentProvider {
         mOpenHelper = new DatabaseHelper(getContext());
         return true;
     }
+    
+    public void close() {
+    	mOpenHelper.close();
+    }
 
     @Override
     public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs, String sortOrder) {
         SQLiteQueryBuilder qb = new SQLiteQueryBuilder();
 
         String tableName = tableName(tableIndex(selection));
-        switch (sUriMatcher.match(uri)) {
+        int type = sUriMatcher.match(uri);
+		switch (type) {
         case NOTES:
             qb.setTables(tableName);
-            qb.setProjectionMap(sNotesProjectionMap);
+            qb.setProjectionMap(projectionMap(type));
             break;
 
         case NOTE_ID:
             qb.setTables(tableName);
-            qb.setProjectionMap(sNotesProjectionMap);
+            qb.setProjectionMap(projectionMap(type));
             qb.appendWhere(Notes._ID + "=" + uri.getPathSegments().get(1));
+            break;
+
+        case NOTES_WORDS:
+        	qb.setProjectionMap(projectionMap(type));
+            qb.setTables(NOTES_TABLE_NAMES[0]
+            		.concat(" JOIN ").concat(NOTES_TABLE_NAMES[2])
+            		.concat(" ON (").concat(projectionMap(type).get(Notes._ID))
+            		.concat(" = ").concat(projectionMap(type).get(Notes.CREATED_DATE)).concat(")"));
             break;
 
         default:
@@ -225,11 +274,12 @@ public class NotePadProvider extends ContentProvider {
     @Override
     public String getType(Uri uri) {
         switch (sUriMatcher.match(uri)) {
+        case NOTES_WORDS:
         case NOTES:
             return Notes.CONTENT_TYPE;
 
         case NOTE_ID:
-            return Notes.CONTENT_ITEM_TYPE;
+        	return Notes.CONTENT_ITEM_TYPE;
 
         default:
             throw new IllegalArgumentException("Unknown URI " + uri);
@@ -335,6 +385,7 @@ public class NotePadProvider extends ContentProvider {
         sUriMatcher = new UriMatcher(UriMatcher.NO_MATCH);
         sUriMatcher.addURI(NotePad.AUTHORITY, "notes", NOTES);
         sUriMatcher.addURI(NotePad.AUTHORITY, "notes/#", NOTE_ID);
+        sUriMatcher.addURI(NotePad.AUTHORITY, "notes/words", NOTES_WORDS);
 
         sNotesProjectionMap = new HashMap<String, String>();
         sNotesProjectionMap.put(Notes._ID, Notes._ID);
@@ -342,5 +393,12 @@ public class NotePadProvider extends ContentProvider {
         sNotesProjectionMap.put(Notes.NOTE, Notes.NOTE);
         sNotesProjectionMap.put(Notes.CREATED_DATE, Notes.CREATED_DATE);
         sNotesProjectionMap.put(Notes.MODIFIED_DATE, Notes.MODIFIED_DATE);
+
+        sNotesProjectionMap2 = new HashMap<String, String>();
+        sNotesProjectionMap2.put(Notes._ID, NOTES_TABLE_NAMES[0].concat(".").concat(Notes._ID));
+        sNotesProjectionMap2.put(Notes.TITLE, NOTES_TABLE_NAMES[2].concat(".").concat(Notes.TITLE));
+        sNotesProjectionMap2.put(Notes.NOTE, NOTES_TABLE_NAMES[0].concat(".").concat(Notes.NOTE));
+        sNotesProjectionMap2.put(Notes.CREATED_DATE, NOTES_TABLE_NAMES[2].concat(".").concat(Notes.CREATED_DATE));
+        sNotesProjectionMap2.put("date", NOTES_TABLE_NAMES[0].concat(".").concat(Notes.CREATED_DATE));
     }
 }

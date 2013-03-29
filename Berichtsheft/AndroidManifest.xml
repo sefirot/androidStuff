@@ -101,6 +101,29 @@
                 <data android:mimeType="vnd.android.cursor.item/vnd.applang.note" />
             </intent-filter>
 		</activity>
+         
+        <activity android:name="com.applang.tagesberichte.GlossaryView"
+			android:label="@string/title_glossary"
+			android:theme="@android:style/Theme.Dialog"
+        >
+            <intent-filter>
+                <action android:name="com.applang.tagesberichte.action.VIEW_GLOSSARY" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="vnd.android.cursor.dir/vnd.applang.note" />
+            </intent-filter>
+        </activity>
+        
+		<activity android:name="com.applang.tagesberichte.NoteEvaluator" 
+			android:theme="@android:style/Theme.Dialog"
+			android:label="@string/title_evaluator"
+            android:windowSoftInputMode="stateVisible"
+        >
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="vnd.android.cursor.item/vnd.applang.note" />
+            </intent-filter>
+		</activity>
         
         <activity android:name="com.applang.tagesberichte.NoteEditor"
             android:theme="@android:style/Theme.Light"
@@ -127,24 +150,12 @@
             </intent-filter>
         </activity>
         
-		<activity android:name="com.applang.tagesberichte.NoteEvaluator" 
-			android:label="@string/title_evaluator"
-			android:theme="@android:style/Theme.Dialog"
-            android:windowSoftInputMode="stateVisible"
-        >
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="vnd.android.cursor.item/vnd.applang.note" />
-            </intent-filter>
-		</activity>
-        
 		<activity android:name="com.applang.tagesberichte.TitleEditor" 
 			android:label="@string/title_edit_title"
 			android:theme="@android:style/Theme.Dialog"
             android:windowSoftInputMode="stateVisible"
         >
-		    		    <!-- This activity implements an alternative action that can be
+		    <!-- This activity implements an alternative action that can be
                  performed on notes: editing their title.  It can be used as
                  a default operation if the user invokes this action, and is
                  available as an alternative action for any note data. -->

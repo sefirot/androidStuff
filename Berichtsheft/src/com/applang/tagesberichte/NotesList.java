@@ -49,8 +49,9 @@ import com.applang.provider.NotePad.Notes;
 public class NotesList extends ListActivity {
     private static final String TAG = NotesList.class.getSimpleName();
 
-    public static final int MENU_ITEM_DELETE = Menu.FIRST;
-    public static final int MENU_ITEM_INSERT = Menu.FIRST + 1;
+    private static final int MENU_ITEM_DELETE = Menu.FIRST;
+    private static final int MENU_ITEM_INSERT = Menu.FIRST + 1;
+    private static final int MENU_ITEM_SCHLAGWORT = Menu.FIRST + 2;
 
     /**
      * The columns we are interested in from the database
@@ -62,11 +63,18 @@ public class NotesList extends ListActivity {
     };
 
     private static final int COLUMN_INDEX_TITLE = 1;
+    private static final int COLUMN_INDEX_CREATED = 2;
     
     public static String dateFormat = "d.MMM.yyyy";
     
     public static String formatDate(long time) {
     	return com.applang.Util.formatDate(time, dateFormat, Locale.getDefault());
+    }
+    
+    public static String description(int tableIndex, long time, String title) {
+		return tableIndex == 0 ? 
+				String.format("%s '%s'", formatDate(time), title) : 
+				title;
     }
 
     int table = 0;
@@ -125,6 +133,22 @@ public class NotesList extends ListActivity {
     protected void onResume() {
         super.onResume();
     	NotePadProvider.saveTableIndex(this, table);
+    }
+
+    @Override
+    protected void onListItemClick(ListView l, View v, int position, long id) {
+        Uri uri = ContentUris.withAppendedId(getIntent().getData(), id);
+        
+        String action = getIntent().getAction();
+        if (Intent.ACTION_PICK.equals(action) || Intent.ACTION_GET_CONTENT.equals(action)) {
+            // The caller is waiting for us to return a note selected by
+            // the user.  The have clicked on one, so return it now.
+            setResult(RESULT_OK, new Intent().setData(uri));
+        } 
+        else {
+            // Launch activity to view/edit the currently selected item
+            startActivity(new Intent(Intent.ACTION_EDIT, uri).putExtra("table", table));
+        }
     }
     
     @Override
@@ -213,11 +237,12 @@ public class NotesList extends ListActivity {
             return;
         }
 
-        // Setup the menu header
-        menu.setHeaderTitle(cursor.getString(COLUMN_INDEX_TITLE));
-
-        // Add a menu item to delete the note
-        menu.add(0, MENU_ITEM_DELETE, 0, R.string.menu_delete);
+        menu.setHeaderTitle(description(table, 
+        		cursor.getLong(COLUMN_INDEX_CREATED), 
+        		cursor.getString(COLUMN_INDEX_TITLE)));
+		getMenuInflater().inflate(R.menu.contextmenu_noteslist, menu);
+		if (table > 0)
+			menu.removeItem(R.id.menu_item_schlagwort);
     }
         
     @Override
@@ -230,30 +255,29 @@ public class NotesList extends ListActivity {
             return false;
         }
 
+        Uri noteUri = ContentUris.withAppendedId(getIntent().getData(), info.id);
+        
         switch (item.getItemId()) {
-            case MENU_ITEM_DELETE: {
-                // Delete the note that the context menu is for
-                Uri noteUri = ContentUris.withAppendedId(getIntent().getData(), info.id);
-                getContentResolver().delete(noteUri, null, null);
-                return true;
-            }
+        case R.id.menu_item_schlagwort:
+            startActivityForResult(
+            	new Intent(TitleEditor.EDIT_TITLE_ACTION, noteUri)
+            		.putExtra("table", 2), 0);
+            return true;
+            
+        case R.id.menu_item_evaluate: 
+			startActivity(new Intent()
+					.setClass(this, NoteEvaluator.class)
+					.setData(noteUri)
+					.putExtra("table", table));
+            return true;
+            
+        case R.id.menu_item_delete: 
+            // Delete the note that the context menu is for
+            getContentResolver().delete(noteUri, 
+            		NotePadProvider.selection(table, ""), 
+            		null);
+            return true;
         }
         return false;
-    }
-
-    @Override
-    protected void onListItemClick(ListView l, View v, int position, long id) {
-        Uri uri = ContentUris.withAppendedId(getIntent().getData(), id);
-        
-        String action = getIntent().getAction();
-        if (Intent.ACTION_PICK.equals(action) || Intent.ACTION_GET_CONTENT.equals(action)) {
-            // The caller is waiting for us to return a note selected by
-            // the user.  The have clicked on one, so return it now.
-            setResult(RESULT_OK, new Intent().setData(uri));
-        } 
-        else {
-            // Launch activity to view/edit the currently selected item
-            startActivity(new Intent(Intent.ACTION_EDIT, uri).putExtra("table", table));
-        }
     }
 }
