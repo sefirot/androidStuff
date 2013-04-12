@@ -13,7 +13,6 @@ import org.apache.velocity.app.Velocity;
 import org.apache.velocity.context.Context;
 import org.json.JSONObject;
 
-import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Dialog;
 import android.os.Bundle;
@@ -23,13 +22,13 @@ public class WeatherView extends Activity
 {
 	private WebView webView;
 
-	@SuppressLint("SetJavaScriptEnabled") 
+//	@SuppressLint("SetJavaScriptEnabled") 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		
 		webView = new WebView(this);
-		webView.getSettings().setJavaScriptEnabled(true);
+//		webView.getSettings().setJavaScriptEnabled(true);
 		setContentView(webView);
 		
 		showDialog(0);
@@ -53,8 +52,8 @@ public class WeatherView extends Activity
     protected Dialog onCreateDialog(int id) {
         return waitWhileWorking(this, "Loading ...", 
         	new Job<Activity>() {
-				public void dispatch(Activity activity, Object[] params) throws Exception {
-					setupVelocity4Android(packageName(activity), getResources());
+				public void perform(Activity activity, Object[] params) throws Exception {
+					setupVelocity4Android(resourcePackageName(activity), getResources());
 					
 	    			String jsonText = readFromUrl(url, "UTF-8");
 	    			JSONObject json = new JSONObject(jsonText);

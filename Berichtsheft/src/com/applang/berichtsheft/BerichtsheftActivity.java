@@ -1,9 +1,12 @@
 package com.applang.berichtsheft;
 
-import com.applang.ImpexTask;
+import static com.applang.Util2.*;
+
 import com.applang.pflanzen.PlantsList;
-import com.applang.provider.*;
-import com.applang.tagesberichte.*;
+import com.applang.provider.NotePadProvider;
+import com.applang.provider.PlantInfoProvider;
+import com.applang.provider.WeatherInfoProvider;
+import com.applang.tagesberichte.Tagesberichte;
 import com.applang.wetterberichte.WeatherList;
 
 import android.app.Activity;

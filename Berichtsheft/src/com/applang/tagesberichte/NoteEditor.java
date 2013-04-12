@@ -16,12 +16,18 @@
 
 package com.applang.tagesberichte;
 
+import java.util.Set;
+import java.util.TreeSet;
+
+import com.applang.Util.ValMap;
 import com.applang.berichtsheft.R;
-import com.applang.provider.NotePadProvider;
 import com.applang.provider.NotePad.Notes;
+import com.applang.provider.NotePadProvider;
 
 import android.app.Activity;
 import android.content.ComponentName;
+import android.content.ContentResolver;
+import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
@@ -43,6 +49,7 @@ import android.view.ContextMenu.ContextMenuInfo;
 import android.widget.EditText;
 
 import static com.applang.Util.*;
+import static com.applang.Util2.*;
 
 /**
  * A generic activity for editing a note in a database.  This can be used
@@ -51,7 +58,7 @@ import static com.applang.Util.*;
  */
 public class NoteEditor extends Activity
 {
-    private static final String TAG = NoteEditor.class.getSimpleName();
+	private static final String TAG = NoteEditor.class.getSimpleName();
     
     /**
      * Standard projection for the interesting columns of a normal note.
@@ -72,12 +79,13 @@ public class NoteEditor extends Activity
     private static final int DELETE_ID = Menu.FIRST + 2;
     private static final int BAUSTEIN_ID = Menu.FIRST + 3;
     private static final int EVALUATE_ID = Menu.FIRST + 4;
+    private static final int SCHLAGWORT_ID = Menu.FIRST + 5;
 
     // The different distinct states the activity can be run in.
-    private static final int STATE_EDIT = 0;
-    private static final int STATE_INSERT = 1;
+    public static final int STATE_EDIT = 0;
+    public static final int STATE_INSERT = 1;
     
-    private static final Character BAUSTEIN_IDENTIFICATOR = '$';
+    public static final Character BAUSTEIN_IDENTIFICATOR = '$';
 
     private int mState;
     private boolean mNoteOnly = false;
@@ -118,6 +126,37 @@ public class NoteEditor extends Activity
             super.onDraw(canvas);
         }
 
+        public String getFirstWord() {
+        	Editable text = getText();
+			int start = 0;
+			int end = -1;
+        	for (int i = 0; i < text.length(); i++) {
+				if (Character.isWhitespace(text.charAt(i))) {
+					if (end < start)
+						start = i + 1;
+					else
+						break;
+				}
+				else
+					end = i + 1;
+			}
+    		return end < start ? "" : text.subSequence(start, end).toString();
+        }
+
+		public boolean hasWord() {
+			return getFirstWord().length() > 0;
+		}
+
+        public String getSelectedText() {
+        	if (hasSelection()) {
+				int start = getSelectionStart();
+				int end = getSelectionEnd();
+        		return getText().subSequence(Math.min(start, end), Math.max(start, end)).toString();
+        	}
+        	else
+        		return "";
+        }
+
         public void insertAtCaretPosition(CharSequence text) {
         	int length = text.length();
     		if (length > 0) {
@@ -130,17 +169,14 @@ public class NoteEditor extends Activity
     	}
     }
 
-    int table = 0;
+    int tableIndex;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         final Intent intent = getIntent();
-
-        Bundle extras = intent.getExtras();
-        if (extras != null && extras.containsKey("table"))
-        	table = extras.getInt("table", 0);
+        tableIndex = NotePadProvider.tableIndex(0, intent.getData());
 
         final String action = intent.getAction();
         if (Intent.ACTION_EDIT.equals(action)) {
@@ -150,7 +186,7 @@ public class NoteEditor extends Activity
         else if (Intent.ACTION_INSERT.equals(action)) {
             mState = STATE_INSERT;
             mUri = getContentResolver().insert(intent.getData(), 
-            		NotePadProvider.selection(table, new ContentValues()));
+            		new ContentValues());
 
             // If we were unable to create a new note, then just finish
             // this activity.  A RESULT_CANCELED will be sent back to the
@@ -161,7 +197,8 @@ public class NoteEditor extends Activity
                 return;
             }
 
-            startActivityForResult(new Intent(TitleEditor.EDIT_TITLE_ACTION, mUri).putExtra("table", table), 0);
+            startActivityForResult(new Intent(TitleEditor.EDIT_TITLE_ACTION, mUri)
+					.putExtra("state", NoteEditor.STATE_INSERT), 0);
         } 
         else {
             // Whoops, unknown action!  Bail.
@@ -201,49 +238,102 @@ public class NoteEditor extends Activity
         });
     	registerForContextMenu(mText);
     	
-    	mCursor = managedQuery(mUri, 
-    			PROJECTION, 
-    			NotePadProvider.selection(table, ""), null, 
-    			null);
-    	
     	if (savedInstanceState != null) {
     		mOriginalContent = savedInstanceState.getString(ORIGINAL_CONTENT);
     	}
     }
     
-    int bausteinRequested = 0;
+    int[] requestCode = new int[] {0,0};
 
-	private void requestBaustein(int requestCode) {
-		bausteinRequested = requestCode;
+	private void requestBaustein(int code) {
+		this.requestCode[0] = code;
+		NoteEditor.this.openContextMenu(mText);
+	}
+
+    private void requestSchlagwort(int code) {
+		this.requestCode[1] = code;
 		NoteEditor.this.openContextMenu(mText);
 	}
 
     @Override
     public void onCreateContextMenu(ContextMenu menu, View view, ContextMenuInfo menuInfo) {
         super.onCreateContextMenu(menu, view, menuInfo);
-        if (bausteinRequested > 0) {
+        if (requestCode[0] > 0) {
 			menu.clear();
-			menu.setHeaderTitle(getResources().getString(R.string.baustein));
-			for (String title : TitleEditor.wordSet(this, 1, "")) {
+			menu.setHeaderTitle(getResources().getString(R.string.menu_baustein));
+			
+			bausteine = NotePadProvider.bausteinMap(getContentResolver(), "");
+			Set<String> wordSet = new TreeSet<String>(bausteine.keySet());
+			for (String title : wordSet) 
 				menu.add(title);
-			}
+			
+			requestCode[0] = -requestCode[0];
+		}
+        else if (requestCode[1] > 0) {
+			menu.clear();
+			menu.setHeaderTitle(getResources().getString(R.string.menu_schlagwort));
+			getMenuInflater().inflate(R.menu.contextmenu_noteeditor, menu);
+			
+			MenuItem mi = menu.findItem(R.id.menu_item_selected);
+			if (mi != null)
+				mi.setEnabled(mText.hasSelection());
+			mi = menu.findItem(R.id.menu_item_first);
+			if (mi != null)
+				mi.setEnabled(mText.hasWord());
+			
+			requestCode[1] = -requestCode[1];
 		}
         else
-        	bausteinRequested = 0;
-        
-		bausteinRequested = -bausteinRequested;
+        	requestCode[0] = requestCode[1] = 0;
     }
+    
+    private ValMap bausteine = null;
     
     @Override
     public boolean onContextItemSelected(MenuItem item) {
-        if (bausteinRequested < 0) {
+        if (requestCode[0] < 0) {
         	String text = item.getTitle().toString();
-        	if (bausteinRequested < -1)
-        		text = BAUSTEIN_IDENTIFICATOR + enclose("{", text, "}");
+        	
+        	if (requestCode[0] < -1) {
+	        	if (bausteine != null)
+	        		text = bausteine.get(text).toString();
+	        	else
+	        		text = BAUSTEIN_IDENTIFICATOR + enclose("{", text, "}");
+        	}
+        	else
+        		text = enclose("{", text, "}");
         	
         	mText.insertAtCaretPosition(text);
         	
-        	bausteinRequested = 0;
+        	requestCode[0] = 0;
+		}
+        else if (requestCode[1] < 0) {
+        	String word = "";
+        	switch (item.getItemId()) {
+			case R.id.menu_item_first:
+				word = mText.getFirstWord();
+				break;
+
+			case R.id.menu_item_selected:
+				word = mText.getSelectedText();
+				break;
+			}
+        	if (word.length() > 0) {
+        		long id = NotePadProvider.id(-1, mUri);
+        		String description = getNoteDescription(getContentResolver(), tableIndex, id);
+        		Uri uri = NotePadProvider.contentUri(2);
+        		uri = ContentUris.withAppendedId(uri, id);
+        		id = NotePadProvider.getIdOfNote(getContentResolver(), 2, 
+        				Notes.REF_ID + "=? and " + Notes.TITLE + "=?", 
+        				new String[] {"" + id, word});
+        		int state = id < 0 ? NoteEditor.STATE_INSERT : NoteEditor.STATE_EDIT;
+	        	startActivity(new Intent()
+	        			.setClass(this, TitleEditor.class)
+	        			.setData(uri)
+	        			.putExtra("title", word)
+	        			.putExtra("header", description)
+	        			.putExtra("state", state));
+        	}
         }
         else
         	return super.onContextItemSelected(item);
@@ -253,16 +343,29 @@ public class NoteEditor extends Activity
     
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-    	setResult(resultCode, (new Intent()).setAction(mUri.toString()));
-    	if (resultCode == RESULT_CANCELED) {
-            deleteNote();
-    		finish();
-    	}
+    	switch (requestCode) {
+		case 1:
+	    	mCursor = managedQuery(mUri, PROJECTION, "", null, null);
+			break;
+
+		default:
+			setResult(resultCode, (new Intent()).setAction(mUri.toString()));
+			if (resultCode == RESULT_CANCELED) {
+				deleteNote();
+				finish();
+			}
+			break;
+		}
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        
+        mCursor = managedQuery(mUri, 
+        		PROJECTION, 
+        		"", null, 
+        		null);
 
         // If we didn't have any trouble retrieving the data, it is now
         // time to get at the stuff.
@@ -340,7 +443,7 @@ public class NoteEditor extends Activity
                 // the content provider will notify the cursor of the change, which will
                 // cause the UI to be updated.
                 getContentResolver().update(mUri, 
-                		NotePadProvider.selection(table, values), 
+                		values, 
                 		null, null);
             }
         }
@@ -369,9 +472,12 @@ public class NoteEditor extends Activity
         }
 
         menu.add(0, BAUSTEIN_ID, 0, R.string.menu_baustein)
-    		.setShortcut('2', 'b');
+    			.setShortcut('2', 'b');
         menu.add(0, EVALUATE_ID, 0, R.string.menu_evaluate)
-    		.setShortcut('3', 'e');
+    			.setShortcut('3', 'e');
+        if (tableIndex == 0)
+	        menu.add(0, SCHLAGWORT_ID, 0, R.string.menu_schlagwort)
+	    			.setShortcut('4', 's');
         
         // If we are working on a full note, then append to the
         // menu items for any other activities that can do stuff with it
@@ -393,8 +499,16 @@ public class NoteEditor extends Activity
         // Handle all of the possible menu actions.
         switch (item.getItemId()) {
         case DELETE_ID:
-            deleteNote();
-            finish();
+    		long id = NotePadProvider.id(-1, mUri);
+    		String description = getNoteDescription(getContentResolver(), tableIndex, id);
+    		description = getResources().getString(R.string.areUsure, description);
+    		areUsure(this, description, new Job<Void>() {
+				@Override
+				public void perform(Void t, Object[] params) throws Exception {
+		            deleteNote();
+		            finish();
+				}
+    		});
             break;
         case DISCARD_ID:
             cancelNote();
@@ -405,17 +519,19 @@ public class NoteEditor extends Activity
         case BAUSTEIN_ID:
 			requestBaustein(2);
             break;
+        case SCHLAGWORT_ID:
+			requestSchlagwort(2);
+            break;
         case EVALUATE_ID:
-			startActivity(new Intent()
+			startActivityForResult(new Intent()
 				.setClass(this, NoteEvaluator.class)
-				.setData(mUri)
-				.putExtra("table", table));
+				.setData(mUri), 1);
             break;
         }
         return super.onOptionsItemSelected(item);
     }
 
-    /**
+	/**
      * Take care of canceling work on a note.  Deletes the note if we
      * had created it, otherwise reverts to the original text.
      */
@@ -428,7 +544,7 @@ public class NoteEditor extends Activity
                 ContentValues values = new ContentValues();
                 values.put(Notes.NOTE, mOriginalContent);
                 getContentResolver().update(mUri, 
-                		NotePadProvider.selection(table, values), 
+                		values, 
                 		null, null);
             } else if (mState == STATE_INSERT) {
                 // We inserted an empty note, make sure to delete it
@@ -443,10 +559,21 @@ public class NoteEditor extends Activity
         if (mCursor != null) {
             mCursor.close();
             mCursor = null;
-            getContentResolver().delete(mUri, 
-            		NotePadProvider.selection(table, ""), 
-            		null);
+            getContentResolver().delete(mUri, "", null);
             mText.setText("");
         }
     }
+
+	public static String getNoteDescription(ContentResolver contentResolver, final int tableIndex, long id) {
+		Object[] params = new Object[1];
+		NotePadProvider.fetchNoteById(id, contentResolver, 0, new Job<Cursor>() {
+			@Override
+			public void perform(Cursor c, Object[] params) throws Exception {
+				params[0] = NotesList.description(tableIndex, 
+						c.getLong(3), 
+						c.getString(1));
+			}
+		}, params);
+		return params[0] != null ? params[0].toString() : "";
+	}
 }

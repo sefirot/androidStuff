@@ -2,61 +2,53 @@ package com.applang.berichtsheft.test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Date;
 
 import android.content.ContentResolver;
 import android.content.ContentValues;
-import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
+import android.util.Log;
 
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
 import static com.applang.VelocityUtil.*;
 
-import com.applang.ImpexTask;
 import com.applang.berichtsheft.BerichtsheftActivity;
 import com.applang.provider.NotePad.Notes;
 import com.applang.provider.NotePadProvider;
 import com.applang.provider.PlantInfo.Plants;
+import com.applang.provider.PlantInfoProvider;
 import com.applang.provider.WeatherInfo.Weathers;
+import com.applang.provider.WeatherInfoProvider;
 
-@SuppressWarnings("deprecation")
-public class ProviderTests extends android.test.ActivityInstrumentationTestCase<BerichtsheftActivity>
+public class ProviderTests extends ActivityTests<BerichtsheftActivity>
 {
+    private static final String TAG = ProviderTests.class.getSimpleName();
+    
 	public ProviderTests() {
 		super("com.applang.berichtsheft", BerichtsheftActivity.class);
 	}
 	
-	public ProviderTests(String method) {
+/*	public ProviderTests(String method) {
 		this();
 	}
-
+*/
     @Override
     protected void setUp() throws Exception {
         super.setUp();
-        assertTrue(getActivity() instanceof BerichtsheftActivity);
-        impex(getActivity(), false);	//	Export
+        assertTrue(mActivity instanceof BerichtsheftActivity);
     }
 
     @Override
     protected void tearDown() throws Exception {
-    	impex(getActivity(), true);	//	Import
         super.tearDown();
 	}
-    
-    public static void impex(Context context, boolean flag) {
-    	String[] dbNames = new String[] { 
-    		"databases/note_pad.db",
-    		"databases/weather_info.db",
-    		"databases/plant_info.db",
-    	};
-		ImpexTask.doImpex(context, dbNames, flag);
-    };
 
-    private Cursor notesCursor(String selection, String... selectionArgs) {
-		Cursor cursor = getActivity().managedQuery(
-        		Notes.CONTENT_URI, 
+    private Cursor notesCursor(int tableIndex, String selection, String... selectionArgs) {
+		Cursor cursor = mActivity.managedQuery(
+        		NotePadProvider.contentUri(tableIndex), 
         		Notes.FULL_PROJECTION, 
         		selection, selectionArgs,
         		Notes.DEFAULT_SORT_ORDER);
@@ -64,23 +56,26 @@ public class ProviderTests extends android.test.ActivityInstrumentationTestCase<
 		return cursor;
 	}
 
-    public ValMap noteMap(String selection, String... selectionArgs) {
-        Cursor cursor = notesCursor(selection, selectionArgs);
-		
-        final boolean bausteine = NotePadProvider.tableIndex(selection) == 1;
+	private void fullRecord(Cursor cursor) {
+		assertEquals(5, cursor.getColumnCount());
+		Object[] values = new Object[5];
+		values[0] = cursor.getLong(0);
+		values[1] = cursor.getString(1);
+		values[2] = cursor.getString(2);
+		values[3] = cursor.getLong(3);
+		values[4] = cursor.getLong(4);
+		Log.i(TAG, Arrays.toString(values));
+	}
 
+    public ValMap noteMap(int tableIndex, String selection, String... selectionArgs) {
+        Cursor cursor = notesCursor(tableIndex, selection, selectionArgs);
+		
         ValMap map = getResultMap(cursor, 
         	new Function<String>() {
 				public String apply(Object... params) {
 					Cursor cursor = param(null, 0, params);
 					assertTrue(cursor != null);
-					String s = "";
-					for (int i = 0; i < cursor.getColumnCount(); i++) {
-						if (Notes.CREATED_DATE.equals(cursor.getColumnName(i)))
-							assertTrue(bausteine ? cursor.isNull(i) : !cursor.isNull(i));
-						s += cursor.getString(i) + "\t";
-					}
-					System.out.println(s);
+					fullRecord(cursor);
 					return cursor.getString(1);
 				}
 	        }, 
@@ -94,73 +89,54 @@ public class ProviderTests extends android.test.ActivityInstrumentationTestCase<
 	    );
         
         return map;
-    }
-
-    public void testNotepadProvider() throws InterruptedException {
-		for (int i = 0; i < NotePadProvider.NOTES_TABLE_NAMES.length; i++) {
-    		assertEquals(i, NotePadProvider.tableIndex(NotePadProvider.selection(i, "")));
-    		assertEquals(i, NotePadProvider.tableIndex(NotePadProvider.selection(i, new ContentValues())));
-    	}
-		ContentValues contentValues = new ContentValues();
-		assertEquals(0, NotePadProvider.tableIndex(contentValues));
-		assertEquals(1, NotePadProvider.tableIndex("Created isnull"));
-		contentValues.put(Notes.MODIFIED_DATE, (Long)null);
-		assertEquals(2, NotePadProvider.tableIndex(contentValues));
-    	
-    		
-    	ContentResolver contentResolver = getActivity().getContentResolver();
-		contentResolver.delete(Notes.CONTENT_URI, "created is null", null);
-		contentResolver.delete(Notes.CONTENT_URI, "title like 'Velocity%'", null);
-		contentResolver.delete(Notes.CONTENT_URI, "modified is null", null);
-   	
-    	int cnt = noteMap(null).size();
-    	
+	}
+    
+    public void testNotePadProvider() throws InterruptedException {
 		long now = now();
-		Object[] args = {
-				"kein", "Kein", null, now, 
-				"fehler", "Fehler", null, now, 
-				"efhler", "eFhler", null, now, 
-				"ehfler", "ehFler", null, now, 
-				"im", "im", null, now, 
-				"system", "System", null, now, 
-				"Velocity1", "$kein $fehler $im $system", now, now, 
-				"Velocity2", "$kein $efhler $im $system", now, now, 	
-				"Velocity3", "$kein $ehfler $im $system", now, now, 	
-		};
-		for (int i = 0; i < args.length - 3; i+=4) {
-			ContentValues values = NotePadProvider.contentValues(i, args);
-	        Uri uri = contentResolver.insert(Notes.CONTENT_URI, values);
-	        assertEquals(Notes.CONTENT_ITEM_TYPE, contentResolver.getType(uri));
-		}
+		ActivityTests.generateNotePadData(mActivity, true, new Object[][] {
+			{ 1L, "kein", "Kein", null, now }, 
+			{ 2L, "fehler", "Fehler", null, now }, 
+			{ 3L, "efhler", "eFhler", null, now }, 
+			{ 4L, "ehfler", "ehFler", null, now }, 
+			{ 5L, "im", "im", null, now }, 
+			{ 6L, "system", "System", null, now }, 
+			{ 1L, "Velocity1", "$kein $fehler $im $system", now, now }, 
+			{ 2L, "Velocity2", "$kein $efhler $im $system", now, now }, 	
+			{ 3L, "Velocity3", "$kein $ehfler $im $system", now, now }, 	
+		});
 		
-		ValMap noteMap = noteMap("title like ?", "Velocity%");
+		ValMap noteMap = noteMap(0, "title like ?", "Velocity%");
 		assertEquals(3, noteMap.size());
 		
-		MapContext noteContext = new MapContext(noteMap("created isnull"));
+		MapContext noteContext = new MapContext(noteMap(1, ""));
 		assertEquals(6, noteContext.getKeys().length);
 		
-		setupVelocity4Android("com.applang.berichtsheft", getActivity().getResources());
+		setupVelocity4Android("com.applang.berichtsheft", mActivity.getResources());
+
+		ContentResolver contentResolver = mActivity.getContentResolver();
 		
-		Cursor cursor = notesCursor("title like ?", "Velocity%");
+		Cursor cursor = notesCursor(0, "title like ?", "Velocity%");
 		assertTrue(cursor.moveToFirst());
+		long id = 0;
 		do {
 			String note = cursor.getString(2);
 			note = evaluation(noteContext, note, "notes");
 			assertFalse(note.contains("$"));
 			if (!note.contains("Fehler")) {
-				long id = cursor.getLong(0);
-				ContentValues values = NotePadProvider.contentValues(0, "Fehler", "", id, null);
-		        Uri uri = contentResolver.insert(Notes.CONTENT_URI, values);
+				long refId = cursor.getLong(0);
+				ContentValues values = NotePadProvider.contentValues(++id, "Fehler", null, refId, null);
+		        Uri uri = contentResolver.insert(NotePadProvider.contentUri(2), values);
 		        assertEquals(Notes.CONTENT_ITEM_TYPE, contentResolver.getType(uri));
 			}
 			System.out.println(note);
 		} while (cursor.moveToNext());
 		cursor.close();
+		
+		noteMap(2, "");
 
-		assertEquals(6, contentResolver.delete(Notes.CONTENT_URI, "created is null", null));
-		assertEquals(2, contentResolver.delete(Notes.CONTENT_URI, "modified is null", null));
-		assertEquals(3, contentResolver.delete(Notes.CONTENT_URI, "title like 'Velocity%'", null));
-		assertEquals(cnt, noteMap(null).size());
+		assertEquals(6, NotePadProvider.countNotes(contentResolver, 1, "", null)[0].intValue());
+		assertEquals(2, NotePadProvider.countNotes(contentResolver, 2, "", null)[0].intValue());
+		assertEquals(3, NotePadProvider.countNotes(contentResolver, 0, "", null)[0].intValue());
     }
 
     private String[] PROJECTION_WEATHERS = new String[] {
@@ -175,7 +151,7 @@ public class ProviderTests extends android.test.ActivityInstrumentationTestCase<
     };
 
     public void testWeatherInfoProvider() throws IOException {
-        ContentResolver contentResolver = getActivity().getContentResolver();
+        ContentResolver contentResolver = mActivity.getContentResolver();
         contentResolver.delete(Weathers.CONTENT_URI, Weathers.LOCATION + "=?", new String[]{"here"});
         
         Cursor cursor = contentResolver.query(
@@ -225,7 +201,7 @@ public class ProviderTests extends android.test.ActivityInstrumentationTestCase<
     };
 
     public void testPlantInfoProvider() throws IOException {
-        ContentResolver contentResolver = getActivity().getContentResolver();
+        ContentResolver contentResolver = mActivity.getContentResolver();
         contentResolver.delete(Plants.CONTENT_URI, Plants.NAME + "=?", new String[]{"Paradeiser"});
         
         Cursor cursor = contentResolver.query(
@@ -261,6 +237,8 @@ public class ProviderTests extends android.test.ActivityInstrumentationTestCase<
         assertEquals("Solanum lycopersicum", cursor.getString(3));
         assertEquals("xitomatl", cursor.getString(5));
         cursor.close();
+		
+//    	ImpexTask.doImpex(mActivity, new String[] { "databases/plant_info.db" }, true);
     };
 
     private String[] PROJECTION_ID = new String[] {
@@ -269,7 +247,7 @@ public class ProviderTests extends android.test.ActivityInstrumentationTestCase<
     };
 
     public void testgetAllEntries() throws IOException {
-      	ContentResolver contentResolver = getActivity().getContentResolver();
+      	ContentResolver contentResolver = mActivity.getContentResolver();
 		contentResolver.delete(Plants.CONTENT_URI, null, null);
 		
 		assertEquals(0, contentResolver.query(
@@ -305,26 +283,30 @@ public class ProviderTests extends android.test.ActivityInstrumentationTestCase<
 		}
     };
     
-    public void impexTest(boolean flag) throws InterruptedException {
-		assertTrue(ImpexTask.isExternalStorageAvailable());
-    	File directory = ImpexTask.directory(getActivity(), !flag);
-		assertTrue(directory.exists());
-    	directory = ImpexTask.directory(getActivity(), flag);
-    	String fileName = "databases/plant_info.db";
-		final File file = new File(directory, fileName);
-		if (file.exists())
-			file.delete();
-//    	final CountDownLatch signal = new CountDownLatch(1);
-    	ImpexTask.AsyncCallback callback = new ImpexTask.AsyncCallback() {
-			public void onTaskCompleted() {
-				assertTrue(file.exists());
-//				signal.countDown();
-			}
-		};
-    	if (flag) 
-			ImpexTask.doImport(getActivity(), new String[]{fileName}, callback);
-		else
-			ImpexTask.doExport(getActivity(), new String[]{fileName}, callback);
-//    	signal.await();
+    public void _testImpex() throws InterruptedException {
+		for (boolean flag : new boolean[]{true,false}) {
+			assertTrue(isExternalStorageAvailable());
+			File directory = ImpexTask.directory(mActivity, !flag);
+			assertTrue(directory.exists());
+			String fileName = "databases/plant_info.db";
+			final File file = new File(directory, fileName);
+			if (file.exists())
+				file.delete();
+			
+			//    	final CountDownLatch signal = new CountDownLatch(1);
+			ImpexTask.AsyncCallback callback = new ImpexTask.AsyncCallback() {
+				public void onTaskCompleted() {
+					assertTrue(file.exists());
+					//				signal.countDown();
+				}
+			};
+			
+			if (!flag)
+				ImpexTask.doImport(mActivity, new String[] { fileName }, callback);
+			else
+				ImpexTask.doExport(mActivity, new String[] { fileName }, callback);
+			
+			//    	signal.await();
+		}
     }
 }

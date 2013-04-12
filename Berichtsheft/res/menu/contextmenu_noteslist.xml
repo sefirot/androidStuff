@@ -2,5 +2,7 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android" >
     <item android:id="@+id/menu_item_schlagwort" android:title="@string/menu_schlagwort"></item>
     <item android:id="@+id/menu_item_evaluate" android:title="@string/menu_evaluate"></item>
+    <item android:id="@+id/menu_item_edit" android:title="@string/menu_edit"></item>
+    <item android:id="@+id/menu_item_duplicate" android:title="@string/menu_duplicate"></item>
     <item android:id="@+id/menu_item_delete" android:title="@string/menu_delete"></item>
 </menu>

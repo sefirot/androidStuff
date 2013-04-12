@@ -18,7 +18,6 @@ package com.applang.tagesberichte;
 
 import java.util.Calendar;
 import java.util.Set;
-import java.util.TreeSet;
 
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
@@ -29,17 +28,21 @@ import com.applang.provider.NotePadProvider;
 
 import android.app.Activity;
 import android.content.ContentValues;
+import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.view.ContextMenu;
+import android.view.MenuItem;
 import android.view.View;
+import android.view.ContextMenu.ContextMenuInfo;
 import android.view.View.OnClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.DatePicker;
 import android.widget.AutoCompleteTextView;
 import android.widget.ImageButton;
-import android.widget.Spinner;
 import android.widget.Toast;
 
 /**
@@ -47,6 +50,8 @@ import android.widget.Toast;
  */
 public class TitleEditor extends Activity implements View.OnClickListener
 {
+    private static final String TAG = TitleEditor.class.getSimpleName();
+    
     /**
      * This is a special intent action that means "edit the title of a note".
      */
@@ -59,72 +64,89 @@ public class TitleEditor extends Activity implements View.OnClickListener
             Notes._ID, // 0
             Notes.TITLE, // 1
             Notes.CREATED_DATE, 
+            Notes.REF_ID2, 
     };
     
-    /** Index of the title column */
     private static final int COLUMN_INDEX_TITLE = 1;
     private static final int COLUMN_INDEX_CREATED = 2;
+    private static final int COLUMN_INDEX_REF_ID2 = 3;
 
     private static Calendar calendar = Calendar.getInstance();
 
     private AutoCompleteTextView mTitle;
     private DatePicker mDate;
-    private Spinner mSpinner;
+    private CheckBox mCheck;
     
-    /**
-     * Cursor which will provide access to the note whose title we are editing.
-     */
     private Cursor mCursor;
-
-    /**
-     * The content URI to the note that's being edited.
-     */
     private Uri mUri;
-    private long mId;
+    private long mId = -1;
 
-    int table = 0;
-
+    int mState = NoteEditor.STATE_EDIT;
+    String header = "";
+    int tableIndex = 0;
+    String selection = "";
+    String[] selectionArgs = null;
+    String title = "";
+    String followUp = null;
+    
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
+        
+        mUri = getIntent().getData();
+        tableIndex = NotePadProvider.tableIndex(tableIndex, mUri);
+        mId = NotePadProvider.id(mId, mUri);
+        
         Bundle extras = getIntent().getExtras();
-        if (extras != null && extras.containsKey("table"))
-        	table = extras.getInt("table", 0);
-        else
-        	table = Math.abs(NotePadProvider.savedTableIndex(this, 0));
+        if (extras != null) {
+        	if (extras.containsKey("tableIndex"))
+        		tableIndex = extras.getInt("tableIndex", tableIndex);
+        	
+        	if (extras.containsKey("state"))
+        		mState = extras.getInt("state", mState);
+        	
+        	if (extras.containsKey("header"))
+        		header = extras.getString("header");
+        	
+        	if (extras.containsKey("followUp"))
+        		followUp = extras.getString("followUp");
+        	
+        	if (extras.containsKey("title")) {
+        		title = extras.getString("title");
+        		selection = Notes.TITLE + "=?";
+				selectionArgs = new String[] {title};
+        	}
+	    }
         
         setContentView(new int[] {
         		R.layout.title_editor, 
         		R.layout.word_editor1, 
-        		R.layout.word_editor2 }[table]);
+        		R.layout.word_editor2 }[tableIndex]);
         
         String[] strings = getResources().getStringArray(R.array.title_edit_array);
-        setTitle(strings[table]);
-
-        mUri = getIntent().getData();
-        mId = toLong(-1L, mUri.getPathSegments().get(1));
+        setTitle(strings[tableIndex]);
         
-        String selection = "";
-        if (table == 2) {
-            selection = Notes.CREATED_DATE + "=" + mId;
-			mUri = Notes.CONTENT_URI;
+        if (tableIndex == 2 && mState == NoteEditor.STATE_INSERT) {
+            selection = Notes.REF_ID + "=?";
+    		selectionArgs = new String[] {"" + mId};
+            mUri = NotePadProvider.contentUri(tableIndex);
 		}
+        
         mCursor = managedQuery(mUri, 
         		PROJECTION, 
-        		NotePadProvider.selection(table, selection), null, 
+        		selection, selectionArgs, 
         		null);
 
         mTitle = (AutoCompleteTextView) this.findViewById(R.id.title);
         mTitle.setThreshold(1);
         
-        switch (table) {
+        switch (tableIndex) {
 		case 0:
 			strings = getResources().getStringArray(R.array.category_array); 
 			break;
 		case 1:
 		case 2:
-			strings = wordSet(this, table, "").toArray(new String[0]);
+			strings = NotePadProvider.wordSet(this.getContentResolver(), tableIndex, "").toArray(new String[0]);
 			break;
 		}
         
@@ -142,37 +164,73 @@ public class TitleEditor extends Activity implements View.OnClickListener
 						mTitle.showDropDown();
 				}
 			});
-		
-		mDate = (DatePicker) this.findViewById(R.id.datePicker);
-		mSpinner = (Spinner) this.findViewById(R.id.spinner1);
+        
+		final Button bt = (Button) findViewById(R.id.button2);
+		if (bt != null) { 
+			if (mState == NoteEditor.STATE_INSERT) {
+				mTitle.setHint(R.string.new_item);
+				bt.setText(R.string.old_items);
+				bt.setOnClickListener(new OnClickListener() {
+					@Override
+					public void onClick(View v) {
+						openContextMenu(bt);
+					}
+				});
+				registerForContextMenu(bt);
+			}
+			else
+				bt.setVisibility(View.GONE);
+		}
 		
 		for (int id : new int[] {R.id.ok,R.id.cancel}) {
 			Button b = (Button) findViewById(id);
 			b.setOnClickListener(this);
 		}
+		
+		mDate = (DatePicker) this.findViewById(R.id.datePicker);
+//		mCheck = (CheckBox) this.findViewById(R.id.checkBox1);
+	}
+
+    @Override
+    public void onCreateContextMenu(final ContextMenu menu, View view, ContextMenuInfo menuInfo) {
+        super.onCreateContextMenu(menu, view, menuInfo);
+		menu.clear();
+		NotePadProvider.fetchNoteById(mId, this.getContentResolver(), 0, new Job<Cursor>() {
+			@Override
+			public void perform(Cursor c, Object[] params) throws Exception {
+				menu.setHeaderTitle(NotesList.description(0, c.getLong(3), c.getString(1)));
+//				menu.setHeaderTitle(getResources().getString(R.string.title_list_schlagwort, 
+//						NotesList.description(0, c.getLong(3), c.getString(1))));
+			}
+		});
+		Set<String> words = NotePadProvider.wordSet(this.getContentResolver(), 2, Notes.CREATED_DATE + "=" + mId);
+		for (String word : words) 
+			menu.add(word);
+    }
+    
+    @Override
+    public boolean onContextItemSelected(MenuItem item) {
+    	return super.onContextItemSelected(item);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
 
+        mTitle.setText(title);
         if (mCursor != null && mCursor.moveToFirst()) {
-        	switch (table) {
-			case 2:
-			default:
+        	if (tableIndex != 2 || mState == NoteEditor.STATE_EDIT) 
 				mTitle.setText(mCursor.getString(COLUMN_INDEX_TITLE));
-				break;
-			}
+        	
 			if (mDate != null) {
 				calendar.setTimeInMillis(mCursor.getLong(COLUMN_INDEX_CREATED));
 				mDate.init(calendar.get(Calendar.YEAR),
 						calendar.get(Calendar.MONTH),
 						calendar.get(Calendar.DAY_OF_MONTH), null);
 			}
-			if (mSpinner != null)
-				mSpinner.setAdapter(new ArrayAdapter<String>(this, 
-						android.R.layout.simple_spinner_item, 
-						wordSet(this, 2, Notes.CREATED_DATE + "=" + mId).toArray(new String[0])));
+			if (mCheck != null) {
+				mCheck.setChecked(mCursor.getLong(COLUMN_INDEX_REF_ID2) < 0);
+			}
         }
     }
 
@@ -181,12 +239,12 @@ public class TitleEditor extends Activity implements View.OnClickListener
         super.onPause();
 
         if (mCursor != null && resultCode != RESULT_CANCELED) {
-        	String title = mTitle.getText().toString();
+        	title = mTitle.getText().toString();
         	
             ContentValues values = new ContentValues();
 			values.put(Notes.TITLE, title);
 			
-            switch (table) {
+            switch (tableIndex) {
 			case 0:
 				if (mDate != null) {
 					calendar.set(mDate.getYear(), mDate.getMonth(),	mDate.getDayOfMonth());
@@ -195,13 +253,18 @@ public class TitleEditor extends Activity implements View.OnClickListener
 				break;
 
 			case 1:
-		        Cursor cursor = managedQuery(Notes.CONTENT_URI, 
+				if (mCheck != null) {
+					long refId2 = Math.abs(mCursor.getLong(COLUMN_INDEX_REF_ID2));
+					values.put(Notes.REF_ID2, mCheck.isChecked() ? -refId2 : refId2);
+				}
+		        Cursor cursor = managedQuery(NotePadProvider.contentUri(tableIndex), 
 		        		PROJECTION, 
-		        		NotePadProvider.selection(table, Notes.TITLE + "=?"), new String[] {title}, 
+		        		Notes.TITLE + "=?", new String[] {title}, 
 		        		null);
 		        if (cursor.getCount() > 0 && resultCode == RESULT_OK) {
-		        	String exists = getResources().getString(R.string.baustein_exists);
-		        	Toast.makeText(this, String.format(exists, title), Toast.LENGTH_LONG).show();
+		        	Toast.makeText(this, 
+		        			getResources().getString(R.string.baustein_exists, title), 
+		        			Toast.LENGTH_LONG).show();
 		        	setResult(RESULT_CANCELED);
 		        	return;
 		        }
@@ -209,20 +272,38 @@ public class TitleEditor extends Activity implements View.OnClickListener
 		        	break;
 
 			case 2:
-				if (title.length() > 0 && resultCode == RESULT_OK) {
-					values.put(Notes.CREATED_DATE, mId);
-		            try {
-						mUri = getContentResolver().insert(mUri, 
-								NotePadProvider.selection(table, values));
-					} catch (Exception e) {}
-		            NotePadProvider.saveTableIndex(this, -table);
+				if (title.length() > 0 && resultCode == RESULT_OK && mState == NoteEditor.STATE_INSERT) {
+			        selection = 
+			        		Notes.REF_ID + "=? and " + 
+			        		Notes.TITLE + "=?";
+			        selectionArgs = new String[] {"" + mId, title};
+					mCursor = managedQuery(mUri, 
+			        		arrayappend(PROJECTION, Notes.REF_ID2), 
+			        		selection, 
+			        		selectionArgs, 
+			        		null);
+			        
+		            if (mCursor.getCount() < 1) {
+		            	values.put(Notes.REF_ID, mId);
+		            	values.put(Notes.REF_ID2, (Long)null);
+						mUri = getContentResolver().insert(mUri, values);
+						
+						Toast.makeText(this, 
+								getResources().getString(R.string.new_word, header), 
+								Toast.LENGTH_SHORT).show();
+					}
+		            return;
 				}
-				return;
+				else if (title.length() < 1 || resultCode == RESULT_CANCELED)
+					return;
+				else
+					break;
 			}
 			
 			getContentResolver().update(mUri, 
-            		NotePadProvider.selection(table, values), 
-            		null, null);
+            		values, 
+            		selection, 
+            		selectionArgs);
         }
     }
     
@@ -230,31 +311,10 @@ public class TitleEditor extends Activity implements View.OnClickListener
 
     public void onClick(View view) {
     	resultCode = view.getId() == R.id.ok ? RESULT_OK : RESULT_CANCELED;
-		setResult(resultCode);
+    	if (notNullOrEmpty(followUp))
+    		setResult(resultCode, new Intent(followUp, mUri));
+    	else
+    		setResult(resultCode);
         finish();
-    }
-
-    public static Set<String> wordSet(Activity activity, int tableIndex, String selection, String... selectionArgs) {
-		Cursor cursor = activity.managedQuery(
-				Notes.CONTENT_URI, 
-				new String[] {Notes.TITLE}, 
-				NotePadProvider.selection(tableIndex, selection), selectionArgs, 
-        		null);
-		
-        ValMap map = getResultMap(cursor, 
-        	new Function<String>() {
-				public String apply(Object... params) {
-					Cursor cursor = param(null, 0, params);
-					return cursor.getString(0);
-				}
-	        }, 
-        	new Function<Object>() {
-				public Object apply(Object... params) {
-					return null;
-				}
-	        }
-	    );
-        
-        return new TreeSet<String>(map.keySet());
     }
 }

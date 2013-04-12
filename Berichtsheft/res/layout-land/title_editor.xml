@@ -7,12 +7,21 @@
     android:paddingRight="6dip"
     android:paddingBottom="3dip">
 
+    <ImageButton
+        android:id="@+id/button1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentRight="true"
+        android:src="@drawable/dropdown" />
+    
     <AutoCompleteTextView
         android:id="@+id/title"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentLeft="true"
-        android:layout_alignParentTop="true" />
+        android:layout_alignParentTop="true"
+        android:layout_toLeftOf="@id/button1" />
     
     <DatePicker
         android:id="@+id/datePicker"
@@ -34,6 +43,8 @@
 	        android:layout_width="wrap_content"
 	        android:layout_height="wrap_content"
 	        android:layout_alignParentRight="true"
+	        android:paddingLeft="@dimen/padding_ok"
+	        android:paddingRight="@dimen/padding_ok"
 	        android:text="@string/button_ok" />
         	    		
 	    <Button

@@ -21,6 +21,7 @@ import java.util.Locale;
 import android.app.ListActivity;
 import android.content.ComponentName;
 import android.content.ContentUris;
+import android.content.ContentValues;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
@@ -37,6 +38,8 @@ import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
 
 import static com.applang.Util.*;
+import static com.applang.Util2.*;
+
 import com.applang.berichtsheft.R;
 import com.applang.provider.NotePadProvider;
 import com.applang.provider.NotePad.Notes;
@@ -46,12 +49,18 @@ import com.applang.provider.NotePad.Notes;
  * provided in the intent if there is one, otherwise defaults to displaying the
  * contents of the {@link NotePadProvider}
  */
-public class NotesList extends ListActivity {
-    private static final String TAG = NotesList.class.getSimpleName();
+public class NotesList extends ListActivity
+{
+	private static final String TAG = NotesList.class.getSimpleName();
+    
+    private static String dateFormat = "EEEEE, dd.MM.yyyy";
+    
+    public static String formatDate(long time) {
+    	return com.applang.Util.formatDate(time, dateFormat, Locale.getDefault());
+    }
 
-    private static final int MENU_ITEM_DELETE = Menu.FIRST;
-    private static final int MENU_ITEM_INSERT = Menu.FIRST + 1;
-    private static final int MENU_ITEM_SCHLAGWORT = Menu.FIRST + 2;
+    private static final int MENU_ITEM_INSERT = Menu.FIRST;
+    private static final int MENU_ITEM_DUPLICATE = Menu.FIRST + 1;
 
     /**
      * The columns we are interested in from the database
@@ -65,23 +74,20 @@ public class NotesList extends ListActivity {
     private static final int COLUMN_INDEX_TITLE = 1;
     private static final int COLUMN_INDEX_CREATED = 2;
     
-    public static String dateFormat = "d.MMM.yyyy";
-    
-    public static String formatDate(long time) {
-    	return com.applang.Util.formatDate(time, dateFormat, Locale.getDefault());
-    }
-    
     public static String description(int tableIndex, long time, String title) {
 		return tableIndex == 0 ? 
 				String.format("%s '%s'", formatDate(time), title) : 
 				title;
     }
 
-    int table = 0;
+    int tableIndex;
+    String selection = "";
+    String[] selectionArgs = null;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+//		setContentView(R.layout.noteslist);
 
         setDefaultKeyMode(DEFAULT_KEYS_SHORTCUT);
 
@@ -91,11 +97,7 @@ public class NotesList extends ListActivity {
         if (intent.getData() == null) {
             intent.setData(Notes.CONTENT_URI);
         }
-        
-        Bundle extras = intent.getExtras();
-        if (extras != null && extras.containsKey("table")) {
-        	table = extras.getInt("table", 0);
-        }
+        tableIndex = NotePadProvider.tableIndex(0, intent.getData());
 
         // Inform the list we provide context menus for items
         getListView().setOnCreateContextMenuListener(this);
@@ -104,12 +106,12 @@ public class NotesList extends ListActivity {
         // when needed.
         Cursor cursor = managedQuery(intent.getData(), 
         		PROJECTION, 
-        		NotePadProvider.selection(table, ""), null,
-                Notes.DEFAULT_SORT_ORDER);
+        		selection, selectionArgs,
+                tableIndex > 0 ? Notes.TITLE_SORT_ORDER : Notes.DEFAULT_SORT_ORDER);
 
         // Used to map notes entries from the database to views
         SimpleCursorAdapter adapter = new SimpleCursorAdapter(this, 
-        		new int[] {R.layout.noteslist_item,R.layout.noteslist_item1,R.layout.noteslist_item2}[table], 
+        		new int[] {R.layout.noteslist_item,R.layout.noteslist_item1,R.layout.noteslist_item2}[tableIndex], 
         		cursor,
                 new String[] { Notes.TITLE, Notes.CREATED_DATE }, 
                 new int[] { R.id.title, R.id.date })
@@ -130,12 +132,6 @@ public class NotesList extends ListActivity {
     }
 
     @Override
-    protected void onResume() {
-        super.onResume();
-    	NotePadProvider.saveTableIndex(this, table);
-    }
-
-    @Override
     protected void onListItemClick(ListView l, View v, int position, long id) {
         Uri uri = ContentUris.withAppendedId(getIntent().getData(), id);
         
@@ -147,7 +143,7 @@ public class NotesList extends ListActivity {
         } 
         else {
             // Launch activity to view/edit the currently selected item
-            startActivity(new Intent(Intent.ACTION_EDIT, uri).putExtra("table", table));
+            startActivity(new Intent(Intent.ACTION_EDIT, uri));
         }
     }
     
@@ -215,7 +211,7 @@ public class NotesList extends ListActivity {
         case MENU_ITEM_INSERT:
             // Launch activity to insert a new item
             Uri data = getIntent().getData();
-			startActivity(new Intent(Intent.ACTION_INSERT, data).putExtra("table", table));
+			startActivity(new Intent(Intent.ACTION_INSERT, data));
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -230,6 +226,8 @@ public class NotesList extends ListActivity {
             Log.e(TAG, "bad menuInfo", e);
             return;
         }
+        
+        description = "";
 
         Cursor cursor = (Cursor) getListAdapter().getItem(info.position);
         if (cursor == null) {
@@ -237,13 +235,17 @@ public class NotesList extends ListActivity {
             return;
         }
 
-        menu.setHeaderTitle(description(table, 
+        description = description(tableIndex, 
         		cursor.getLong(COLUMN_INDEX_CREATED), 
-        		cursor.getString(COLUMN_INDEX_TITLE)));
+        		cursor.getString(COLUMN_INDEX_TITLE));
+		menu.setHeaderTitle(description);
+        
 		getMenuInflater().inflate(R.menu.contextmenu_noteslist, menu);
-		if (table > 0)
+		if (tableIndex > 0)
 			menu.removeItem(R.id.menu_item_schlagwort);
     }
+    
+    String description;
         
     @Override
     public boolean onContextItemSelected(MenuItem item) {
@@ -255,29 +257,73 @@ public class NotesList extends ListActivity {
             return false;
         }
 
-        Uri noteUri = ContentUris.withAppendedId(getIntent().getData(), info.id);
+        final Uri uri = getIntent().getData();
+		final Uri noteUri = ContentUris.withAppendedId(uri, info.id);
         
         switch (item.getItemId()) {
         case R.id.menu_item_schlagwort:
             startActivityForResult(
             	new Intent(TitleEditor.EDIT_TITLE_ACTION, noteUri)
-            		.putExtra("table", 2), 0);
+					.putExtra("header", description)
+					.putExtra("tableIndex", 2)
+					.putExtra("state", NoteEditor.STATE_INSERT), Menu.NONE);
             return true;
             
         case R.id.menu_item_evaluate: 
 			startActivity(new Intent()
 					.setClass(this, NoteEvaluator.class)
+					.setData(noteUri));
+            return true;
+            
+        case R.id.menu_item_edit: 
+			startActivity(new Intent()
+					.setClass(this, TitleEditor.class)
 					.setData(noteUri)
-					.putExtra("table", table));
+					.putExtra("state", NoteEditor.STATE_EDIT));
+            return true;
+            
+        case R.id.menu_item_duplicate:
+        	NotePadProvider.fetchNoteById(info.id, getContentResolver(), tableIndex, new Job<Cursor>() {
+				@Override
+				public void perform(Cursor c, Object[] params) throws Exception {
+		            ContentValues values = new ContentValues();
+		            values.put(Notes.NOTE, c.getString(2));
+		            
+					Uri newNoteUri = getContentResolver().insert(uri, values);
+					
+					startActivityForResult(
+						new Intent(TitleEditor.EDIT_TITLE_ACTION, newNoteUri)
+							.putExtra("state", NoteEditor.STATE_INSERT)
+							.putExtra("followUp", Intent.ACTION_EDIT), MENU_ITEM_DUPLICATE);
+				}
+        	});
             return true;
             
         case R.id.menu_item_delete: 
-            // Delete the note that the context menu is for
-            getContentResolver().delete(noteUri, 
-            		NotePadProvider.selection(table, ""), 
-            		null);
+    		long id = NotePadProvider.id(-1, noteUri);
+    		String description = NoteEditor.getNoteDescription(getContentResolver(), tableIndex, id);
+    		description = getResources().getString(R.string.areUsure, description);
+    		areUsure(this, description, new Job<Void>() {
+				@Override
+				public void perform(Void t, Object[] params) throws Exception {
+		            getContentResolver().delete(noteUri, "", null);
+				}
+    		});
             return true;
         }
         return false;
     }
+    
+    @Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+		switch (requestCode) {
+		case MENU_ITEM_DUPLICATE:
+			if (resultCode == RESULT_OK)
+				startActivity(data);
+			else
+				getContentResolver().delete(data.getData(), "", null);
+			break;
+
+		}
+	}
 }

@@ -55,6 +55,7 @@ public final class NotePad {
          * The default sort order for this table
          */
         public static final String DEFAULT_SORT_ORDER = "created ASC";
+        public static final String TITLE_SORT_ORDER = "title COLLATE NOCASE";
 
         /**
          * The title of the note
@@ -73,12 +74,14 @@ public final class NotePad {
          * <P>Type: INTEGER (long from System.curentTimeMillis())</P>
          */
         public static final String CREATED_DATE = "created";
+        public static final String REF_ID = CREATED_DATE;
 
         /**
          * The timestamp for when the note was last modified
          * <P>Type: INTEGER (long from System.curentTimeMillis())</P>
          */
         public static final String MODIFIED_DATE = "modified";
+        public static final String REF_ID2 = MODIFIED_DATE;
         
         public static String[] FULL_PROJECTION = new String[] {
 			_ID, // 0

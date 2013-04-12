@@ -19,6 +19,7 @@ package com.applang.provider;
 import com.applang.provider.NotePad.Notes;
 
 import android.content.ContentProvider;
+import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
@@ -33,51 +34,38 @@ import android.net.Uri;
 import android.text.TextUtils;
 import android.util.Log;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
+
+import static com.applang.Util.*;
+import static com.applang.Util2.*;
 
 /**
  *	Provides access to a database of notes. Each note has a title, the note
  *	itself, a creation and a modification date.
  */
-public class NotePadProvider extends ContentProvider {
-
+public class NotePadProvider extends ContentProvider
+{
     private static final String TAG = "NotePadProvider";
 
     public static final String DATABASE_NAME = "note_pad.db";
-    public static final int DATABASE_VERSION = 3;
+    public static final int DATABASE_VERSION = 4;
     
-    public static final String[] NOTES_TABLE_NAMES = {"notes", "bausteine", "glossary"};
+    public static final String[] NAMES = {"notes", "bausteine", "words"};
     
     public static String tableName(int index) {
-    	if (index > -1 && index < NOTES_TABLE_NAMES.length)
-    		return NOTES_TABLE_NAMES[index];
+    	if (index > -1 && index < NAMES.length)
+    		return NAMES[index];
     	else
     		return "";
     }
-
-	public static boolean isTableDirty(Context context, int index) {
-        SharedPreferences prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE);
-        return prefs.getString("dirty", "").indexOf("" + index) > -1;
-    }
-
-	public static void setTableState(Context context, int index, boolean dirty) {
-		boolean isDirty = isTableDirty(context, index);
-		if (dirty == isDirty)
-			return;
-        SharedPreferences prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE);
-        String dirt = prefs.getString("dirt", "");
-        if (dirty)
-        	dirt += index;
-        else {
-        	int i = dirt.indexOf("" + index);
-        	dirt = dirt.substring(0, i) + dirt.substring(i + 1);
-        }
-        SharedPreferences.Editor prefsEditor = prefs.edit();
-        prefsEditor.putString("dirt", dirt);
-        prefsEditor.commit();
+    
+    public static int tableIndex(String name) {
+    	return Arrays.asList(NAMES).indexOf(name);
     }
 
 	public static void saveTableIndex(Context context, int index) {
@@ -92,69 +80,53 @@ public class NotePadProvider extends ContentProvider {
         int index = prefs.getInt("table", defaultIndex);
 		return index;
 	}
-    
-	public static int tableIndex(String selection) {
-		if (selection != null) {
-			String expr = "(?i)%s\\s+is\\s*null";
-			if (selection.matches(String.format(expr, Notes.CREATED_DATE)))
-				return 1;
-	    	else if (selection.matches(String.format(expr, Notes.MODIFIED_DATE)))
-	    		return 2;
-		}
-		return 0;
+   
+    public static Uri contentUri(int index) {
+    	return contentUri(tableName(index));
     }
     
-    public static int tableIndex(ContentValues values) {
-    	if (values != null) {
-    		if (values.containsKey(Notes.CREATED_DATE) && values.get(Notes.CREATED_DATE) == null)
-    			return 1;
-    		else if (values.containsKey(Notes.MODIFIED_DATE) && values.get(Notes.MODIFIED_DATE) == null)
-    			return 2;
+    public static Uri contentUri(String name) {
+    	return Uri.parse("content://" + NotePad.AUTHORITY + "/" + name);
+    }
+    
+    public static int tableIndex(int defaultValue, Uri uri) {
+    	if (uri == null)
+    		return defaultValue;
+    	int segments = uri.getPathSegments().size();
+    	if (segments < 1)
+    		return defaultValue;
+    	else {
+    		int index = tableIndex(uri.getPathSegments().get(0));
+    		return index < 0 ? defaultValue : index;
     	}
-		return 0;
     }
     
-    public static String selection(int tableIndex, String selection) {
-    	switch (tableIndex) {
-		case 2:
-			if (selection.length() > 0)
-				selection = String.format("(%s) and ", selection);
-			selection += Notes.MODIFIED_DATE + " is null";
-			break;
-		case 1:
-			if (selection.length() > 0)
-				selection = String.format("(%s) and ", selection);
-			selection += Notes.CREATED_DATE + " is null";
-			break;
-		}
-    	return selection;
-    }
-    
-    public static ContentValues selection(int tableIndex, ContentValues values) {
-    	switch (tableIndex) {
-		case 2:
-			values.put(Notes.MODIFIED_DATE, (Long)null);
-			break;
-		case 1:
-			values.put(Notes.CREATED_DATE, (Long)null);
-			break;
-		}
-    	return values;
+    public static long id(long defaultValue, Uri uri) {
+    	if (uri == null)
+    		return defaultValue;
+    	int segments = uri.getPathSegments().size();
+    	if (segments < 2)
+    		return defaultValue;
+    	else
+    		return toLong(defaultValue, uri.getPathSegments().get(1));
     }
 
-    public static ContentValues contentValues(int i, Object... args) {
+    public static ContentValues contentValues(Object... args) {
 		ContentValues values = new ContentValues();
-		if (args.length > i) values.put(Notes.TITLE, args[i].toString());
-		if (args.length > i+1) values.put(Notes.NOTE, args[i+1].toString());
-		if (args.length > i+2) values.put(Notes.CREATED_DATE, (Long)args[i+2]);
-		if (args.length > i+3) values.put(Notes.MODIFIED_DATE, (Long)args[i+3]);
+		if (args.length > 0) values.put(Notes._ID, (Long)args[0]);
+		if (args.length > 1) values.put(Notes.TITLE, (String)args[1]);
+		if (args.length > 2) values.put(Notes.NOTE, (String)args[2]);
+		if (args.length > 3) values.put(Notes.CREATED_DATE, (Long)args[3]);
+		if (args.length > 4) values.put(Notes.MODIFIED_DATE, (Long)args[4]);
 		return values;
     }
 
-	private static HashMap<String, String> sNotesProjectionMap, sNotesProjectionMap2;
+	private static HashMap<String, String> sNotesProjectionMap, sNotesProjectionMap2, sNotesProjectionMap3;
 
     public static Map<String, String> projectionMap(int type) {
     	switch (type) {
+		case NOTES_BAUSTEINE:
+			return sNotesProjectionMap3;
 		case NOTES_WORDS:
 			return sNotesProjectionMap2;
 		default:
@@ -165,36 +137,46 @@ public class NotePadProvider extends ContentProvider {
 	public static final int NOTES = 1;
 	public static final int NOTE_ID = 2;
 	public static final int NOTES_WORDS = 3;
-
+	public static final int NOTES_BAUSTEINE = 4;
+    
     private static final UriMatcher sUriMatcher;
 
-
-    /**
-     * This class helps open, create, and upgrade the database file.
-     */
-    private static class DatabaseHelper extends SQLiteOpenHelper {
-
-        DatabaseHelper(Context context) {
+    private static class DatabaseHelper extends SQLiteOpenHelper
+    {
+		DatabaseHelper(Context context) {
             super(context, DATABASE_NAME, null, DATABASE_VERSION);
         }
 
         @Override
         public void onCreate(SQLiteDatabase db) {
-        	for (int i = 0; i < NOTES_TABLE_NAMES.length; i++) {
-				String sql = "CREATE TABLE " + NOTES_TABLE_NAMES[i] + " ("
+        	for (int i = 0; i < NAMES.length; i++) {
+				String sql = "CREATE TABLE " + NAMES[i] + " ("
                     + Notes._ID + " INTEGER PRIMARY KEY,"
                     + Notes.TITLE + " TEXT,"
                     + Notes.NOTE + " TEXT,"
                     + Notes.CREATED_DATE + " INTEGER,"
-                    + Notes.MODIFIED_DATE + " INTEGER"
-                    + ", UNIQUE ("
-                    + Notes.CREATED_DATE + ", "
-                    + Notes.TITLE + ")";
+                    + Notes.MODIFIED_DATE + " INTEGER";
+				switch (i) {
+				case 2:
+					sql += ", UNIQUE ("
+							+ Notes.CREATED_DATE + ", "
+							+ Notes.MODIFIED_DATE + ", "
+							+ Notes.TITLE + ")";
+					break;
+				default:
+					sql += ", UNIQUE ("
+							+ Notes.CREATED_DATE + ", "
+							+ Notes.TITLE + ")";
+					break;
+				}
 				switch (i) {
 				case 2:
 					sql += ", foreign key(" + Notes.CREATED_DATE +
 							") references " +
-							NOTES_TABLE_NAMES[0] + "(" + Notes._ID + ")";
+							NAMES[0] + "(" + Notes._ID + ")";
+					sql += ", foreign key(" + Notes.MODIFIED_DATE +
+							") references " +
+							NAMES[1] + "(" + Notes._ID + ")";
 					break;
 				}
 				sql += ");";
@@ -206,8 +188,8 @@ public class NotePadProvider extends ContentProvider {
         public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
             Log.w(TAG, "Upgrading database from version " + oldVersion + " to "
                     + newVersion + ", which will destroy all old data");
-        	for (int i = 0; i < NOTES_TABLE_NAMES.length; i++)
-        		db.execSQL("DROP TABLE IF EXISTS " + NOTES_TABLE_NAMES[i]);
+        	for (int i = 0; i < NAMES.length; i++)
+        		db.execSQL("DROP TABLE IF EXISTS " + NAMES[i]);
             onCreate(db);
         }
     }
@@ -219,57 +201,6 @@ public class NotePadProvider extends ContentProvider {
         mOpenHelper = new DatabaseHelper(getContext());
         return true;
     }
-    
-    public void close() {
-    	mOpenHelper.close();
-    }
-
-    @Override
-    public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs, String sortOrder) {
-        SQLiteQueryBuilder qb = new SQLiteQueryBuilder();
-
-        String tableName = tableName(tableIndex(selection));
-        int type = sUriMatcher.match(uri);
-		switch (type) {
-        case NOTES:
-            qb.setTables(tableName);
-            qb.setProjectionMap(projectionMap(type));
-            break;
-
-        case NOTE_ID:
-            qb.setTables(tableName);
-            qb.setProjectionMap(projectionMap(type));
-            qb.appendWhere(Notes._ID + "=" + uri.getPathSegments().get(1));
-            break;
-
-        case NOTES_WORDS:
-        	qb.setProjectionMap(projectionMap(type));
-            qb.setTables(NOTES_TABLE_NAMES[0]
-            		.concat(" JOIN ").concat(NOTES_TABLE_NAMES[2])
-            		.concat(" ON (").concat(projectionMap(type).get(Notes._ID))
-            		.concat(" = ").concat(projectionMap(type).get(Notes.CREATED_DATE)).concat(")"));
-            break;
-
-        default:
-            throw new IllegalArgumentException("Unknown URI " + uri);
-        }
-
-        // If no sort order is specified use the default
-        String orderBy;
-        if (TextUtils.isEmpty(sortOrder)) {
-            orderBy = Notes.DEFAULT_SORT_ORDER;
-        } else {
-            orderBy = sortOrder;
-        }
-
-        // Get the database and run the query
-        SQLiteDatabase db = mOpenHelper.getReadableDatabase();
-        Cursor c = qb.query(db, projection, selection, selectionArgs, null, null, orderBy);
-
-        // Tell the cursor what uri to watch, so it knows when its source data changes
-        c.setNotificationUri(getContext().getContentResolver(), uri);
-        return c;
-    }
 
     @Override
     public String getType(Uri uri) {
@@ -278,12 +209,75 @@ public class NotePadProvider extends ContentProvider {
         case NOTES:
             return Notes.CONTENT_TYPE;
 
+        case NOTES_BAUSTEINE:
         case NOTE_ID:
-        	return Notes.CONTENT_ITEM_TYPE;
+      		return Notes.CONTENT_ITEM_TYPE;
 
         default:
             throw new IllegalArgumentException("Unknown URI " + uri);
         }
+    }
+
+    @Override
+    public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs, String sortOrder) {
+        SQLiteQueryBuilder qb = new SQLiteQueryBuilder();
+
+        String tableName = uri.getPathSegments().get(0);
+        int type = sUriMatcher.match(uri);
+        qb.setProjectionMap(projectionMap(type));
+        
+		switch (type) {
+        case NOTE_ID:
+        	qb.appendWhere(Notes._ID + "=" + uri.getPathSegments().get(1));
+        	
+        case NOTES:
+            qb.setTables(tableName);
+            break;
+
+        case NOTES_WORDS:
+            qb.setTables(NAMES[0]
+            		.concat(" JOIN ").concat(NAMES[2])
+            		.concat(" ON (").concat(projectionMap(type).get(Notes._ID))
+            		.concat(" = ").concat(projectionMap(type).get(Notes.REF_ID)).concat(")"));
+            break;
+
+        case NOTES_BAUSTEINE:
+            qb.setTables(NAMES[1]
+            		.concat(" JOIN ").concat(NAMES[2])
+            		.concat(" ON (").concat(projectionMap(type).get(Notes._ID))
+            		.concat(" = ").concat(projectionMap(type).get(Notes.REF_ID2)).concat(")"));
+            break;
+
+        default:
+            throw new IllegalArgumentException("Unknown URI " + uri);
+        }
+
+        String orderBy;
+        if (TextUtils.isEmpty(sortOrder)) {
+            orderBy = Notes.DEFAULT_SORT_ORDER;
+        } else {
+            orderBy = sortOrder;
+        }
+
+        String groupBy = null, having = null;
+        int index = selection.indexOf("group by");
+        if (index > -1) {
+        	groupBy = selection.substring(index + 8).trim();
+        	selection = selection.substring(0, index).trim();
+        	having = "";
+        	index = groupBy.indexOf("having");
+        	if (index > -1) {
+        		having = groupBy.substring(index + 6).trim();
+        		groupBy = groupBy.substring(0, index).trim();
+        	}
+        }
+        
+        SQLiteDatabase db = mOpenHelper.getReadableDatabase();
+        Cursor c = qb.query(db, projection, selection, selectionArgs, groupBy, having, orderBy);
+
+        // Tell the cursor what uri to watch, so it knows when its source data changes
+        c.setNotificationUri(getContext().getContentResolver(), uri);
+        return c;
     }
 
     @Override
@@ -309,7 +303,7 @@ public class NotePadProvider extends ContentProvider {
             values.put(Notes.MODIFIED_DATE, now);
         }
         if (values.containsKey(Notes.TITLE) == false) {
-            values.put(Notes.TITLE, ""/*Resources.getSystem().getString(android.R.string.untitled)*/);
+            values.put(Notes.TITLE, "");
         }
         if (values.containsKey(Notes.NOTE) == false) {
             values.put(Notes.NOTE, "");
@@ -317,11 +311,11 @@ public class NotePadProvider extends ContentProvider {
         
         SQLiteDatabase db = mOpenHelper.getWritableDatabase();
         
-        String tableName = tableName(tableIndex(initialValues));
+        String tableName = uri.getPathSegments().get(0);
         long rowId = db.insert(tableName, Notes.NOTE, values);
         if (rowId > 0) {
-            Uri noteUri = ContentUris.withAppendedId(Notes.CONTENT_URI, rowId);
-            getContext().getContentResolver().notifyChange(noteUri, null);
+            Uri noteUri = ContentUris.withAppendedId(contentUri(tableName), rowId);
+            getContext().getContentResolver().notifyChange(contentUri(tableName), null);
             return noteUri;
         }
 
@@ -332,7 +326,7 @@ public class NotePadProvider extends ContentProvider {
     public int delete(Uri uri, String where, String[] whereArgs) {
         SQLiteDatabase db = mOpenHelper.getWritableDatabase();
         int count;
-        String tableName = tableName(tableIndex(where));
+        String tableName = uri.getPathSegments().get(0);
         switch (sUriMatcher.match(uri)) {
         case NOTES:
             count = db.delete(tableName, where, whereArgs);
@@ -350,14 +344,14 @@ public class NotePadProvider extends ContentProvider {
             throw new IllegalArgumentException("Unknown URI " + uri);
         }
 
-        getContext().getContentResolver().notifyChange(uri, null);
+        getContext().getContentResolver().notifyChange(contentUri(tableName), null);
         return count;
     }
 
     @Override
     public int update(Uri uri, ContentValues values, String where, String[] whereArgs) {
         SQLiteDatabase db = mOpenHelper.getWritableDatabase();
-        String tableName = tableName(tableIndex(values));
+        String tableName = uri.getPathSegments().get(0);
         int count;
         switch (sUriMatcher.match(uri)) {
         case NOTES:
@@ -377,15 +371,20 @@ public class NotePadProvider extends ContentProvider {
             throw new IllegalArgumentException("Unknown URI " + uri);
         }
 
-        getContext().getContentResolver().notifyChange(uri, null);
+        getContext().getContentResolver().notifyChange(contentUri(tableName), null);
         return count;
     }
 
-    static {
+	static {
         sUriMatcher = new UriMatcher(UriMatcher.NO_MATCH);
-        sUriMatcher.addURI(NotePad.AUTHORITY, "notes", NOTES);
-        sUriMatcher.addURI(NotePad.AUTHORITY, "notes/#", NOTE_ID);
-        sUriMatcher.addURI(NotePad.AUTHORITY, "notes/words", NOTES_WORDS);
+        sUriMatcher.addURI(NotePad.AUTHORITY, NAMES[0], NOTES);
+        sUriMatcher.addURI(NotePad.AUTHORITY, NAMES[0] + "/#", NOTE_ID);
+        sUriMatcher.addURI(NotePad.AUTHORITY, NAMES[1], NOTES);
+        sUriMatcher.addURI(NotePad.AUTHORITY, NAMES[1] + "/#", NOTE_ID);
+        sUriMatcher.addURI(NotePad.AUTHORITY, NAMES[2], NOTES);
+        sUriMatcher.addURI(NotePad.AUTHORITY, NAMES[2] + "/#", NOTE_ID);
+        sUriMatcher.addURI(NotePad.AUTHORITY, NAMES[0] + "/" + NAMES[2], NOTES_WORDS);
+        sUriMatcher.addURI(NotePad.AUTHORITY, NAMES[0] + "/" + NAMES[1], NOTES_BAUSTEINE);
 
         sNotesProjectionMap = new HashMap<String, String>();
         sNotesProjectionMap.put(Notes._ID, Notes._ID);
@@ -393,12 +392,128 @@ public class NotePadProvider extends ContentProvider {
         sNotesProjectionMap.put(Notes.NOTE, Notes.NOTE);
         sNotesProjectionMap.put(Notes.CREATED_DATE, Notes.CREATED_DATE);
         sNotesProjectionMap.put(Notes.MODIFIED_DATE, Notes.MODIFIED_DATE);
+        sNotesProjectionMap.put("count", "count(*)");
 
         sNotesProjectionMap2 = new HashMap<String, String>();
-        sNotesProjectionMap2.put(Notes._ID, NOTES_TABLE_NAMES[0].concat(".").concat(Notes._ID));
-        sNotesProjectionMap2.put(Notes.TITLE, NOTES_TABLE_NAMES[2].concat(".").concat(Notes.TITLE));
-        sNotesProjectionMap2.put(Notes.NOTE, NOTES_TABLE_NAMES[0].concat(".").concat(Notes.NOTE));
-        sNotesProjectionMap2.put(Notes.CREATED_DATE, NOTES_TABLE_NAMES[2].concat(".").concat(Notes.CREATED_DATE));
-        sNotesProjectionMap2.put("date", NOTES_TABLE_NAMES[0].concat(".").concat(Notes.CREATED_DATE));
+        sNotesProjectionMap2.put(Notes._ID, NAMES[0].concat(".").concat(Notes._ID));
+        sNotesProjectionMap2.put(Notes.TITLE, NAMES[2].concat(".").concat(Notes.TITLE));
+        sNotesProjectionMap2.put(Notes.NOTE, NAMES[0].concat(".").concat(Notes.NOTE));
+        sNotesProjectionMap2.put(Notes.REF_ID, NAMES[2].concat(".").concat(Notes.CREATED_DATE));
+        sNotesProjectionMap2.put(Notes.REF_ID2, NAMES[2].concat(".").concat(Notes.MODIFIED_DATE));
+        sNotesProjectionMap2.put("date", NAMES[0].concat(".").concat(Notes.CREATED_DATE));
+
+        sNotesProjectionMap3 = new HashMap<String, String>();
+        sNotesProjectionMap3.put(Notes._ID, NAMES[1].concat(".").concat(Notes._ID));
+        sNotesProjectionMap3.put(Notes.NOTE, NAMES[1].concat(".").concat(Notes.TITLE));
+        sNotesProjectionMap3.put(Notes.REF_ID, NAMES[2].concat(".").concat(Notes.CREATED_DATE));
+        sNotesProjectionMap3.put(Notes.REF_ID2, NAMES[2].concat(".").concat(Notes.MODIFIED_DATE));
     }
+
+    public static Integer[] countNotes(ContentResolver contentResolver, int tableIndex, String selection, String[] selectionArgs) {
+		Cursor cursor = contentResolver.query(contentUri(tableIndex), 
+				new String[]{"count"}, 
+				selection, selectionArgs, 
+				Notes.DEFAULT_SORT_ORDER);
+		ArrayList<Integer> counts = new ArrayList<Integer>();
+		if (cursor.moveToFirst())
+			do {
+				counts.add(cursor.getInt(0));
+			} while (cursor.moveToNext());
+		cursor.close();
+		return counts.toArray(new Integer[0]);
+	}
+
+    public static String[] getTitles(ContentResolver contentResolver, int tableIndex, String selection, String[] selectionArgs) {
+		Cursor cursor = contentResolver.query(contentUri(tableIndex), 
+				new String[]{Notes.TITLE}, 
+				selection, selectionArgs, 
+				Notes.DEFAULT_SORT_ORDER);
+		ArrayList<String> titles = new ArrayList<String>();
+		if (cursor.moveToFirst())
+			do {
+				titles.add(cursor.getString(0));
+			} while (cursor.moveToNext());
+		cursor.close();
+		return titles.toArray(new String[0]);
+	}
+
+	public static long getIdOfNote(ContentResolver contentResolver, int tableIndex, String selection, String[] selectionArgs) {
+		Cursor cursor = contentResolver.query(contentUri(tableIndex), 
+				new String[]{Notes._ID}, 
+				selection, selectionArgs, 
+				null);
+		long id = -1;
+		if (cursor.moveToFirst())
+			id = cursor.getLong(0);
+		cursor.close();
+		return id;
+	}
+
+	public static boolean fetchNoteById(long id, ContentResolver contentResolver, int tableIndex, Job<Cursor> job, Object... params) {
+		Cursor cursor = contentResolver.query(
+				ContentUris.withAppendedId(contentUri(tableIndex), id), 
+				Notes.FULL_PROJECTION, 
+				"", null, 
+	    		null);
+		
+		boolean retval = cursor.moveToFirst();
+		if (retval)
+			try {
+				job.perform(cursor, params);
+			} catch (Exception e) {
+				Log.e(TAG, "fetching note", e);
+			}
+		
+		cursor.close();
+		return retval;
+	}
+
+	public static Set<String> wordSet(ContentResolver contentResolver, int tableIndex, String selection, String... selectionArgs) {
+		Cursor cursor = contentResolver.query(
+				contentUri(tableIndex), 
+				new String[] {Notes.TITLE}, 
+				selection, selectionArgs, 
+	    		null);
+		
+	    ValMap map = getResultMap(cursor, 
+	    	new Function<String>() {
+				public String apply(Object... params) {
+					Cursor cursor = param(null, 0, params);
+					return cursor.getString(0);
+				}
+	        }, 
+	    	new Function<Object>() {
+				public Object apply(Object... params) {
+					return null;
+				}
+	        }
+	    );
+	    
+	    return new TreeSet<String>(map.keySet());
+	}
+
+	public static ValMap bausteinMap(ContentResolver contentResolver, String selection, String... selectionArgs) {
+		Cursor cursor = contentResolver.query(
+	    		contentUri(1), 
+	    		new String[] { Notes.TITLE, Notes.NOTE }, 
+	    		selection, selectionArgs,
+	    		null);
+		
+	    ValMap map = getResultMap(cursor, 
+	    	new Function<String>() {
+				public String apply(Object... params) {
+					Cursor cursor = param(null, 0, params);
+					return cursor.getString(0);
+				}
+	        }, 
+	    	new Function<Object>() {
+				public Object apply(Object... params) {
+					Cursor cursor = param(null, 0, params);
+					return cursor.getString(1);
+				}
+	        }
+	    );
+	    
+	    return map;
+	}
 }

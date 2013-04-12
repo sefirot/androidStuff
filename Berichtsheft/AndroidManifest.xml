@@ -33,6 +33,16 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        
+        <activity android:name="com.applang.tagesberichte.Tagesberichte"
+            android:label="@string/tagesberichte" 
+            android:configChanges="orientation|keyboardHidden"
+        >
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
        
         <activity android:name="com.applang.wetterberichte.WeatherList" 
         	android:label="@string/title_weathers_list"
@@ -51,20 +61,12 @@
         </activity>
          
         <activity android:name="com.applang.wetterberichte.WeatherView"
-            android:theme="@android:style/Theme.NoTitleBar">
+            android:theme="@android:style/Theme.NoTitleBar"
+        >
             <intent-filter>
                 <action android:name="android.intent.action.INSERT" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="vnd.android.cursor.dir/vnd.applang.weather" />
-            </intent-filter>
-        </activity>
-        
-        <activity android:name="com.applang.tagesberichte.Tagesberichte"
-            android:label="@string/tagesberichte" 
-        >
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
         
@@ -105,6 +107,7 @@
         <activity android:name="com.applang.tagesberichte.GlossaryView"
 			android:label="@string/title_glossary"
 			android:theme="@android:style/Theme.Dialog"
+            android:configChanges="orientation|keyboardHidden"
         >
             <intent-filter>
                 <action android:name="com.applang.tagesberichte.action.VIEW_GLOSSARY" />
@@ -114,9 +117,9 @@
         </activity>
         
 		<activity android:name="com.applang.tagesberichte.NoteEvaluator" 
-			android:theme="@android:style/Theme.Dialog"
 			android:label="@string/title_evaluator"
-            android:windowSoftInputMode="stateVisible"
+			android:theme="@android:style/Theme.Dialog"
+            android:configChanges="orientation|keyboardHidden"
         >
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
@@ -167,11 +170,13 @@
                 <!-- DEFAULT: execute if being directly invoked. -->
                 <category android:name="android.intent.category.DEFAULT" />
                 <!-- ALTERNATIVE: show as an alternative action when the user is
-                     working with this type of data. -->
+                     working with this type of data. 
                 <category android:name="android.intent.category.ALTERNATIVE" />
+                -->
                 <!-- SELECTED_ALTERNATIVE: show as an alternative action the user
-                     can perform when selecting this type of data. -->
+                     can perform when selecting this type of data. 
                 <category android:name="android.intent.category.SELECTED_ALTERNATIVE" />
+                -->
                 <!-- This is the data type we operate on. -->
                 <data android:mimeType="vnd.android.cursor.item/vnd.applang.note" />
             </intent-filter>

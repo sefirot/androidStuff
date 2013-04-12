@@ -24,55 +24,57 @@ public class Tagesberichte extends TabActivity
 		setContentView(R.layout.tagesberichte);
 
 		showDialog(0);
+//		populateView(this);
 	}
     
     @Override
     protected Dialog onCreateDialog(int id) {
         return waitWhileWorking(this, "Loading ...", 
         	new Job<Activity>() {
-				public void dispatch(Activity activity, Object[] params) throws Exception {
-					setupVelocity4Android(packageName(activity), getResources());
+				public void perform(final Activity activity, Object[] params) throws Exception {
+					setupVelocity4Android(resourcePackageName(activity), getResources());
 					
 	    			runOnUiThread(new Runnable() {
 	    			    public void run() {
-	    			 		Resources resources = getResources(); 
-	    					TabHost tabHost = getTabHost(); 
-	    					tabHost.clearAllTabs();
-	    					
-	    					Intent intent = new Intent()
-	    						.setClass(Tagesberichte.this, NotesList.class)
-	    						.setData(Notes.CONTENT_URI)
-	    						.putExtra("table", 0);
-	    					TabSpec tabSpecNotes = tabHost
-	    						.newTabSpec(NotePadProvider.tableName(0))
-	    						.setIndicator("", resources.getDrawable(R.drawable.note))
-	    						.setContent(intent);
-
-	    					intent = new Intent()
-	    						.setClass(Tagesberichte.this, NotesList.class)
-	    						.setData(Notes.CONTENT_URI)
-	    						.putExtra("table", 1);
-	    					TabSpec tabSpecBausteine = tabHost
-	    						.newTabSpec(NotePadProvider.tableName(1))
-	    						.setIndicator("", resources.getDrawable(R.drawable.bausteine))
-	    						.setContent(intent);
-	    					
-	    					intent = new Intent()
-	    						.setClass(Tagesberichte.this, Glossary.class)
-	    						.setData(Notes.CONTENT_URI)
-	    						.putExtra("table", 2);
-	    					TabSpec tabSpecGloss = tabHost
-	    						.newTabSpec(NotePadProvider.tableName(2))
-	    						.setIndicator("", resources.getDrawable(R.drawable.glossary))
-	    						.setContent(intent);
-	    				
-	    					tabHost.addTab(tabSpecNotes);
-	    					tabHost.addTab(tabSpecBausteine);
-	    					tabHost.addTab(tabSpecGloss);
-	    					tabHost.setCurrentTab(0);
+	    			 		populateView(activity);
 	    			    }
 	    			});
 				}
 	        });
     }
+
+	private void populateView(final Activity activity) {
+		Resources resources = getResources(); 
+		TabHost tabHost = getTabHost(); 
+		tabHost.clearAllTabs();
+		
+		Intent intent = new Intent()
+			.setClass(activity, NotesList.class)
+			.setData(NotePadProvider.contentUri(0));
+		TabSpec tabSpecNotes = tabHost
+			.newTabSpec(NotePadProvider.tableName(0))
+			.setIndicator("", resources.getDrawable(R.drawable.note))
+			.setContent(intent);
+
+		intent = new Intent()
+			.setClass(activity, NotesList.class)
+			.setData(NotePadProvider.contentUri(1));
+		TabSpec tabSpecBausteine = tabHost
+			.newTabSpec(NotePadProvider.tableName(1))
+			.setIndicator("", resources.getDrawable(R.drawable.bausteine))
+			.setContent(intent);
+		
+		intent = new Intent()
+			.setClass(activity, Glossary.class)
+			.setData(NotePadProvider.contentUri(2));
+		TabSpec tabSpecGloss = tabHost
+			.newTabSpec(NotePadProvider.tableName(2))
+			.setIndicator("", resources.getDrawable(R.drawable.glossary))
+			.setContent(intent);
+			
+		tabHost.addTab(tabSpecNotes);
+		tabHost.addTab(tabSpecBausteine);
+		tabHost.addTab(tabSpecGloss);
+		tabHost.setCurrentTab(0);
+	}
 }

@@ -1,16 +1,24 @@
 package com.applang.tagesberichte;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Locale;
+import java.util.Map;
 
 import android.app.Activity;
+import android.app.ExpandableListActivity;
+import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.Context;
 import android.content.Intent;
+import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.ContextMenu;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -18,10 +26,16 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ContextMenu.ContextMenuInfo;
+import android.view.View.OnClickListener;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.BaseExpandableListAdapter;
+import android.widget.EditText;
 import android.widget.ExpandableListView;
+import android.widget.Filter;
+import android.widget.Filterable;
+import android.widget.ImageButton;
+import android.widget.Toast;
 import android.widget.ExpandableListView.OnChildClickListener;
 import android.widget.ExpandableListView.OnGroupClickListener;
 import android.widget.TextView;
@@ -29,36 +43,71 @@ import android.widget.TextView;
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
 
+import com.applang.Util.Job;
 import com.applang.berichtsheft.R;
 import com.applang.provider.NotePadProvider;
 import com.applang.provider.NotePad.Notes;
 
-public class Glossary extends Activity
+public class Glossary extends ExpandableListActivity
 {
-    private static final String TAG = Glossary.class.getSimpleName();
+	private static final String TAG = Glossary.class.getSimpleName();
 
 	private static final int MENU_ITEM_VIEW = Menu.FIRST;
+	private static final int MENU_ITEM_REFRESH = Menu.FIRST + 1;
+	private static final int MENU_ITEM_SEARCH = Menu.FIRST + 2;
 
-    private ExpandableListView listView;
-	private GlossaryListAdapter adapter;
+	public ExpandableListView listView;
+	public GlossaryListAdapter adapter;
+	public ContentResolver contentResolver;
+	public EditText searchEdit;
 
+    private static final String[] PROJECTION = new String[] {
+    	Notes._ID, // 0
+    	Notes.TITLE, // 1
+    	Notes.CREATED_DATE, 
+    };
+	
     private Uri mUri;
-	private int table = 0;
+	private int tableIndex;
     
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
     	super.onCreate(savedInstanceState);
-		setContentView(R.layout.glossary);
+        setContentView(R.layout.glossary);
 		
         final Intent intent = getIntent();
         mUri = intent.getData();
-        Bundle extras = intent.getExtras();
-        if (extras != null && extras.containsKey("table")) {
-        	table = extras.getInt("table", 0);
-        }
+        tableIndex = NotePadProvider.tableIndex(2, mUri);
+        if (mUri == null) 
+        	mUri = NotePadProvider.contentUri(tableIndex);
 
-		listView = (ExpandableListView) findViewById(R.id.expandableListView);
+    	searchEdit = (EditText) findViewById(android.R.id.edit);
+    	searchEdit.addTextChangedListener(new TextWatcher() {
+			@Override
+			public void onTextChanged(CharSequence s, int start, int before, int count) {
+				Glossary.this.adapter.getFilter().filter(s);	
+			}
+			@Override
+			public void beforeTextChanged(CharSequence s, int start, int count,	int after) {
+			}
+			@Override
+			public void afterTextChanged(Editable s) {
+			}
+		});
+    	findViewById(R.id.container).setVisibility(View.GONE);
         
+		ImageButton btn = (ImageButton) findViewById(R.id.button1);
+		if (btn != null)
+			btn.setOnClickListener(new OnClickListener() {
+				@Override
+				public void onClick(View v) {
+					searchEdit.setText("");
+					findViewById(R.id.container).setVisibility(View.GONE);
+				}
+			});
+   	
+		listView = getExpandableListView();
+		
 		listView.setOnChildClickListener(new OnChildClickListener() {
 			@Override
 			public boolean onChildClick(ExpandableListView parent, View v, int groupPosition, int childPosition, long id) {
@@ -96,39 +145,74 @@ public class Glossary extends Activity
     	    }
     	});
 
-    	adapter = new GlossaryListAdapter(this, new ArrayList<String>(), new ArrayList<ArrayList<Vehicle>>());
+    	adapter = new GlossaryListAdapter(this, new GlossaryTree());
 
     	listView.setAdapter(adapter);
     	registerForContextMenu(listView);
     	
-    	populate();
+    	contentResolver = getContentResolver();
+    	setContentObserver();
+    	
+    	needsRefresh = true;
 	}
 
-	private void populate() {
+	private void setContentObserver() {
+		super.onStart();
+		ContentObserver contentObserver = new ContentObserver(notifyHandler) {
+			public void onChange(boolean selfChange) {
+				if (isRunning)
+					repopulate();
+				else
+					needsRefresh = true;
+			}
+		};
+		Uri notificationUri = NotePadProvider.contentUri(NotePadProvider.tableName(tableIndex));
+		if (contentObserver != null)
+			contentResolver.registerContentObserver(notificationUri, true, contentObserver);
+	}
+	
+	ContentObserver contentObserver = null;
+	
+	private void resetContentObserver() {
+		if (contentObserver != null)
+			contentResolver.unregisterContentObserver(contentObserver);
+	}
+
+	@Override
+	protected void onDestroy() {
+		resetContentObserver();
+		super.onStop();
+	}
+
+	public void populate() {
+		Cursor cursor = null;
+        try {
+			cursor = contentResolver.query(NotePadProvider.contentUri(tableIndex), 
+				PROJECTION, 
+				"", null,
+				Notes.TITLE_SORT_ORDER);
+
+			if (cursor.moveToFirst()) 
+				do {
+					adapter.addItem(new GlossaryLeaf(Glossary.this, cursor.getString(1), cursor.getLong(2)));
+				} while (cursor.moveToNext());
+			
+			notifyHandler.sendEmptyMessage(1);
+			delay(50);
+		} 
+        finally {
+        	if (cursor != null)
+        		cursor.close();
+        }
+	}
+
+	private void repopulate() {
 		WorkerThread worker = new WorkerThread(
     		this,
         	new Job<Activity>() {
-				public void dispatch(Activity activity, Object[] params) throws Exception {
+				public void perform(Activity activity, Object[] params) throws Exception {
 					adapter.clear();
-					
-					Cursor cursor = null;
-			        try {
-						cursor = managedQuery(Notes.CONTENT_URI, 
-							Notes.FULL_PROJECTION, 
-							NotePadProvider.selection(table, ""), null,
-					        Notes.DEFAULT_SORT_ORDER);
-
-						if (cursor.moveToFirst()) 
-							do {
-								adapter.addItem(new Vehicle(Glossary.this, cursor.getString(1), cursor.getLong(3)));
-							   	handler.sendEmptyMessage(1);
-							   	delay(50);
-							} while (cursor.moveToNext());
-					} 
-			        finally {
-			        	if (cursor != null)
-			        		cursor.close();
-			        }
+					populate();
 				}
 	        },
 	        null 
@@ -136,33 +220,55 @@ public class Glossary extends Activity
     	worker.start();
 	}
 	
-	Handler handler = new Handler() {
+	Handler notifyHandler = new Handler() {
 		@Override
 		public void handleMessage(Message msg) {
-			adapter.notifyDataSetInvalidated();
+			switch (msg.what) {
+			case 1:
+				adapter.notifyDataSetInvalidated();
+				break;
+
+			case 2:
+				adapter.notifyDataSetChanged();
+				break;
+			}
 			super.handleMessage(msg);
 		}
 	};
 	
 	private Object clickInfo = null;
+	private boolean needsRefresh = false;
+	private boolean isRunning = false;
 
+    @Override
+    protected void onPause() {
+        super.onPause();
+        isRunning = false;
+    }
+    
     @Override
     protected void onResume() {
         super.onResume();
-        if (NotePadProvider.isTableDirty(this, table)) {
-        	NotePadProvider.setTableState(this, table, false);
-        	populate();
-        }
-    	NotePadProvider.saveTableIndex(this, table);
+        isRunning = true;
+        
+		if (needsRefresh) {
+			repopulate();
+        	needsRefresh = false;
+		}
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         super.onCreateOptionsMenu(menu);
         
+        menu.add(0, MENU_ITEM_SEARCH, 0, R.string.menu_search)
+		    	.setShortcut('5', 's')
+		    	.setIcon(android.R.drawable.ic_menu_search);
+        menu.add(0, MENU_ITEM_REFRESH, 0, R.string.menu_refresh)
+        		.setShortcut('6', 'r');
         menu.add(0, MENU_ITEM_VIEW, 0, R.string.menu_view)
-        	.setShortcut('5', 'v')
-        	.setIcon(android.R.drawable.ic_menu_view);
+		    	.setShortcut('5', 's')
+		    	.setIcon(android.R.drawable.ic_menu_view);
 
         return true;
     }
@@ -171,16 +277,25 @@ public class Glossary extends Activity
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
         case MENU_ITEM_VIEW:
-//        	getContentResolver().cancelSync(mUri);
-			startActivityForResult(new Intent(GlossaryView.VIEW_GLOSSARY_ACTION, mUri)
-					.putExtra("table", table), 0);
+        	startActivityForResult(
+        			new Intent(GlossaryView.GLOSSARY_VIEW_ACTION, mUri), 0);
+        	return true;
+        	
+        case MENU_ITEM_REFRESH:
+        	repopulate();
+        	return true;
+        	
+        case MENU_ITEM_SEARCH:
+        	View view = findViewById(R.id.container);
+        	if (view.getVisibility() == View.VISIBLE)
+    			view.setVisibility(View.GONE);
+        	else {
+        		view.setVisibility(View.VISIBLE);
+        		findViewById(android.R.id.edit).requestFocus();
+        	}
             return true;
         }
         return super.onOptionsItemSelected(item);
-    }
-    
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
     }
     
     @Override
@@ -198,214 +313,287 @@ public class Glossary extends Activity
     public boolean onContextItemSelected(MenuItem item) {
         switch (item.getItemId()) {
         case R.id.menu_item_evaluate: 
-			if (clickInfo instanceof Vehicle) {
-				Vehicle vehicle = (Vehicle) clickInfo;
-				Uri uri = ContentUris.withAppendedId(mUri, vehicle.getRefId());
+			if (clickInfo instanceof GlossaryLeaf) {
+				GlossaryLeaf glossaryLeaf = (GlossaryLeaf) clickInfo;
+				Uri uri = ContentUris.withAppendedId(NotePadProvider.contentUri(0), glossaryLeaf.getRefId());
 				startActivity(new Intent()
-						.setClass(Glossary.this, NoteEvaluator.class)
+						.setClass(this, NoteEvaluator.class)
+						.setData(uri));
+			}
+			return true;
+            
+        case R.id.menu_item_edit: 
+			if (clickInfo instanceof GlossaryLeaf) {
+				GlossaryLeaf glossaryLeaf = (GlossaryLeaf) clickInfo;
+				long id = NotePadProvider.getIdOfNote(contentResolver, tableIndex, 
+						Notes.TITLE + "=? and " + Notes.CREATED_DATE + "=?", 
+						new String[]{glossaryLeaf.getGroup(), "" + glossaryLeaf.getRefId()});
+				Uri uri = ContentUris.withAppendedId(mUri, id);
+				startActivity(new Intent()
+						.setClass(this, TitleEditor.class)
 						.setData(uri)
-						.putExtra("table", 0));
+						.putExtra("state", NoteEditor.STATE_EDIT));
+			}
+            else if (clickInfo instanceof String) {
+				startActivity(new Intent()
+						.setClass(this, TitleEditor.class)
+						.setData(mUri)
+						.putExtra("title", clickInfo.toString())
+						.putExtra("state", NoteEditor.STATE_EDIT));
 			}
 			return true;
 			
         case R.id.menu_item_remove: 
-            if (clickInfo instanceof Vehicle) {
-				Vehicle vehicle = (Vehicle) clickInfo;
-				adapter.removeItem(vehicle);
-				Uri noteUri = ContentUris.withAppendedId(mUri, vehicle.getRefId());
-				getContentResolver().delete(noteUri,
-						NotePadProvider.selection(table, ""), 
-						null);
+        	String message = getResources().getString(R.string.areUsure, clickInfo.toString());
+            if (clickInfo instanceof GlossaryLeaf) {
+        		areUsure(this, message, new Job<Void>() {
+    				@Override
+    				public void perform(Void t, Object[] params) throws Exception {
+    					GlossaryLeaf glossaryLeaf = (GlossaryLeaf) clickInfo;
+    					adapter.removeItem(glossaryLeaf);
+    					contentResolver.delete(mUri,
+    							Notes.TITLE + "=? and " + Notes.CREATED_DATE + "=?", 
+    							new String[]{glossaryLeaf.getGroup(), "" + glossaryLeaf.getRefId()});
+    				}
+        		});
 			}
             else if (clickInfo instanceof String) {
-				String group = clickInfo.toString();
-				adapter.removeItem(new Vehicle(null, group, -1));
-				getContentResolver().delete(mUri,
-						NotePadProvider.selection(table, Notes.TITLE + "=?"), 
-						new String[]{group});
+            	areUsure(this, message, new Job<Void>() {
+    				@Override
+    				public void perform(Void t, Object[] params) throws Exception {
+    					String group = clickInfo.toString();
+    					adapter.removeItem(new GlossaryLeaf(null, group, -1));
+    					contentResolver.delete(mUri,
+    							Notes.TITLE + "=?", 
+    							new String[]{group});
+    				}
+        		});
             }
             else
             	return false;
             
-            handler.sendEmptyMessage(1);
 			return true;
         }
         
         return false;
 	}
-}
-
-class Vehicle
-{
-    @Override
-	public String toString() {
-		return NotesList.description(0, epoch, title);
-	}
-
-	private static final String[] PROJECTION = new String[] {
-        Notes._ID, // 0
-        Notes.TITLE, // 1
-        Notes.CREATED_DATE, 
-    };
-
-    public Vehicle(Activity activity, String group, long refId) {
-        this.refId = refId;
-        if (activity != null) {
-			Cursor cursor = null;
-			try {
-				cursor = activity.managedQuery(Notes.CONTENT_URI, PROJECTION,
-						NotePadProvider.selection(0, Notes._ID + "= ?"),
-						new String[] { "" + refId }, Notes.DEFAULT_SORT_ORDER);
-				if (cursor.moveToFirst()) {
-					this.title = cursor.getString(1);
-					this.epoch = cursor.getLong(2);
-				}
-			} finally {
-				if (cursor != null)
-					cursor.close();
-			}
+    
+	public class GlossaryLeaf
+	{
+	    @Override
+		public String toString() {
+			return NotesList.description(0, epoch, title);
 		}
-		this.group = group;
-    }
-    
-    private String group;
-    public String getGroup() {
-        return group;
-    }
-    
-    private String title = "";
-    public String getTitle() {
-        return title;
-    }
-    
-    private long epoch = 0;
-    public long getEpoch() {
-        return epoch;
-    }
-    
-    private long refId;
-    public long getRefId() {
-        return refId;
-    }
-}
-
-class GlossaryListAdapter extends BaseExpandableListAdapter 
-{
-	@Override
-	public boolean areAllItemsEnabled() {
-		return true;
-	}
-
-	private Activity activity;
-	private ArrayList<String> groups;
-	private ArrayList<ArrayList<Vehicle>> childItems;
 	
-	public GlossaryListAdapter(Activity activity, ArrayList<String> groups, ArrayList<ArrayList<Vehicle>> children) {
-		this.activity = activity;
-    	this.groups = groups;
-    	this.childItems = children;
+	    public GlossaryLeaf(Activity activity, String group, long refId) {
+	        this.refId = refId;
+	        if (activity != null) {
+				Cursor cursor = null;
+				try {
+					cursor = contentResolver.query(NotePadProvider.contentUri(0), 
+							PROJECTION,
+							Notes._ID + "= ?",
+							new String[] { "" + refId }, 
+							Notes.DEFAULT_SORT_ORDER);
+					if (cursor.moveToFirst()) {
+						this.title = cursor.getString(1);
+						this.epoch = cursor.getLong(2);
+					}
+				} finally {
+					if (cursor != null)
+						cursor.close();
+				}
+			}
+			this.group = group;
+	    }
+	    
+	    private String group;
+	    public String getGroup() {
+	        return group;
+	    }
+	    
+	    private String title = "";
+	    public String getTitle() {
+	        return title;
+	    }
+	    
+	    private long epoch = 0;
+	    public long getEpoch() {
+	        return epoch;
+	    }
+	    
+	    private long refId;
+	    public long getRefId() {
+	        return refId;
+	    }
 	}
-
-	public void addItem(Vehicle vehicle) {
-		if (!groups.contains(vehicle.getGroup())) {
-			groups.add(vehicle.getGroup());
-		}
-		int index = groups.indexOf(vehicle.getGroup());
-		if (childItems.size() < index + 1) {
-			childItems.add(new ArrayList<Vehicle>());
-		}
-		childItems.get(index).add(vehicle);
+	
+	class GlossaryBranch extends ArrayList<GlossaryLeaf>
+	{
 	}
-
-	public void removeItem(Vehicle vehicle) {
-		int index = groups.indexOf(vehicle.getGroup());
-		if (index > -1 && index < childItems.size()) {
-			ArrayList<Vehicle> list = childItems.get(index);
-			boolean childAvailable = list.contains(vehicle);
-			if (childAvailable)
-				list.remove(vehicle);
-			if (!childAvailable || list.size() < 1) {
-				childItems.remove(index);
-				groups.remove(vehicle.getGroup());
+	
+	class GlossaryTree extends LinkedHashMap<String, GlossaryBranch>
+	{
+	}
+	
+	public class GlossaryListAdapter extends BaseExpandableListAdapter implements Filterable
+	{
+		private Activity activity;
+		private GlossaryTree tree, origTree = null;
+		
+		public GlossaryListAdapter(Activity activity, GlossaryTree tree) {
+			this.activity = activity;
+	    	this.tree = tree;
+		}
+	
+		Filter glossaryFilter = new Filter() {
+			@Override
+			protected FilterResults performFiltering(CharSequence constraint) {
+				if (origTree == null) 
+					origTree = tree;
+			    if (notNullOrEmpty(constraint.toString())) {
+			    	tree = new GlossaryTree();
+			    	String crit = constraint.toString().toLowerCase(Locale.getDefault());
+			    	for (Map.Entry<String, GlossaryBranch> entry : origTree.entrySet()) {
+			    		String s = entry.getKey();
+			    		if (s.toLowerCase(Locale.getDefault()).startsWith(crit)) 
+			    			tree.put(s, entry.getValue());
+			    	}
+			    }
+			    else if (origTree != null) 
+			    	tree = origTree;
+			    FilterResults results = new FilterResults();
+			    results.values = tree;
+			    results.count = tree.size();
+			    return results;
+			}
+			@Override
+			protected void publishResults(CharSequence constraint, FilterResults results) {
+				if (results.count < 1)
+					notifyDataSetInvalidated();
+				else 
+					notifyDataSetChanged();
+			}
+		};
+		
+		@Override
+		public Filter getFilter() {
+			return glossaryFilter;
+		}
+		
+		@Override
+		public boolean areAllItemsEnabled() {
+			return true;
+		}
+	
+		public void addItem(GlossaryLeaf glossaryLeaf) {
+			String group = glossaryLeaf.getGroup();
+			GlossaryBranch branch;
+			if (tree.keySet().contains(group))
+				branch = tree.get(group);
+			else {
+				branch = new GlossaryBranch();
+				tree.put(group, branch);
+			}
+			branch.add(glossaryLeaf);
+		}
+	
+		public void removeItem(GlossaryLeaf glossaryLeaf) {
+			String group = glossaryLeaf.getGroup();
+			if (tree.keySet().contains(group)) {
+				GlossaryBranch branch = tree.get(group);
+				if (branch.contains(glossaryLeaf))
+					branch.remove(glossaryLeaf);
+				if (branch.size() < 1)
+					tree.remove(group);
 			}
 		}
-	}
-
-	public void clear() {
-		groups.clear();
-		childItems.clear();
-	}
-
-	@Override
-	public Object getChild(int groupPosition, int childPosition) {
-		return childItems.get(groupPosition).get(childPosition);
-	}
-
-	@Override
-	public long getChildId(int groupPosition, int childPosition) {
-		return childPosition;
-	}
-
-	@Override
-	public int getChildrenCount(int groupPosition) {
-		return childItems.get(groupPosition).size();
-	}
-
-	@Override
-	public Object getGroup(int groupPosition) {
-		return groups.get(groupPosition);
-	}
-
-	@Override
-	public int getGroupCount() {
-		return groups.size();
-	}
-
-	@Override
-	public long getGroupId(int groupPosition) {
-		return groupPosition;
-	}
-
-	@Override
-	public boolean hasStableIds() {
-    	return true;
-	}
-
-	@Override
-	public boolean isChildSelectable(int arg0, int arg1) {
-    	return true;
-	}
-
-	@Override
-	public View getGroupView(int groupPosition, boolean isExpanded,	View convertView, ViewGroup parent) {
-    	if (convertView == null) {
-    		LayoutInflater inflater = (LayoutInflater) activity.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-    		convertView = inflater.inflate(R.layout.noteslist_item2, null);
-    	}
-    	
-    	TextView tv = (TextView) convertView.findViewById(R.id.title);
-    	String group = (String) getGroup(groupPosition);
-    	tv.setText(group);
-    	
-    	return convertView;
-	}
-
-	@Override
-	public View getChildView(int groupPosition, int childPosition, boolean isLastChild, View convertView, ViewGroup parent) {
-		if (convertView == null) {
-			LayoutInflater inflater = (LayoutInflater) activity.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-			convertView = inflater.inflate(R.layout.noteslist_item, null);
-    	}
+	
+		public void clear() {
+			tree.clear();
+		}
 		
-		Vehicle vehicle = (Vehicle) getChild(groupPosition, childPosition);
-    	TextView tv = (TextView) convertView.findViewById(R.id.date);
-    	tv.setText(NotesList.formatDate(vehicle.getEpoch()));
-    	tv = (TextView) convertView.findViewById(R.id.title);
-    	tv.setText(vehicle.getTitle());
-    	
-//		android.graphics.drawable.Drawable icon = context.getResources().getDrawable( R.drawable.note );
-//		tv.setCompoundDrawablesWithIntrinsicBounds(icon, null, null, null);
-    	
-		return convertView;
+		GlossaryBranch getBranch(int groupPosition) {
+			return tree.get(getGroup(groupPosition));
+		}
+	
+		@Override
+		public Object getChild(int groupPosition, int childPosition) {
+			GlossaryBranch branch = getBranch(groupPosition);
+			return branch == null ? 0 : branch.get(childPosition);
+		}
+	
+		@Override
+		public long getChildId(int groupPosition, int childPosition) {
+			return childPosition;
+		}
+	
+		@Override
+		public int getChildrenCount(int groupPosition) {
+			GlossaryBranch branch = getBranch(groupPosition);
+			return branch == null ? 0 : branch.size();
+		}
+	
+		@Override
+		public Object getGroup(int groupPosition) {
+			String[] groups = tree.keySet().toArray(new String[0]);
+			if (groupPosition > -1 && groupPosition < groups.length) 
+				return groups[groupPosition];
+			else 
+				return null;
+		}
+	
+		@Override
+		public int getGroupCount() {
+			return tree.size();
+		}
+	
+		@Override
+		public long getGroupId(int groupPosition) {
+			return groupPosition;
+		}
+	
+		@Override
+		public boolean hasStableIds() {
+	    	return true;
+		}
+	
+		@Override
+		public boolean isChildSelectable(int arg0, int arg1) {
+	    	return true;
+		}
+	
+		@Override
+		public View getGroupView(int groupPosition, boolean isExpanded,	View convertView, ViewGroup parent) {
+	    	if (convertView == null) {
+	    		LayoutInflater inflater = (LayoutInflater) activity.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+	    		convertView = inflater.inflate(R.layout.noteslist_item2, null);
+	    	}
+	    	
+	    	TextView tv = (TextView) convertView.findViewById(R.id.title);
+	    	String group = (String) getGroup(groupPosition);
+	    	tv.setText(group);
+	    	
+	    	return convertView;
+		}
+	
+		@Override
+		public View getChildView(int groupPosition, int childPosition, boolean isLastChild, View convertView, ViewGroup parent) {
+			if (convertView == null) {
+				LayoutInflater inflater = (LayoutInflater) activity.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+				convertView = inflater.inflate(R.layout.noteslist_item, null);
+	    	}
+			
+			GlossaryLeaf glossaryLeaf = (GlossaryLeaf) getChild(groupPosition, childPosition);
+	    	TextView tv = (TextView) convertView.findViewById(R.id.date);
+	    	tv.setText(NotesList.formatDate(glossaryLeaf.getEpoch()));
+	    	tv = (TextView) convertView.findViewById(R.id.title);
+	    	tv.setText(glossaryLeaf.getTitle());
+	    	
+	//		android.graphics.drawable.Drawable icon = context.getResources().getDrawable( R.drawable.note );
+	//		tv.setCompoundDrawablesWithIntrinsicBounds(icon, null, null, null);
+	    	
+			return convertView;
+		}
 	}
 }

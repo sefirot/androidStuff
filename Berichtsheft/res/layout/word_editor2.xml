@@ -28,12 +28,22 @@
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         android:layout_below="@id/title" >
-	
+
+	    <Button
+	        android:id="@+id/button2"
+	        android:layout_width="wrap_content"
+	        android:layout_height="wrap_content"
+	        android:layout_alignParentLeft="true"
+	        android:paddingLeft="@dimen/padding_ok"
+	        android:paddingRight="@dimen/padding_ok" />
+        	
 	    <Button
 	        android:id="@+id/ok"
 	        android:layout_width="wrap_content"
 	        android:layout_height="wrap_content"
 	        android:layout_toLeftOf="@id/cancel"
+	        android:paddingLeft="@dimen/padding_ok"
+	        android:paddingRight="@dimen/padding_ok"
 	        android:text="@string/button_ok" />
         	    		
 	    <Button
@@ -44,11 +54,5 @@
 	        android:text="@string/button_cancel" />
 	    
     </RelativeLayout>
-
-    <Spinner
-        android:id="@+id/spinner1"
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/container" />
     		
 </RelativeLayout>

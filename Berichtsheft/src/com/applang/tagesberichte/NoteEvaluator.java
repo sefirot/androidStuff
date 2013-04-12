@@ -22,7 +22,7 @@ public class NoteEvaluator extends Activity
     
     private Uri mUri;
 
-    int table = 0;
+    int tableIndex;
     String note = "";
     
     @Override
@@ -41,17 +41,14 @@ public class NoteEvaluator extends Activity
     	
         Intent intent = getIntent();
 		mUri = intent.getData();
-
-        Bundle extras = intent.getExtras();
-        if (extras != null && extras.containsKey("table"))
-        	table = extras.getInt("table", 0);
+        tableIndex = NotePadProvider.tableIndex(0, mUri);
     	
 		Cursor cursor = managedQuery(mUri, 
 				Notes.FULL_PROJECTION, 
-				NotePadProvider.selection(table, ""), null, 
+				"", null, 
 				null);
 		if (cursor.moveToFirst()) {
-			setTitle(NotesList.description(table, 
+			setTitle(NotesList.description(tableIndex, 
 					cursor.getLong(3), 
 					cursor.getString(1)));
 			
@@ -66,10 +63,10 @@ public class NoteEvaluator extends Activity
     protected Dialog onCreateDialog(int id) {
     	return waitWhileWorking(this, "Evaluating ...",
     		new Job<Activity>() {
-	    		public void dispatch(final Activity activity, Object[] params) throws Exception {
-	    			setupVelocity4Android(packageName(activity), getResources());
+	    		public void perform(final Activity activity, Object[] params) throws Exception {
+	    			setupVelocity4Android(resourcePackageName(activity), getResources());
 	    			
-	    			MapContext noteContext = new MapContext(bausteinMap(NoteEvaluator.this, ""));
+	    			MapContext noteContext = new MapContext(NotePadProvider.bausteinMap(NoteEvaluator.this.getContentResolver(), ""));
 	    			final String text = evaluation(noteContext, note, "notes");
 	    			
 	    			runOnUiThread(new Runnable() {
@@ -80,31 +77,6 @@ public class NoteEvaluator extends Activity
 	    		}
 	    	} 
 	    );
-    }
-
-    public static ValMap bausteinMap(Activity activity, String selection, String... selectionArgs) {
-		Cursor cursor = activity.managedQuery(
-        		Notes.CONTENT_URI, 
-        		new String[] { Notes.TITLE, Notes.NOTE }, 
-        		NotePadProvider.selection(1, selection), selectionArgs,
-        		null);
-		
-        ValMap map = getResultMap(cursor, 
-        	new Function<String>() {
-				public String apply(Object... params) {
-					Cursor cursor = param(null, 0, params);
-					return cursor.getString(0);
-				}
-	        }, 
-        	new Function<Object>() {
-				public Object apply(Object... params) {
-					Cursor cursor = param(null, 0, params);
-					return cursor.getString(1);
-				}
-	        }
-	    );
-        
-        return map;
     }
 
 }

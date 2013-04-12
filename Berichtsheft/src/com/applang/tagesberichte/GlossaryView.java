@@ -19,6 +19,7 @@ import org.apache.velocity.context.Context;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Dialog;
+import android.content.ContentResolver;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
@@ -33,29 +34,23 @@ public class GlossaryView extends Activity
     /**
      * This is a special intent action that means "view the glossary".
      */
-    public static final String VIEW_GLOSSARY_ACTION = "com.applang.tagesberichte.action.VIEW_GLOSSARY";
+    public static final String GLOSSARY_VIEW_ACTION = "com.applang.tagesberichte.action.VIEW_GLOSSARY";
 
     private WebView webView;
 
-    private Uri mUri;
-
-    int table = 0;
+    int tableIndex;
     
-	@SuppressLint("SetJavaScriptEnabled") 
+//	@SuppressLint("SetJavaScriptEnabled") 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		
 		webView = new WebView(this);
-		webView.getSettings().setJavaScriptEnabled(true);
+//		webView.getSettings().setJavaScriptEnabled(true);
 		setContentView(webView);
     	
         Intent intent = getIntent();
-		mUri = intent.getData();
-
-        Bundle extras = intent.getExtras();
-        if (extras != null && extras.containsKey("table"))
-        	table = extras.getInt("table", 0);
+        tableIndex = NotePadProvider.tableIndex(2, intent.getData());
 		
 		showDialog(0);
 	}
@@ -76,19 +71,20 @@ public class GlossaryView extends Activity
     protected Dialog onCreateDialog(int id) {
         return waitWhileWorking(this, "Evaluating ...", 
         	new Job<Activity>() {
-				public void dispatch(Activity activity, Object[] params) throws Exception {
-					setupVelocity4Android(packageName(activity), getResources());
+				public void perform(Activity activity, Object[] params) throws Exception {
+					setupVelocity4Android(resourcePackageName(activity), getResources());
 					
-	    			MapContext noteContext = new MapContext(NoteEvaluator.bausteinMap(activity, ""));
+					ContentResolver contentResolver = activity.getContentResolver();
+	    			MapContext noteContext = new MapContext(NotePadProvider.bausteinMap(contentResolver, ""));
 	    			Map<String, String> pmap = NotePadProvider.projectionMap(NotePadProvider.NOTES_WORDS);
 	    			
 	    			ValList words = new ValList();
-					for (String word : TitleEditor.wordSet(activity, 2, "")) {
+					for (String word : NotePadProvider.wordSet(contentResolver, 2, "")) {
 						ValMap map = new ValMap();
 						ValList list = new ValList();
 						
-						Uri uri = Uri.withAppendedPath(Notes.CONTENT_URI, "words");
-						Cursor cursor = activity.managedQuery(uri, 
+						Uri uri = Uri.withAppendedPath(Notes.CONTENT_URI, NotePadProvider.NAMES[2]);
+						Cursor cursor = contentResolver.query(uri, 
 								new String[] {Notes.NOTE}, 
 								pmap.get(Notes.TITLE) + "=?", 
 								new String[]{word}, 

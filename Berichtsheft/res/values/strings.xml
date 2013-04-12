@@ -11,15 +11,19 @@
     <string name="more">Wetter Info</string>
     <string name="more2">Import / Export</string>
     
+    <string name="menu_baustein">Baustein</string>
     <string name="menu_schlagwort">Schlagwort</string>
+    <string name="menu_edit">Editieren</string>
+    <string name="menu_duplicate">Duplizieren</string>
     <string name="menu_delete">Löschen</string>
     <string name="menu_remove">Entfernen</string>
     <string name="menu_evaluate">Evaluation</string>
     <string name="menu_insert">Neuer Eintrag</string>
     <string name="menu_revert">Zurück</string>
     <string name="menu_discard">Discard</string>
-    <string name="menu_baustein">Baustein</string>
     <string name="menu_view">Ansichtssache</string>
+    <string name="menu_search">Suche</string>
+    <string name="menu_refresh">Refreshment</string>
     <string name="menu_sort_by">Sortieren nach</string>
 
     <string name="resolve_edit">Edit note</string>
@@ -85,8 +89,14 @@
         <string name="max_temperature">max. </string>
         <string name="precipitation">"Niederschlag "</string>
         <string name="description">"Beschreibung "</string>
-        <string name="baustein">Textbaustein</string>
         <string name="baustein_exists">Textbaustein \'%s\' schon vorhanden</string>
         <string name="tagesberichte">Tagesberichte</string>
+        <string name="old_items">alte</string>
+        <string name="new_item">neues</string>
+        <string name="new_word">neues Schlagwort für %s</string>
+        <string name="search">Suche</string>
+        <string name="first_word">erstes Wort</string>
+        <string name="selected_word">markiertes Wort</string>
+        <string name="areUsure">Wirklich (%s) löschen ?</string>
 	
 </resources>
