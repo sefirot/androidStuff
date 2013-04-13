@@ -138,18 +138,20 @@ public class MiscTests extends XMLTestCase
 		assertEquals(2, interval.length);
 	}
 	
-	public void _testAllNotesIn2012() throws Exception {
-		assertTrue(np.openConnection("databases/berichtsheft.db"));
+	public void testAllNotes() throws Exception {
+//		assertTrue(np.openConnection("databases/berichtsheft.db"));
+//		assertTrue(np.openConnection("/home/lotharla/Downloads/note_pad_mar 1-8.db"));
+		assertTrue(np.openConnection("/home/lotharla/Downloads/note_pad.db"));
 		long[] time = new long[]{
-				timeInMillis(2012, -7, 1),
 				timeInMillis(2013, 0, 1),
+				timeInMillis(2013, -3, 1),
 		};
-		PreparedStatement ps = np.preparePicking(true, NotePicker.bAndB, time);
+		PreparedStatement ps = np.preparePicking(true, NotePicker.allCategories, time);
 		ResultSet rs = ps.executeQuery();
 		np.registerNotes(rs);
 		String text = np.all();
 //		System.out.println(text);
-		contentsToFile(new File("/tmp/allBAndB.txt"), text);
+		contentsToFile(new File("/tmp/notes1.txt"), text);
 	}
 	
 	int generateData(boolean empty, 
@@ -901,12 +903,12 @@ public class MiscTests extends XMLTestCase
 		String outputPath = "Dokumente/Tagesberichte.odt";
 		assertTrue(FormEditor.perform(inputPath, outputPath, true, 
 			new Job<FormEditor>() {
-				public void dispatch(FormEditor formEditor, Object[] params) throws Exception {
+				public void perform(FormEditor formEditor, Object[] params) throws Exception {
 					formEditor.updateSplitComponents(0, "action1=&control1=on&x=.5&y=.2&width=&height=");
 				}
 			}, 
 			new Job<Void>() {
-				public void dispatch(Void t, Object[] params) throws Exception {
+				public void perform(Void t, Object[] params) throws Exception {
 					String report = check_documents(3, params[0].toString(), params[1].toString());
 					assertTrue(report, report.contains("@x"));
 					assertTrue(report, report.contains("0.5"));

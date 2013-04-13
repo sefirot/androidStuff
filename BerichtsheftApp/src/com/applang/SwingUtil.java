@@ -822,7 +822,7 @@ public class SwingUtil
     	public static void blocked(Util.Job<Void> job, Object[] params) throws Exception {
     		actionBlocked = true;
     		
-    		job.dispatch(null, params);
+    		job.perform(null, params);
     		
     		actionBlocked = false;
     	}

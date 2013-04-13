@@ -22,6 +22,8 @@ import org.apache.velocity.runtime.RuntimeSingleton;
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
 import static com.applang.VelocityUtil.*;
+
+import com.applang.VelocityUtil;
 import com.applang.berichtsheft.ui.components.DatePicker;
 
 import junit.framework.TestCase;
@@ -265,7 +267,7 @@ public class VelocityTests extends TestCase {
 		JSONObject json = new JSONObject(jsonText);
 //		println(json.toString(4));
 		
-		Object openweather = walkJSON(null, json, new Function<Object>() {
+		Object openweather = VelocityUtil.walkJSON(null, json, new Function<Object>() {
 			public Object apply(Object...params) {
 				Object[] path = param(null, 0, params);
 				Object value = param(null, 1, params);
@@ -297,7 +299,7 @@ public class VelocityTests extends TestCase {
 		JSONObject json = new JSONObject(jsonText);
 //		println(json.toString(4));
 		
-		Object openweather = walkJSON(null, json, new Function<Object>() {
+		Object openweather = VelocityUtil.walkJSON(null, json, new Function<Object>() {
 			public Object apply(Object...params) {
 				Object[] path = param(null, 0, params);
 				Object value = param(null, 1, params);
@@ -331,7 +333,7 @@ public class VelocityTests extends TestCase {
 	    String text = readFromUrl(url, "UTF-8");
 		println(text);
 		
-		walkJSON(null, new JSONObject(text), new Function<Object>() {
+		VelocityUtil.walkJSON(null, new JSONObject(text), new Function<Object>() {
 			public Object apply(Object...params) {
 				Object[] path = param(null, 0, params);
 				Object value = param(null, 1, params);

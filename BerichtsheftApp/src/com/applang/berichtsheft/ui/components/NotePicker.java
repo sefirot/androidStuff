@@ -349,7 +349,7 @@ public class NotePicker extends ActionPanel
 	public void setDate(final String text) {
 		try {
 			Action.blocked(new Job<Void>() {
-				public void dispatch(Void v, Object[] params) throws Exception {
+				public void perform(Void v, Object[] params) throws Exception {
 					date.setText(text);
 				}
 			}, null);
@@ -378,7 +378,7 @@ public class NotePicker extends ActionPanel
 	public void setCategory(final String t) {
 		try {
 			Action.blocked(new Job<Void>() {
-				public void dispatch(Void v, Object[] params) throws Exception {
+				public void perform(Void v, Object[] params) throws Exception {
 					categoryEdit.setText(t);
 				}
 			}, null);

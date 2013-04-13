@@ -33,9 +33,6 @@ import java.util.regex.Pattern;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-import org.json.JSONStringer;
 import org.w3c.dom.Document;
 
 public class Util
@@ -379,7 +376,7 @@ public class Util
 	}
 	
 	public interface Job<T> {
-		public void dispatch(T t, Object[] params) throws Exception;
+		public void perform(T t, Object[] params) throws Exception;
 	}
 		 
 	public static Object[] iterateFiles(boolean includeDirs, File dir, Job<Object> job, Object... params) throws Exception {
@@ -390,14 +387,14 @@ public class Util
 				if (file.isDirectory())
 					iterateFiles(includeDirs, file, job, params);
 				else if (file.isFile()) {
-					job.dispatch(file, params);
+					job.perform(file, params);
 					Integer n = paramInteger(null, 0, params);
 					if (n != null)
 						params[0] = n + 1;
 				}
 			
 			if (includeDirs) {
-				job.dispatch(dir, params);
+				job.perform(dir, params);
 				Integer n = paramInteger(null, 1, params);
 				if (n != null)
 					params[1] = n + 1;
@@ -520,7 +517,7 @@ public class Util
 	public static boolean deleteDirectory(File dir) {
 		try {
 			iterateFiles(true, dir, new Job<Object>() {
-				public void dispatch(Object f, Object[] parms) {
+				public void perform(Object f, Object[] parms) {
 					((File)f).delete();
 				}
 			});
@@ -747,82 +744,6 @@ public class Util
 		ArrayList<T> list = new ArrayList<T>(Arrays.asList(array));
 		list.addAll(new ArrayList<T>(Arrays.asList(params)));
 		return list.toArray(array);
-	}
-
-	@SuppressWarnings("unchecked")
-	public static Object walkJSON(Object[] path, Object json, Function<Object> filter, Object...params) throws Exception {
-		Object object = json;
-		
-		if (path == null)
-			path = new Object[0];
-		
-		if (json instanceof JSONObject) {
-			JSONObject jo = (JSONObject) json;
-			ValMap map = new ValMap();
-			Iterator<String> it = jo.keys();
-			while (it.hasNext()) {
-				String key = it.next();
-				Object value = jo.get(key);
-				Object[] path2 = arrayappend(path, key);
-				if (value.toString().startsWith("[")) 
-					value = walkJSON(path2, jo.getJSONArray(key), filter, params);
-				else if (value.toString().startsWith("{"))
-					value = walkJSON(path2, jo.getJSONObject(key), filter, params);
-				else
-					value = walkJSON(path2, value, filter, params);
-				map.put(key, value);
-			}
-			object = map;
-		}
-		else if (json instanceof JSONArray) {
-			JSONArray ja = (JSONArray) json;
-			ValList list = new ValList();
-			for (int i = 0; i < ja.length(); i++) 
-				list.add(walkJSON(arrayappend(path, i), ja.get(i), filter, params));
-			object = list;
-		}
-		else if (filter != null)
-			object = filter.apply(path, json, params);
-		
-		return object;
-	}
-
-	public static Object member(Object[] path, Object object) {
-		for (int i = 0; i < path.length; i++) {
-			if (path[i] instanceof Integer) 
-				object = ((ValList)object).get((Integer) path[i]);
-			else
-				object = ((ValMap)object).get(path[i].toString());
-		}
-		return object;
-	}
-	
-	@SuppressWarnings("rawtypes")
-	public static void toJSON(JSONStringer stringer, String string, Object object, Function<Object> filter, Object...params) throws Exception {
-		if (notNullOrEmpty(string))
-			stringer.key(string);
-		
-		if (object instanceof Map) {
-			stringer.object();
-			Map map = (Map) object;
-			for (Object key : map.keySet()) 
-				toJSON(stringer, key.toString(), map.get(key), filter, params);
-			stringer.endObject();
-		}
-		else if (object instanceof Collection) {
-			stringer.array();
-			Iterator it = ((Collection) object).iterator();
-			while (it.hasNext()) 
-				toJSON(stringer, "", it.next(), filter, params);
-			stringer.endArray();
-		}
-		else {
-			if (filter != null)
-				object = filter.apply(object, params);
-			
-			if (object != null) 
-				stringer.value(object);
-		}
 	}
 
 	public static Document xmlDocument(File file) {

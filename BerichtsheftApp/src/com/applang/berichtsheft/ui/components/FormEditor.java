@@ -84,7 +84,7 @@ public class FormEditor extends JSplitPane
 			Settings.load();
 			
 			final Job<File> finish = new Job<File>() {
-				public void dispatch(File _content, Object[] params) throws Exception {
+				public void perform(File _content, Object[] params) throws Exception {
 					_content.delete();
 					
 					BerichtsheftApp.manipContent(-1, inputPath, outputPath, null);
@@ -95,7 +95,7 @@ public class FormEditor extends JSplitPane
 			
 			boolean ok = BerichtsheftApp.manipContent(1, inputPath, outputPath, 
 					new Job<File>() {
-						public void dispatch(final File content, final Object[] params) throws Exception {
+						public void perform(final File content, final Object[] params) throws Exception {
 							inputDir = content.getParentFile();
 							final File _content = new File(inputDir, "_content.xml");
 							content.renameTo(_content);
@@ -135,7 +135,7 @@ public class FormEditor extends JSplitPane
 											if (isAvailable(0, params)) {
 												try {
 													Job<FormEditor> job = param(null, 0, params);
-													job.dispatch(formEditor, null);
+													job.perform(formEditor, null);
 												} catch (Exception e) {
 													handleException(e);
 												}
@@ -150,7 +150,7 @@ public class FormEditor extends JSplitPane
 											unmask(_content.getPath(), content.getPath());
 											try {
 												if (!deadline)
-													finish.dispatch(_content, null);
+													finish.perform(_content, null);
 											} catch (Exception e) {
 												handleException(e);
 											}
@@ -162,11 +162,11 @@ public class FormEditor extends JSplitPane
 							if (deadline) {
 								if (isAvailable(1, params)) {
 									Job<Void> job = param(null, 1, params);
-									job.dispatch(null, new Object[] {_content.getPath(), content.getPath()});
+									job.perform(null, new Object[] {_content.getPath(), content.getPath()});
 								}
 								
 								try {
-									finish.dispatch(_content, null);
+									finish.perform(_content, null);
 								} catch (Exception e) {
 									handleException(e);
 								}

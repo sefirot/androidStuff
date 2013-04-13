@@ -75,7 +75,7 @@ public class BerichtsheftApp
 			}
 			
 			if (manipulation != null)
-				manipulation.dispatch(new File(tempDir, "content.xml"), params);
+				manipulation.perform(new File(tempDir, "content.xml"), params);
 			
 			if (end) {
 				File destination = new File(dokument);
@@ -120,7 +120,7 @@ public class BerichtsheftApp
 				vorlage, 
 				dokument, 
 				new Util.Job<File>() {
-					public void dispatch(File content, Object[] params) throws Exception {
+					public void perform(File content, Object[] params) throws Exception {
 						File _content = new File(content.getParent(), "_content.xml");
 						content.renameTo(_content);
 						

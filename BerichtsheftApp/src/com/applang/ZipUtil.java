@@ -23,7 +23,7 @@ public class ZipUtil
 		String base;
 		
 		@Override
-		public void dispatch(Object o, Object[] parms) throws Exception {
+		public void perform(Object o, Object[] parms) throws Exception {
 			File file = Util.paramFile(null, 0, o);
 
 			String path = o.toString();
@@ -57,7 +57,7 @@ public class ZipUtil
 		String path;
 		
 		@Override
-		public void dispatch(ZipEntry entry, Object[] parms) throws Exception {
+		public void perform(ZipEntry entry, Object[] parms) throws Exception {
 			ZipInputStream in = Util.param(null, 0, parms);
 			if (in == null)
 				return;
@@ -93,7 +93,7 @@ public class ZipUtil
 				else if (file.isDirectory())
 					cnt += (Integer)Util.iterateFiles(false, file, append, 0, out)[0];
 				else { 
-					append.dispatch(file, new Object[] {0, out});
+					append.perform(file, new Object[] {0, out});
 					cnt++;
 				}
 			}
@@ -123,7 +123,7 @@ public class ZipUtil
 		    			!filter.contains(name) : 
 		    			filter.contains(name)))
 		    	{
-		    		extract.dispatch(entry, new Object[] {in});
+		    		extract.perform(entry, new Object[] {in});
 		    		cnt++;
 		    	}
 		    	
@@ -155,7 +155,7 @@ public class ZipUtil
 			final ZipOutputStream out = new ZipOutputStream(new FileOutputStream(temp));
 			
 			cnt = unzipArchive(archive, new Util.Job<ZipEntry>() {
-				public void dispatch(ZipEntry zipEntry, Object[] parms) throws Exception {
+				public void perform(ZipEntry zipEntry, Object[] parms) throws Exception {
 					ZipInputStream in = Util.param(null, 0, parms);
 					out.putNextEntry(zipEntry);
 			        if (!zipEntry.isDirectory())
