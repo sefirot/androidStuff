@@ -53,7 +53,7 @@ public class WeatherView extends Activity
         return waitWhileWorking(this, "Loading ...", 
         	new Job<Activity>() {
 				public void perform(Activity activity, Object[] params) throws Exception {
-					setupVelocity4Android(resourcePackageName(activity), getResources());
+					com.applang.VelocityContext.setupVelocity(activity, true);
 					
 	    			String jsonText = readFromUrl(url, "UTF-8");
 	    			JSONObject json = new JSONObject(jsonText);

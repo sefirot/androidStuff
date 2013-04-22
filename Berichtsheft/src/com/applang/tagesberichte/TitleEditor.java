@@ -32,11 +32,13 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.ContextMenu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.view.View.OnClickListener;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
@@ -194,6 +196,7 @@ public class TitleEditor extends Activity implements View.OnClickListener
     @Override
     public void onCreateContextMenu(final ContextMenu menu, View view, ContextMenuInfo menuInfo) {
         super.onCreateContextMenu(menu, view, menuInfo);
+        
 		menu.clear();
 		NotePadProvider.fetchNoteById(mId, this.getContentResolver(), 0, new Job<Cursor>() {
 			@Override
@@ -204,8 +207,11 @@ public class TitleEditor extends Activity implements View.OnClickListener
 			}
 		});
 		Set<String> words = NotePadProvider.wordSet(this.getContentResolver(), 2, Notes.CREATED_DATE + "=" + mId);
-		for (String word : words) 
-			menu.add(word);
+		if (words.size() > 0)
+			for (String word : words) 
+				menu.add(word);
+		else
+			view.setEnabled(false);
     }
     
     @Override

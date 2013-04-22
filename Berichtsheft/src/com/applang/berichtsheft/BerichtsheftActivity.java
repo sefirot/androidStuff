@@ -1,10 +1,18 @@
 package com.applang.berichtsheft;
 
+import static com.applang.Util.*;
 import static com.applang.Util2.*;
 
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
+
 import com.applang.pflanzen.PlantsList;
+import com.applang.provider.NotePad;
 import com.applang.provider.NotePadProvider;
+import com.applang.provider.PlantInfo;
 import com.applang.provider.PlantInfoProvider;
+import com.applang.provider.WeatherInfo;
 import com.applang.provider.WeatherInfoProvider;
 import com.applang.tagesberichte.Tagesberichte;
 import com.applang.wetterberichte.WeatherList;
@@ -16,7 +24,6 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
-import android.widget.Toast;
 
 public class BerichtsheftActivity extends Activity
 {
@@ -75,11 +82,6 @@ public class BerichtsheftActivity extends Activity
 		}
 	
     public void impex() {
-    	final String[] fileNames = new String[]{
-    			"databases/" + WeatherInfoProvider.DATABASE_NAME, 
-    			"databases/" + PlantInfoProvider.DATABASE_NAME, 
-    			"databases/" + NotePadProvider.DATABASE_NAME};
-		
 		AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(this);
 		alertDialogBuilder.setTitle("Application data");
 		alertDialogBuilder
@@ -88,18 +90,38 @@ public class BerichtsheftActivity extends Activity
 				.setPositiveButton("Export",
 						new DialogInterface.OnClickListener() {
 							public void onClick(DialogInterface dialog,	int id) {
-								ImpexTask.doExport(BerichtsheftActivity.this, fileNames, null);
+								ImpexTask.doExport(BerichtsheftActivity.this, databases(), null);
 							}
 						})
 				.setNegativeButton("Import",
 						new DialogInterface.OnClickListener() {
 							public void onClick(DialogInterface dialog,	int id) {
-								ImpexTask.doImport(BerichtsheftActivity.this, fileNames, null);
+								ImpexTask.doImport(BerichtsheftActivity.this, databases(), null);
 							}
 						})
 				.setNeutralButton("Cancel", null);
 		AlertDialog alertDialog = alertDialogBuilder.create();
 		alertDialog.show();
+    }
+    
+    public static String[] databases() {
+    	ArrayList<String> list = new ArrayList<String>();
+    	for (Object provider : providers().values()) 
+    		try {
+    			Class<?> c = Class.forName(provider.toString());
+    			Object name = c.getDeclaredField("DATABASE_NAME").get(null);
+    			list.add(name.toString());
+    		} catch (Exception e) {};
+    	return list.toArray(new String[0]);
+    }
+    
+    public static ValMap providers() {
+    	String pkg = "com.applang.provider";
+    	ValMap map = new ValMap();
+		map.put(NotePad.Notes.CONTENT_URI.toString(), pkg + ".NotePadProvider");
+		map.put(PlantInfo.Plants.CONTENT_URI.toString(), pkg + ".PlantInfoProvider");
+		map.put(WeatherInfo.Weathers.CONTENT_URI.toString(), pkg + ".WeatherInfoProvider");
+    	return map;
     }
 
 }

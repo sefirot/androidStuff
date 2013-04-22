@@ -28,6 +28,7 @@ import android.content.UriMatcher;
 import android.database.Cursor;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteException;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.database.sqlite.SQLiteQueryBuilder;
 import android.net.Uri;
@@ -67,19 +68,6 @@ public class NotePadProvider extends ContentProvider
     public static int tableIndex(String name) {
     	return Arrays.asList(NAMES).indexOf(name);
     }
-
-	public static void saveTableIndex(Context context, int index) {
-        SharedPreferences prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE);
-        SharedPreferences.Editor prefsEditor = prefs.edit();
-        prefsEditor.putInt("table", index);
-        prefsEditor.commit();
-	}
-
-	public static int savedTableIndex(Context context, int defaultIndex) {
-        SharedPreferences prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE);
-        int index = prefs.getInt("table", defaultIndex);
-		return index;
-	}
    
     public static Uri contentUri(int index) {
     	return contentUri(tableName(index));
@@ -138,6 +126,8 @@ public class NotePadProvider extends ContentProvider
 	public static final int NOTE_ID = 2;
 	public static final int NOTES_WORDS = 3;
 	public static final int NOTES_BAUSTEINE = 4;
+	public static final int NOTES_CREATE = 5;
+	public static final int NOTES_DROP = 6;
     
     private static final UriMatcher sUriMatcher;
 
@@ -149,38 +139,20 @@ public class NotePadProvider extends ContentProvider
 
         @Override
         public void onCreate(SQLiteDatabase db) {
+        	Cursor cursor = null;
+        	try {
+    			cursor = db.rawQuery("pragma foreign_keys = ON", null);
+    		} 
+        	catch (SQLiteException e) {
+        		Log.e(TAG, "foreign_keys", e);
+        	}
+        	finally {
+    			if (cursor != null)
+    				cursor.close();
+    		}
+        	
         	for (int i = 0; i < NAMES.length; i++) {
-				String sql = "CREATE TABLE " + NAMES[i] + " ("
-                    + Notes._ID + " INTEGER PRIMARY KEY,"
-                    + Notes.TITLE + " TEXT,"
-                    + Notes.NOTE + " TEXT,"
-                    + Notes.CREATED_DATE + " INTEGER,"
-                    + Notes.MODIFIED_DATE + " INTEGER";
-				switch (i) {
-				case 2:
-					sql += ", UNIQUE ("
-							+ Notes.CREATED_DATE + ", "
-							+ Notes.MODIFIED_DATE + ", "
-							+ Notes.TITLE + ")";
-					break;
-				default:
-					sql += ", UNIQUE ("
-							+ Notes.CREATED_DATE + ", "
-							+ Notes.TITLE + ")";
-					break;
-				}
-				switch (i) {
-				case 2:
-					sql += ", foreign key(" + Notes.CREATED_DATE +
-							") references " +
-							NAMES[0] + "(" + Notes._ID + ")";
-					sql += ", foreign key(" + Notes.MODIFIED_DATE +
-							") references " +
-							NAMES[1] + "(" + Notes._ID + ")";
-					break;
-				}
-				sql += ");";
-				db.execSQL(sql);
+				createTable(i, db);
 			}
         }
 
@@ -189,10 +161,50 @@ public class NotePadProvider extends ContentProvider
             Log.w(TAG, "Upgrading database from version " + oldVersion + " to "
                     + newVersion + ", which will destroy all old data");
         	for (int i = 0; i < NAMES.length; i++)
-        		db.execSQL("DROP TABLE IF EXISTS " + NAMES[i]);
+				dropTable(i, db);
             onCreate(db);
         }
     }
+    
+    private static void dropTable(int index, SQLiteDatabase db) {
+    	db.execSQL("DROP TABLE IF EXISTS " + NAMES[index]);
+    }
+
+	private static void createTable(int index, SQLiteDatabase db) {
+		String sql = "CREATE TABLE IF NOT EXISTS " + NAMES[index] + " ("
+		    + Notes._ID + " INTEGER PRIMARY KEY,"
+		    + Notes.TITLE + " TEXT,"
+		    + Notes.NOTE + " TEXT,"
+		    + Notes.CREATED_DATE + " INTEGER,"
+		    + Notes.MODIFIED_DATE + " INTEGER";
+		switch (index) {
+		default:
+			sql += ", UNIQUE ("
+					+ Notes.CREATED_DATE + ", "
+					+ Notes.TITLE + ")";
+			break;
+		}
+		switch (index) {
+		case 2:
+			sql += ", foreign key(" + Notes.REF_ID +
+					") references " +
+					NAMES[0] + "(" + Notes._ID + ")";
+			break;
+		}
+		sql += ");";
+		db.execSQL(sql);
+		switch (index) {
+		case 2:
+			sql = "CREATE TRIGGER on_delete_note" +
+					" BEFORE DELETE ON " + NAMES[0] +
+					" FOR EACH ROW BEGIN" +
+					" DELETE FROM " + NAMES[2] + 
+					" WHERE " + NAMES[2] + "." + Notes.REF_ID + "=" + "old." + Notes._ID + ";" + 
+					" END;";
+			db.execSQL(sql);
+			break;
+		}
+	}
 
     private DatabaseHelper mOpenHelper;
 
@@ -205,6 +217,8 @@ public class NotePadProvider extends ContentProvider
     @Override
     public String getType(Uri uri) {
         switch (sUriMatcher.match(uri)) {
+        case NOTES_CREATE:
+        case NOTES_DROP:
         case NOTES_WORDS:
         case NOTES:
             return Notes.CONTENT_TYPE;
@@ -247,6 +261,14 @@ public class NotePadProvider extends ContentProvider
             		.concat(" ON (").concat(projectionMap(type).get(Notes._ID))
             		.concat(" = ").concat(projectionMap(type).get(Notes.REF_ID2)).concat(")"));
             break;
+
+        case NOTES_DROP:
+        	dropTable(tableIndex(tableName), mOpenHelper.getWritableDatabase());
+            return null;
+
+        case NOTES_CREATE:
+        	createTable(tableIndex(tableName), mOpenHelper.getWritableDatabase());
+            return null;
 
         default:
             throw new IllegalArgumentException("Unknown URI " + uri);
@@ -385,8 +407,11 @@ public class NotePadProvider extends ContentProvider
         sUriMatcher.addURI(NotePad.AUTHORITY, NAMES[2] + "/#", NOTE_ID);
         sUriMatcher.addURI(NotePad.AUTHORITY, NAMES[0] + "/" + NAMES[2], NOTES_WORDS);
         sUriMatcher.addURI(NotePad.AUTHORITY, NAMES[0] + "/" + NAMES[1], NOTES_BAUSTEINE);
-
-        sNotesProjectionMap = new HashMap<String, String>();
+        for (int j = 0; j < NAMES.length; j++) {
+			sUriMatcher.addURI(NotePad.AUTHORITY, NAMES[j] + "/create",	NOTES_CREATE);
+			sUriMatcher.addURI(NotePad.AUTHORITY, NAMES[j] + "/drop", NOTES_DROP);
+		}
+		sNotesProjectionMap = new HashMap<String, String>();
         sNotesProjectionMap.put(Notes._ID, Notes._ID);
         sNotesProjectionMap.put(Notes.TITLE, Notes.TITLE);
         sNotesProjectionMap.put(Notes.NOTE, Notes.NOTE);

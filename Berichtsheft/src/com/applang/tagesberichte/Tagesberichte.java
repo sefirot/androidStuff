@@ -2,15 +2,15 @@ package com.applang.tagesberichte;
 
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
-import static com.applang.VelocityUtil.*;
+import static com.applang.VelocityContext.*;
 
 import com.applang.berichtsheft.R;
-import com.applang.provider.NotePad.Notes;
 import com.applang.provider.NotePadProvider;
 
 import android.app.Activity;
 import android.app.Dialog;
 import android.app.TabActivity;
+import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
 import android.os.Bundle;
@@ -32,7 +32,7 @@ public class Tagesberichte extends TabActivity
         return waitWhileWorking(this, "Loading ...", 
         	new Job<Activity>() {
 				public void perform(final Activity activity, Object[] params) throws Exception {
-					setupVelocity4Android(resourcePackageName(activity), getResources());
+					setupVelocity(activity, true);
 					
 	    			runOnUiThread(new Runnable() {
 	    			    public void run() {
@@ -43,13 +43,13 @@ public class Tagesberichte extends TabActivity
 	        });
     }
 
-	private void populateView(final Activity activity) {
+	private void populateView(final Context context) {
 		Resources resources = getResources(); 
 		TabHost tabHost = getTabHost(); 
 		tabHost.clearAllTabs();
 		
 		Intent intent = new Intent()
-			.setClass(activity, NotesList.class)
+			.setClass(context, NotesList.class)
 			.setData(NotePadProvider.contentUri(0));
 		TabSpec tabSpecNotes = tabHost
 			.newTabSpec(NotePadProvider.tableName(0))
@@ -57,7 +57,7 @@ public class Tagesberichte extends TabActivity
 			.setContent(intent);
 
 		intent = new Intent()
-			.setClass(activity, NotesList.class)
+			.setClass(context, NotesList.class)
 			.setData(NotePadProvider.contentUri(1));
 		TabSpec tabSpecBausteine = tabHost
 			.newTabSpec(NotePadProvider.tableName(1))
@@ -65,7 +65,7 @@ public class Tagesberichte extends TabActivity
 			.setContent(intent);
 		
 		intent = new Intent()
-			.setClass(activity, Glossary.class)
+			.setClass(context, Glossary.class)
 			.setData(NotePadProvider.contentUri(2));
 		TabSpec tabSpecGloss = tabHost
 			.newTabSpec(NotePadProvider.tableName(2))

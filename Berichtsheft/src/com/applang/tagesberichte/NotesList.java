@@ -307,6 +307,8 @@ public class NotesList extends ListActivity
 				@Override
 				public void perform(Void t, Object[] params) throws Exception {
 		            getContentResolver().delete(noteUri, "", null);
+		            if (tableIndex == 0)
+		                getContentResolver().notifyChange(NotePadProvider.contentUri(2), null);
 				}
     		});
             return true;
@@ -315,13 +317,13 @@ public class NotesList extends ListActivity
     }
     
     @Override
-	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+	protected void onActivityResult(int requestCode, int resultCode, Intent followUp) {
 		switch (requestCode) {
 		case MENU_ITEM_DUPLICATE:
 			if (resultCode == RESULT_OK)
-				startActivity(data);
+				startActivity(followUp);
 			else
-				getContentResolver().delete(data.getData(), "", null);
+				getContentResolver().delete(followUp.getData(), "", null);
 			break;
 
 		}

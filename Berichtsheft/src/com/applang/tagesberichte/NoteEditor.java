@@ -16,10 +16,11 @@
 
 package com.applang.tagesberichte;
 
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
-import com.applang.Util.ValMap;
+import com.applang.VelocityContext;
 import com.applang.berichtsheft.R;
 import com.applang.provider.NotePad.Notes;
 import com.applang.provider.NotePadProvider;
@@ -50,6 +51,7 @@ import android.widget.EditText;
 
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
+import static com.applang.VelocityUtil.*;
 
 /**
  * A generic activity for editing a note in a database.  This can be used
@@ -85,8 +87,6 @@ public class NoteEditor extends Activity
     public static final int STATE_EDIT = 0;
     public static final int STATE_INSERT = 1;
     
-    public static final Character BAUSTEIN_IDENTIFICATOR = '$';
-
     private int mState;
     private boolean mNoteOnly = false;
     private Uri mUri;
@@ -221,14 +221,15 @@ public class NoteEditor extends Activity
             public void onTextChanged(CharSequence s, int start, int before, int count) {
             	if (first)
             		mText.setSelection(Math.max(0, s.length() - 1));
-            	else if (count - before == 1 && start + count > 0 && 
-						BAUSTEIN_IDENTIFICATOR.equals(s.charAt(start + count - 1))) {
-/*					Toast.makeText(NoteEditor.this, 
-							String.format("change in '%s' start %d before %d count %d", s, start, before, count), 
-							Toast.LENGTH_LONG).show();
-*/
-					requestBaustein(1);
-				}
+            	else if (count - before == 1 && start + count > 0) {
+						char ch = s.charAt(start + count - 1);
+						if (VELOCITY_REFERENCE_IDENTIFICATOR.equals(ch)) {
+							requestBaustein(1);
+						}
+						else if (VELOCITY_DIRECTIVE_IDENTIFICATOR.equals(ch)) {
+							requestDirective(1);
+						}
+            	}
 				first = false;
             }
 
@@ -243,7 +244,7 @@ public class NoteEditor extends Activity
     	}
     }
     
-    int[] requestCode = new int[] {0,0};
+    int[] requestCode = new int[] {0,0,0};
 
 	private void requestBaustein(int code) {
 		this.requestCode[0] = code;
@@ -255,23 +256,29 @@ public class NoteEditor extends Activity
 		NoteEditor.this.openContextMenu(mText);
 	}
 
+	private void requestDirective(int code) {
+		this.requestCode[2] = code;
+		NoteEditor.this.openContextMenu(mText);
+	}
+
     @Override
     public void onCreateContextMenu(ContextMenu menu, View view, ContextMenuInfo menuInfo) {
         super.onCreateContextMenu(menu, view, menuInfo);
+        
+        menu.clear();
+        
+        int q, id = 0;
         if (requestCode[0] > 0) {
-			menu.clear();
-			menu.setHeaderTitle(getResources().getString(R.string.menu_baustein));
+        	id = R.string.menu_baustein;
 			
 			bausteine = NotePadProvider.bausteinMap(getContentResolver(), "");
-			Set<String> wordSet = new TreeSet<String>(bausteine.keySet());
-			for (String title : wordSet) 
-				menu.add(title);
+			for (String key : new TreeSet<String>(bausteine.keySet())) 
+				menu.add(key);
 			
-			requestCode[0] = -requestCode[0];
+			q = 0;
 		}
         else if (requestCode[1] > 0) {
-			menu.clear();
-			menu.setHeaderTitle(getResources().getString(R.string.menu_schlagwort));
+        	id = R.string.menu_schlagwort;
 			getMenuInflater().inflate(R.menu.contextmenu_noteeditor, menu);
 			
 			MenuItem mi = menu.findItem(R.id.menu_item_selected);
@@ -281,31 +288,57 @@ public class NoteEditor extends Activity
 			if (mi != null)
 				mi.setEnabled(mText.hasWord());
 			
-			requestCode[1] = -requestCode[1];
+			q = 1;
 		}
-        else
-        	requestCode[0] = requestCode[1] = 0;
+        else if (requestCode[2] > 0) {
+        	id = R.string.menu_directive;
+			
+			anweisungen = VelocityContext.directives();
+			for (String key : anweisungen.keySet()) 
+				menu.add(key);
+			
+			q = 2;
+		}
+        else {
+        	for (int i = 0; i < requestCode.length; i++) 
+        		requestCode[i] = 0;
+        	return;
+        }
+        
+		menu.setHeaderTitle(getResources().getString(id));
+    	requestCode[q] = -requestCode[q];
     }
     
     private ValMap bausteine = null;
+    Map<String,String> anweisungen = null;
     
     @Override
     public boolean onContextItemSelected(MenuItem item) {
+    	String text = item.getTitle().toString();
+    	
+    	int q;
         if (requestCode[0] < 0) {
-        	String text = item.getTitle().toString();
-        	
         	if (requestCode[0] < -1) {
-	        	if (bausteine != null)
+	        	if (bausteine != null) {
 	        		text = bausteine.get(text).toString();
+	        		
+	        		new VelocityContext.EvaluationTask(this, "", null, new Job<String>() {
+	        			public void perform(String text, Object[] params) {
+	        	        	mText.insertAtCaretPosition(text);
+	        	        	updateNote(mText.getText().toString(), true);
+	        			}
+	        		}).execute(text);
+	        		
+	        		return true;
+	        	}
 	        	else
-	        		text = BAUSTEIN_IDENTIFICATOR + enclose("{", text, "}");
+	        		text = VELOCITY_REFERENCE_IDENTIFICATOR + enclose("{", text, "}");
         	}
         	else
         		text = enclose("{", text, "}");
         	
         	mText.insertAtCaretPosition(text);
-        	
-        	requestCode[0] = 0;
+        	q = 0;
 		}
         else if (requestCode[1] < 0) {
         	String word = "";
@@ -334,10 +367,17 @@ public class NoteEditor extends Activity
 	        			.putExtra("header", description)
 	        			.putExtra("state", state));
         	}
+        	q = 1;
+		}
+        else if (requestCode[2] < 0) {
+    		text = anweisungen.get(text).substring(1);
+        	mText.insertAtCaretPosition(text);
+        	q = 2;
         }
         else
         	return super.onContextItemSelected(item);
         
+    	requestCode[q] = 0;
     	return false;
     }
     
@@ -428,26 +468,30 @@ public class NoteEditor extends Activity
             // Get out updates into the provider.
             } 
             else {
-                ContentValues values = new ContentValues();
-
-                // This stuff is only done when working with a full-fledged note.
-                if (!mNoteOnly) {
-                    // Bump the modification time to now.
-                    values.put(Notes.MODIFIED_DATE, System.currentTimeMillis());
-				}
-
-                // Write our text back into the provider.
-                values.put(Notes.NOTE, text);
-
-                // Commit all of our changes to persistent storage. When the update completes
-                // the content provider will notify the cursor of the change, which will
-                // cause the UI to be updated.
-                getContentResolver().update(mUri, 
-                		values, 
-                		null, null);
+                updateNote(text, mNoteOnly);
             }
         }
     }
+
+	public void updateNote(String text, boolean noteOnly) {
+		ContentValues values = new ContentValues();
+
+		// This stuff is only done when working with a full-fledged note.
+		if (!noteOnly) {
+		    // Bump the modification time to now.
+		    values.put(Notes.MODIFIED_DATE, System.currentTimeMillis());
+		}
+
+		// Write our text back into the provider.
+		values.put(Notes.NOTE, text);
+
+		// Commit all of our changes to persistent storage. When the update completes
+		// the content provider will notify the cursor of the change, which will
+		// cause the UI to be updated.
+		getContentResolver().update(mUri, 
+				values, 
+				null, null);
+	}
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -473,8 +517,8 @@ public class NoteEditor extends Activity
 
         menu.add(0, BAUSTEIN_ID, 0, R.string.menu_baustein)
     			.setShortcut('2', 'b');
-        menu.add(0, EVALUATE_ID, 0, R.string.menu_evaluate)
-    			.setShortcut('3', 'e');
+//		menu.add(0, EVALUATE_ID, 0, R.string.menu_evaluate)
+//    			.setShortcut('3', 'e');
         if (tableIndex == 0)
 	        menu.add(0, SCHLAGWORT_ID, 0, R.string.menu_schlagwort)
 	    			.setShortcut('4', 's');

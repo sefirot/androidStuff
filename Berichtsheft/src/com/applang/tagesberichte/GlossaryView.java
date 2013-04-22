@@ -72,7 +72,7 @@ public class GlossaryView extends Activity
         return waitWhileWorking(this, "Evaluating ...", 
         	new Job<Activity>() {
 				public void perform(Activity activity, Object[] params) throws Exception {
-					setupVelocity4Android(resourcePackageName(activity), getResources());
+					com.applang.VelocityContext.setupVelocity(activity, true);
 					
 					ContentResolver contentResolver = activity.getContentResolver();
 	    			MapContext noteContext = new MapContext(NotePadProvider.bausteinMap(contentResolver, ""));

@@ -7,7 +7,7 @@ import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.util.Arrays;
 
-import com.applang.Util.Job;
+import com.applang.Util.ValList;
 
 import android.app.Activity;
 import android.app.ActivityManager;
@@ -107,8 +107,6 @@ public class Util2
 	            msg.setData(b);
 	            mHandler.sendMessage(msg);
 	        }
-	        
-	        workerThread = null;
 	    }
 	    
 	    int mState;
@@ -129,21 +127,19 @@ public class Util2
         final ProgressDialog progDialog = new ProgressDialog(activity);
         progDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
         progDialog.setMessage(text);
-        if (workerThread == null) {
-			workerThread = new WorkerThread(activity, job, 
-				new Handler() {
-					public void handleMessage(Message msg) {
-						int countDown = msg.getData().getInt("countDown");
-						progDialog.setProgress(countDown);
-						if (countDown <= 0) {
-							activity.dismissDialog(0);
-							if (workerThread != null)
-								workerThread.set_State(WorkerThread.DONE);
-						}
+		workerThread = new WorkerThread(activity, job, 
+			new Handler() {
+				public void handleMessage(Message msg) {
+					int countDown = msg.getData().getInt("countDown");
+					progDialog.setProgress(countDown);
+					if (countDown <= 0) {
+						activity.dismissDialog(0);
+						if (workerThread != null)
+							workerThread.set_State(WorkerThread.DONE);
 					}
-				}, params);
-			workerThread.start();
-		}
+				}
+			}, params);
+		workerThread.start();
 		return progDialog;
 	}
 	
@@ -196,7 +192,6 @@ public class Util2
 			String action = actionString(export);
 	        if (isExternalStorageAvailable()) {
         		areUsure(context, action + " : " + Arrays.toString(fileNames), new Job<Void>() {
-    				@Override
     				public void perform(Void t, Object[] params) throws Exception {
 						if (apiLevel() < 3) {
 							boolean success = doImpex(context, fileNames, export);
@@ -214,7 +209,7 @@ public class Util2
 		}
 		
 		public static File directory(Context context, boolean export) {
-			String dir = "data/" + context.getPackageName();
+			String dir = "data/" + context.getPackageName() + "/databases";
 	    	return export ? 
 	    			new File(Environment.getExternalStorageDirectory(), dir) : 
 	    			new File(Environment.getDataDirectory(), dir);
@@ -342,6 +337,13 @@ public class Util2
 			});
 		AlertDialog alertDialog = alertDialogBuilder.create();
 		alertDialog.show();
+	}
+
+	public static ValList listOfStrings(Cursor cursor) {
+		ValList list = new ValList();
+		for (int i = 0; i < cursor.getColumnCount(); i++)
+			list.add(cursor.getString(i));
+		return list;
 	}
 	
 }

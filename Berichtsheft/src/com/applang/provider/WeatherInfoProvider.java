@@ -16,6 +16,8 @@
 
 package com.applang.provider;
 
+import com.applang.provider.NotePad.Notes;
+import com.applang.provider.PlantInfo.Plants;
 import com.applang.provider.WeatherInfo.Weathers;
 
 import android.content.ContentProvider;
@@ -52,6 +54,19 @@ public class WeatherInfoProvider extends ContentProvider {
     private static final int WEATHER_ID = 2;
 
     private static final UriMatcher sUriMatcher;
+
+    public static ContentValues contentValues(Object... args) {
+		ContentValues values = new ContentValues();
+		if (args.length > 0) values.put(Weathers._ID, (Long)args[0]);
+		if (args.length > 1) values.put(Weathers.LOCATION, (String)args[1]);
+		if (args.length > 2) values.put(Weathers.DESCRIPTION, (String)args[2]);
+		if (args.length > 3) values.put(Weathers.PRECIPITATION, (Float)args[3]);
+		if (args.length > 4) values.put(Weathers.MAXTEMP, (Float)args[4]);
+		if (args.length > 5) values.put(Weathers.MINTEMP, (Float)args[5]);
+		if (args.length > 6) values.put(Weathers.CREATED_DATE, (Long)args[6]);
+		if (args.length > 7) values.put(Weathers.MODIFIED_DATE, (Long)args[7]);
+		return values;
+    }
 
     /**
      * This class helps open, create, and upgrade the database file.

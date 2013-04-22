@@ -11,6 +11,7 @@ import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.Uri;
@@ -19,6 +20,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.ContextMenu;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -51,6 +53,18 @@ import com.applang.provider.NotePad.Notes;
 public class Glossary extends ExpandableListActivity
 {
 	private static final String TAG = Glossary.class.getSimpleName();
+
+	public static void setThreaded(Context context, boolean value) {
+        SharedPreferences prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE);
+        SharedPreferences.Editor prefsEditor = prefs.edit();
+        prefsEditor.putBoolean("threaded", value);
+        prefsEditor.commit();
+	}
+
+	public static boolean getThreaded(Context context, boolean defaultValue) {
+        SharedPreferences prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE);
+        return prefs.getBoolean("threaded", defaultValue);
+	}
 
 	private static final int MENU_ITEM_VIEW = Menu.FIRST;
 	private static final int MENU_ITEM_REFRESH = Menu.FIRST + 1;
@@ -184,7 +198,10 @@ public class Glossary extends ExpandableListActivity
 		super.onStop();
 	}
 
-	public void populate() {
+	public void populate(boolean clear) {
+		if (clear)
+			adapter.clear();
+		
 		Cursor cursor = null;
         try {
 			cursor = contentResolver.query(NotePadProvider.contentUri(tableIndex), 
@@ -199,6 +216,7 @@ public class Glossary extends ExpandableListActivity
 			
 			notifyHandler.sendEmptyMessage(1);
 			delay(50);
+			Log.i(TAG, "Glossary populated");
 		} 
         finally {
         	if (cursor != null)
@@ -207,17 +225,17 @@ public class Glossary extends ExpandableListActivity
 	}
 
 	private void repopulate() {
-		WorkerThread worker = new WorkerThread(
-    		this,
-        	new Job<Activity>() {
-				public void perform(Activity activity, Object[] params) throws Exception {
-					adapter.clear();
-					populate();
+		boolean threaded = getThreaded(this, true);
+		if (threaded) {
+			WorkerThread worker = new WorkerThread(this, new Job<Activity>() {
+				public void perform(Activity activity, Object[] params)	throws Exception {
+					populate(true);
 				}
-	        },
-	        null 
-    	);
-    	worker.start();
+			}, null);
+			worker.start();
+		}
+		else
+			populate(true);
 	}
 	
 	Handler notifyHandler = new Handler() {
@@ -520,7 +538,7 @@ public class Glossary extends ExpandableListActivity
 		@Override
 		public Object getChild(int groupPosition, int childPosition) {
 			GlossaryBranch branch = getBranch(groupPosition);
-			return branch == null ? 0 : branch.get(childPosition);
+			return branch == null ? null : branch.get(childPosition);
 		}
 	
 		@Override
@@ -584,11 +602,14 @@ public class Glossary extends ExpandableListActivity
 				convertView = inflater.inflate(R.layout.noteslist_item, null);
 	    	}
 			
-			GlossaryLeaf glossaryLeaf = (GlossaryLeaf) getChild(groupPosition, childPosition);
-	    	TextView tv = (TextView) convertView.findViewById(R.id.date);
-	    	tv.setText(NotesList.formatDate(glossaryLeaf.getEpoch()));
-	    	tv = (TextView) convertView.findViewById(R.id.title);
-	    	tv.setText(glossaryLeaf.getTitle());
+			GlossaryLeaf leaf = (GlossaryLeaf) getChild(groupPosition, childPosition);
+	    	if (leaf != null) {
+				TextView tv = (TextView) convertView.findViewById(R.id.date);
+				tv.setText(NotesList.formatDate(leaf.getEpoch()));
+				tv = (TextView) convertView.findViewById(R.id.title);
+				tv.setText(leaf.getTitle());
+			}
+			
 	    	
 	//		android.graphics.drawable.Drawable icon = context.getResources().getDrawable( R.drawable.note );
 	//		tv.setCompoundDrawablesWithIntrinsicBounds(icon, null, null, null);

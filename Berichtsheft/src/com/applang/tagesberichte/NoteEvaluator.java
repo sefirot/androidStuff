@@ -1,5 +1,9 @@
 package com.applang.tagesberichte;
 
+import com.applang.Util.ValMap;
+import com.applang.VelocityContext;
+import com.applang.Util.Job;
+import com.applang.berichtsheft.R;
 import com.applang.provider.NotePadProvider;
 import com.applang.provider.NotePad.Notes;
 
@@ -56,17 +60,29 @@ public class NoteEvaluator extends Activity
 		}
 		cursor.close();
 		
+		bausteine = NotePadProvider.bausteinMap(getContentResolver(), "");
+		
+//		new VelocityContext.EvaluationTask(this, 
+//			getResources().getString(R.string.title_evaluator), 
+//			bausteine, 
+//			new Job<String>() {
+//				public void perform(String text, Object[] params) {
+//			    	 tv.setText(text);
+//				}
+//			}).execute(note);
 		showDialog(0);
 	}
     
+    ValMap bausteine = null;
+
     @Override
     protected Dialog onCreateDialog(int id) {
     	return waitWhileWorking(this, "Evaluating ...",
     		new Job<Activity>() {
 	    		public void perform(final Activity activity, Object[] params) throws Exception {
-	    			setupVelocity4Android(resourcePackageName(activity), getResources());
+	    			com.applang.VelocityContext.setupVelocity(activity, true);
 	    			
-	    			MapContext noteContext = new MapContext(NotePadProvider.bausteinMap(NoteEvaluator.this.getContentResolver(), ""));
+					MapContext noteContext = new MapContext(bausteine);
 	    			final String text = evaluation(noteContext, note, "notes");
 	    			
 	    			runOnUiThread(new Runnable() {

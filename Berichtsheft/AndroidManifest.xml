@@ -43,6 +43,16 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+        
+        <activity android:name="com.applang.Dialogs" 
+			android:theme="@android:style/Theme.Translucent"
+            android:configChanges="orientation|keyboardHidden"
+		>
+            <intent-filter>
+                <action android:name="com.applang.action.PROMPT" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
        
         <activity android:name="com.applang.wetterberichte.WeatherList" 
         	android:label="@string/title_weathers_list"
