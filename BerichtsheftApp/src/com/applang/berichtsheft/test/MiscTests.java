@@ -141,7 +141,7 @@ public class MiscTests extends XMLTestCase
 	public void testAllNotes() throws Exception {
 //		assertTrue(np.openConnection("databases/berichtsheft.db"));
 //		assertTrue(np.openConnection("/home/lotharla/Downloads/note_pad_mar 1-8.db"));
-		assertTrue(np.openConnection("/home/lotharla/Downloads/note_pad.db"));
+		assertTrue(np.openConnection("/home/lotharla/work/Niklas/note_pad_mar 8-31-2013.db"));
 		long[] time = new long[]{
 				timeInMillis(2013, 0, 1),
 				timeInMillis(2013, -3, 1),
@@ -151,7 +151,7 @@ public class MiscTests extends XMLTestCase
 		np.registerNotes(rs);
 		String text = np.all();
 //		System.out.println(text);
-		contentsToFile(new File("/tmp/notes1.txt"), text);
+		contentsToFile(new File("/tmp/notes.txt"), text);
 	}
 	
 	int generateData(boolean empty, 

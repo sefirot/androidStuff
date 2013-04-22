@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
@@ -458,6 +459,10 @@ public class Util
 	    return sb.toString();
 	}
 
+    public static String quoted(String string) {
+    	return enclose("\"", string, "\"");
+	}
+
     public static String enclose(String pad, String string, Object... params) {
     	pad = valueOrElse("", pad);
     	string = pad.concat(valueOrElse("", string));
@@ -744,6 +749,14 @@ public class Util
 		ArrayList<T> list = new ArrayList<T>(Arrays.asList(array));
 		list.addAll(new ArrayList<T>(Arrays.asList(params)));
 		return list.toArray(array);
+	}
+
+	public static boolean[] toPrimitiveArray(List<Boolean> list) {
+	    boolean[] primitives = new boolean[list.size()];
+	    for (int i = 0; i < primitives.length; i++) {
+	        primitives[i] = list.get(i).booleanValue();
+	    }
+	    return primitives;
 	}
 
 	public static Document xmlDocument(File file) {

@@ -211,6 +211,8 @@ public class Util2
 	The required conversion is a character indicating content to be inserted in the output.
 */
 
+	public static final Pattern FORMAT_SPECIFIER_PATTERN = Pattern.compile("%(\\d+\\$)?([-#+ 0,(])?(\\d+(.\\d+)?)?[sfdbchox]");
+	
 	/**
 	 * @param writer
 	 * @param params
@@ -221,8 +223,6 @@ public class Util2
 		String separator = "\t";
 		
 	    try {
-			Pattern specifier = Pattern.compile("%(\\d+\\$)?([-#+ 0,(])?(\\d+(.\\d+)?)?[sfdbchox]");
-			
 			for (int i = 0; i < params.length; i++) {
 				if (i > 0)
 					writer.write(separator);
@@ -230,7 +230,7 @@ public class Util2
 				Object o = params[i];
 				String s = o instanceof String ? (String)o : "";
 				
-				MatchResult[] specifiers = findAllIn(s, specifier);
+				MatchResult[] specifiers = findAllIn(s, FORMAT_SPECIFIER_PATTERN);
 				int specs = specifiers.length;
 				
 				boolean useSpecifiers = specs > 0 && specs <= params.length - i - 1;

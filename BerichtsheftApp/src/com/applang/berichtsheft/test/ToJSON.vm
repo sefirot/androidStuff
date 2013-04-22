@@ -1,0 +1,34 @@
+#macro(VelListToJSON $list )
+	#set($myList = ${list} )## dereference
+	{
+	#foreach($key in $myList.keySet())
+		"$key":
+		#set($x = $myList.get($key))
+		#VelToJSON($x)
+		#if($foreachCount != $myList.keySet().size()) , #end
+	#end
+	}
+#end
+
+#macro(VelArrayToJSON $arr)
+	#set($myArr = $arr)
+	[
+	#foreach($x in $myArr)
+		#VelToJSON($x)
+		#if($foreachCount != $myArr.size()) , #end
+	#end
+	]
+#end
+
+##TODO: Make it not treat numbers as strings
+#macro(VelToJSON $item)
+	#if($item.keySet())
+		#VelListToJSON($item)
+	#elseif($item.size())
+		#VelArrayToJSON($item)
+	#elseif($item == true || $item ==false)
+		$item
+	#else
+		"$item"
+	#end
+#end

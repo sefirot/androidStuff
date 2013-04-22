@@ -1,29 +1,45 @@
 package com.applang.berichtsheft.test;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.StringWriter;
+import java.io.Writer;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.text.DateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
+import java.util.TimeZone;
+import java.util.regex.MatchResult;
 
 import org.json.JSONObject;
+import org.apache.velocity.Template;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.Velocity;
 import org.apache.velocity.context.Context;
 import org.apache.velocity.runtime.RuntimeSingleton;
+import org.apache.velocity.tools.generic.DateTool;
+import org.apache.velocity.tools.generic.MathTool;
+import org.apache.velocity.tools.generic.NumberTool;
 
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
 import static com.applang.VelocityUtil.*;
 
 import com.applang.VelocityUtil;
+import com.applang.berichtsheft.test.VelocityTests.Product;
 import com.applang.berichtsheft.ui.components.DatePicker;
 
 import junit.framework.TestCase;
@@ -129,9 +145,9 @@ public class VelocityTests extends TestCase {
 	String insertTemplate = 
 			"INSERT INTO notes (title,note,created,modified) VALUES ('%s', '%s', %s, 1000*strftime('%%s','now'));";
 	
-	public void testNoteContext() throws SQLException {
+	public void testNoteContext() throws Exception {
 		String[] args = {
-				"ein", "kein", "null", 
+				"ein", "$kein", "null", 
 				"Kein", "$ein", "null", 
 				"Fehler", "efhler", "null", 
 				"eFhler", "ehfler", "null", 
@@ -167,14 +183,44 @@ public class VelocityTests extends TestCase {
 		MapContext nc = new MapContext(map);
 		assertEquals(args.length / 3 - 3, nc.getKeys().length);
 		
-		assertTrue(dbCon.open(test_db));
-		ResultSet rs = dbCon.getStmt().executeQuery("select note from notes where created not null");
-		while (rs.next()) {
-			String s = rs.getString(1);
-			while ((s = evaluation(nc, s, "notes")).contains("$")) ;
-			println(s);
+		nc.put("kein", -0.00003141592);
+		
+		String fileName = "/tmp/context.ser";
+		new File(fileName).delete();
+		
+		FileOutputStream fileOut = new FileOutputStream(fileName);
+		ObjectOutputStream out = new ObjectOutputStream(fileOut);
+		out.writeObject(nc);
+		out.close();
+		fileOut.close();
+		
+		FileInputStream fileIn = new FileInputStream(fileName);
+		ObjectInputStream in = new ObjectInputStream(fileIn);
+		MapContext nc2 = (MapContext) in.readObject();
+		in.close();
+		fileIn.close();
+		
+		for (Map.Entry<String, Object> entry : map.entrySet()) {
+			String key = entry.getKey();
+			assertTrue(nc2.containsKey(key));
+			assertEquals(nc.get(key), nc2.get(key));
 		}
-		dbCon.close();
+		
+		assertTrue(dbCon.open(test_db));
+		try {
+			ResultSet rs = dbCon.getStmt().executeQuery("select note from notes where created not null");
+			while (rs.next()) {
+				String s = rs.getString(1);
+				int loop = 0;
+				while (loop < 10 && (s = evaluation(nc, s, "notes")).contains("$")) 
+					loop++;
+				println(s);
+				assertFalse("error in context", s.contains("$"));
+			}
+		}
+		finally {
+			dbCon.close();
+		}
 	}
 
 	public void testWeatherContext() {
@@ -352,5 +398,127 @@ public class VelocityTests extends TestCase {
 				return value;
 			}
 		});
+	}
+
+	public void testReferences() throws Exception {
+		InputStreamReader isr = new InputStreamReader(getClass().getResourceAsStream("ToJSON.vm"));
+		int cnt = 0;
+		for (MatchResult m : findAllIn(readAll(isr), VELOCITY_REFERENCE_PATTERN)) {
+			println(m.group());
+			cnt++;
+		}
+		assertEquals(29, cnt);
+		isr.close();
+	}
+
+	public void testDirectives() throws Exception {
+		for (Map.Entry<String, String> entry : directives().entrySet()) {
+			println(entry);
+		}
+	}
+
+	public void testUserDirectives() throws Exception {
+		Properties props = new Properties();
+		//	InputStream in = getClass().getResourceAsStream("velocity.properties");
+		//	props.load(in);
+		props.setProperty("userdirective", 
+//				"com.applang.berichtsheft.test.TruncateDirective," +
+//				"com.applang.berichtsheft.test.TruncateBlockDirective," +
+				"com.applang.Prompt");
+		Velocity.init(props);
+		
+		VelocityContext context = new VelocityContext();
+		String t = 
+//				"#set($test = \"long line that should be truncated\")\n" +
+//				"#truncate(\"Testing $test\", 20, \"...\", true)\n" +
+//				"#truncateBlock(15,\"...\",true)" +
+//				"    Long block" +
+//				"    that will be" +
+//				"    truncated" +
+//				"#end\n" +
+				"#set($key=\"\")\n" +
+				"#prompt(\"label\",$key,\"value\",true)\n\n" +
+				"$key";
+		
+		StringWriter w = new StringWriter();
+        Velocity.evaluate( context, w, "mystring", t );
+        String s = w.toString();
+        println(s);
+//		assertEquals("Testing long line...    Long...\n", s);
+	}
+	
+	public class Product {
+	    private String name;
+	    private double price;
+	     
+	    public Product(String aName, double aPrice) {
+	        name = aName;
+	        price = aPrice;
+	    }
+	     
+	    public String getName() {
+	        return name;
+	    }
+	    public void setName(String name) {
+	        this.name = name;
+	    }
+	    public double getPrice() {
+	        return price;
+	    }
+	    public void setPrice(double price) {
+	        this.price = price;
+	    }
+	}
+
+	@SuppressWarnings("unchecked")
+	public void testMathTool() throws Exception {
+	    Properties p = new Properties();
+	    p.setProperty(
+	    		"file.resource.loader.path", 
+	    		"/home/lotharla/work/Niklas/androidStuff/BerichtsheftApp/src/com/applang/berichtsheft/test");
+	    Velocity.init( p );
+	    
+	    VelocityContext ctx = new VelocityContext();
+	    ctx.put("math", new MathTool());
+	    ctx.put("aNumber", new Double(5.5));
+	    System.out.println(evaluation(ctx, "$math.random is a random number", "mathtool"));
+	    System.out.println(evaluation(ctx, "$math.random(1, 20) is a random number between 1 and 20", "mathtool"));
+	    System.out.println(evaluation(ctx, "4.45678 rounded to 3 places is $math.roundTo(3, \"4.45678\")", "mathtool"));
+	    System.out.println(evaluation(ctx, "4.45678 rounded to the nearest integer is $math.roundToInt(\"4.45678\")", "mathtool"));
+	    System.out.println(evaluation(ctx, "$aNumber ^ 3.2 = $math.pow($aNumber, \"3.2\")", "mathtool"));
+	    System.out.println(evaluation(ctx, "$aNumber / 3.2 = $math.div($aNumber, \"3.2\")", "mathtool"));
+	    System.out.println(evaluation(ctx, "$aNumber * 3.2 = $math.mul($aNumber, \"3.2\")", "mathtool"));
+	    System.out.println(evaluation(ctx, "$aNumber - 3.2 = $math.sub($aNumber, \"3.2\")", "mathtool"));
+	    System.out.println(evaluation(ctx, "$aNumber + 3.2 = $math.add($aNumber, \"3.2\")", "mathtool"));
+	    System.out.println(evaluation(ctx, "The maximum of $aNumber and 3.2 is $math.max($aNumber, \"3.2\")", "mathtool"));
+	    System.out.println(evaluation(ctx, "The minimum of $aNumber and 3.2 is $math.min($aNumber, \"3.2\")", "mathtool"));
+        
+        Collection products = new ArrayList();
+        products.add(new Product("Product 1", 112.199));
+        products.add(new Product("Product 2", 113.991));
+        products.add(new Product("Product 3", 111.919));
+        ctx.put("productList", products);
+        System.out.println(merge(ctx, Velocity.getTemplate("calculation.vm")));
+//	    System.out.println(evaluation(ctx, 
+//	    		"#set($totalPrice = 0)" 
+//	    		+"#foreach($product in $productList)" 
+//	    		+"  $product.Name    $$product.Price\n" 
+//	    		+"#set($totalPrice = $math.add($totalPrice, $product.Price))" 
+//	    		+"#end" 
+//	    		+"Total Price: $$totalPrice\n"
+//	    		, "mathtool"
+//	    ));
+        ctx.put("date", new DateTool());
+        Calendar aDate = Calendar.getInstance(TimeZone.getTimeZone("MET"));
+        aDate.set(200, 11, 25);
+        ctx.put("aDate", aDate);
+        System.out.println(merge(ctx, Velocity.getTemplate("datetool.vm")));
+        ctx.put("number", new NumberTool());
+        ctx.put("aNumber", new Double(0.95));
+        ctx.put("aLocale", Locale.UK);
+	    System.out.println(evaluation(ctx, "Currency (with Locale): $number.format(\"currency\", $aNumber, $aLocale)", "numbertool"));
+	    System.out.println(evaluation(ctx, "Integer Formatting:     $number.format(\"integer\", $aNumber)", "numbertool"));
+	    System.out.println(evaluation(ctx, "Percentage Formatting:  $number.format(\"percent\", $aNumber)", "numbertool"));
+	    System.out.println(evaluation(ctx, "Currency Formatting:    $number.format(\"currency\", $aNumber)", "numbertool"));
 	}
 }

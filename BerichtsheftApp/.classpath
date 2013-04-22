@@ -32,5 +32,10 @@
 			<attribute name="javadoc_location" value="file:/home/lotharla/velocity-1.7/docs/api/"/>
 		</attributes>
 	</classpathentry>
+	<classpathentry kind="lib" path="/home/lotharla/work/Niklas/androidStuff/BerichtsheftApp/.jedit/jars/velocity-tools-generic-2.0.jar" sourcepath="/home/lotharla/velocity-tools-2.0/velocity-tools-2.0-src/src/main/java">
+		<attributes>
+			<attribute name="javadoc_location" value="file:/home/lotharla/velocity-tools-2.0/docs/"/>
+		</attributes>
+	</classpathentry>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
