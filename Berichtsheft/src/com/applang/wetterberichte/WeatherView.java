@@ -42,7 +42,7 @@ public class WeatherView extends Activity
 	}
 	
 	void evaluateTemplateAndLoad(Context vc, String template, String logTag) {
-		String s = evaluation( vc, template, logTag );
+		String s = evaluate( vc, template, logTag );
 		webView.loadData(s, "text/html", "UTF-8");
 	}
 	
@@ -53,7 +53,7 @@ public class WeatherView extends Activity
         return waitWhileWorking(this, "Loading ...", 
         	new Job<Activity>() {
 				public void perform(Activity activity, Object[] params) throws Exception {
-					com.applang.VelocityContext.setupVelocity(activity, true);
+					com.applang.UserContext.setupVelocity(activity, true);
 					
 	    			String jsonText = readFromUrl(url, "UTF-8");
 	    			JSONObject json = new JSONObject(jsonText);

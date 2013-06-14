@@ -2,7 +2,7 @@ package com.applang.tagesberichte;
 
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
-import static com.applang.VelocityContext.*;
+import static com.applang.UserContext.*;
 
 import com.applang.berichtsheft.R;
 import com.applang.provider.NotePadProvider;
@@ -69,7 +69,7 @@ public class Tagesberichte extends TabActivity
 			.setData(NotePadProvider.contentUri(2));
 		TabSpec tabSpecGloss = tabHost
 			.newTabSpec(NotePadProvider.tableName(2))
-			.setIndicator("", resources.getDrawable(R.drawable.glossary))
+			.setIndicator("", resources.getDrawable(R.drawable.tree))
 			.setContent(intent);
 			
 		tabHost.addTab(tabSpecNotes);

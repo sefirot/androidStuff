@@ -16,13 +16,13 @@
 
 package com.applang.tagesberichte;
 
+import java.util.ArrayList;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeSet;
 
-import com.applang.VelocityContext;
+import com.applang.UserContext;
 import com.applang.berichtsheft.R;
-import com.applang.provider.NotePad.Notes;
+import com.applang.provider.NotePad.NoteColumns;
 import com.applang.provider.NotePadProvider;
 
 import android.app.Activity;
@@ -48,6 +48,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.widget.EditText;
+import android.widget.Toast;
 
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
@@ -66,8 +67,8 @@ public class NoteEditor extends Activity
      * Standard projection for the interesting columns of a normal note.
      */
     private static final String[] PROJECTION = new String[] {
-            Notes._ID, // 0
-            Notes.NOTE, // 1
+            NoteColumns._ID, // 0
+            NoteColumns.NOTE, // 1
     };
     /** The index of the note column */
     private static final int COLUMN_INDEX_NOTE = 1;
@@ -82,6 +83,8 @@ public class NoteEditor extends Activity
     private static final int BAUSTEIN_ID = Menu.FIRST + 3;
     private static final int EVALUATE_ID = Menu.FIRST + 4;
     private static final int SCHLAGWORT_ID = Menu.FIRST + 5;
+    private static final int ANWEISUNG_ID = Menu.FIRST + 6;
+    private static final int STRUKTUR_ID = Menu.FIRST + 7;
 
     // The different distinct states the activity can be run in.
     public static final int STATE_EDIT = 0;
@@ -210,58 +213,60 @@ public class NoteEditor extends Activity
     	setContentView(R.layout.note_editor);
     	
     	mText = (LinedEditText) findViewById(R.id.note);
-    	mText.addTextChangedListener(new TextWatcher(){
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-            }
+		mText.addTextChangedListener(new TextWatcher() {
+			boolean first = true;
 
-            boolean first = true;
-            
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-            	if (first)
-            		mText.setSelection(Math.max(0, s.length() - 1));
-            	else if (count - before == 1 && start + count > 0) {
-						char ch = s.charAt(start + count - 1);
-						if (VELOCITY_REFERENCE_IDENTIFICATOR.equals(ch)) {
-							requestBaustein(1);
-						}
-						else if (VELOCITY_DIRECTIVE_IDENTIFICATOR.equals(ch)) {
-							requestDirective(1);
-						}
-            	}
-				first = false;
-            }
+			@Override
+			public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+			}
 
 			@Override
 			public void afterTextChanged(Editable s) {
+//				if (tableIndex == 1)
+//					analyze(s);
 			}
-        });
-    	registerForContextMenu(mText);
-    	
-    	if (savedInstanceState != null) {
+
+			@Override
+			public void onTextChanged(CharSequence s, int start, int before, int count) {
+				if (first)
+					mText.setSelection(Math.max(0, s.length() - 1));
+				else if (tableIndex == 1) {
+					if (count - before == 1 && start + count > 0) {
+						char ch = s.charAt(start + count - 1);
+						if (VRI.equals(ch)) {
+							requestBaustein(0);
+						} else if (VDI.equals(ch)) {
+							requestDirective(0);
+						}
+					}
+				}
+				first = false;
+			}
+		});
+		
+		if (savedInstanceState != null) {
     		mOriginalContent = savedInstanceState.getString(ORIGINAL_CONTENT);
     	}
     }
-    
-    int[] requestCode = new int[] {0,0,0};
+
+	int[] requestCode = new int[] {0,0,0};
 
 	private void requestBaustein(int code) {
-		this.requestCode[0] = code;
-		NoteEditor.this.openContextMenu(mText);
+		requestCode[0] = code;
+		popupContextMenu(this, mText);
 	}
 
     private void requestSchlagwort(int code) {
-		this.requestCode[1] = code;
-		NoteEditor.this.openContextMenu(mText);
+		requestCode[1] = code;
+		popupContextMenu(this, mText);
 	}
 
 	private void requestDirective(int code) {
-		this.requestCode[2] = code;
-		NoteEditor.this.openContextMenu(mText);
+		requestCode[2] = code;
+		popupContextMenu(this, mText);
 	}
-
-    @Override
+	
+	@Override
     public void onCreateContextMenu(ContextMenu menu, View view, ContextMenuInfo menuInfo) {
         super.onCreateContextMenu(menu, view, menuInfo);
         
@@ -291,9 +296,9 @@ public class NoteEditor extends Activity
 			q = 1;
 		}
         else if (requestCode[2] > 0) {
-        	id = R.string.menu_directive;
+        	id = R.string.menu_anweisung;
 			
-			anweisungen = VelocityContext.directives();
+			anweisungen = UserContext.directives();
 			for (String key : anweisungen.keySet()) 
 				menu.add(key);
 			
@@ -311,32 +316,32 @@ public class NoteEditor extends Activity
     
     private ValMap bausteine = null;
     Map<String,String> anweisungen = null;
+
+	public static final String SPAN = "caret";
     
     @Override
     public boolean onContextItemSelected(MenuItem item) {
     	String text = item.getTitle().toString();
-    	
     	int q;
         if (requestCode[0] < 0) {
         	if (requestCode[0] < -1) {
 	        	if (bausteine != null) {
 	        		text = bausteine.get(text).toString();
-	        		
-	        		new VelocityContext.EvaluationTask(this, "", null, new Job<String>() {
-	        			public void perform(String text, Object[] params) {
-	        	        	mText.insertAtCaretPosition(text);
+	        		new UserContext.EvaluationTask(this, bausteine, null, null, new Job<Object>() {
+	        			public void perform(Object text, Object[] params) {
+	        	        	mText.insertAtCaretPosition(text.toString());
 	        	        	updateNote(mText.getText().toString(), true);
 	        			}
-	        		}).execute(text);
-	        		
+	        		}).execute(text, getString(R.string.title_evaluator));
+	            	requestCode[0] = 0;
 	        		return true;
 	        	}
 	        	else
-	        		text = VELOCITY_REFERENCE_IDENTIFICATOR + enclose("{", text, "}");
+	        		text = VRI + enclose("{", text, "}");
         	}
-        	else
+        	else {
         		text = enclose("{", text, "}");
-        	
+        	}
         	mText.insertAtCaretPosition(text);
         	q = 0;
 		}
@@ -346,18 +351,17 @@ public class NoteEditor extends Activity
 			case R.id.menu_item_first:
 				word = mText.getFirstWord();
 				break;
-
 			case R.id.menu_item_selected:
 				word = mText.getSelectedText();
 				break;
 			}
         	if (word.length() > 0) {
-        		long id = NotePadProvider.id(-1, mUri);
+        		long id = NotePadProvider.parseId(-1, mUri);
         		String description = getNoteDescription(getContentResolver(), tableIndex, id);
         		Uri uri = NotePadProvider.contentUri(2);
         		uri = ContentUris.withAppendedId(uri, id);
         		id = NotePadProvider.getIdOfNote(getContentResolver(), 2, 
-        				Notes.REF_ID + "=? and " + Notes.TITLE + "=?", 
+        				NoteColumns.REF_ID + "=? and " + NoteColumns.TITLE + "=?", 
         				new String[] {"" + id, word});
         		int state = id < 0 ? NoteEditor.STATE_INSERT : NoteEditor.STATE_EDIT;
 	        	startActivity(new Intent()
@@ -370,22 +374,72 @@ public class NoteEditor extends Activity
         	q = 1;
 		}
         else if (requestCode[2] < 0) {
-    		text = anweisungen.get(text).substring(1);
-        	mText.insertAtCaretPosition(text);
+    		String signature = anweisungen.get(text);
+    		synthesize(signature);
         	q = 2;
         }
-        else
+        else {
         	return super.onContextItemSelected(item);
-        
+        }
     	requestCode[q] = 0;
-    	return false;
+    	return true;
     }
+
+	private void synthesize(final String anweisung) {
+		new UserContext.EvaluationTask(this, new ValMap(), null, null, new Job<Object>() {
+			public void perform(Object t, Object[] params) {
+				if (t != null) {
+					String text = t.toString();
+					if (requestCode[2] < -1)
+						text = VDI + text;
+					mText.insertAtCaretPosition(text);
+					updateNote(mText.getText().toString(), true);
+				}
+			}
+		}).execute(new Function<Object>() {
+			public Object apply(Object... params) {
+				UserContext userContext = (UserContext) params[0];
+				return userContext.buildTerm(anweisung);
+			}
+		});
+	}
+    
+    protected void analyze() {
+        String[] strings = getResources().getStringArray(R.array.title_edit_array);
+		final String text = mText.getText().toString();
+		new Baustein.AnalysisTask(this, new Job<Boolean>() {
+			public void perform(Boolean problem, Object[] params) {
+				if (problem) {
+					int offset = getTextOffsets(text, getProblemCoordinates())[0];
+					mText.setSelection(offset, offset + 1);
+				}
+				else {
+					Intent intent = new Intent()
+							.setClass(NoteEditor.this, Baustein.class)
+							.setData(NotePadProvider.contentUri(2));
+					startActivityForResult(intent, 2);
+				}
+			}
+		}).execute(text, strings[tableIndex]);
+	}
     
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
     	switch (requestCode) {
 		case 1:
 	    	mCursor = managedQuery(mUri, PROJECTION, "", null, null);
+			break;
+
+		case 2:
+			if (resultCode == RESULT_OK) {
+				int[] span = data.getIntArrayExtra(SPAN);
+				String string = mText.getText().toString();
+				int[] offsets = getTextOffsets(string, span);
+				int length = string.length();
+				mText.setSelection(
+						Math.max(0, offsets[0]), 
+						Math.min(length, offsets[1] + 1));
+			}
 			break;
 
 		default:
@@ -479,11 +533,11 @@ public class NoteEditor extends Activity
 		// This stuff is only done when working with a full-fledged note.
 		if (!noteOnly) {
 		    // Bump the modification time to now.
-		    values.put(Notes.MODIFIED_DATE, System.currentTimeMillis());
+		    values.put(NoteColumns.MODIFIED_DATE, System.currentTimeMillis());
 		}
 
 		// Write our text back into the provider.
-		values.put(Notes.NOTE, text);
+		values.put(NoteColumns.NOTE, text);
 
 		// Commit all of our changes to persistent storage. When the update completes
 		// the content provider will notify the cursor of the change, which will
@@ -517,8 +571,14 @@ public class NoteEditor extends Activity
 
         menu.add(0, BAUSTEIN_ID, 0, R.string.menu_baustein)
     			.setShortcut('2', 'b');
-//		menu.add(0, EVALUATE_ID, 0, R.string.menu_evaluate)
-//    			.setShortcut('3', 'e');
+        if (tableIndex == 1) {
+			menu.add(0, ANWEISUNG_ID, 0, R.string.menu_anweisung)
+					.setShortcut('5', 'a');
+			menu.add(0, STRUKTUR_ID, 0, R.string.menu_struktur)
+					.setShortcut('7', 'k');
+			menu.add(0, EVALUATE_ID, 0, R.string.menu_evaluate)
+					.setShortcut('3', 'e');
+        }
         if (tableIndex == 0)
 	        menu.add(0, SCHLAGWORT_ID, 0, R.string.menu_schlagwort)
 	    			.setShortcut('4', 's');
@@ -543,7 +603,7 @@ public class NoteEditor extends Activity
         // Handle all of the possible menu actions.
         switch (item.getItemId()) {
         case DELETE_ID:
-    		long id = NotePadProvider.id(-1, mUri);
+    		long id = NotePadProvider.parseId(-1, mUri);
     		String description = getNoteDescription(getContentResolver(), tableIndex, id);
     		description = getResources().getString(R.string.areUsure, description);
     		areUsure(this, description, new Job<Void>() {
@@ -563,12 +623,18 @@ public class NoteEditor extends Activity
         case BAUSTEIN_ID:
 			requestBaustein(2);
             break;
+        case ANWEISUNG_ID:
+			requestDirective(2);
+            break;
+        case STRUKTUR_ID:
+			analyze();
+            break;
         case SCHLAGWORT_ID:
 			requestSchlagwort(2);
             break;
         case EVALUATE_ID:
 			startActivityForResult(new Intent()
-				.setClass(this, NoteEvaluator.class)
+				.setAction(BausteinEvaluator.EVALUATE_ACTION)
 				.setData(mUri), 1);
             break;
         }
@@ -586,7 +652,7 @@ public class NoteEditor extends Activity
                 mCursor.close();
                 mCursor = null;
                 ContentValues values = new ContentValues();
-                values.put(Notes.NOTE, mOriginalContent);
+                values.put(NoteColumns.NOTE, mOriginalContent);
                 getContentResolver().update(mUri, 
                 		values, 
                 		null, null);

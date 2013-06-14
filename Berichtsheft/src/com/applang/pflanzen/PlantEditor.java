@@ -20,7 +20,7 @@ import com.applang.berichtsheft.R;
 import com.applang.berichtsheft.R.id;
 import com.applang.berichtsheft.R.layout;
 import com.applang.berichtsheft.R.string;
-import com.applang.provider.NotePad.Notes;
+import com.applang.provider.NotePad.NoteColumns;
 import com.applang.provider.PlantInfo.Plants;
 
 import android.app.Activity;
@@ -370,7 +370,7 @@ public class PlantEditor extends Activity {
                 mCursor.close();
                 mCursor = null;
                 ContentValues values = new ContentValues();
-                values.put(Notes.NOTE, mOriginalContent);
+                values.put(NoteColumns.NOTE, mOriginalContent);
                 getContentResolver().update(mUri, values, null, null);
             } else if (mState == STATE_INSERT) {
                 // We inserted an empty note, make sure to delete it

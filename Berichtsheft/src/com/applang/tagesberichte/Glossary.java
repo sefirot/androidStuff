@@ -37,7 +37,6 @@ import android.widget.ExpandableListView;
 import android.widget.Filter;
 import android.widget.Filterable;
 import android.widget.ImageButton;
-import android.widget.Toast;
 import android.widget.ExpandableListView.OnChildClickListener;
 import android.widget.ExpandableListView.OnGroupClickListener;
 import android.widget.TextView;
@@ -45,10 +44,11 @@ import android.widget.TextView;
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
 
+import com.applang.Util;
 import com.applang.Util.Job;
 import com.applang.berichtsheft.R;
 import com.applang.provider.NotePadProvider;
-import com.applang.provider.NotePad.Notes;
+import com.applang.provider.NotePad.NoteColumns;
 
 public class Glossary extends ExpandableListActivity
 {
@@ -76,9 +76,9 @@ public class Glossary extends ExpandableListActivity
 	public EditText searchEdit;
 
     private static final String[] PROJECTION = new String[] {
-    	Notes._ID, // 0
-    	Notes.TITLE, // 1
-    	Notes.CREATED_DATE, 
+    	NoteColumns._ID, // 0
+    	NoteColumns.TITLE, // 1
+    	NoteColumns.CREATED_DATE, 
     };
 	
     private Uri mUri;
@@ -87,7 +87,7 @@ public class Glossary extends ExpandableListActivity
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
     	super.onCreate(savedInstanceState);
-        setContentView(R.layout.glossary);
+    	setContentView(R.layout.glossary);
 		
         final Intent intent = getIntent();
         mUri = intent.getData();
@@ -95,7 +95,12 @@ public class Glossary extends ExpandableListActivity
         if (mUri == null) 
         	mUri = NotePadProvider.contentUri(tableIndex);
 
-    	searchEdit = (EditText) findViewById(android.R.id.edit);
+        LayoutInflater inflater = LayoutInflater.from(this);
+        View view = inflater.inflate(R.layout.search, null);
+        ViewGroup contentView = (ViewGroup)getContentView(this);
+		contentView.addView(view);
+		
+    	searchEdit = (EditText) view.findViewById(android.R.id.edit);
     	searchEdit.addTextChangedListener(new TextWatcher() {
 			@Override
 			public void onTextChanged(CharSequence s, int start, int before, int count) {
@@ -108,7 +113,7 @@ public class Glossary extends ExpandableListActivity
 			public void afterTextChanged(Editable s) {
 			}
 		});
-    	findViewById(R.id.container).setVisibility(View.GONE);
+    	findViewById(R.id.search).setVisibility(View.GONE);
         
 		ImageButton btn = (ImageButton) findViewById(R.id.button1);
 		if (btn != null)
@@ -116,11 +121,11 @@ public class Glossary extends ExpandableListActivity
 				@Override
 				public void onClick(View v) {
 					searchEdit.setText("");
-					findViewById(R.id.container).setVisibility(View.GONE);
+					findViewById(R.id.search).setVisibility(View.GONE);
 				}
 			});
-   	
-		listView = getExpandableListView();
+       	
+        listView = getExpandableListView();
 		
 		listView.setOnChildClickListener(new OnChildClickListener() {
 			@Override
@@ -207,7 +212,7 @@ public class Glossary extends ExpandableListActivity
 			cursor = contentResolver.query(NotePadProvider.contentUri(tableIndex), 
 				PROJECTION, 
 				"", null,
-				Notes.TITLE_SORT_ORDER);
+				NoteColumns.TITLE_SORT_ORDER);
 
 			if (cursor.moveToFirst()) 
 				do {
@@ -215,7 +220,7 @@ public class Glossary extends ExpandableListActivity
 				} while (cursor.moveToNext());
 			
 			notifyHandler.sendEmptyMessage(1);
-			delay(50);
+			Util.delay(50);
 			Log.i(TAG, "Glossary populated");
 		} 
         finally {
@@ -238,7 +243,7 @@ public class Glossary extends ExpandableListActivity
 			populate(true);
 	}
 	
-	Handler notifyHandler = new Handler() {
+	private Handler notifyHandler = new Handler() {
 		@Override
 		public void handleMessage(Message msg) {
 			switch (msg.what) {
@@ -285,7 +290,7 @@ public class Glossary extends ExpandableListActivity
         menu.add(0, MENU_ITEM_REFRESH, 0, R.string.menu_refresh)
         		.setShortcut('6', 'r');
         menu.add(0, MENU_ITEM_VIEW, 0, R.string.menu_view)
-		    	.setShortcut('5', 's')
+		    	.setShortcut('7', 'v')
 		    	.setIcon(android.R.drawable.ic_menu_view);
 
         return true;
@@ -304,7 +309,7 @@ public class Glossary extends ExpandableListActivity
         	return true;
         	
         case MENU_ITEM_SEARCH:
-        	View view = findViewById(R.id.container);
+        	View view = findViewById(R.id.search);
         	if (view.getVisibility() == View.VISIBLE)
     			view.setVisibility(View.GONE);
         	else {
@@ -322,15 +327,15 @@ public class Glossary extends ExpandableListActivity
         if (clickInfo != null) {
         	menu.setHeaderTitle(clickInfo.toString());
 			getMenuInflater().inflate(R.menu.contextmenu_glossary, menu);
-			if (clickInfo instanceof String)
-				menu.removeItem(R.id.menu_item_evaluate);
+//			if (clickInfo instanceof String)
+//				menu.removeItem(R.id.menu_item_evaluate);
 		}
     }
     
     @Override
     public boolean onContextItemSelected(MenuItem item) {
         switch (item.getItemId()) {
-        case R.id.menu_item_evaluate: 
+/*		case R.id.menu_item_evaluate: 
 			if (clickInfo instanceof GlossaryLeaf) {
 				GlossaryLeaf glossaryLeaf = (GlossaryLeaf) clickInfo;
 				Uri uri = ContentUris.withAppendedId(NotePadProvider.contentUri(0), glossaryLeaf.getRefId());
@@ -339,12 +344,12 @@ public class Glossary extends ExpandableListActivity
 						.setData(uri));
 			}
 			return true;
-            
+*/            
         case R.id.menu_item_edit: 
 			if (clickInfo instanceof GlossaryLeaf) {
 				GlossaryLeaf glossaryLeaf = (GlossaryLeaf) clickInfo;
 				long id = NotePadProvider.getIdOfNote(contentResolver, tableIndex, 
-						Notes.TITLE + "=? and " + Notes.CREATED_DATE + "=?", 
+						NoteColumns.TITLE + "=? and " + NoteColumns.CREATED_DATE + "=?", 
 						new String[]{glossaryLeaf.getGroup(), "" + glossaryLeaf.getRefId()});
 				Uri uri = ContentUris.withAppendedId(mUri, id);
 				startActivity(new Intent()
@@ -370,7 +375,7 @@ public class Glossary extends ExpandableListActivity
     					GlossaryLeaf glossaryLeaf = (GlossaryLeaf) clickInfo;
     					adapter.removeItem(glossaryLeaf);
     					contentResolver.delete(mUri,
-    							Notes.TITLE + "=? and " + Notes.CREATED_DATE + "=?", 
+    							NoteColumns.TITLE + "=? and " + NoteColumns.CREATED_DATE + "=?", 
     							new String[]{glossaryLeaf.getGroup(), "" + glossaryLeaf.getRefId()});
     				}
         		});
@@ -382,7 +387,7 @@ public class Glossary extends ExpandableListActivity
     					String group = clickInfo.toString();
     					adapter.removeItem(new GlossaryLeaf(null, group, -1));
     					contentResolver.delete(mUri,
-    							Notes.TITLE + "=?", 
+    							NoteColumns.TITLE + "=?", 
     							new String[]{group});
     				}
         		});
@@ -410,9 +415,9 @@ public class Glossary extends ExpandableListActivity
 				try {
 					cursor = contentResolver.query(NotePadProvider.contentUri(0), 
 							PROJECTION,
-							Notes._ID + "= ?",
+							NoteColumns._ID + "= ?",
 							new String[] { "" + refId }, 
-							Notes.DEFAULT_SORT_ORDER);
+							NoteColumns.DEFAULT_SORT_ORDER);
 					if (cursor.moveToFirst()) {
 						this.title = cursor.getString(1);
 						this.epoch = cursor.getLong(2);

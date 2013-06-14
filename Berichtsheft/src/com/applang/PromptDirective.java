@@ -7,46 +7,19 @@ import org.apache.velocity.exception.TemplateInitException;
 import org.apache.velocity.runtime.RuntimeServices;
 import org.apache.velocity.runtime.parser.node.Node;
 
-import com.applang.VelocityUtil.CustomDirective;
-
-import android.content.Intent;
-import android.os.Bundle;
-import android.util.Log;
-
+import static com.applang.Util.*;
 import static com.applang.VelocityUtil.*;
 
 /**
  * A directive to prompt the user for a value.
  */
-public class PromptDirective extends CustomDirective
+public class PromptDirective extends BaseDirective
 {
-	protected static final String TAG = CustomDirective.class.getSimpleName();
-	
 	public PromptDirective() {
 		super();
-		arguments = new String[] {"message","variable","[values]","[flag]"};
-	}
-
-	public static VelocityContext userContext = null;
-	
-	public static void _wait() {
-        synchronized (syncToken)
-        {
-            try {
-                syncToken.wait();
-            } catch (InterruptedException e) {
-				Log.e(TAG, "_wait", e);
-            }
-        }
-	}
-	
-	private static final Object syncToken = new Object();
-	
-	public static void _notify() {
-        synchronized(syncToken)
-        {
-            syncToken.notify();
-        }
+		arguments = new String[] { "message_S","variable_R",
+				VelocityUtil.optionalize("values_L"),
+				VelocityUtil.optionalize("option_S") };
 	}
 
 	/**
@@ -82,38 +55,21 @@ public class PromptDirective extends CustomDirective
 			return getAnswer(context, 0);
 	}
 	
-	protected Bundle info = new Bundle();
-	
 	protected boolean getAnswer(InternalContextAdapter context, int type) {
-		info.putString("prompt", prompt.toString());
-		info.putString("var", var);
-		info.putStringArray("values", values);
+		info.putString(BaseDirective.PROMPT, prompt.toString());
+		info.putString(BaseDirective.VARIABLE, var);
+		info.putStringArray(BaseDirective.VALUES, values);
 		
-		if (type == 0)
-			switch (values.length) {
-			case 1:
-				type = Dialogs.DIALOG_TEXT_ENTRY;
-				break;
-			case 2:
-				type = flag ? Dialogs.DIALOG_YES_NO_LONG_MESSAGE : Dialogs.DIALOG_YES_NO_MESSAGE;
-				break;
-			default:
-				type = flag ? Dialogs.DIALOG_MULTIPLE_CHOICE : Dialogs.DIALOG_SINGLE_CHOICE;
-				break;
-			}
-		info.putInt("type", type);
+		if (type == 0) {
+			type = valueOrElse(defaultOption, options.get(option));
+		}
+		info.putInt(BaseDirective.TYPE, type);
 		
 		Object value = null;
 		try {
-			userContext = (VelocityContext) context.getInternalUserContext();
+			userContext = (UserContext) context.getInternalUserContext();
 			
-			Intent intent = new Intent(Dialogs.PROMPT_ACTION)
-					.putExtras(info);
-			
-			VelocityContext.EvaluationTask task = userContext.getEvaluationTask();
-			task.doInForeground(intent);
-			
-			_wait();
+			performDialog(Dialogs.PROMPT_ACTION);
 			
 			value = userContext.get(var);
 			context.getInternalUserContext().put(var, value);
@@ -123,17 +79,14 @@ public class PromptDirective extends CustomDirective
 		}
 		return value != null;
 	}
-	
-	protected Object prompt;
-	protected String var;
-	protected String[] values;
-	protected boolean flag;
 
 	protected boolean getArguments(InternalContextAdapter context, Node node) {
-		prompt = getRequiredValue(node, 0, arguments[0], context);
-		var = getRequiredVariable(node, 1, arguments[1]);
+		prompt = getRequiredValue(node, 0, VelocityUtil.argumentName(arguments[0]), context);
+		var = getRequiredVariable(node, 1, VelocityUtil.argumentName(arguments[1]));
 		values = arrayOfStrings(getOptionalValue(node, 2, context));
-		flag = getOptionalBoolean(node, 3, context, false);
+		option = getOptionalString(node, 3, context, "");
+		
+		setOptions(Math.min(2, values.length - 1));
 		
 		return prompt != null && var != null;
 	}

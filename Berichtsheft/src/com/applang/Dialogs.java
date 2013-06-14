@@ -14,20 +14,27 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.text.method.ScrollingMovementMethod;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.KeyEvent;
-import android.view.LayoutInflater;
-import android.view.View;
+import android.view.ViewGroup.LayoutParams;
 import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.database.Cursor;
+import android.graphics.Color;
 
 import static com.applang.Util.*;
+import static com.applang.Util2.*;
 import static com.applang.VelocityUtil.*;
 
 import com.applang.berichtsheft.R;
 
 public class Dialogs extends Activity
 {
+	protected static final String TAG = Dialogs.class.getSimpleName();
+	
 	public static final String PROMPT_ACTION = "com.applang.action.PROMPT";
 	
 	public static final int DIALOG_YES_NO_MESSAGE = 1;
@@ -36,48 +43,104 @@ public class Dialogs extends Activity
     public static final int DIALOG_PROGRESS = 4;
     public static final int DIALOG_SINGLE_CHOICE = 5;
     public static final int DIALOG_MULTIPLE_CHOICE = 6;
-    public static final int DIALOG_TEXT_ENTRY = 7;
-    public static final int DIALOG_SINGLE_CHOICE_CURSOR = 8;
-    public static final int DIALOG_MULTIPLE_CHOICE_CURSOR = 9;
+    public static final int DIALOG_SINGLE_CHOICE_CURSOR = 7;
+    public static final int DIALOG_MULTIPLE_CHOICE_CURSOR = 8;
+    public static final int DIALOG_TEXT_ENTRY = 9;
+    public static final int DIALOG_TEXT_INFO = 10;
 
     public static final int MAX_PROGRESS = 100;
-    public static ProgressDialog sProgressDialog;
     public static int sProgress;
+    public static ProgressDialog sProgressDialog;
+    
     public static Handler sProgressHandler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
             super.handleMessage(msg);
-            if (sProgress >= MAX_PROGRESS) {
-                sProgressDialog.dismiss();
-            } else {
-                sProgress++;
-                sProgressDialog.incrementProgressBy(1);
-                sProgressHandler.sendEmptyMessageDelayed(0, 100);
+            if (msg.what < 1) {
+                sProgress = 0;
+                sProgressDialog.setProgress(0);
             }
+            else if (sProgress < MAX_PROGRESS) {
+                sProgress = msg.what;
+                sProgressDialog.setProgress(sProgress);
+            }
+            else 
+            	sProgressDialog.dismiss();
         }
     };
 
+	public static Runnable sProgressRunnable = null;
+
 	private int checkedItem = -1;
 	private List<Boolean> checkedItems = new ArrayList<Boolean>();
-	private Uri uri;
+	CursorProvider provider = new CursorProvider(this);
 	private Cursor cursor;
-	private String selection, sortOrder;
-	private String[] selectionArgs;
-
-	private void query() {
-		uri = Uri.parse(info.getString("uri"));
-        sortOrder = info.getString("sortOrder");
-        selection = info.getString("selection");
-		selectionArgs = info.getStringArray("selectionArgs");
-		cursor = managedQuery(uri, values, 
-				selection, 
-				selectionArgs, 
-				sortOrder);
+	
+	class CursorProvider
+	{
+		Activity activity;
+		
+		public CursorProvider(Activity activity) {
+			this.activity = activity;
+		}
+		
+		private Uri uri;
+		private String selection;
+		private String[] selectionArgs;
+		
+		public Cursor query(Bundle info) {
+			uri = Uri.parse(info.getString("uri"));
+	        selection = info.getString("selection");
+			selectionArgs = info.getStringArray("selectionArgs");
+			String sortOrder = info.getString("sortOrder");
+			return activity.managedQuery(uri, 
+					values, 
+					selection, 
+					selectionArgs, 
+					sortOrder);
+		}
+		
+		public void update(Bundle info, boolean checked) {
+        	ContentValues contentValues = new ContentValues();
+        	contentValues.put(values[2], checked);
+        	activity.getContentResolver().update(uri, 
+        			contentValues, 
+        			values[0] + "=? and (" + selection + ")", 
+        			arrayappend(new String[]{"" + cursor.getLong(0)}, selectionArgs));
+		}
 	}
 
     @Override
+	protected void onPrepareDialog(int id, Dialog dialog) {
+    	super.onPrepareDialog(id, dialog);
+		switch (id) {
+        case DIALOG_PROGRESS:
+        	if (sProgressRunnable != null)
+        		sProgressRunnable.run();
+		}
+	}
+
+	@Override
     protected Dialog onCreateDialog(int id) {
 		switch (id) {
+        case DIALOG_PROGRESS:
+        	sProgress = 0;
+        	sProgressDialog = new ProgressDialog(Dialogs.this);
+        	sProgressDialog.setIcon(R.drawable.ic_launcher);
+        	sProgressDialog.setTitle(prompt);
+        	sProgressDialog.setProgressStyle(info.getInt(BaseDirective.STYLE, ProgressDialog.STYLE_HORIZONTAL));
+        	sProgressDialog.setMax(MAX_PROGRESS);
+        	sProgressDialog.setButton(getText(R.string.button_hide), new DialogInterface.OnClickListener() {
+        		public void onClick(DialogInterface dialog, int whichButton) {
+        			sProgressDialog.hide();
+        		}
+        	});
+        	sProgressDialog.setButton2(getText(R.string.button_cancel), new DialogInterface.OnClickListener() {
+        		public void onClick(DialogInterface dialog, int whichButton) {
+        			sProgressDialog.cancel();
+        		}
+        	});
+        	return sProgressDialog;
         case DIALOG_YES_NO_MESSAGE:
             return new AlertDialog.Builder(Dialogs.this)
             	.setCancelable(false)
@@ -129,23 +192,6 @@ public class Dialogs extends Activity
 					}
                 })
                 .create();
-        case DIALOG_PROGRESS:
-            sProgressDialog = new ProgressDialog(Dialogs.this);
-            sProgressDialog.setIcon(R.drawable.ic_launcher);
-            sProgressDialog.setTitle(prompt);
-            sProgressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
-            sProgressDialog.setMax(MAX_PROGRESS);
-            sProgressDialog.setButton(getText(R.string.button_hide), new DialogInterface.OnClickListener() {
-                public void onClick(DialogInterface dialog, int whichButton) {
-                	sProgressDialog.hide();
-                }
-            });
-            sProgressDialog.setButton2(getText(R.string.button_cancel), new DialogInterface.OnClickListener() {
-                public void onClick(DialogInterface dialog, int whichButton) {
-                	sProgressDialog.cancel();
-                }
-            });
-            return sProgressDialog;
         case DIALOG_SINGLE_CHOICE:
         	if (defaultValues.size() > 0) {
         		checkedItem = Arrays.asList(values).indexOf(defaultValues.get(0));
@@ -203,151 +249,188 @@ public class Dialogs extends Activity
                 })
                .create();
         case DIALOG_SINGLE_CHOICE_CURSOR:
-        	query();
-        	if (defaultValues.size() > 0) {
-        		if (cursor.moveToFirst())
-        			do {
-        				checkedItem++;
-        				if (defaultValues.containsAll(Util2.listOfStrings(cursor)))
-        					break;
-        			} while (cursor.moveToNext());
-        	}
-            return new AlertDialog.Builder(Dialogs.this)
-				.setCancelable(false)
-                .setIcon(R.drawable.ic_launcher)
-                .setTitle(prompt)
-                .setSingleChoiceItems(cursor,
-                		checkedItem,
-                		values[0],
-                        new DialogInterface.OnClickListener() {
-							public void onClick(DialogInterface dialog,	int which) {
-								checkedItem = which;
+        	try {
+				cursor = provider.query(info);
+				if (defaultValues.size() > 0) {
+					if (cursor.moveToFirst())
+						do {
+							checkedItem++;
+							if (defaultValues.containsAll(getRecord(cursor)))
+								break;
+						} while (cursor.moveToNext());
+				}
+				return new AlertDialog.Builder(Dialogs.this)
+					.setCancelable(false)
+				    .setIcon(R.drawable.ic_launcher)
+				    .setTitle(prompt)
+				    .setSingleChoiceItems(cursor,
+				    		checkedItem,
+				    		values[0],
+				            new DialogInterface.OnClickListener() {
+								public void onClick(DialogInterface dialog,	int which) {
+									checkedItem = which;
+								}
+				            })
+				    .setPositiveButton(R.string.button_ok, new DialogInterface.OnClickListener() {
+				        public void onClick(DialogInterface dialog, int whichButton) {
+				        	Object value = null;
+				        	if (checkedItem > -1 && cursor.moveToFirst()) {
+								for (int i = 1; i < checkedItem; i++)
+									cursor.moveToNext();
+								if (values.length > 1)
+									value = getRecord(cursor);
+								else
+									value = cursor.getString(0);
 							}
-                        })
-                .setPositiveButton(R.string.button_ok, new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int whichButton) {
-                    	int i;
-		        		for (i = 0, cursor.moveToFirst(); i < checkedItem; i++, cursor.moveToNext())
-		        			;
-                        Object value;
-                        if (values.length > 1) 
-    						value = Util2.listOfStrings(cursor);
-                        else
-                        	value = cursor.getString(0);
-						_finish(RESULT_OK, value);
-                    }
-                })
-                .setNegativeButton(R.string.button_cancel, new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int whichButton) {
-                        _finish(RESULT_CANCELED, null);
-                    }
-                })
-               .create();
+							_finish(RESULT_OK, value);
+				        }
+				    })
+				    .setNegativeButton(R.string.button_cancel, new DialogInterface.OnClickListener() {
+				        public void onClick(DialogInterface dialog, int whichButton) {
+				            _finish(RESULT_CANCELED, null);
+				        }
+				    })
+				   .create();
+        	} 
+        	catch (Exception e) {
+        		Log.e(TAG, "Dialogs", e);
+			} 
         case DIALOG_MULTIPLE_CHOICE_CURSOR:
-        	query();
-    		if (cursor.moveToFirst())
-    			do {
-    				checkedItems.add(cursor.getInt(2) != 0);
-    			} while (cursor.moveToNext());
-            return new AlertDialog.Builder(Dialogs.this)
-				.setCancelable(false)
-                .setIcon(R.drawable.ic_launcher)
-                .setTitle(prompt)
-                .setMultiChoiceItems(cursor,
-                		values[2],
-                        values[1],
-                        new DialogInterface.OnMultiChoiceClickListener() {
-                            public void onClick(DialogInterface dialog, int whichButton, boolean isChecked) {
-                            	checkedItems.set(whichButton, isChecked);
-                            }
-                        })
-                .setPositiveButton(R.string.button_ok, new DialogInterface.OnClickListener() {
-					public void onClick(DialogInterface dialog, int whichButton) {
-						int i;
-		        		for (i = 0, cursor.moveToFirst(); i < checkedItems.size(); i++, cursor.moveToNext())
-                    	{
-                        	ContentValues contentValues = new ContentValues();
-                        	contentValues.put(values[2], checkedItems.get(i));
-                        	getContentResolver().update(uri, contentValues, 
-                        			values[0] + "=? and (" + selection + ")", 
-                        			arrayappend(new String[]{"" + cursor.getLong(0)}, selectionArgs));
-						}
-                        _finish(RESULT_OK, null);
-                    }
-                })
-                .setNegativeButton(R.string.button_cancel, new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int whichButton) {
-                        _finish(RESULT_CANCELED, null);
-                    }
-                })
-               .create();
-        case DIALOG_TEXT_ENTRY:
-            LayoutInflater factory = LayoutInflater.from(this);
-            View textEntryView = factory.inflate(R.layout.dialog_text_entry, null);
-            final EditText et = (EditText) textEntryView.findViewById(R.id.text_value);
-            et.setText(values[0]);
-            et.setSelection(0, et.getText().length());
-            et.setGravity(Gravity.CENTER);
-            return new AlertDialog.Builder(Dialogs.this)
-    			.setCancelable(false)
-                .setIcon(R.drawable.ic_launcher)
-                .setTitle(prompt)
-                .setView(textEntryView)
-                .setPositiveButton(R.string.button_ok, new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int whichButton) {
-                        _finish(RESULT_OK, et.getText().toString());
-                    }
-                })
-                .setNegativeButton(R.string.button_cancel, new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int whichButton) {
-                    	_finish(RESULT_CANCELED, null);
-                    }
-                })
-                .create();
+        	try {
+				cursor = provider.query(info);
+				if (cursor.moveToFirst())
+					do {
+						checkedItems.add(cursor.getInt(2) != 0);
+					} while (cursor.moveToNext());
+				return new AlertDialog.Builder(Dialogs.this)
+					.setCancelable(false)
+				    .setIcon(R.drawable.ic_launcher)
+				    .setTitle(prompt)
+				    .setMultiChoiceItems(cursor,
+				    		values[2],
+				            values[1],
+				            new DialogInterface.OnMultiChoiceClickListener() {
+				                public void onClick(DialogInterface dialog, int whichButton, boolean isChecked) {
+				                	checkedItems.set(whichButton, isChecked);
+				                }
+				            })
+				    .setPositiveButton(R.string.button_ok, new DialogInterface.OnClickListener() {
+						public void onClick(DialogInterface dialog, int whichButton) {
+							int i;
+							for (i = 0, cursor.moveToFirst(); i < checkedItems.size(); i++, cursor.moveToNext())
+								provider.update(info, checkedItems.get(i));
+				            _finish(RESULT_OK, null);
+				        }
+				    })
+				    .setNegativeButton(R.string.button_cancel, new DialogInterface.OnClickListener() {
+				        public void onClick(DialogInterface dialog, int whichButton) {
+				            _finish(RESULT_CANCELED, null);
+				        }
+				    })
+				   .create();
+        	} 
+        	catch (Exception e) {
+        		Log.e(TAG, "Dialogs", e);
+			} 
+	    case DIALOG_TEXT_ENTRY:
+	    case DIALOG_TEXT_INFO:
+            LinearLayout linearLayout = linearLayout(this, 
+            		LinearLayout.HORIZONTAL, 
+            		LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT);
+            TextView textView = id == DIALOG_TEXT_ENTRY ? 
+            		new EditText(this) : 
+            		new TextView(this);
+            textView.setText(values[0]);
+            textView.setMovementMethod(new ScrollingMovementMethod());
+            linearLayout.addView(textView, linearLayoutParams(
+            		LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 
+            		margin,	halfMargin, margin, halfMargin));
+    		switch (id) {
+            case DIALOG_TEXT_ENTRY:
+            	final EditText editText = (EditText) textView;
+            	editText.setGravity(Gravity.CENTER);
+            	editText.setSelection(0, editText.getText().length());
+	            return new AlertDialog.Builder(this)
+	    			.setCancelable(false)
+	                .setIcon(R.drawable.ic_launcher)
+	                .setTitle(prompt)
+	                .setView(linearLayout)
+	                .setPositiveButton(R.string.button_ok, new DialogInterface.OnClickListener() {
+	                    public void onClick(DialogInterface dialog, int whichButton) {
+	                        _finish(RESULT_OK, editText.getText().toString());
+	                    }
+	                })
+	                .setNegativeButton(R.string.button_cancel, new DialogInterface.OnClickListener() {
+	                    public void onClick(DialogInterface dialog, int whichButton) {
+	                    	_finish(RESULT_CANCELED, null);
+	                    }
+	                })
+	                .create();
+            case DIALOG_TEXT_INFO:
+            	textView.setBackgroundColor(Color.WHITE);
+            	textView.setTextColor(Color.BLACK);
+	            return new AlertDialog.Builder(this)
+	      			.setCancelable(false)
+	                .setIcon(R.drawable.ic_launcher)
+	                .setTitle(prompt)
+	                .setView(linearLayout)
+	                .setNeutralButton(R.string.button_close, new DialogInterface.OnClickListener() {
+	                    public void onClick(DialogInterface dialog, int whichButton) {
+	                    	_finish(RESULT_CANCELED, null);
+	                    }
+	                })
+	                .create();
+    		}
         }
         
         return null;
     }
-    
-    Bundle info = null;
-    String prompt = "";
-    String[] values = null;
-    List<String> defaultValues = null;
+	
+    protected Bundle info = null;
+    protected String prompt = "";
+    protected String[] values = null;
+    protected List<String> defaultValues = null;
+    protected int margin, halfMargin, padding, halfpadding;
 
     @Override
 	protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
+    	margin = getResources().getDimensionPixelOffset(R.dimen.margin);
+    	halfMargin = getResources().getDimensionPixelOffset(R.dimen.margin_half);
+    	padding = getResources().getDimensionPixelOffset(R.dimen.padding);
+    	halfpadding = getResources().getDimensionPixelOffset(R.dimen.padding_half);
+    	
         setResult(RESULT_FIRST_USER);
         
         info = getIntent().getExtras();
         if (info != null) {
-        	if (info.containsKey("prompt"))
-        		prompt = info.getString("prompt");
+        	if (info.containsKey(BaseDirective.PROMPT))
+        		prompt = info.getString(BaseDirective.PROMPT);
         	
-        	if (info.containsKey("var"))
-        		var = info.getString("var");
+        	if (info.containsKey(BaseDirective.VARIABLE))
+        		var = info.getString(BaseDirective.VARIABLE);
         	
         	if (userContext != null) 
         		defaultValues = Arrays.asList(arrayOfStrings(userContext.get(var)));
         	
-        	if (info.containsKey("values"))
-        		values = info.getStringArray("values");
+        	if (info.containsKey(BaseDirective.VALUES))
+        		values = info.getStringArray(BaseDirective.VALUES);
         	
-        	if (info.containsKey("type"))
-        		showDialog(info.getInt("type"));
+        	if (info.containsKey(BaseDirective.TYPE))
+        		showDialog(info.getInt(BaseDirective.TYPE));
         }
     }
     
-    String var = null;
-    VelocityContext userContext = PromptDirective.userContext;
+    protected String var = null;
+    protected UserContext userContext = BaseDirective.userContext;
     
-	void _finish(int resultCode, Object value) {
+	protected void _finish(int resultCode, Object value) {
         if (userContext != null) {
         	userContext.put(var, value);
         }
     	setResult(resultCode);
-    	PromptDirective._notify();
+    	BaseDirective._notify();
     	finish();
     }
 

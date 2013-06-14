@@ -42,7 +42,7 @@ import static com.applang.Util2.*;
 
 import com.applang.berichtsheft.R;
 import com.applang.provider.NotePadProvider;
-import com.applang.provider.NotePad.Notes;
+import com.applang.provider.NotePad.NoteColumns;
 
 /**
  * Displays a list of notes. Will display notes from the {@link Uri}
@@ -66,9 +66,9 @@ public class NotesList extends ListActivity
      * The columns we are interested in from the database
      */
     private static final String[] PROJECTION = new String[] {
-            Notes._ID, // 0
-            Notes.TITLE, // 1
-            Notes.CREATED_DATE, 
+            NoteColumns._ID, // 0
+            NoteColumns.TITLE, // 1
+            NoteColumns.CREATED_DATE, 
     };
 
     private static final int COLUMN_INDEX_TITLE = 1;
@@ -95,7 +95,7 @@ public class NotesList extends ListActivity
         // as a MAIN activity), then use our default content provider.
         Intent intent = getIntent();
         if (intent.getData() == null) {
-            intent.setData(Notes.CONTENT_URI);
+            intent.setData(NoteColumns.CONTENT_URI);
         }
         tableIndex = NotePadProvider.tableIndex(0, intent.getData());
 
@@ -107,13 +107,13 @@ public class NotesList extends ListActivity
         Cursor cursor = managedQuery(intent.getData(), 
         		PROJECTION, 
         		selection, selectionArgs,
-                tableIndex > 0 ? Notes.TITLE_SORT_ORDER : Notes.DEFAULT_SORT_ORDER);
+                tableIndex > 0 ? NoteColumns.TITLE_SORT_ORDER : NoteColumns.DEFAULT_SORT_ORDER);
 
         // Used to map notes entries from the database to views
         SimpleCursorAdapter adapter = new SimpleCursorAdapter(this, 
         		new int[] {R.layout.noteslist_item,R.layout.noteslist_item1,R.layout.noteslist_item2}[tableIndex], 
         		cursor,
-                new String[] { Notes.TITLE, Notes.CREATED_DATE }, 
+                new String[] { NoteColumns.TITLE, NoteColumns.CREATED_DATE }, 
                 new int[] { R.id.title, R.id.date })
         {
         	@Override
@@ -269,12 +269,12 @@ public class NotesList extends ListActivity
 					.putExtra("state", NoteEditor.STATE_INSERT), Menu.NONE);
             return true;
             
-        case R.id.menu_item_evaluate: 
+/*		case R.id.menu_item_evaluate: 
 			startActivity(new Intent()
 					.setClass(this, NoteEvaluator.class)
 					.setData(noteUri));
             return true;
-            
+*/            
         case R.id.menu_item_edit: 
 			startActivity(new Intent()
 					.setClass(this, TitleEditor.class)
@@ -287,7 +287,7 @@ public class NotesList extends ListActivity
 				@Override
 				public void perform(Cursor c, Object[] params) throws Exception {
 		            ContentValues values = new ContentValues();
-		            values.put(Notes.NOTE, c.getString(2));
+		            values.put(NoteColumns.NOTE, c.getString(2));
 		            
 					Uri newNoteUri = getContentResolver().insert(uri, values);
 					
@@ -300,7 +300,7 @@ public class NotesList extends ListActivity
             return true;
             
         case R.id.menu_item_delete: 
-    		long id = NotePadProvider.id(-1, noteUri);
+    		long id = NotePadProvider.parseId(-1, noteUri);
     		String description = NoteEditor.getNoteDescription(getContentResolver(), tableIndex, id);
     		description = getResources().getString(R.string.areUsure, description);
     		areUsure(this, description, new Job<Void>() {

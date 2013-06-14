@@ -8,7 +8,7 @@
         android:id="@+id/date"
         android:layout_alignParentRight="true"
         android:layout_alignParentTop="true"
-     	android:paddingRight="5dip"
+     	android:paddingRight="@dimen/padding_list"
         android:text="date"
         android:layout_width="wrap_content"
 	    android:layout_height="wrap_content"
@@ -20,7 +20,7 @@
         android:layout_height="wrap_content"
         android:layout_alignParentLeft="true"
         android:layout_below="@id/date"
-        android:paddingLeft="5dip"
+        android:paddingLeft="@dimen/padding_list"
         android:text="title"
         android:textAppearance="?android:attr/textAppearanceLarge" />
     

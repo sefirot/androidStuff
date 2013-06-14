@@ -10,20 +10,25 @@
     <string name="more">Wetter Info</string>
     <string name="more2">Import / Export</string>
     
-    <string name="menu_baustein">Baustein</string>
+    <string name="menu_editor">Editor</string>
+    <string name="menu_baustein">Bausteine</string>
     <string name="menu_schlagwort">Schlagwort</string>
-    <string name="menu_directive">Anweisung</string>
+    <string name="menu_anweisung">Anweisungen</string>
+    <string name="menu_struktur">Struktur</string>
     <string name="menu_edit">Editieren</string>
     <string name="menu_duplicate">Duplizieren</string>
     <string name="menu_delete">Löschen</string>
     <string name="menu_remove">Entfernen</string>
     <string name="menu_evaluate">Evaluation</string>
     <string name="menu_insert">Neuer Eintrag</string>
+    <string name="menu__insert">Einfügen</string>
     <string name="menu_revert">Zurück</string>
     <string name="menu_discard">Discard</string>
+    <string name="menu_save">Save</string>
     <string name="menu_view">Ansichtssache</string>
     <string name="menu_search">Suche</string>
     <string name="menu_refresh">Refreshment</string>
+    <string name="menu_modify">Bearbeiten</string>
     <string name="menu_sort_by">Sortieren nach</string>
 
     <string name="resolve_edit">Edit note</string>
@@ -31,9 +36,9 @@
 	<string name="resolve_order">Sortieren nach</string>
     
     <string-array name="title_edit_array">
-        <item>Kategorie :</item>
-        <item>Textbaustein :</item>
-        <item>Schlagwort :</item>
+        <item>Kategorie</item>
+        <item>Textbaustein</item>
+        <item>Schlagwort</item>
     </string-array>
 	
 	<string name="title_create">Create note</string>
@@ -43,14 +48,17 @@
 	<string name="title_plants_list">Pflanze der Woche</string>
 	<string name="title_note">Note</string>  
 	<string name="title_glossary">Glossar</string>  
+	<string name="title_baustein">Textbaustein</string>  
 	<string name="title_evaluator">Evaluation</string>  
-	<string name="title_edit_title">Title :</string>  
 	
 	<string name="plant_note">Neue Pflanze eingeben</string>
 	<string name="plant_edit">Eingaben zur Pflanze ändern</string>
 		
 	<string name="button_ok">OK</string>  
 	<string name="button_cancel">Cancel</string>
+	<string name="button_close">Close</string>
+	<string name="button_plus">+</string>  
+	<string name="button_minus">-</string>
 	<string name="button_hide">Hide</string>
 		
 	<string name="error_title">Error</string>
@@ -71,14 +79,14 @@
         <item>Familiennamen</item>
     </string-array>
         
-    	<string name="query">Abfrage</string>
-        <string name="answer_one">answer one</string>
-        <string name="answer_two">answer two</string>
-        <string name="query_hint">"   Hinweis"</string>
-        <string name="donkey_bridge">"   Eselsbrücke"</string>
-        <string name="query_sentence_port">Nenne unten fehlende Angaben zu folgender Pflanze:</string>
-        <string name="saved_query">Gespeicherte Abfrage:</string>
-        <string name="modified_date">Letzte Änderung:</string>
+    <string name="query">Abfrage</string>
+    <string name="answer_one">answer one</string>
+    <string name="answer_two">answer two</string>
+    <string name="query_hint">"   Hinweis"</string>
+    <string name="donkey_bridge">"   Eselsbrücke"</string>
+    <string name="query_sentence_port">Nenne unten fehlende Angaben zu folgender Pflanze:</string>
+    <string name="saved_query">Gespeicherte Abfrage:</string>
+    <string name="modified_date">Letzte Änderung:</string>
 
     <string-array name="category_array">
         <item>Bericht</item>
@@ -86,18 +94,33 @@
         <item>Berufsschule</item>
     </string-array>
     
-        <string name="min_temperature">Temperatur min. </string>
-        <string name="max_temperature">max. </string>
-        <string name="precipitation">"Niederschlag "</string>
-        <string name="description">"Beschreibung "</string>
-        <string name="baustein_exists">Textbaustein \'%s\' schon vorhanden</string>
-        <string name="tagesberichte">Tagesberichte</string>
-        <string name="old_items">alte</string>
-        <string name="new_item">neues</string>
-        <string name="new_word">neues Schlagwort für %s</string>
-        <string name="search">Suche</string>
-        <string name="first_word">erstes Wort</string>
-        <string name="selected_word">markiertes Wort</string>
-        <string name="areUsure">Wirklich - %s - löschen ?</string>
+    <string name="min_temperature">Temperatur min. </string>
+    <string name="max_temperature">max. </string>
+    <string name="precipitation">"Niederschlag "</string>
+    <string name="description">"Beschreibung "</string>
+    <string name="baustein_exists">Textbaustein \'%s\' schon vorhanden</string>
+    <string name="tagesberichte">Tagesberichte</string>
+    <string name="old_items">alte</string>
+    <string name="new_item">neues</string>
+    <string name="new_word">neues Schlagwort für %s</string>
+    <string name="search">Suche</string>
+    <string name="first_word">erstes Wort</string>
+    <string name="selected_word">markiertes Wort</string>
+    <string name="areUsure">Wirklich - %s - löschen ?</string>
+    <string name="nothing_to_save">There is nothing to save</string>
+    <string name="particle">Teilchen</string>
+    <string name="suggestions">&lt;-- Vorschläge ?</string>
+    <string-array name="construct_validation_messages">
+        <item>reference required here</item>
+        <item>string or reference required here</item>
+        <item>integer or reference required here</item>
+        <item>float or reference required here</item>
+        <item>boolean or reference required here</item>
+        <item>list or reference required here</item>
+        <item>map or reference required here</item>
+        <item>a name is required here</item>
+        <item>something is required here</item>
+        <item>any type of data is required here</item>
+    </string-array>
 	
 </resources>

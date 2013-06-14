@@ -32,9 +32,9 @@ public final class NotePad {
     /**
      * Notes table
      */
-    public static final class Notes implements BaseColumns {
+    public static final class NoteColumns implements BaseColumns {
 		// This class cannot be instantiated
-        private Notes() {}
+        private NoteColumns() {}
 
         /**
          * The content:// style URL for this table

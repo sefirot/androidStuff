@@ -1,14 +1,19 @@
 package com.applang;
 
+import static com.applang.Util.*;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.channels.FileChannel;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
 
-import com.applang.Util.ValList;
-
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.AlertDialog;
@@ -16,7 +21,10 @@ import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.pm.ProviderInfo;
+import android.content.res.AssetManager;
 import android.database.Cursor;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -24,14 +32,15 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.ViewGroup.LayoutParams;
+import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.widget.Toast;
-
-import static com.applang.Util.*;
 
 public class Util2
 {
-    private static final String TAG = Util2.class.getSimpleName();
-    
     public static String resourcePackageName(Activity activity) {
     	//	needs : android.permission.GET_TASKS
     	String permission = "android.permission.GET_TASKS";
@@ -42,6 +51,45 @@ public class Util2
         }
         else 
         	return "";
+    }
+    
+    public static ValList contentAuthorities(Context context, String startsWith) {
+    	ValList list = new ValList();
+    	List<ProviderInfo> providers = context.getPackageManager().queryContentProviders(null, 0, 0);
+        for (ProviderInfo provider : providers) {
+            String authority = provider.authority;
+            if (authority.startsWith(startsWith))
+            	list.add(authority);
+        }
+        return list;
+    }
+    
+    public static String[] databases(Context context) {
+    	ArrayList<String> list = new ArrayList<String>();
+    	for (Object authority : contentAuthorities(context, "com.applang")) 
+    		try {
+    			Class<?> c = Class.forName(authority.toString() + "Provider");
+    			Object name = c.getDeclaredField("DATABASE_NAME").get(null);
+    			list.add(name.toString());
+    		} catch (Exception e) {};
+    	return list.toArray(new String[0]);
+    }
+	
+	public static String readAsset(Activity activity, String fileName) {
+        StringBuffer sb = new StringBuffer();
+        try {
+        	AssetManager am = activity.getResources().getAssets();
+			InputStream is = am.open( fileName );
+			while( true ) {
+			    int c = is.read();
+	            if( c < 0 )
+	                break;
+			    sb.append( (char)c );
+			}
+		} catch (Exception e) {
+			Log.e(TAG, "readAsset", e);
+		}
+        return sb.toString();
     }
 	
 	public static ValMap getResultMap(Cursor cursor, Function<String> key, Function<Object> value) {
@@ -63,12 +111,11 @@ public class Util2
 		return map;
 	}
 
-	public static void delay(int millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException e) {
-            Log.e(TAG, "Thread was Interrupted");
-        }
+	public static ValList getRecord(Cursor cursor) {
+		ValList list = new ValList();
+		for (int i = 0; i < cursor.getColumnCount(); i++)
+			list.add(cursor.getString(i));
+		return list;
 	}
 
 	public static class WorkerThread extends Thread
@@ -99,7 +146,7 @@ public class Util2
 			}
 	        
 	        while (mHandler != null && get_State() == RUNNING) {
-	            delay(40);
+	            Util.delay(40);
 	            
 	            Message msg = mHandler.obtainMessage();
 	            Bundle b = new Bundle();
@@ -121,21 +168,25 @@ public class Util2
 	    }
 	}
 
-	private static WorkerThread workerThread = null;
+	public static WorkerThread workerThread = null;
 	
 	public static Dialog waitWhileWorking(final Activity activity, String text, Job<Activity> job, Object... params) {
         final ProgressDialog progDialog = new ProgressDialog(activity);
         progDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
         progDialog.setMessage(text);
+        final Runnable followUp = param(null, 0, params);
 		workerThread = new WorkerThread(activity, job, 
 			new Handler() {
 				public void handleMessage(Message msg) {
 					int countDown = msg.getData().getInt("countDown");
 					progDialog.setProgress(countDown);
 					if (countDown <= 0) {
-						activity.dismissDialog(0);
-						if (workerThread != null)
+						activity.removeDialog(0);
+						if (workerThread != null) {
 							workerThread.set_State(WorkerThread.DONE);
+							if (followUp != null)
+								followUp.run();
+						}
 					}
 				}
 			}, params);
@@ -151,6 +202,7 @@ public class Util2
 		return Integer.parseInt(android.os.Build.VERSION.SDK);
 	}
 
+    @SuppressLint("NewApi")
 	public static class ImpexTask extends AsyncTask<String, Void, Boolean>
 	{
 	    private static final String TAG = ImpexTask.class.getSimpleName();
@@ -204,7 +256,8 @@ public class Util2
 	        }
 	        else
 				Toast.makeText(context, 
-	        			String.format("External storage is not available, unable to %s data.", action.toLowerCase()), 
+	        			String.format("External storage is not available, unable to %s data.", 
+	        					action.toLowerCase(Locale.US)), 
 	        			Toast.LENGTH_SHORT).show();
 		}
 		
@@ -339,11 +392,84 @@ public class Util2
 		alertDialog.show();
 	}
 
-	public static ValList listOfStrings(Cursor cursor) {
-		ValList list = new ValList();
-		for (int i = 0; i < cursor.getColumnCount(); i++)
-			list.add(cursor.getString(i));
-		return list;
+	public static LinearLayout linearLayout(Context context, int orientation, int width, int height) {
+        LinearLayout linear = new LinearLayout(context);
+        linear.setOrientation(orientation);
+		linear.setLayoutParams(new LayoutParams(width, height));
+		return linear;
 	}
+
+	public static LinearLayout.LayoutParams linearLayoutParams(int width, int height, Integer... ltrb) {
+    	LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(width, height);
+		layoutParams.setMargins(param(0, 0, ltrb), param(0, 1, ltrb), param(0, 2, ltrb), param(0, 3, ltrb));
+		return layoutParams;
+	}
+
+	public static RelativeLayout.LayoutParams relativeLayoutParams(int width, int height, Integer... ltrb) {
+		RelativeLayout.LayoutParams layoutParams = new RelativeLayout.LayoutParams(width, height);
+		layoutParams.setMargins(param(0, 0, ltrb), param(0, 1, ltrb), param(0, 2, ltrb), param(0, 3, ltrb));
+		return layoutParams;
+	}
+
+	public static RelativeLayout relativeLayout(Context context, int width, int height) {
+		RelativeLayout relative = new RelativeLayout(context);
+        relative.setLayoutParams(new LayoutParams(width, height));
+		return relative;
+	}
+
+	public static void popupContextMenu(Activity activity, View view) {
+		activity.registerForContextMenu(view);
+		activity.openContextMenu(view);
+		activity.unregisterForContextMenu(view);
+	}
+    
+    @SuppressLint("NewApi")
+	public static abstract class Task<Result> extends AsyncTask<Object, Intent, Result>
+    {
+		public Task(Activity activity, Job<Result> followUp, Object... params) {
+			this.activity = activity;
+			this.followUp = followUp;
+			this.params = params;
+		}
+
+		protected Activity activity;
+		
+		protected Result doInBackground(Object...params) {
+			Integer millis = paramInteger(null, 0, params);
+			if (millis != null)
+				delay(millis);
+			return null;
+		}
+
+		@Override
+		protected void onProgressUpdate(Intent... intents) {
+			super.onProgressUpdate(intents);
+			if (intents.length > 0 && activity != null) {
+				Intent intent = intents[0];
+				if (notNullOrEmpty(intent.getAction()))
+					activity.startActivity(intent);
+			}
+		}
+
+		@Override
+		protected void onPostExecute(Result result) {
+			super.onPostExecute(result);
+			if (followUp != null) 
+				try {
+					followUp.perform(result, params);
+				} catch (Exception e) {
+					Log.e(TAG, "follow-up", e);
+				}
+		}
+		
+		private Job<Result> followUp;
+		private Object[] params;
+    }
+    
+    public static View getContentView(Activity activity) {
+    	View rootView = activity.findViewById(android.R.id.content);
+		ViewGroup viewGroup = (ViewGroup)rootView;
+		return viewGroup.getChildAt(0);
+    }
 	
 }

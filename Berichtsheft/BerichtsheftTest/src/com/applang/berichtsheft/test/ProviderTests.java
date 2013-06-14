@@ -1,13 +1,20 @@
 package com.applang.berichtsheft.test;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.Map;
+
+import org.json.JSONArray;
 
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
 import android.util.Log;
@@ -16,9 +23,11 @@ import static com.applang.Util.*;
 import static com.applang.Util2.*;
 import static com.applang.VelocityUtil.*;
 
-import com.applang.Util2.ImpexTask;
+import com.applang.UserContext;
+import com.applang.Util.ValList;
+import com.applang.berichtsheft.R;
 import com.applang.berichtsheft.BerichtsheftActivity;
-import com.applang.provider.NotePad.Notes;
+import com.applang.provider.NotePad.NoteColumns;
 import com.applang.provider.NotePadProvider;
 import com.applang.provider.PlantInfo;
 import com.applang.provider.PlantInfo.Plants;
@@ -29,24 +38,39 @@ import com.applang.provider.WeatherInfoProvider;
 public class ProviderTests extends ActivityTests<BerichtsheftActivity>
 {
     private static final String TAG = ProviderTests.class.getSimpleName();
+
+	public static void setKeepData(Context context, boolean value) {
+        SharedPreferences prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE);
+        SharedPreferences.Editor prefsEditor = prefs.edit();
+        prefsEditor.putBoolean("keepData", value);
+        prefsEditor.commit();
+	}
+
+	public static boolean getKeepData(Context context, boolean defaultValue) {
+        SharedPreferences prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE);
+        return prefs.getBoolean("keepData", defaultValue);
+	}
     
 	public ProviderTests() {
 		super("com.applang.berichtsheft", BerichtsheftActivity.class);
 	}
 	
-/*	public ProviderTests(String method) {
-		this();
-	}
-*/
     @Override
     protected void setUp() throws Exception {
         super.setUp();
+		setKeepData(mActivity, false);
         assertTrue(mActivity instanceof BerichtsheftActivity);
     }
 
     @Override
     protected void tearDown() throws Exception {
         super.tearDown();
+	}
+    
+    void keepTestData(final String[] fileNames) {
+    	if (getKeepData(mActivity, false)) {
+			ImpexTask.doImpex(mActivity, fileNames, true);
+		}
 	}
 
 	static void generateNotePadData(Context context, boolean clear, Object[][] records) {
@@ -69,7 +93,7 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
 	    		record[3] == null ? 1 :
 	    		(record[2] == null ? 2 : 0);
 			uri = contentResolver.insert(NotePadProvider.contentUri(tableIndex), values);
-	        assertEquals(Notes.CONTENT_ITEM_TYPE, contentResolver.getType(uri));
+	        assertEquals(NoteColumns.CONTENT_ITEM_TYPE, contentResolver.getType(uri));
 	        
 	        if (index < 0)
 	        	id = toLong(-1L, uri.getPathSegments().get(1));
@@ -82,8 +106,7 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
 			contentResolver.delete(uri, null, null);
 		}
 		try {
-			Object name = BerichtsheftActivity.providers().get(uri.toString());
-			Class<?> c = Class.forName(name.toString());
+			Class<?> c = Class.forName(uri.getAuthority() + "Provider");
 			Method contentValues = c.getDeclaredMethod("contentValues", Object[].class);
 			for (int i = 0; i < records.length; i++) {
 				Object[] record = records[i];
@@ -122,15 +145,15 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
     
     public void testData() throws Exception {
 		mActivity.deleteDatabase(NotePadProvider.DATABASE_NAME);
-		
 		generateTestData(mActivity);
-		
-    	ImpexTask.doImpex(mActivity, new String[] { NotePadProvider.DATABASE_NAME }, true);
+		keepTestData(new String[] { NotePadProvider.DATABASE_NAME });
     }
     
     public void testData3() throws Exception {
-    	for (String database : BerichtsheftActivity.databases()) 
+    	for (String database : databases(mActivity)) 
     		mActivity.deleteDatabase(database);
+    	
+    	String helloVm = readAsset(mActivity, "hello.vm");
 		
 		generateNotePadData(mActivity, true, new Object[][] {
 			{ 1L, "prompt1", "#set($var=\"\")" +
@@ -143,7 +166,7 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
 					"#prompt(\"Einzelauswahl\",$var,[\"Kein\",\"Fehler\",\"im\",\"System\"])#if($var)$var\n#end", null, now() }, 
 			{ 4L, "spinner", "#spinner(\"states\",$var)" +
 					join("\n", getStateStrings()) +
-					"#end#if($var)$var\n#end", null, now() }, 
+					"#end\n#if($var)$var\n#end", null, now() }, 
 			{ 5L, "cursor", "#cursor(\"plants\",$var," +
 					quoted(PlantInfo.Plants.CONTENT_URI.toString()) + "," +
 					"[" + quoted(PlantInfo.Plants.NAME) + 
@@ -151,6 +174,21 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
 					"," + quoted(PlantInfo.Plants.BOTNAME) + 
 					"," + quoted(PlantInfo.Plants.BOTFAMILY) + 
 					"])#if($var)$var\n#end", null, now() }, 
+			{ 6L, "random", "$math.random is a random number", null, now() }, 
+			{ 7L, "random2", "#set($lower=1)#set($upper=20)" +
+					"$math.random($lower, $upper) is a random number between $lower and $upper", null, now() }, 
+			{ 8L, "planets", "#set( $Planets = ['Mercury', 'Earth', 'Mars', 'Venus'] )$Planets\n" +
+					"#set( $pLanets = ['Jupiter', 'Saturn', 'Neptune'] )$pLanets\n" +
+					"#set( $plAnets = ['Uranus', 'Pluto', 'Neptune'] )$plAnets\n" +
+					"#set( $plaNets = ['Jupiter', 'Saturn', 'Mars'] )$plaNets\n" +
+					"#set( $planEts = ['Jupiter', 'Venus', 'Neptune'] )$planEts\n" +
+					"#set( $planeTs = ['Earth', 'Saturn', 'Neptune'] )$planeTs\n" +
+					"#set( $planetS = ['Mercury', 'Saturn', 'Neptune'] )$planetS\n" +
+					"#set( $Planets = ['Jupiter', 'Earth', 'Neptune'] )$Planets\n" +
+					"#set( $pLanets = ['Jupiter', 'Saturn', 'Mars'] )$pLanets\n" +
+					"#set( $planets = ['Venus', 'Saturn', 'Neptune'] )\n" +
+					"$planets", null, now() }, 
+			{ 9L, "hello", helloVm, null, now() }, 
 		});
 	    	
 		generateData(mActivity.getContentResolver(), Plants.CONTENT_URI, true, new Object[][] {
@@ -165,15 +203,26 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
 				{ 1L, "here", "overcast", 11.1f, 1f, -1f, 0l, now() }, 	
 			});
 	        
-    	ImpexTask.doImpex(mActivity, BerichtsheftActivity.databases(), true);
+		keepTestData(databases(mActivity));
+    }
+
+    public String[] getStateStrings() {
+    	try {
+			InputStream is = mActivity.getResources().openRawResource(R.raw.states);
+			String res = readAll(new BufferedReader(new InputStreamReader(is)));
+			return ((ValList) walkJSON(null, new JSONArray(res), null)).toArray(new String[0]);
+		} catch (Exception e) {
+			fail(e.getMessage());
+			return null;
+		}
     }
 
     private Cursor notesCursor(int tableIndex, String selection, String... selectionArgs) {
 		Cursor cursor = mActivity.managedQuery(
         		NotePadProvider.contentUri(tableIndex), 
-        		Notes.FULL_PROJECTION, 
+        		NoteColumns.FULL_PROJECTION, 
         		selection, selectionArgs,
-        		Notes.DEFAULT_SORT_ORDER);
+        		NoteColumns.DEFAULT_SORT_ORDER);
         assertNotNull(cursor);
 		return cursor;
 	}
@@ -232,10 +281,10 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
 		ValMap noteMap = noteMap(0, "title like ?", "Velocity%");
 		assertEquals(3, noteMap.size());
 		
-		MapContext noteContext = new MapContext(noteMap(1, ""));
+		CustomContext noteContext = new CustomContext(noteMap(1, ""));
 		assertEquals(6, noteContext.getKeys().length);
 		
-		com.applang.VelocityContext.setupVelocity(mActivity, true, "com.applang.berichtsheft");
+		com.applang.UserContext.setupVelocity(mActivity, true, "com.applang.berichtsheft");
 
 		ContentResolver contentResolver = mActivity.getContentResolver();
 		
@@ -244,13 +293,13 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
 		long id = 0;
 		do {
 			String note = cursor.getString(2);
-			note = evaluation(noteContext, note, "notes");
+			note = evaluate(noteContext, note, "notes");
 			assertFalse(note.contains("$"));
 			if (!note.contains("Fehler")) {
 				long refId = cursor.getLong(0);
 				ContentValues values = NotePadProvider.contentValues(++id, "Fehler", null, refId, null);
 		        Uri uri = contentResolver.insert(NotePadProvider.contentUri(2), values);
-		        assertEquals(Notes.CONTENT_ITEM_TYPE, contentResolver.getType(uri));
+		        assertEquals(NoteColumns.CONTENT_ITEM_TYPE, contentResolver.getType(uri));
 			}
 			System.out.println(note);
 		} while (cursor.moveToNext());
@@ -265,7 +314,7 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
 		
     	ImpexTask.doImpex(mActivity, new String[] { "databases/" + NotePadProvider.DATABASE_NAME }, true);
     	
-		assertEquals(1, contentResolver.delete(NotePadProvider.contentUri(0), Notes.TITLE + "=?", new String[]{"Velocity2"}));
+		assertEquals(1, contentResolver.delete(NotePadProvider.contentUri(0), NoteColumns.TITLE + "=?", new String[]{"Velocity2"}));
 		
 		for (int i = 0; i < 2; i++) 
 			assertEquals(
@@ -415,61 +464,11 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
 			//    	signal.await();
 		}
     }
-
-    public static String[] getStateStrings() {
-        String[] stateStrings = {
-            "Alabama (AL)",
-            "Alaska (AK)",
-            "Arizona (AZ)",
-            "Arkansas (AR)",
-            "California (CA)",
-            "Colorado (CO)",
-            "Connecticut (CT)",
-            "Delaware (DE)",
-            "District of Columbia (DC)",
-            "Florida (FL)",
-            "Georgia (GA)",
-            "Hawaii (HI)",
-            "Idaho (ID)",
-            "Illinois (IL)",
-            "Indiana (IN)",
-            "Iowa (IA)",
-            "Kansas (KS)",
-            "Kentucky (KY)",
-            "Louisiana (LA)",
-            "Maine (ME)",
-            "Maryland (MD)",
-            "Massachusetts (MA)",
-            "Michigan (MI)",
-            "Minnesota (MN)",
-            "Mississippi (MS)",
-            "Missouri (MO)",
-            "Montana (MT)",
-            "Nebraska (NE)",
-            "Nevada (NV)",
-            "New Hampshire (NH)",
-            "New Jersey (NJ)",
-            "New Mexico (NM)",
-            "New York (NY)",
-            "North Carolina (NC)",
-            "North Dakota (ND)",
-            "Ohio (OH)",
-            "Oklahoma (OK)",
-            "Oregon (OR)",
-            "Pennsylvania (PA)",
-            "Rhode Island (RI)",
-            "South Carolina (SC)",
-            "South Dakota (SD)",
-            "Tennessee (TN)",
-            "Texas (TX)",
-            "Utah (UT)",
-            "Vermont (VT)",
-            "Virginia (VA)",
-            "Washington (WA)",
-            "West Virginia (WV)",
-            "Wisconsin (WI)",
-            "Wyoming (WY)"
-        };
-        return stateStrings;
-    }
+    
+    public void testDirectives() {
+    	Map<String,String> anweisungen = UserContext.directives();
+		for (String key : anweisungen.keySet()) {
+			System.out.println(anweisungen.get(key));
+		}
+	}
 }

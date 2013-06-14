@@ -1,6 +1,6 @@
 package com.applang.provider;
 
-import com.applang.provider.NotePad.Notes;
+import com.applang.provider.NotePad.NoteColumns;
 import com.applang.provider.PlantInfo.Plants;
 
 import android.content.ContentProvider;

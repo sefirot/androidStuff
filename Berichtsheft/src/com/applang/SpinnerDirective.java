@@ -7,13 +7,15 @@ import org.apache.velocity.context.InternalContextAdapter;
 import org.apache.velocity.runtime.parser.node.ASTBlock;
 import org.apache.velocity.runtime.parser.node.Node;
 
-import android.util.Log;
-
 import static com.applang.Util.*;
 
 public class SpinnerDirective extends PromptDirective
 {
-    public String getName() {
+    public SpinnerDirective() {
+		super();
+	}
+
+	public String getName() {
         return "spinner";
     }
 
@@ -41,7 +43,7 @@ public class SpinnerDirective extends PromptDirective
 						node.jjtGetChild(i).render(context, blockContent);
 						return blockContent.toString().split("\n");
 					} catch (Exception e) {
-						Log.e(TAG, "", e);
+						log.error(TAG, e);
 					}
                     break;
                 }

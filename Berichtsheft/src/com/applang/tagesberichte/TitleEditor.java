@@ -23,7 +23,7 @@ import static com.applang.Util.*;
 import static com.applang.Util2.*;
 
 import com.applang.berichtsheft.R;
-import com.applang.provider.NotePad.Notes;
+import com.applang.provider.NotePad.NoteColumns;
 import com.applang.provider.NotePadProvider;
 
 import android.app.Activity;
@@ -63,10 +63,10 @@ public class TitleEditor extends Activity implements View.OnClickListener
      * An array of the columns we are interested in.
      */
     private static final String[] PROJECTION = new String[] {
-            Notes._ID, // 0
-            Notes.TITLE, // 1
-            Notes.CREATED_DATE, 
-            Notes.REF_ID2, 
+    	NoteColumns._ID, // 0
+    	NoteColumns.TITLE, // 1
+    	NoteColumns.CREATED_DATE, 
+    	NoteColumns.REF_ID2, 
     };
     
     private static final int COLUMN_INDEX_TITLE = 1;
@@ -97,7 +97,7 @@ public class TitleEditor extends Activity implements View.OnClickListener
         
         mUri = getIntent().getData();
         tableIndex = NotePadProvider.tableIndex(tableIndex, mUri);
-        mId = NotePadProvider.id(mId, mUri);
+        mId = NotePadProvider.parseId(mId, mUri);
         
         Bundle extras = getIntent().getExtras();
         if (extras != null) {
@@ -115,7 +115,7 @@ public class TitleEditor extends Activity implements View.OnClickListener
         	
         	if (extras.containsKey("title")) {
         		title = extras.getString("title");
-        		selection = Notes.TITLE + "=?";
+        		selection = NoteColumns.TITLE + "=?";
 				selectionArgs = new String[] {title};
         	}
 	    }
@@ -126,10 +126,10 @@ public class TitleEditor extends Activity implements View.OnClickListener
         		R.layout.word_editor2 }[tableIndex]);
         
         String[] strings = getResources().getStringArray(R.array.title_edit_array);
-        setTitle(strings[tableIndex]);
+        setTitle(strings[tableIndex] + " : ");
         
         if (tableIndex == 2 && mState == NoteEditor.STATE_INSERT) {
-            selection = Notes.REF_ID + "=?";
+            selection = NoteColumns.REF_ID + "=?";
     		selectionArgs = new String[] {"" + mId};
             mUri = NotePadProvider.contentUri(tableIndex);
 		}
@@ -206,7 +206,7 @@ public class TitleEditor extends Activity implements View.OnClickListener
 //						NotesList.description(0, c.getLong(3), c.getString(1))));
 			}
 		});
-		Set<String> words = NotePadProvider.wordSet(this.getContentResolver(), 2, Notes.CREATED_DATE + "=" + mId);
+		Set<String> words = NotePadProvider.wordSet(this.getContentResolver(), 2, NoteColumns.CREATED_DATE + "=" + mId);
 		if (words.size() > 0)
 			for (String word : words) 
 				menu.add(word);
@@ -248,24 +248,24 @@ public class TitleEditor extends Activity implements View.OnClickListener
         	title = mTitle.getText().toString();
         	
             ContentValues values = new ContentValues();
-			values.put(Notes.TITLE, title);
+			values.put(NoteColumns.TITLE, title);
 			
             switch (tableIndex) {
 			case 0:
 				if (mDate != null) {
 					calendar.set(mDate.getYear(), mDate.getMonth(),	mDate.getDayOfMonth());
-					values.put(Notes.CREATED_DATE, calendar.getTimeInMillis());
+					values.put(NoteColumns.CREATED_DATE, calendar.getTimeInMillis());
 				}
 				break;
 
 			case 1:
 				if (mCheck != null) {
 					long refId2 = Math.abs(mCursor.getLong(COLUMN_INDEX_REF_ID2));
-					values.put(Notes.REF_ID2, mCheck.isChecked() ? -refId2 : refId2);
+					values.put(NoteColumns.REF_ID2, mCheck.isChecked() ? -refId2 : refId2);
 				}
 		        Cursor cursor = managedQuery(NotePadProvider.contentUri(tableIndex), 
 		        		PROJECTION, 
-		        		Notes.TITLE + "=?", new String[] {title}, 
+		        		NoteColumns.TITLE + "=?", new String[] {title}, 
 		        		null);
 		        if (cursor.getCount() > 0 && resultCode == RESULT_OK) {
 		        	Toast.makeText(this, 
@@ -280,18 +280,18 @@ public class TitleEditor extends Activity implements View.OnClickListener
 			case 2:
 				if (title.length() > 0 && resultCode == RESULT_OK && mState == NoteEditor.STATE_INSERT) {
 			        selection = 
-			        		Notes.REF_ID + "=? and " + 
-			        		Notes.TITLE + "=?";
+			        		NoteColumns.REF_ID + "=? and " + 
+			        				NoteColumns.TITLE + "=?";
 			        selectionArgs = new String[] {"" + mId, title};
 					mCursor = managedQuery(mUri, 
-			        		arrayappend(PROJECTION, Notes.REF_ID2), 
+			        		arrayappend(PROJECTION, NoteColumns.REF_ID2), 
 			        		selection, 
 			        		selectionArgs, 
 			        		null);
 			        
 		            if (mCursor.getCount() < 1) {
-		            	values.put(Notes.REF_ID, mId);
-		            	values.put(Notes.REF_ID2, (Long)null);
+		            	values.put(NoteColumns.REF_ID, mId);
+		            	values.put(NoteColumns.REF_ID2, (Long)null);
 						mUri = getContentResolver().insert(mUri, values);
 						
 						Toast.makeText(this, 

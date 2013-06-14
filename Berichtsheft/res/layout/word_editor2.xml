@@ -34,16 +34,16 @@
 	        android:layout_width="wrap_content"
 	        android:layout_height="wrap_content"
 	        android:layout_alignParentLeft="true"
-	        android:paddingLeft="@dimen/padding_ok"
-	        android:paddingRight="@dimen/padding_ok" />
+	        android:paddingLeft="@dimen/padding"
+	        android:paddingRight="@dimen/padding" />
         	
 	    <Button
 	        android:id="@+id/ok"
 	        android:layout_width="wrap_content"
 	        android:layout_height="wrap_content"
 	        android:layout_toLeftOf="@id/cancel"
-	        android:paddingLeft="@dimen/padding_ok"
-	        android:paddingRight="@dimen/padding_ok"
+	        android:paddingLeft="@dimen/padding"
+	        android:paddingRight="@dimen/padding"
 	        android:text="@string/button_ok" />
         	    		
 	    <Button

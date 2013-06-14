@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="wrap_content" >
+
+    <ImageButton
+        android:id="@+id/button1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentTop="true"
+        android:layout_marginBottom="@dimen/margin_half"
+        android:layout_marginLeft="@dimen/margin_half"
+        android:layout_marginRight="@dimen/margin_half"
+        android:layout_marginTop="@dimen/margin_half"
+        android:src="@drawable/dropdown" />
+
+    <Button
+        android:id="@+id/cancel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentTop="true"
+        android:layout_marginBottom="@dimen/margin_half"
+        android:layout_marginLeft="@dimen/margin_half"
+        android:layout_marginRight="@dimen/margin_half"
+        android:layout_marginTop="@dimen/margin_half"
+	    android:text="@string/button_cancel" />
+    
+    <Button
+        android:id="@+id/ok"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+ 	    android:layout_toLeftOf="@id/cancel"
+        android:layout_alignParentTop="true"
+        android:layout_marginBottom="@dimen/margin_half"
+        android:layout_marginLeft="@dimen/margin_half"
+        android:layout_marginTop="@dimen/margin_half"
+	    android:paddingLeft="@dimen/padding"
+	    android:paddingRight="@dimen/padding"
+	    android:text="@string/button_ok" />
+    
+</RelativeLayout>

@@ -14,6 +14,9 @@ import java.io.Writer;
 import java.net.URL;
 import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
+import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -38,6 +41,8 @@ import org.w3c.dom.Document;
 
 public class Util
 {
+    static final String TAG = Util.class.getSimpleName();
+
 	static {
 		Locale.setDefault(Locale.GERMAN);
 	}
@@ -206,8 +211,8 @@ public class Util
 			return prototype.getClass().getName().equals(o.getClass().getName());
 	}
 
-	public static boolean notNullOrEmpty(String value) {
-		return value != null && value.length() > 0;
+	public static boolean notNullOrEmpty(Object value) {
+		return value != null && String.valueOf(value).length() > 0;
 	}
 
 	public static <T> boolean nullOrEmpty(T[] value) {
@@ -238,6 +243,16 @@ public class Util
 		
 		return true;
 	}
+
+    public static Boolean toBool(Boolean defaultValue, String value) {
+    	Boolean result;
+        
+        try {
+        	result = Boolean.parseBoolean(value);
+        } catch(NumberFormatException e) { result = defaultValue; }
+        
+        return result;
+    }
 
     public static Integer toInt(Integer defaultValue, String value) {
     	Integer result;
@@ -282,12 +297,16 @@ public class Util
     public static String stripUnits(String s) {
 		int i = 0;
 		while (i < s.length())
-			if (Character.isDigit(s.charAt(i)) || "-+.,".contains(s.charAt(i) + "")) 
+			if (Character.isDigit(s.charAt(i)) || "-+.,".contains(String.valueOf(s.charAt(i)))) 
 				i++;
 			else
 				break;
 		return s.substring(0, i);
     }
+	
+	public static boolean isAvailable(int index, List<?> list) {
+		return list != null && index > -1 && index < list.size() && list.get(index) != null;
+	}
 	
 	public static <T> boolean isAvailable(int index, T[] array) {
 		return array != null && index > -1 && index < array.length && array[index] != null;
@@ -368,7 +387,6 @@ public class Util
 			else if (params[index] instanceof String)
 				return new File((String)params[index]);
 		}
-
 		return defaultParam;
 	}
 	
@@ -477,14 +495,26 @@ public class Util
 
     public static String strip(boolean atStart, String string, Object... params) {
     	for (int i = 0; i < params.length; i++) {
-    		String pad = param("", i, params);
+    		Object param = param("", i, params);
+			String pad = String.valueOf(param);
 	    	if (atStart && string.startsWith(pad))
 	    		string = string.substring(pad.length());
 	    	if (!atStart && string.endsWith(pad))
 	    		string = string.substring(0, string.length() - pad.length());
     	}
-		
     	return string;
+	}
+
+	public static String trim(boolean left, String s, String... regex) {
+		for (String rgx : regex) {
+			Matcher m = Pattern.compile(left ? "^" + rgx : rgx + "$").matcher(s);
+		    StringBuffer sb = new StringBuffer();
+		    while (m.find())
+		    	m.appendReplacement(sb, "");
+		    m.appendTail(sb);
+		    s = sb.toString();
+		}
+		return s;
 	}
     
     public static void copyContents(InputStream in, OutputStream out, Object... params) throws IOException {
@@ -625,6 +655,18 @@ public class Util
 		public ValList(int initialCapacity) {
 			super(initialCapacity);
 		}
+		@Override
+		public Object get(int index) {
+			if (index < 0)
+				index = size() + index;
+			return super.get(index);
+		}
+		@Override
+		public Object remove(int index) {
+			if (index < 0)
+				index = size() + index;
+			return super.remove(index);
+		}
 	}
 	
 	public static class ValMap extends HashMap<String,Object>
@@ -744,19 +786,23 @@ public class Util
 		return Arrays.asList(array).toArray(a);
 	}
 
-	@SuppressWarnings("unchecked")
-	public static <T> T[] arrayappend(T[] array, T... params) {
-		ArrayList<T> list = new ArrayList<T>(Arrays.asList(array));
-		list.addAll(new ArrayList<T>(Arrays.asList(params)));
-		return list.toArray(array);
-	}
-
 	public static boolean[] toPrimitiveArray(List<Boolean> list) {
 	    boolean[] primitives = new boolean[list.size()];
 	    for (int i = 0; i < primitives.length; i++) {
 	        primitives[i] = list.get(i).booleanValue();
 	    }
 	    return primitives;
+	}
+
+	@SuppressWarnings("unchecked")
+	public static <T> T[] arrayappend(T[] array, T... elements) {
+		ArrayList<T> list = new ArrayList<T>(Arrays.asList(array));
+		list.addAll(new ArrayList<T>(Arrays.asList(elements)));
+		return list.toArray(array);
+	}
+
+	public static <T> int arrayindexof(T[] array, T element) {
+		return Arrays.asList(array).indexOf(element);
 	}
 
 	public static Document xmlDocument(File file) {
@@ -767,6 +813,63 @@ public class Util
 	    } catch (Exception e) {
 	    	return null;
 	    }
+	}
+    
+    public interface Predicate<T> { boolean apply(T t); }
+
+	public static <T> Collection<T> filter(Collection<T> target, boolean negate, Predicate<T> predicate) {
+        Collection<T> result = new ArrayList<T>();
+        for (T element: target) {
+            boolean apply = predicate.apply(element);
+			if (apply) {
+				if (!negate)
+	                result.add(element);
+			}
+			else if (negate)
+                result.add(element);
+        }
+        return result;
+    }
+
+	public static char decimalSeparator() {
+		NumberFormat f = NumberFormat.getInstance(Locale.getDefault());
+		if (f instanceof DecimalFormat) {
+			DecimalFormatSymbols symbols = ((DecimalFormat) f).getDecimalFormatSymbols();
+			return symbols.getDecimalSeparator();
+		}
+		else
+			return '.';
+	}
+
+	public static void delay(long millis) {
+	    try {
+	        millis += System.currentTimeMillis();
+			while (System.currentTimeMillis() < millis) 
+				Thread.yield();
+	    } catch (Exception e) {}
+	}
+	
+	public static final String TAB = "\t";
+	public static final String NEWLINE = "\n";	//	System.getProperty("line.separator");
+	public static final String TAB_REGEX = "\\t";
+	public static final String NEWLINE_REGEX = "\\n";
+    
+	public static String indentedLine(String line, Object level, Object...params) {
+	    StringBuffer sb = new StringBuffer();
+	    int indent = paramInteger(0, 9, params);
+	    if (level instanceof String) {
+	    	String indentString = String.valueOf(level);
+		    if (notNullOrEmpty(indentString))
+			    for (int i = 0; i < indent; ++i) 
+			        sb.append(indentString);
+		    else
+		    	sb.append(indent + TAB);
+	    }
+	    else if (level instanceof Function<?>) 
+	    	sb.append(((Function<?>) level).apply(params));
+	    sb.append(line);
+	    sb.append(NEWLINE);
+	    return sb.toString();
 	}
 
 }

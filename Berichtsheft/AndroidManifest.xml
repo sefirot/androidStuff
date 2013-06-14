@@ -3,8 +3,9 @@
     package="com.applang.berichtsheft"
     android:versionCode="1"
     android:versionName="1.0" >
-
+<!--
     <uses-sdk android:minSdkVersion="1" android:targetSdkVersion="4"/>
+-->
 	<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 	<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.INTERNET" />
@@ -53,6 +54,16 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+        
+        <activity android:name="com.applang.ConstructDialogs" 
+			android:theme="@android:style/Theme.Translucent"
+            android:configChanges="orientation|keyboardHidden"
+		>
+            <intent-filter>
+                <action android:name="com.applang.action.CONSTRUCT" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
        
         <activity android:name="com.applang.wetterberichte.WeatherList" 
         	android:label="@string/title_weathers_list"
@@ -97,6 +108,23 @@
             </intent-filter>
         </activity>
         
+		<activity android:name="com.applang.tagesberichte.Baustein" 
+			android:label="@string/title_baustein"
+        >
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <action android:name="android.intent.action.EDIT" />
+                <action android:name="android.intent.action.PICK" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="vnd.android.cursor.dir/vnd.applang.note" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.GET_CONTENT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="vnd.android.cursor.item/vnd.applang.note" />
+            </intent-filter>
+		</activity>
+        
 		<activity android:name="com.applang.tagesberichte.Glossary" 
 			android:label="@string/title_glossary"
         >
@@ -126,13 +154,13 @@
             </intent-filter>
         </activity>
         
-		<activity android:name="com.applang.tagesberichte.NoteEvaluator" 
+		<activity android:name="com.applang.tagesberichte.BausteinEvaluator" 
 			android:label="@string/title_evaluator"
 			android:theme="@android:style/Theme.Dialog"
             android:configChanges="orientation|keyboardHidden"
         >
             <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
+                <action android:name="com.applang.tagesberichte.action.EVALUATE" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="vnd.android.cursor.item/vnd.applang.note" />
             </intent-filter>
@@ -164,7 +192,6 @@
         </activity>
         
 		<activity android:name="com.applang.tagesberichte.TitleEditor" 
-			android:label="@string/title_edit_title"
 			android:theme="@android:style/Theme.Dialog"
             android:windowSoftInputMode="stateVisible"
         >

@@ -20,7 +20,7 @@ import java.util.Random;
 
 import com.applang.berichtsheft.R;
 import com.applang.berichtsheft.R.layout;
-import com.applang.provider.NotePad.Notes;
+import com.applang.provider.NotePad.NoteColumns;
 import com.applang.provider.PlantInfo.Plants;
 
 import android.app.Activity;

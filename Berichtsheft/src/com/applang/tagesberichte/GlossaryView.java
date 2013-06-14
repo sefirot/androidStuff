@@ -4,8 +4,8 @@ import static com.applang.Util.*;
 import static com.applang.Util2.*;
 import static com.applang.VelocityUtil.*;
 
-import com.applang.VelocityUtil.MapContext;
-import com.applang.provider.NotePad.Notes;
+import com.applang.VelocityUtil.CustomContext;
+import com.applang.provider.NotePad.NoteColumns;
 import com.applang.provider.NotePadProvider;
 
 import java.io.StringWriter;
@@ -63,7 +63,7 @@ public class GlossaryView extends Activity
 	}
 	
 	void evaluateTemplateAndLoad(Context vc, String template, String logTag) {
-		String s = evaluation( vc, template, logTag );
+		String s = evaluate( vc, template, logTag );
 		webView.loadData(s, "text/html", "UTF-8");
 	}
     
@@ -72,10 +72,10 @@ public class GlossaryView extends Activity
         return waitWhileWorking(this, "Evaluating ...", 
         	new Job<Activity>() {
 				public void perform(Activity activity, Object[] params) throws Exception {
-					com.applang.VelocityContext.setupVelocity(activity, true);
+					com.applang.UserContext.setupVelocity(activity, true);
 					
 					ContentResolver contentResolver = activity.getContentResolver();
-	    			MapContext noteContext = new MapContext(NotePadProvider.bausteinMap(contentResolver, ""));
+	    			CustomContext noteContext = new CustomContext(NotePadProvider.bausteinMap(contentResolver, ""));
 	    			Map<String, String> pmap = NotePadProvider.projectionMap(NotePadProvider.NOTES_WORDS);
 	    			
 	    			ValList words = new ValList();
@@ -83,17 +83,17 @@ public class GlossaryView extends Activity
 						ValMap map = new ValMap();
 						ValList list = new ValList();
 						
-						Uri uri = Uri.withAppendedPath(Notes.CONTENT_URI, NotePadProvider.NAMES[2]);
+						Uri uri = Uri.withAppendedPath(NoteColumns.CONTENT_URI, NotePadProvider.DATABASE_TABLES[2]);
 						Cursor cursor = contentResolver.query(uri, 
-								new String[] {Notes.NOTE}, 
-								pmap.get(Notes.TITLE) + "=?", 
+								new String[] {NoteColumns.NOTE}, 
+								pmap.get(NoteColumns.TITLE) + "=?", 
 								new String[]{word}, 
 								pmap.get("date"));
 						try {
 							if (cursor.moveToFirst())
 								do {
 									String note = cursor.getString(0);
-									note = evaluation(noteContext, note, "notes");
+									note = evaluate(noteContext, note, "notes");
 									list.add(note);
 								} while (cursor.moveToNext());
 						} catch (Exception e) {
