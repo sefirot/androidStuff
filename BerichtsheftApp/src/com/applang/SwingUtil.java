@@ -4,6 +4,9 @@ import java.awt.AWTEvent;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Cursor;
+import java.awt.Dialog;
+import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.Frame;
 import java.awt.KeyboardFocusManager;
 import java.awt.LayoutManager;
@@ -16,6 +19,8 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
+import java.awt.event.HierarchyEvent;
+import java.awt.event.HierarchyListener;
 import java.awt.event.ItemListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
@@ -24,13 +29,21 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.awt.font.FontRenderContext;
+import java.awt.geom.AffineTransform;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EventListener;
+import java.util.List;
+import java.util.TreeSet;
 import java.util.regex.MatchResult;
 import java.util.regex.Pattern;
 
@@ -58,6 +71,7 @@ import javax.swing.JPopupMenu;
 import javax.swing.JRadioButton;
 import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JScrollPane;
+import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.KeyStroke;
@@ -67,7 +81,13 @@ import javax.swing.WindowConstants;
 import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
 import javax.swing.filechooser.FileFilter;
+import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.table.TableColumn;
+import javax.swing.table.TableColumnModel;
 import javax.swing.text.JTextComponent;
+
+import static com.applang.Util.*;
+import static com.applang.Util2.*;
 
 public class SwingUtil
 {
@@ -76,15 +96,14 @@ public class SwingUtil
 	}
 	
 	public static <T> Object[] iterateComponents(Container container, ComponentFunction<T> func, Object... params) {
-		params = Util.reduceDepth(params);
+		params = reduceDepth(params);
 		
 		if (container != null) {
 			Component[] components = params.length > 0 ? 
 				container.getComponents() : 
 				new Component[] {container};
 				
-			for (Component comp : components)
-			{
+			for (Component comp : components) {
 				T t = func.apply(comp, params);
 				
 				if (comp instanceof Container)
@@ -97,16 +116,16 @@ public class SwingUtil
     
 	/**
 	 * @param container
-	 * @param pattern
+	 * @param regex
 	 * @return	an array of those child <code>Component</code> objects of container which names match the given pattern
 	 */
-	public static Component[] findComponents(Container container, final String pattern) {
+	public static Component[] findComponents(Container container, final String regex) {
 		final ArrayList<Component> al = new ArrayList<Component>();
 		
 		iterateComponents(container, new ComponentFunction<Object[]>() {
 			public Object[] apply(Component comp, Object[] parms) {
 				String name = comp.getName();
-				if (name != null && name.matches(pattern))
+				if (name != null && name.matches(regex))
 					al.add(comp);
 				
 				return parms;
@@ -190,7 +209,7 @@ public class SwingUtil
         final Timing timing = new Timing(component);
         
 		try {
-			func.apply(component, Util2.arrayextend(params, true, timing));
+			func.apply(component, arrayextend(params, true, timing));
 		}
 		finally {
 			timing.finalize();
@@ -211,13 +230,13 @@ public class SwingUtil
 
 		@Override
 		protected Void doInBackground(){
-			Util2.println(String.format("deadline %d ms", value));
+			println(String.format("deadline after %d ms", wait));
 
 	        waiting(wnd, new ComponentFunction<Void>() {
 				public Void apply(Component comp, Object[] parms) {
 					Timing timing = (Timing)parms[0];
 					
-					while (timing.current() < value && !isCancelled()) 
+					while (timing.current() < wait && !isCancelled()) 
 						Thread.yield();
 					
 					return null;
@@ -232,7 +251,7 @@ public class SwingUtil
 			if (isCancelled())
 				return;
 			
-			if (!Util.nullOrEmpty(keyEvents)) 
+			if (!nullOrEmpty(keyEvents)) 
 				doKeyEvents();
 			else if (wnd != null) 
 				pullThePlug(wnd);
@@ -240,7 +259,7 @@ public class SwingUtil
 		
 		public void cancel() {
 			if (this.cancel(true))
-				Util2.println("deadline cancelled");
+				println("deadline cancelled");
 			
 			started = false;
 		}
@@ -267,11 +286,16 @@ public class SwingUtil
 			}
 		}
 		
-		public static int delay = 1000;
-		public static int value = 1000;
+		static int delay = 1000;
+		static int wait = 1000;
+		
+		public static Deadline start(int millis, Integer... keyEvents) {
+			Deadline.wait = millis;
+			return start(null, keyEvents);
+		}
 		
 		public static Deadline start(Window wnd, Integer... keyEvents) {
-			if ((wnd == null && keyEvents.length < 1))
+			if (wnd == null && !isAvailable(0, keyEvents))
 				return null;
 				
 			final Deadline deadline = new Deadline(wnd, keyEvents);
@@ -300,7 +324,7 @@ public class SwingUtil
 				
 				started = false;
 				
-				Util2.println("deadline finished");
+				println("deadline finished");
 			}
 		}
 
@@ -319,7 +343,7 @@ public class SwingUtil
 		public Bounds(Window window, Object... params) {
 			super(window != null ? 
 				window.getBounds() : 
-				Util.param(new Rectangle(300,300,400,400), 0, params));
+				param(new Rectangle(300,300,400,400), 0, params));
 		}
 		
 		public static Rectangle load(Window window, 
@@ -328,15 +352,15 @@ public class SwingUtil
 		{
 			String key = key(category, title);
 			Bounds rect = new Bounds(null, params);
-			for (MatchResult mr : Util.findAllIn(Util2.getSetting(key, ""), Pattern.compile("(\\w+)=(\\d+)"))) {
+			for (MatchResult mr : findAllIn(getSetting(key, ""), Pattern.compile("(\\w+)=(\\d+)"))) {
 				if ("x".equals(mr.group(1)))
-					rect.x = Util.toInt(-1, mr.group(2));
+					rect.x = toInt(-1, mr.group(2));
 				else if ("y".equals(mr.group(1)))
-					rect.y = Util.toInt(-1, mr.group(2));
+					rect.y = toInt(-1, mr.group(2));
 				else if ("width".equals(mr.group(1)))
-					rect.width = Util.toInt(-1, mr.group(2));
+					rect.width = toInt(-1, mr.group(2));
 				else if ("height".equals(mr.group(1)))
-					rect.height = Util.toInt(-1, mr.group(2));
+					rect.height = toInt(-1, mr.group(2));
 			}
 			
 			Rectangle bounds = new Bounds(window, params);
@@ -366,11 +390,11 @@ public class SwingUtil
 				Object... params)
 		{
 			String key = key(category, title);
-			Util2.putSetting(key, Util2.toString("", new Bounds(window, params)));
+			putSetting(key, Util2.toString("", new Bounds(window, params)));
 		}
 	}
 
-	static boolean finished = false;
+	private static boolean finished = false;
 	
 	public static void showFrame(Component relative, 
 			String title, 
@@ -437,7 +461,7 @@ public class SwingUtil
         Toolkit.getDefaultToolkit().getSystemEventQueue().postEvent(wev);
     }
 	
-	public static int dialogResult = -1;
+	public static int dialogResult = Modality.CLOSED_OPTION;
 	
     public static int showDialog(Component parent, Component relative, 
     		String title, 
@@ -447,7 +471,7 @@ public class SwingUtil
     		Modality modality, 
     		Integer... keyEvents)
     {
-    	dialogResult = -1;
+    	dialogResult = Modality.CLOSED_OPTION;
     	
 		Frame frame = JOptionPane.getFrameForComponent(parent);
 		final JDialog dlg = new JDialog(frame, title, modality.flags(Modality.MODAL));
@@ -485,7 +509,7 @@ public class SwingUtil
 			}
 		});
     	
-		Util2.noprintln("dialogResult", dialogResult);
+		noprintln("dialogResult", dialogResult);
 		
 		return dialogResult;
 	}
@@ -539,42 +563,50 @@ public class SwingUtil
     		final Object message, String title,
             int optionType, final int messageType,
             Icon icon,
-            final Object[] options, final Object initialOption, 
-            Integer... keyEvents) 
+            Object[] options, Object initialOption, 
+            Object...params) 
     {
+		Integer[] keyEvents = param(new Integer[0], 0, params);
     	int type = Math.abs(optionType);
-    	if (type > 3) {
+    	if (type > Modality.OK_CANCEL_OPTION) {
     		Modality modality = Modality.NONE;
     		modality.index = type & ~3;
-    		final int option_Type = optionType < 0 ? -1 : type & 3;
-    		
-    		return showDialog(parent, parent, 
+    		final int _optionType = optionType - 4;
+    		final Object[] _options = options;
+    		final Object _initialOption = initialOption;
+    		final Function<Boolean> optionHandler = param(null, 1, params);
+    		final Object[] args = arrayreduce(params, 2, params.length - 2);
+    		return showDialog(JOptionPane.getFrameForComponent(parent), parent, 
 					title,
     				new ComponentFunction<Component[]>() {
 						public Component[] apply(final Component dlg, Object[] parms) {
 				    		final JOptionPane optionPane = new JOptionPane(message, 
 				    				messageType,
-				    				option_Type,
+				    				_optionType,
 				    				null,
-				    				options, 
-				    				initialOption);
+				    				_options, 
+				    				_initialOption);
 				            optionPane.addPropertyChangeListener(new PropertyChangeListener() {
 				                public void propertyChange(PropertyChangeEvent e) {
 				                    String prop = e.getPropertyName();
-
 				                    if (dlg.isVisible() && optionPane.equals(e.getSource()) && 
 				                    	JOptionPane.VALUE_PROPERTY.equals(prop))
 				                    {
 				                        Object value = optionPane.getValue();
 				                        if (value == JOptionPane.UNINITIALIZED_VALUE) {
-				                        	dialogResult = -1;
+				                        	dialogResult = Modality.CLOSED_OPTION;
 				                        	return;
 				                        }
-				                        else
+				                        else {
 				                        	optionPane.setValue(JOptionPane.UNINITIALIZED_VALUE);
+				                        	dialogResult = Arrays.asList(_options).indexOf(value);
+				                        }
 				                        
-				                        dialogResult = Arrays.asList(options).indexOf(value);
-				                		dlg.setVisible(false);
+				                        Boolean visibility = false;
+				                        if (optionHandler != null)
+				                        	visibility = optionHandler.apply(args);
+				                        
+				                		dlg.setVisible(visibility);
 				                	};
 				                }
 				            });
@@ -587,7 +619,6 @@ public class SwingUtil
     	}
     	else {
     		Deadline.start(null, keyEvents);
-    		
     		parent = JOptionPane.getFrameForComponent(parent);
         	return JOptionPane.showOptionDialog(parent, 
         			message, title, 
@@ -596,6 +627,25 @@ public class SwingUtil
         			options, initialOption);
     	}
 	}
+    
+    private static ValList defaultOptions(int optionType) {
+    	ValList list = new ValList();
+       	switch (optionType) {
+    	case JOptionPane.YES_NO_OPTION:
+    		list.addAll(Arrays.asList(new Object[] { "Yes", "No", null }));
+        	break;
+    	case JOptionPane.YES_NO_CANCEL_OPTION:
+    		list.addAll(Arrays.asList(new Object[] { "Yes", "No", "Cancel", "Cancel" }));
+        	break;
+    	case JOptionPane.OK_CANCEL_OPTION:
+    		list.addAll(Arrays.asList(new Object[] { "OK", "Cancel", "Cancel" }));
+    		break;
+    	default:
+    		list.addAll(Arrays.asList(new Object[] { "Close", "Close" }));
+    		break;
+       	}
+    	return list;
+    }
 	
     public static Object showInputDialog(Component parent, 
     		Object message, String title,
@@ -604,33 +654,44 @@ public class SwingUtil
             Object[] selections, Object initialSelection, 
             Integer... keyEvents) 
     {
+    	dialogResult = JOptionPane.CLOSED_OPTION;
+    	
         Object[] options = selections;
         Object initialOption = initialSelection;
+        if (options == null) {
+        	ValList list = defaultOptions(optionType);
+        	initialOption = list.remove(-1);
+        	options = list.toArray();
+        }
         
         Object[] widgets = null;
     	JTextComponent textComponent = null;
+    	String text = notNullOrEmpty(initialSelection) ? initialSelection.toString() : "";
     	
 		parent = JOptionPane.getFrameForComponent(parent);
 		
+		Deadline.start(null, keyEvents);
+		
     	switch (optionType) {
-    	default:
-    		Deadline.start(null, keyEvents);
-    		
+    	case JOptionPane.DEFAULT_OPTION:
         	return JOptionPane.showInputDialog(parent, 
         			message, title, 
         			messageType, 
         			icon, 
         			selections, initialSelection);
         	
-    	case JOptionPane.DEFAULT_OPTION:
-    		widgets = new Object[] {
-    				new JScrollPane(new JTextArea(message.toString()))};
-    	    break;
+    	default:
+    		optionType = JOptionPane.DEFAULT_OPTION;
+    		textComponent = new JTextArea(text);
+    		textComponent.setEditable(false);
+			widgets = new Object[] {
+    				new JScrollPane(textComponent)};
+			break;
     	    
     	case JOptionPane.YES_NO_OPTION:
     	case JOptionPane.YES_NO_CANCEL_OPTION:
     	case JOptionPane.OK_CANCEL_OPTION:
-    		JTextField textField = new JTextField(initialSelection.toString());
+			JTextField textField = new JTextField(text);
     		textField.setHorizontalAlignment(JTextField.CENTER);
     		addFocusObserver(textField);
     		
@@ -639,37 +700,157 @@ public class SwingUtil
 		    label.setLabelFor(textField);
     		
     		textComponent = textField;
+    		textComponent.requestFocusInWindow();
 		    
-    	    initialOption = options.length > 0 ? options[0] : null;
     		widgets = new Object[] {label, textComponent};
     	    break;
     	}
-	    
-    	Object selection = null;
     	
-	    int ans;
-		switch (ans = showOptionDialog(parent, 
+	    dialogResult = JOptionPane.showOptionDialog(parent, 
 				widgets, title, 
 				optionType,
 				messageType,
 				icon,
-				options, initialOption, 
-				keyEvents)) {
-		case 0:
-			if (textComponent != null) {
-				selection = textComponent.getText();
-				break;
-			}
-
-		default:
-			if (optionType == JOptionPane.OK_CANCEL_OPTION)
-				selection = "";
-			else
-				selection = ans;
-			break;
-		}
+				options, initialOption);
 		
-    	return selection;
+    	return textComponent.getText();
+	}
+
+    public static <T> T showResizableDialog(final Component component, Function<T> show, Object...params) {
+		JScrollPane scrollPane = new JScrollPane(component);
+		component.addHierarchyListener(new HierarchyListener() {
+			public void hierarchyChanged(HierarchyEvent e) {
+				Window window = SwingUtilities.getWindowAncestor(component);
+				if (window instanceof Dialog) {
+					Dialog dialog = (Dialog) window;
+					if (!dialog.isResizable()) {
+						dialog.setResizable(true);
+					}
+				}
+			}
+		});
+		return show.apply(arrayappend(new Object[]{scrollPane}, params));
+    }
+	
+    public static void showModelessOptionDialog(Component parentComponent,
+	        Object message, String title, int optionType, int messageType,
+	        Icon icon, final Object[] options, Object initialValue) {
+		final JOptionPane optionPane = new JOptionPane(
+		        message, optionType, messageType, icon, options, initialValue);
+		final JDialog dialog = optionPane.createDialog(parentComponent, title);
+		dialog.setModal(false);
+		optionPane.addPropertyChangeListener(new PropertyChangeListener() {
+            public void propertyChange(PropertyChangeEvent e) {
+                String prop = e.getPropertyName();
+                Object source = e.getSource();
+				if (dialog.isVisible() && optionPane.equals(source) && 
+                	JOptionPane.VALUE_PROPERTY.equals(prop))
+                {
+                    Object value = optionPane.getValue();
+                    if (value == JOptionPane.UNINITIALIZED_VALUE) {
+                    	dialogResult = Modality.CLOSED_OPTION;
+                    	return;
+                    }
+                    else
+                    	optionPane.setValue(JOptionPane.UNINITIALIZED_VALUE);
+                    
+                    dialogResult = Arrays.asList(options).indexOf(value);
+                    dialog.setVisible(false);
+            	};
+            }
+        });
+		dialog.setVisible(true);
+	}
+    
+	@SuppressWarnings("unchecked")
+	public static File getFileFromStore(final String title, String storeName, FileNameExtensionFilter filter) {
+		File file = null;
+		String[] fileNames = null;
+		int option = 1;
+		File store = new File(storeName);
+		if (store.exists()) {
+			fileNames = contentsFromFile(store).split(Util.NEWLINE_REGEX);
+			if (fileNames.length > 0) {
+				String fileName = fileNames[0];
+				if (fileNames.length > 2) {
+					fileNames = arrayreduce(fileNames, 1, fileNames.length - 1);
+					fileNames = new TreeSet<String>(Arrays.asList(fileNames))
+							.toArray(new String[0]);
+					fileNames = arrayextend(fileNames, true, fileName);
+				}
+			}
+			@SuppressWarnings({ "rawtypes" })
+			JComboBox combo = new JComboBox(fileNames);
+			JLabel label = new JLabel("Store");
+			label.setLabelFor(combo);
+			Object message = new Object[]{label ,combo};
+			Object[] options = new Object[]{"OK","Load","Edit","Remove","Cancel"};
+			option = JOptionPane.showOptionDialog(null, message, title, 
+					JOptionPane.DEFAULT_OPTION, 
+					JOptionPane.PLAIN_MESSAGE, 
+					null, 
+					options, options[0]);
+			if (option == 4)
+				return null;
+			if (option == 3) {
+				if (fileNames != null) {
+					List<String> list = new ArrayList<String>();
+					excludeFromArray(combo.getSelectedIndex(), fileNames, list);
+					fileNames = list.toArray(new String[0]);
+					contentsToFile(store, join(NEWLINE, fileNames));
+				}
+				return getFileFromStore(title, storeName, filter);
+			}
+			if (option > -1)
+				file = new File(combo.getSelectedItem().toString());
+			if (option == 2) {
+				JTextArea textArea = new JTextArea("");
+	    		textArea.setEditable(true);
+	    		textArea.setPreferredSize(new Dimension(500,200));
+	    		textArea.setText(contentsFromFile(file));
+				options = new Object[]{"OK","Cancel","Save"};
+				option = showResizableDialog(textArea, new Function<Integer>() {
+					public Integer apply(Object...params) {
+						return JOptionPane.showOptionDialog(null, params[0], title, 
+								JOptionPane.DEFAULT_OPTION, 
+								JOptionPane.PLAIN_MESSAGE, 
+								null, 
+								(Object[])params[1], params[2]);
+					}
+				}, options, options[1]);
+				if (option == 1)
+					return null;
+				if (option == 0) {
+					file = tempFile("." + filter.getExtensions()[0]);
+					contentsToFile(file, textArea.getText());
+					return file;
+				}
+				file = chooseFile(false, null, title, 
+						file, 
+						filter);
+				if (file != null)
+					contentsToFile(file, textArea.getText());
+			}
+		}
+		if (option == 1)
+			file = chooseFile(true, null, title, 
+					file, 
+					filter);
+		if (file != null) {
+			String fileName = file.getPath();
+			if (fileName.indexOf(NEWLINE) < 0) {
+				List<String> list = new ArrayList<String>();
+				list.add(fileName);
+				if (fileNames != null) {
+					excludeFromArray(arrayindexof(fileNames, fileName), fileNames, list);
+				}
+				fileNames = list.toArray(new String[0]);
+				contentsToFile(store, join(NEWLINE, fileNames));
+			}
+			if (option > 0)
+				return getFileFromStore(title, storeName, filter);
+		}
+		return file;
 	}
 
 	/**
@@ -682,21 +863,24 @@ public class SwingUtil
 	public static File chooseFile(boolean toOpen, Container parent, 
 			String title, 
 			File file, 
-			FileFilter fileFilter)
+			FileFilter...fileFilters)
 	{
-		File dir = new File(Util.relativePath());
+		File dir = null;
 		try {
 			dir = file.getParentFile();
 		} catch (Exception e) {}
+		if (dir == null)
+			dir = new File(relativePath());
 		
 		JFileChooser chooser = new JFileChooser();
 		chooser.setCurrentDirectory(dir);
 	    chooser.setDialogTitle(title);
 	    chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-	    if (fileFilter != null)
-	    	setFileFilter(chooser, fileFilter);
+	    if (fileFilters != null)
+	    	for (FileFilter ff : fileFilters)
+	    		setFileFilter(chooser, ff);
 		
-	    if (Util.fileExists(file))
+	    if (fileExists(file))
 	    	chooser.setSelectedFile(file);
 	    
 		parent = JOptionPane.getFrameForComponent(parent);
@@ -716,7 +900,7 @@ public class SwingUtil
 	    	chooser.addChoosableFileFilter(chooser.getAcceptAllFileFilter());
 	    	chooser.addChoosableFileFilter(fileFilter);
 	    }
-	    chooser.setAcceptAllFileFilterUsed(false);
+	    chooser.setAcceptAllFileFilterUsed(true);
 	}
 
 	/**
@@ -777,6 +961,14 @@ public class SwingUtil
 	public static Container container = null;
 	public static boolean underTest = false;
 
+	public static JLabel messageBox(Container container) {
+		JLabel label = new JLabel("");
+		label.setName("mess");
+		container.add(label);
+		SwingUtil.container = container;
+		return label;
+	}
+
 	public static boolean question(String text) {
 		return JOptionPane.YES_OPTION == JOptionPane.showConfirmDialog(
 				container, text, 
@@ -785,11 +977,12 @@ public class SwingUtil
 	}
 
 	public static void message(String text) {
-		JLabel mess = findComponent(getRootContainer(container), "mess");
+		Container rootContainer = underTest ? container : getRootContainer(container);
+		JLabel mess = findComponent(rootContainer, "mess");
 		if (mess != null)
 			mess.setText(text);
 		else if (underTest)
-			Util2.println(text);
+			println(text);
 		else
 			JOptionPane.showMessageDialog(container, text, "Message", JOptionPane.PLAIN_MESSAGE);
 	}
@@ -806,8 +999,25 @@ public class SwingUtil
 	    public String description();
 	}
 
+	public static String resourceFrom(String path, String encoding) {
+		if (notNullOrEmpty(path)) {
+			InputStream is = null;
+			try {
+				is = SwingUtil.class.getResourceAsStream("/resources/" + path);
+				BufferedReader rd = new BufferedReader(new InputStreamReader(is, Charset.forName(encoding)));
+				return readAll(rd);
+			} catch (Exception e) {
+				if (is != null)
+					try {
+						is.close();
+					} catch (Exception e1) {}
+			}
+		}
+		return null;
+	}
+
 	public static ImageIcon iconFrom(String path) {
-		if (Util.notNullOrEmpty(path)) {
+		if (notNullOrEmpty(path)) {
 			URL url = SwingUtil.class.getResource("/images/" + path);
 			return new ImageIcon(url);
 		}
@@ -819,7 +1029,7 @@ public class SwingUtil
     {
     	public static boolean actionBlocked = false;
     	
-    	public static void blocked(Util.Job<Void> job, Object[] params) throws Exception {
+    	public static void blocked(Job<Void> job, Object[] params) throws Exception {
     		actionBlocked = true;
     		
     		job.perform(null, params);
@@ -855,7 +1065,7 @@ public class SwingUtil
         		return;
         	
         	message("");
-        	Util2.println(type == null ? ae.getActionCommand() : type.toString());
+        	println(type == null ? ae.getActionCommand() : type.toString());
         	
         	action_Performed(ae);
         }
@@ -889,13 +1099,14 @@ public class SwingUtil
         
         for (int i = 0; i < params.length; i++) {
         	boolean multi = params[i] instanceof Object[];
-        	Object[] parms = multi ? (Object[])Util.param(null, i, params) : params;
+        	Object[] parms = multi ? (Object[])param(null, i, params) : params;
         	
-        	String text = Util.paramString("-", 0, parms);
+        	String text = paramString("-", 0, parms);
+        	String name = paramString("button" + i, 2, parms);
         	if ("-".equals(text)) {
-        		group = (ButtonGroup)Util.param(null, 1, parms);
+        		group = (ButtonGroup)param(null, 1, parms);
         		
-        		if (Util.paramBoolean(true, 2, parms)) {
+        		if (paramBoolean(true, 2, parms)) {
             		if (container instanceof JPanel) {
             			LayoutManager lm = container.getLayout();
             			int axis = lm instanceof BoxLayout ? 
@@ -903,14 +1114,14 @@ public class SwingUtil
             			switch (axis) {
             			case BoxLayout.LINE_AXIS:
             			case BoxLayout.X_AXIS:
-            				container.add(Box.createHorizontalStrut(Util.paramInteger(0, 3, parms)));
+            				container.add(Box.createHorizontalStrut(paramInteger(0, 3, parms)));
             				break;
             			case BoxLayout.PAGE_AXIS:
             			case BoxLayout.Y_AXIS:
-            				container.add(Box.createVerticalStrut(Util.paramInteger(0, 3, parms)));
+            				container.add(Box.createVerticalStrut(paramInteger(0, 3, parms)));
             				break;
             			default:
-            				container.add(new JLabel(Util.paramString(" ", 3, parms)));
+            				container.add(new JLabel(paramString(" ", 3, parms)));
             				break;
             			}
             		}
@@ -920,10 +1131,12 @@ public class SwingUtil
     					((JMenu)container).addSeparator();
         		}
         	}
-        	else if ("+".equals(text)) {
-        		container.add((JMenu)Util.param(null, 1, parms));
+        	else if ("+".equals(name)) {
+        		JMenu menu = param(null, 1, parms);
+        		menu.setName(name);
+				container.add(menu);
         	}
-        	else if (Util.notNullOrEmpty(text)) {
+        	else if (notNullOrEmpty(text)) {
         		boolean minus = text.startsWith("-");
         		boolean check = text.startsWith("-check ");
         		boolean radio = text.startsWith("-radio ");
@@ -957,7 +1170,8 @@ public class SwingUtil
 	        			button = new JMenuItem(text);
         		}
         		
-        		EventListener evl = (EventListener)Util.param(null, 1, parms);
+        		Object o = param(null, 1, parms);
+        		EventListener evl = o instanceof EventListener ? (EventListener)o : null;
         		if (evl instanceof ItemListener) 
                 	button.addItemListener((ItemListener)evl);
         		if (evl instanceof ActionListener) 
@@ -967,17 +1181,17 @@ public class SwingUtil
         			Action act = (Action)evl;
 					button.setAction(act);
 					button.setText(act.getValue(Action.SHORT_DESCRIPTION).toString());
+	                button.setName(name);
         		}
         		else {
-	            	String name = Util.paramString("button" + i, 2, parms);
 	                button.setName(name);
 	                button.setActionCommand(name);
-	                button.setToolTipText(Util.paramString("", 3, parms));
-	                button.setEnabled(Util.paramBoolean(true, 4, parms));
-	            	button.setMnemonic(Util.paramInteger(0, 5, parms));
-	                button.setSelected(Util.paramBoolean(false, 6, parms));
-	                KeyStroke ks = Util.param(KeyStroke.getKeyStroke(' '), 7, parms);
-	                if (Util.isType(JMenuItem.class, button))
+	                button.setToolTipText(paramString("", 3, parms));
+	                button.setEnabled(paramBoolean(true, 4, parms));
+	            	button.setMnemonic(paramInteger(0, 5, parms));
+	                button.setSelected(paramBoolean(false, 6, parms));
+	                KeyStroke ks = param(KeyStroke.getKeyStroke(' '), 7, parms);
+	                if (isType(JMenuItem.class, button))
 	                	((JMenuItem)button).setAccelerator(ks);
         		}
                 
@@ -1000,9 +1214,9 @@ public class SwingUtil
         
         for (int i = 0; i < params.length; i++) {
         	boolean multi = params[i] instanceof Object[];
-        	Object[] parms = multi ? (Object[])Util.param(null, i, params) : params;
+        	Object[] parms = multi ? (Object[])param(null, i, params) : params;
         	
-	    	PopupMenuListener popupMenuListener = Util.param(null, 8, parms);
+	    	PopupMenuListener popupMenuListener = param(null, 8, parms);
 	    	if (popupMenuListener != null)
 	    		popupMenu.addPopupMenuListener(popupMenuListener);
         }
@@ -1082,13 +1296,15 @@ public class SwingUtil
 	}
     
     public static void mouseEventOutput(String eventDescription, MouseEvent e) {
-        Util2.println(eventDescription
+        println(eventDescription
                 + " (" + e.getX() + "," + e.getY() + ")"
                 + " with button "
                 + e.getButton()
                 + " detected on "
                 + e.getComponent().getClass().getName());
     }
+    
+    public static MouseEvent popupEvent = null;
     
     /**
      *
@@ -1102,6 +1318,7 @@ public class SwingUtil
         @Override
         protected void maybeShowPopup(MouseEvent e) {
         	if (e.isPopupTrigger()) {
+        		popupEvent = e;
             	popupMenu.show(e.getComponent(), e.getX(), e.getY());
             }
         }
@@ -1153,4 +1370,34 @@ public class SwingUtil
 		return null;
 	}
 	
+	public static int[] textMeasures(String text, Font font) {
+		AffineTransform affinetransform = new AffineTransform();     
+		FontRenderContext frc = new FontRenderContext(affinetransform,true,true);     
+		int textwidth = (int)(font.getStringBounds(text, frc).getWidth());
+		int textheight = (int)(font.getStringBounds(text, frc).getHeight());
+		return new int[]{textwidth,textheight};
+	}
+	
+	public static void setWidthAsPercentages(JTable table, double... percentages) {
+		final double factor = 10000;
+		TableColumnModel model = table.getColumnModel();
+		for (int i = 0; i < Math.min(percentages.length, model.getColumnCount()); i++) {
+			TableColumn column = model.getColumn(i);
+			double val = percentages[i] * factor;
+			column.setPreferredWidth((int) val);
+		}
+	}
+	
+	public static void printContainer(String message, Container container, Object... params) {
+		if (paramBoolean(true, 0, params)) {
+			print(message + " : ");
+			iterateComponents(container, new ComponentFunction<String>() {
+				public String apply(Component comp, Object[] parms) {
+					String indent = paramString("", 0, parms);
+					println("%s%s%s", indent, comp.getName() == null ? "" : comp.getName() + " : ", comp.getClass());
+					return indent + "    ";
+				}
+			});
+		}
+	}
 }

@@ -39,9 +39,7 @@ public class Prompt extends CustomDirective
    /**
     * Prompt the user for a value.
     */
-   public boolean render(InternalContextAdapter context,
-                         Writer writer, Node node)
-   throws MethodInvocationException
+   public boolean render(InternalContextAdapter context, Writer writer, Node node) throws MethodInvocationException
    {
       Object prompt = getRequiredValue(node, 0, "label", context);
       if (prompt == null) {

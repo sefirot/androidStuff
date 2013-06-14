@@ -114,9 +114,7 @@ public class FormEditor extends JSplitPane
 											JToolBar bottom = new JToolBar();
 											bottom.setName("bottom");
 											bottom.setFloatable(false);
-											JLabel label = new JLabel("");
-											label.setName("mess");
-											bottom.add(label);
+											messageBox(bottom);
 											
 											JFrame frame = (JFrame)comp;
 											Container contentPane = frame.getContentPane();

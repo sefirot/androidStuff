@@ -14,13 +14,11 @@ import java.sql.Statement;
 
 import javax.swing.JButton;
 import javax.swing.JFrame;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JToolBar;
 
 import static com.applang.SwingUtil.*;
-import static com.applang.Util.*;
 import static com.applang.Util2.*;
 
 public class ActionPanel extends JPanel
@@ -34,9 +32,7 @@ public class ActionPanel extends JPanel
 			JToolBar bottom = new JToolBar();
 			bottom.setName("bottom");
 			bottom.setFloatable(false);
-			JLabel label = new JLabel("");
-			label.setName("mess");
-			bottom.add(label);
+			messageBox(bottom);
 			
 			JFrame frame = new JFrame(title) {
 				protected void processWindowEvent(WindowEvent we) {
@@ -124,7 +120,6 @@ public class ActionPanel extends JPanel
 	
 	public void addToContainer(Container container, Object constraints) {
 		container.add(this, constraints);
-		container = container;
 	}
 
 	protected JButton[] buttons = new JButton[1 + ActionType.ACTIONS.index()];
@@ -192,7 +187,7 @@ public class ActionPanel extends JPanel
 
 	protected String chooseDatabase(String dbName) {
 		if (dbName != null) {
-			File file = chooseFile(true, this, caption, new File(dbName), null);
+			File file = chooseFile(true, this, caption, new File(dbName));
 			if (file != null) 
 				dbName = file.getPath();
 		}

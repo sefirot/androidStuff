@@ -28,6 +28,7 @@ import java.util.Properties;
 import java.util.regex.MatchResult;
 import java.util.regex.Pattern;
 
+import javax.swing.SwingWorker;
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Result;
 import javax.xml.transform.Transformer;
@@ -46,7 +47,15 @@ import javax.xml.xpath.XPathFactory;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+import com.applang.Util.Function;
+import com.applang.Util.ValList;
 import com.applang.Util.ValMap;
+
+import android.app.Activity;
+import android.content.Context;
+import android.content.Intent;
+import android.database.Cursor;
+import android.util.Log;
 
 import static com.applang.Util.*;
 import static com.applang.SwingUtil.*;
@@ -588,7 +597,10 @@ public class Util2
 		try {
 			File tempDir = fileOf(arrayextend(subdirs, true, tempPath()));
 			String[] parts = nameWithExtension.split("\\.");
-			return File.createTempFile(parts[0], parts.length > 1 ? "." + parts[1] : "", tempDir);
+			return File.createTempFile(
+					parts.length > 0 && parts[0].length() > 2 ? parts[0] : "tmp", 
+					parts.length > 1 ? "." + parts[1] : null, 
+					tempDir);
 		} catch (IOException e) {
 			return null;
 		}
@@ -640,5 +652,111 @@ public class Util2
 		}
 		return a;
 	}
+    
+    public static ValList contentAuthorities(Context context, String startsWith) {
+    	ValList list = new ValList();
+//    	List<ProviderInfo> providers = context.getPackageManager().queryContentProviders(null, 0, 0);
+//        for (ProviderInfo provider : providers) {
+//            String authority = provider.authority;
+//            if (authority.startsWith(startsWith))
+//            	list.add(authority);
+//        }
+        return list;
+    }
+    
+    public static String resourcePackageName(Activity activity) {
+    	return null;
+    }
 
+	@SuppressWarnings("hiding")
+	public static class Task<Result> extends SwingWorker<Result, Intent>
+    {
+		public Task(Activity activity, Job<Result> followUp, Object... params) {
+			this.activity = activity;
+			this.followUp = followUp;
+			this.params = params;
+		}
+
+		protected Activity activity;
+		protected Object[] params;
+		
+		protected void onPreExecute() {
+		}
+		
+		protected void onPostExecute(Result result) {
+		}
+		
+		protected Result doInBackground(Object...params) throws Exception {
+			Integer millis = paramInteger(null, 0, params);
+			if (millis != null)
+				delay(millis);
+			return null;
+		}
+
+		@Override
+		protected Result doInBackground() throws Exception {
+			return doInBackground(params);
+		}
+
+		protected void publishProgress(Intent... intents) {
+			publish(intents);
+		}
+
+		@Override
+		protected void process(List<Intent> chunks) {
+			if (chunks.size() > 0 && activity != null) {
+				Intent intent = chunks.get(0);
+				if (notNullOrEmpty(intent.getAction()))
+					activity.startActivity(intent);
+			}
+		}
+ 
+		@Override
+		protected void done() {
+			if (followUp != null) 
+				try {
+					followUp.perform(get(), params);
+					cancel(true);
+				} catch (Exception e) {
+					Log.e(TAG, "follow-up", e);
+				}
+		}
+		
+		private Job<Result> followUp;
+    }
+	
+	public static ValMap getResultMap(Cursor cursor, Function<String> key, Function<Object> value) {
+		ValMap map = new ValMap();
+		try {
+	    	if (cursor.moveToFirst()) 
+	    		do {
+					String k = key.apply(cursor);
+					Object v = value.apply(cursor);
+					map.put(k, v);
+	    		} while (cursor.moveToNext());
+		} catch (Exception e) {
+            Log.e(TAG, "traversing cursor", e);
+			return null;
+		}
+		finally {
+			cursor.close();
+		}
+		return map;
+	}
+
+	public static ValList getRecord(Cursor cursor) {
+		ValList list = new ValList();
+		for (int i = 0; i < cursor.getColumnCount(); i++)
+			list.add(cursor.getString(i));
+		return list;
+	}
+
+	public static <T> List<T> excludeFromArray(int index, T[] array, List<T> list) {
+		if (index > 0)
+			list.addAll(Arrays.asList(Arrays.copyOfRange(array,	0, index)));
+		if (index < array.length - 1)
+			list.addAll(Arrays.asList(Arrays.copyOfRange(array,	index + 1, array.length)));
+		return list;
+	}
+    
 }
