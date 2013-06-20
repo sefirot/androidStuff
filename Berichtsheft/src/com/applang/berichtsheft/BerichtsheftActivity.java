@@ -184,18 +184,13 @@ public class BerichtsheftActivity extends Activity
 
     private void test(final String key) {
     	Map<String, String> signatures = signatures();
-		final String signature = signatures.containsKey(key) ? signatures.get(key) : key;
-		new UserContext.EvaluationTask(BerichtsheftActivity.this, null, null, null, new Job<Object>() {
+		String signature = signatures.containsKey(key) ? signatures.get(key) : key;
+		UserContext.buildDirective(signature, BerichtsheftActivity.this, null, new Job<Object>() {
 			public void perform(Object text, Object[] params) { 
 				if (text != null)
 					Toast.makeText(BerichtsheftActivity.this, 
 							text.toString(), 
 							Toast.LENGTH_LONG).show();
-			}
-		}).execute(new Function<Object>() {
-			public Object apply(Object... params) {
-				UserContext userContext = (UserContext) params[0];
-				return userContext.buildTerm(signature);
 			}
 		});
 		

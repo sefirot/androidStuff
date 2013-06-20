@@ -16,7 +16,6 @@
 
 package com.applang.tagesberichte;
 
-import java.util.ArrayList;
 import java.util.Map;
 import java.util.TreeSet;
 
@@ -43,12 +42,12 @@ import android.text.TextWatcher;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.ContextMenu;
+import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.widget.EditText;
-import android.widget.Toast;
 
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
@@ -385,8 +384,8 @@ public class NoteEditor extends Activity
     	return true;
     }
 
-	private void synthesize(final String anweisung) {
-		new UserContext.EvaluationTask(this, new ValMap(), null, null, new Job<Object>() {
+	private void synthesize(String anweisung) {
+		UserContext.buildDirective(anweisung, this, new ValMap(), new Job<Object>() {
 			public void perform(Object t, Object[] params) {
 				if (t != null) {
 					String text = t.toString();
@@ -395,11 +394,6 @@ public class NoteEditor extends Activity
 					mText.insertAtCaretPosition(text);
 					updateNote(mText.getText().toString(), true);
 				}
-			}
-		}).execute(new Function<Object>() {
-			public Object apply(Object... params) {
-				UserContext userContext = (UserContext) params[0];
-				return userContext.buildTerm(anweisung);
 			}
 		});
 	}
@@ -438,7 +432,7 @@ public class NoteEditor extends Activity
 				int length = string.length();
 				mText.setSelection(
 						Math.max(0, offsets[0]), 
-						Math.min(length, offsets[1] + 1));
+						Math.min(length, offsets[1]));
 			}
 			break;
 
@@ -491,6 +485,9 @@ public class NoteEditor extends Activity
             setTitle(getText(R.string.error_title));
             mText.setText(getText(R.string.error_message));
         }
+        
+        if (mTextUndoRedo == null)
+    		mTextUndoRedo = new Helper.TextViewUndoRedo(mText);
     }
 
     @Override
@@ -685,5 +682,22 @@ public class NoteEditor extends Activity
 			}
 		}, params);
 		return params[0] != null ? params[0].toString() : "";
+	}
+    
+    private Helper.TextViewUndoRedo mTextUndoRedo = null;
+
+	@Override
+	public boolean onKeyDown(int keyCode, KeyEvent event) {
+	    if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
+	    	if (mTextUndoRedo != null)
+	    		mTextUndoRedo.redo();
+	    	return true;
+	    } else if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
+	    	if (mTextUndoRedo != null)
+	    		mTextUndoRedo.undo();
+	    	return true;
+	    } else {
+	    	return super.onKeyDown(keyCode, event);
+	    }
 	}
 }

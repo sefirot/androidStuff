@@ -856,14 +856,14 @@ public class Util
     
 	public static String indentedLine(String line, Object level, Object...params) {
 	    StringBuffer sb = new StringBuffer();
-	    int indent = paramInteger(0, 9, params);
+	    int indents = paramInteger(0, 0, params);
 	    if (level instanceof String) {
 	    	String indentString = String.valueOf(level);
 		    if (notNullOrEmpty(indentString))
-			    for (int i = 0; i < indent; ++i) 
+			    for (int i = 0; i < indents; ++i) 
 			        sb.append(indentString);
 		    else
-		    	sb.append(indent + TAB);
+		    	sb.append(indents + TAB);
 	    }
 	    else if (level instanceof Function<?>) 
 	    	sb.append(((Function<?>) level).apply(params));

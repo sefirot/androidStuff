@@ -13,6 +13,9 @@ import org.apache.velocity.app.event.ReferenceInsertionEventHandler;
 import org.apache.velocity.runtime.parser.node.Node;
 import org.apache.velocity.tools.generic.MathTool;
 
+import com.applang.Util.Function;
+import com.applang.Util.Job;
+import com.applang.Util.ValMap;
 import com.applang.VelocityUtil.Visitor;
 
 import static com.applang.Util.*;
@@ -177,10 +180,10 @@ public class UserContext extends CustomContext implements Serializable
 		return optionalize(key);
 	}
 
-	public Node modifyNode(Node node) {
+	public Node modify(Node node) {
 		this.put(hidden(NODE), node);
 		switch (Visitor.nodeGroup(node)) {
-		case 1:
+		case DIRECTIVE:
 			String image = Visitor.tokens(node, VDI);
 			String name = firstIdentifierFrom(image);
 			String signature = directives().get(name);
@@ -293,5 +296,29 @@ public class UserContext extends CustomContext implements Serializable
     	public void doInForeground(Intent intent) {
     		publishProgress(intent);
 		}
+	}
+	
+	public static void buildDirective(final String key, 
+			Activity activity, ValMap refMap, 
+			Job<Object> followUp, Object...params) {
+		new EvaluationTask(activity, refMap, null, null, followUp, params)
+			.execute(new Function<Object>() {
+				public Object apply(Object... params) {
+					UserContext userContext = (UserContext) params[0];
+					return userContext.buildTerm(key);
+				}
+			});
+	}
+	
+	public static void modifyNode(final Node node, 
+			Activity activity, ValMap refMap, 
+			Job<Object> followUp, Object...params) {
+		new EvaluationTask(activity, refMap, null, null, followUp, params)
+			.execute(new Function<Node>() {
+				public Node apply(Object... params) {
+					UserContext userContext = (UserContext) params[0];
+					return userContext.modify(node);
+				}
+			});
 	}
 }

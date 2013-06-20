@@ -110,6 +110,7 @@
         
 		<activity android:name="com.applang.tagesberichte.Baustein" 
 			android:label="@string/title_baustein"
+            android:configChanges="orientation|keyboardHidden"
         >
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
@@ -127,6 +128,7 @@
         
 		<activity android:name="com.applang.tagesberichte.Glossary" 
 			android:label="@string/title_glossary"
+            android:configChanges="orientation|keyboardHidden"
         >
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />

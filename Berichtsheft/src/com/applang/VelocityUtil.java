@@ -403,6 +403,12 @@ public class VelocityUtil
     	public static boolean isProcessNode(Object node) {
     		return node instanceof ASTprocess;
 		}
+    	
+    	public static boolean isMethodNode(Object node) {
+    		return node instanceof ASTReference && 
+    				((Node)node).jjtGetNumChildren() > 0 && 
+    				((Node)node).jjtGetChild(0) instanceof ASTMethod;
+		}
 
 		public static String nodeInfo(Node node, Object...params) {
 			Token first = node.getFirstToken();
@@ -416,7 +422,7 @@ public class VelocityUtil
 			else {
 				int group = nodeGroup(node);
 				switch (group) {
-				case 3:
+				case EXPRESSION:
 					Token last = node.getLastToken();
 					StringBuilder sb = new StringBuilder();
 					for (Token t = first; t != null; ) {
@@ -428,8 +434,11 @@ public class VelocityUtil
 						t = t.next;
 					}
 					return sb.toString();
-				case 1:
+				case DIRECTIVE:
 					return VDI + firstIdentifierFrom(first.image);
+				case REFERENCE:
+					if (isMethodNode(node))
+						return VRI + firstMethodFrom(tokens(node));
 				}
 				return first.image;
 			}
@@ -801,14 +810,19 @@ public class VelocityUtil
 	}
 	
 	public static int[] getTextOffsets(String text, int[] lineColumns) {
+		MatchResult[] mr = findAllIn(text, LINE_BREAK_PATTERN);
 		int[] offsets = new int[lineColumns.length / 2];
 		for (int i = 0; i < lineColumns.length - 1; i+=2) {
-			offsets[i/2] = lineColumns[i+1] - 1;
-			if (lineColumns[i] > 1) {
-				MatchResult[] mr = findAllIn(text, LINE_BREAK_PATTERN);
-				if (lineColumns[i] - 1 <= mr.length)
-					offsets[i/2] += mr[lineColumns[i] - 2].end();
+			int line = lineColumns[i];
+			int column = lineColumns[i+1];
+			int offset = column - 1;
+			if (line > 1) {
+				if (line - 1 <= mr.length)
+					offset += mr[line - 2].end();
 			}
+			if (i > 0)
+				offset++;
+			offsets[i/2] = offset;
 		}
 		return offsets;
 	}
@@ -1178,6 +1192,14 @@ public class VelocityUtil
 			return null;
 	}
 	
+	public static String firstMethodFrom(String particle) {
+		MatchResult mr = findFirstIn(particle, IDENTIFIER_PATTERN2);
+		if (mr != null)
+			return mr.group();
+		else
+			return null;
+	}
+	
 	public static ValList argumentsFrom(String signature) {
 		ValList args = new ValList();
 		for (MatchResult m : findAllIn(signature, ARGUMENT_PATTERN)) 
@@ -1297,8 +1319,8 @@ public class VelocityUtil
 			int indents = param(0, 0, params);
 			int blocks = param(0, 1, params);
 			char indentChar = param(' ', 2, params);
-			char blockChar = param('|', 3, params);
-			int indentLength = param(4, 4, params);
+			char blockChar = param(' ', 3, params);
+			int indentLength = param(2, 4, params);
 			StringBuilder sb = new StringBuilder();
 			for (int i = 0; i < indents * indentLength; i++)
 				if (blocks > i) 

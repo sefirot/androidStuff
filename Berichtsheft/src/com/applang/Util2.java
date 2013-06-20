@@ -366,6 +366,21 @@ public class Util2
 		}
 	}
 
+	public static void alert(Context context, String message) {
+		AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(context);
+		alertDialogBuilder
+			.setMessage(message)
+			.setCancelable(false)
+			.setNeutralButton("Close",
+					new DialogInterface.OnClickListener() {
+				public void onClick(DialogInterface dialog,	int id) {
+					dialog.dismiss();
+				}
+			});
+		AlertDialog alertDialog = alertDialogBuilder.create();
+		alertDialog.show();
+	}
+
 	public static void areUsure(Context context, String message, final Job<Void> job, final Object... params) {
 		AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(context);
 		alertDialogBuilder
@@ -471,5 +486,37 @@ public class Util2
 		ViewGroup viewGroup = (ViewGroup)rootView;
 		return viewGroup.getChildAt(0);
     }
+	
+	public static Object[] iterateViews(ViewGroup container, Function<Object[]> func, int indent, Object... params) {
+		if (container != null) {
+			for (int i = 0; i < container.getChildCount(); i++) {
+				View v = container.getChildAt(i);
+				params = func.apply(v, indent, params);
+				if (v instanceof ViewGroup) {
+					iterateViews((ViewGroup) v, func, indent + 1, params);
+				}
+			}
+		}
+		return params;
+	}
+	
+	public static String viewHierarchy(Activity activity) {
+		Object[] params = iterateViews((ViewGroup)activity.findViewById(android.R.id.content), 
+				new Function<Object[]>() {
+					public Object[] apply(Object... params) {
+						View v = param(null, 0, params);
+						int indent = paramInteger(null, 1, params);
+						Object[] parms = param(null, 2, params);
+						String s = (String) parms[0];
+						String line = /*v.getId() + " : " + */v.getClass().getSimpleName();
+						s += indentedLine(line, TAB, indent);
+						parms[0] = s;
+						return parms;
+					}
+				}, 
+				0, 
+				new Object[] {""});
+		return paramString("", 0, params);
+	}
 	
 }

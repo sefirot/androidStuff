@@ -21,7 +21,8 @@
     <string name="menu_remove">Entfernen</string>
     <string name="menu_evaluate">Evaluation</string>
     <string name="menu_insert">Neuer Eintrag</string>
-    <string name="menu__insert">Einfügen</string>
+    <string name="menu_insert_before">Einfügen davor</string>
+    <string name="menu_insert_after">Einfügen danach</string>
     <string name="menu_revert">Zurück</string>
     <string name="menu_discard">Discard</string>
     <string name="menu_save">Save</string>

@@ -1,7 +1,8 @@
 package com.applang.provider;
 
-import com.applang.provider.NotePad.NoteColumns;
 import com.applang.provider.PlantInfo.Plants;
+
+import static com.applang.Util.*;
 
 import android.content.ContentProvider;
 import android.content.ContentUris;
@@ -14,7 +15,6 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.database.sqlite.SQLiteQueryBuilder;
 import android.net.Uri;
-import android.text.TextUtils;
 import android.util.Log;
 
 import java.util.HashMap;
@@ -109,10 +109,10 @@ public class PlantInfoProvider extends ContentProvider {
 
         // If no sort order is specified use the default
         String orderBy;
-        if (TextUtils.isEmpty(sortOrder)) {
-            orderBy = Plants.DEFAULT_SORT_ORDER;
+        if (notNullOrEmpty(sortOrder)) {
+        	orderBy = sortOrder;
         } else {
-            orderBy = sortOrder;
+        	orderBy = Plants.DEFAULT_SORT_ORDER;
         }
 
         // Get the database and run the query
@@ -179,7 +179,7 @@ public class PlantInfoProvider extends ContentProvider {
         case PLANT_ID:
             String plantId = uri.getPathSegments().get(1);
             count = db.delete(PLANTS_TABLE_NAME, Plants._ID + "=" + plantId
-                    + (!TextUtils.isEmpty(where) ? " AND (" + where + ')' : ""), whereArgs);
+                    + (notNullOrEmpty(where) ? " AND (" + where + ')' : ""), whereArgs);
             break;
 
         default:
@@ -202,7 +202,7 @@ public class PlantInfoProvider extends ContentProvider {
         case PLANT_ID:
             String plantId = uri.getPathSegments().get(1);
             count = db.update(PLANTS_TABLE_NAME, values, Plants._ID + "=" + plantId
-                    + (!TextUtils.isEmpty(where) ? " AND (" + where + ')' : ""), whereArgs);
+                    + (notNullOrEmpty(where) ? " AND (" + where + ')' : ""), whereArgs);
             break;
 
         default:

@@ -1,6 +1,7 @@
 package com.applang.tagesberichte;
 
 import java.io.StringReader;
+import java.util.Locale;
 import java.util.Map;
 
 import org.apache.velocity.runtime.parser.Token;
@@ -24,8 +25,6 @@ import android.app.Activity;
 import android.app.ListActivity;
 import android.content.Intent;
 import android.os.Bundle;
-import android.text.Editable;
-import android.text.TextWatcher;
 import android.util.Log;
 import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
@@ -35,11 +34,9 @@ import android.view.MenuItem;
 import android.view.SubMenu;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.View.OnClickListener;
 import android.widget.AdapterView;
 import android.widget.BaseAdapter;
-import android.widget.EditText;
-import android.widget.ImageButton;
+import android.widget.Filter;
 import android.widget.ListView;
 import android.widget.TextView;
 
@@ -53,54 +50,25 @@ public class Baustein extends ListActivity
 	
 	public ListView listView;
 	private BausteinListAdapter adapter;
-	private EditText searchEdit;
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
     	super.onCreate(savedInstanceState);
     	setContentView(R.layout.baustein);
 
-        LayoutInflater inflater = LayoutInflater.from(this);
-        View view = inflater.inflate(R.layout.search, null);
-        ViewGroup contentView = (ViewGroup)getContentView(this);
-		contentView.addView(view);
-		
-    	searchEdit = (EditText) findViewById(android.R.id.edit);
-    	searchEdit.addTextChangedListener(new TextWatcher() {
-			@Override
-			public void onTextChanged(CharSequence s, int start, int before, int count) {
-//				Textbaustein.this.adapter.getFilter().filter(s);	
-			}
-			@Override
-			public void beforeTextChanged(CharSequence s, int start, int count,	int after) {
-			}
-			@Override
-			public void afterTextChanged(Editable s) {
-			}
-		});
-    	findViewById(R.id.search).setVisibility(View.GONE);
-        
-		ImageButton btn = (ImageButton) findViewById(R.id.button1);
-		if (btn != null)
-			btn.setOnClickListener(new OnClickListener() {
-				@Override
-				public void onClick(View v) {
-					searchEdit.setText("");
-					findViewById(R.id.search).setVisibility(View.GONE);
-				}
-			});
+    	adapter = new BausteinListAdapter();
+
+        Helper.listViewSearch(true, this, adapter.getFilter());
    	
 		listView = getListView();
 		listView.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
 		listView.setOnCreateContextMenuListener(this);
 
-    	adapter = new BausteinListAdapter();
-
     	listView.setAdapter(adapter);
-//    	registerForContextMenu(listView);
+    	unregisterForContextMenu(listView);
 	}
-    
-    @Override
+
+	@Override
     protected void onResume() {
         super.onResume();
 		populate(true);
@@ -148,17 +116,13 @@ public class Baustein extends ListActivity
 		finish();
     }
 
-	private void modify(final Node node) {
-		new UserContext.EvaluationTask(this, new ValMap(), null, null, new Job<Object>() {
+	private void modify(ValMap map) {
+		Node node = (Node) map.get(NODE);
+		UserContext.modifyNode(node, this, new ValMap(), null, null, new Job<Object>() {
 			public void perform(Object node, Object[] params) {
 				if (node != null) {
 					populate(true);
 				}
-			}
-		}).execute(new Function<Node>() {
-			public Node apply(Object... params) {
-				UserContext userContext = (UserContext) params[0];
-				return userContext.modifyNode(node);
 			}
 		});
 	}
@@ -180,12 +144,16 @@ public class Baustein extends ListActivity
 		getMenuInflater().inflate(R.menu.contextmenu_baustein, menu);
 		if (!isPossible(DELETE, mMap)) 
 			menu.removeItem(R.id.menu_item_delete);
-		menu.removeItem(R.id.menu_item_insert);
+		menu.removeItem(R.id.menu_item_before);
+		menu.removeItem(R.id.menu_item_after);
 		if (isPossible(INSERT, mMap)) {
-			SubMenu submenu = menu.addSubMenu(Menu.NONE, Menu.NONE, Menu.NONE, R.string.menu__insert);
+			SubMenu before = menu.addSubMenu(Menu.NONE, R.id.menu_item_before, Menu.NONE, R.string.menu_insert_before);
+			SubMenu after = menu.addSubMenu(Menu.NONE, R.id.menu_item_after, Menu.NONE, R.string.menu_insert_after);
 			anweisungen = UserContext.directives(mMap);
-			for (String key : anweisungen.keySet()) 
-				submenu.add(Menu.NONE, Menu.FIRST, Menu.NONE, key);
+			for (String key : anweisungen.keySet()) {
+				before.add(Menu.NONE, Menu.FIRST, Menu.NONE, key);
+				after.add(Menu.NONE, Menu.FIRST, Menu.NONE, key);
+			}
 		}
 		if (!isPossible(MODIFY, mMap)) 
 			menu.removeItem(R.id.menu_item_modify);
@@ -198,12 +166,12 @@ public class Baustein extends ListActivity
 	public boolean onContextItemSelected(MenuItem item) {
 		switch (item.getItemId()) {
 		case R.id.menu_item_modify:
-			Node node = (Node)mMap.get(NODE);
-			modify(node);
+			modify(mMap);
 			break;
 		case R.id.menu_item_delete:
 			break;
-		case R.id.menu_item_insert:
+		case R.id.menu_item_before:
+		case R.id.menu_item_after:
 			break;
 		}
 		return super.onContextItemSelected(item);
@@ -212,11 +180,50 @@ public class Baustein extends ListActivity
 	class BausteinListAdapter extends BaseAdapter
 	{
 		ValList list = new ValList();
+		ValList origList = null;
 	    
 		public void clear() {
 			list.clear();
 		}
 		
+		Filter particleFilter = new Filter() {
+			@Override
+			protected FilterResults performFiltering(CharSequence constraint) {
+				if (origList == null) 
+					origList = list;
+			    if (notNullOrEmpty(constraint)) {
+			    	list = new ValList();
+			    	String crit = constraint.toString().toLowerCase(Locale.getDefault());
+			    	for (Object item : origList) {
+			    		ValMap map = (ValMap) item;
+			    		if (!hasEndToken(map)) {
+							Node node = (Node) map.get(NODE);
+							String s = Visitor.nodeInfo(node);
+							if (s.toLowerCase(Locale.getDefault()).startsWith(crit))
+								list.add(map);
+						}
+			    	}
+			    }
+			    else if (origList != null) 
+			    	list = origList;
+			    FilterResults results = new FilterResults();
+			    results.values = list;
+			    results.count = list.size();
+			    return results;
+			}
+			@Override
+			protected void publishResults(CharSequence constraint, FilterResults results) {
+				if (results.count < 1)
+					notifyDataSetInvalidated();
+				else 
+					notifyDataSetChanged();
+			}
+		};
+		
+		public Filter getFilter() {
+			return particleFilter;
+		}
+
 		public void addItem(Node node, Object...params) {
 			ValMap map = nodeMap(node, 
 					paramInteger(0, 0, params), 
@@ -283,13 +290,7 @@ public class Baustein extends ListActivity
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
         case MENU_ITEM_SEARCH:
-        	View view = findViewById(R.id.search);
-        	if (view.getVisibility() == View.VISIBLE)
-    			view.setVisibility(View.GONE);
-        	else {
-        		view.setVisibility(View.VISIBLE);
-        		findViewById(android.R.id.edit).requestFocus();
-        	}
+        	Helper.listViewSearch(false, this, null);
             return true;
         }
         return super.onOptionsItemSelected(item);

@@ -16,8 +16,6 @@
 
 package com.applang.provider;
 
-import com.applang.provider.NotePad.NoteColumns;
-import com.applang.provider.PlantInfo.Plants;
 import com.applang.provider.WeatherInfo.Weathers;
 
 import android.content.ContentProvider;
@@ -31,10 +29,11 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.database.sqlite.SQLiteQueryBuilder;
 import android.net.Uri;
-import android.text.TextUtils;
 import android.util.Log;
 
 import java.util.HashMap;
+
+import static com.applang.Util.*;
 
 /**
  * Provides access to a database of weathers. Each note has a title, the note
@@ -131,10 +130,10 @@ public class WeatherInfoProvider extends ContentProvider {
 
         // If no sort order is specified use the default
         String orderBy;
-        if (TextUtils.isEmpty(sortOrder)) {
-            orderBy = WeatherInfo.Weathers.DEFAULT_SORT_ORDER;
+        if (notNullOrEmpty(sortOrder)) {
+        	orderBy = sortOrder;
         } else {
-            orderBy = sortOrder;
+        	orderBy = WeatherInfo.Weathers.DEFAULT_SORT_ORDER;
         }
 
         // Get the database and run the query
@@ -228,7 +227,7 @@ public class WeatherInfoProvider extends ContentProvider {
         case WEATHER_ID:
             String weatherId = uri.getPathSegments().get(1);
             count = db.delete(WEATHERS_TABLE_NAME, Weathers._ID + "=" + weatherId
-                    + (!TextUtils.isEmpty(where) ? " AND (" + where + ')' : ""), whereArgs);
+                    + (notNullOrEmpty(where) ? " AND (" + where + ')' : ""), whereArgs);
             break;
 
         default:
@@ -251,7 +250,7 @@ public class WeatherInfoProvider extends ContentProvider {
         case WEATHER_ID:
             String weatherId = uri.getPathSegments().get(1);
             count = db.update(WEATHERS_TABLE_NAME, values, Weathers._ID + "=" + weatherId
-                    + (!TextUtils.isEmpty(where) ? " AND (" + where + ')' : ""), whereArgs);
+                    + (notNullOrEmpty(where) ? " AND (" + where + ')' : ""), whereArgs);
             break;
 
         default:

@@ -73,7 +73,6 @@ public class Glossary extends ExpandableListActivity
 	public ExpandableListView listView;
 	public GlossaryListAdapter adapter;
 	public ContentResolver contentResolver;
-	public EditText searchEdit;
 
     private static final String[] PROJECTION = new String[] {
     	NoteColumns._ID, // 0
@@ -95,35 +94,9 @@ public class Glossary extends ExpandableListActivity
         if (mUri == null) 
         	mUri = NotePadProvider.contentUri(tableIndex);
 
-        LayoutInflater inflater = LayoutInflater.from(this);
-        View view = inflater.inflate(R.layout.search, null);
-        ViewGroup contentView = (ViewGroup)getContentView(this);
-		contentView.addView(view);
-		
-    	searchEdit = (EditText) view.findViewById(android.R.id.edit);
-    	searchEdit.addTextChangedListener(new TextWatcher() {
-			@Override
-			public void onTextChanged(CharSequence s, int start, int before, int count) {
-				Glossary.this.adapter.getFilter().filter(s);	
-			}
-			@Override
-			public void beforeTextChanged(CharSequence s, int start, int count,	int after) {
-			}
-			@Override
-			public void afterTextChanged(Editable s) {
-			}
-		});
-    	findViewById(R.id.search).setVisibility(View.GONE);
-        
-		ImageButton btn = (ImageButton) findViewById(R.id.button1);
-		if (btn != null)
-			btn.setOnClickListener(new OnClickListener() {
-				@Override
-				public void onClick(View v) {
-					searchEdit.setText("");
-					findViewById(R.id.search).setVisibility(View.GONE);
-				}
-			});
+    	adapter = new GlossaryListAdapter(this, new GlossaryTree());
+
+        Helper.listViewSearch(true, this, adapter.getFilter());
        	
         listView = getExpandableListView();
 		
@@ -163,8 +136,6 @@ public class Glossary extends ExpandableListActivity
     	        return false;
     	    }
     	});
-
-    	adapter = new GlossaryListAdapter(this, new GlossaryTree());
 
     	listView.setAdapter(adapter);
     	registerForContextMenu(listView);
@@ -309,13 +280,7 @@ public class Glossary extends ExpandableListActivity
         	return true;
         	
         case MENU_ITEM_SEARCH:
-        	View view = findViewById(R.id.search);
-        	if (view.getVisibility() == View.VISIBLE)
-    			view.setVisibility(View.GONE);
-        	else {
-        		view.setVisibility(View.VISIBLE);
-        		findViewById(android.R.id.edit).requestFocus();
-        	}
+        	Helper.listViewSearch(false, this, null);
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -474,7 +439,7 @@ public class Glossary extends ExpandableListActivity
 			protected FilterResults performFiltering(CharSequence constraint) {
 				if (origTree == null) 
 					origTree = tree;
-			    if (notNullOrEmpty(constraint.toString())) {
+			    if (notNullOrEmpty(constraint)) {
 			    	tree = new GlossaryTree();
 			    	String crit = constraint.toString().toLowerCase(Locale.getDefault());
 			    	for (Map.Entry<String, GlossaryBranch> entry : origTree.entrySet()) {

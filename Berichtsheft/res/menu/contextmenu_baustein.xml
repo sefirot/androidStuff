@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android" >
     <item android:id="@+id/menu_item_modify" android:title="@string/menu_modify"></item>
-    <item android:id="@+id/menu_item_insert" android:title="@string/menu__insert"></item>
+    <item android:id="@+id/menu_item_before" android:title="@string/menu_insert_before"></item>
+    <item android:id="@+id/menu_item_after" android:title="@string/menu_insert_after"></item>
     <item android:id="@+id/menu_item_delete" android:title="@string/menu_delete"></item>
 </menu>

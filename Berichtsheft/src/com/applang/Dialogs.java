@@ -7,13 +7,13 @@ import java.util.List;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
-import android.app.ProgressDialog;
+//import android.app.ProgressDialog;
 import android.content.ContentValues;
 import android.content.DialogInterface;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Message;
+//import android.os.Handler;
+//import android.os.Message;
 import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.Gravity;
@@ -47,7 +47,7 @@ public class Dialogs extends Activity
     public static final int DIALOG_MULTIPLE_CHOICE_CURSOR = 8;
     public static final int DIALOG_TEXT_ENTRY = 9;
     public static final int DIALOG_TEXT_INFO = 10;
-
+/*
     public static final int MAX_PROGRESS = 100;
     public static int sProgress;
     public static ProgressDialog sProgressDialog;
@@ -70,7 +70,7 @@ public class Dialogs extends Activity
     };
 
 	public static Runnable sProgressRunnable = null;
-
+*/
 	private int checkedItem = -1;
 	private List<Boolean> checkedItems = new ArrayList<Boolean>();
 	CursorProvider provider = new CursorProvider(this);
@@ -114,16 +114,18 @@ public class Dialogs extends Activity
 	protected void onPrepareDialog(int id, Dialog dialog) {
     	super.onPrepareDialog(id, dialog);
 		switch (id) {
-        case DIALOG_PROGRESS:
+/*        case DIALOG_PROGRESS:
         	if (sProgressRunnable != null)
         		sProgressRunnable.run();
+*/
+		default:
 		}
 	}
 
 	@Override
     protected Dialog onCreateDialog(int id) {
 		switch (id) {
-        case DIALOG_PROGRESS:
+/*		case DIALOG_PROGRESS:
         	sProgress = 0;
         	sProgressDialog = new ProgressDialog(Dialogs.this);
         	sProgressDialog.setIcon(R.drawable.ic_launcher);
@@ -141,7 +143,8 @@ public class Dialogs extends Activity
         		}
         	});
         	return sProgressDialog;
-        case DIALOG_YES_NO_MESSAGE:
+*/
+		case DIALOG_YES_NO_MESSAGE:
             return new AlertDialog.Builder(Dialogs.this)
             	.setCancelable(false)
                 .setIcon(R.drawable.ic_launcher)
