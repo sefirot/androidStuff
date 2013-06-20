@@ -56,6 +56,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.util.Log;
+import android.view.ViewGroup.LayoutParams;
+import android.widget.LinearLayout;
 
 import static com.applang.Util.*;
 import static com.applang.SwingUtil.*;
@@ -680,6 +682,12 @@ public class Util2
 		protected Activity activity;
 		protected Object[] params;
 		
+		public Task<Result> execute(Object...params) {
+			this.params = params;
+			super.execute();
+			return this;
+		}
+		
 		protected void onPreExecute() {
 		}
 		
@@ -757,6 +765,19 @@ public class Util2
 		if (index < array.length - 1)
 			list.addAll(Arrays.asList(Arrays.copyOfRange(array,	index + 1, array.length)));
 		return list;
+	}
+
+	public static LinearLayout linearLayout(Context context, int orientation, int width, int height) {
+        LinearLayout linear = new LinearLayout(context);
+        linear.setOrientation(orientation);
+		linear.setLayoutParams(new LayoutParams(width, height));
+		return linear;
+	}
+
+	public static LinearLayout.LayoutParams linearLayoutParams(int width, int height, Integer... ltrb) {
+    	LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(width, height);
+		layoutParams.setMargins(param(0, 0, ltrb), param(0, 1, ltrb), param(0, 2, ltrb), param(0, 3, ltrb));
+		return layoutParams;
 	}
     
 }

@@ -216,6 +216,32 @@ public class VelocityTests extends TestCase
 */		println(m[0].group(m[0].groupCount()));
 	}
 	
+	public void testNodes() {
+		String resName = "hello.vm";
+		final String vm = resourceFrom(resName, "UTF-8");
+		SimpleNode doc = parse(new StringReader(vm), resName);
+		assertNotNull(doc);
+		Visitor.walk(doc, new Function<Object>() {
+			public Object apply(Object... params) {
+				Node node = param(null, 0, params);
+				Object[] data = param(null, 2, params);
+				if (!Visitor.isProcessNode(node)) {
+					int[] lc = Visitor.beginLC(node);
+					int[] span = Visitor.span(node);
+					int[] offsets = getTextOffsets(vm, span);
+					String string = vm.substring(offsets[0], offsets[1]);
+					println(string);
+					assertEquals(Visitor.tokens(node), string);
+					switch (lc[0] + 100 * lc[1]) {
+					case 101:	assertEquals(0, offsets[0]);	assertEquals(21, offsets[1]);	break;
+					case 601:	assertEquals(5, offsets[0]);	assertEquals(11, offsets[1]);	break;
+					}
+				}
+				return data;
+			}
+		});
+	}
+	
 	public void testLineColumn() {
 		Log.changeLogLevel(Log.DEBUG);
 		

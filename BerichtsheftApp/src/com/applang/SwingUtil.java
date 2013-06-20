@@ -78,6 +78,8 @@ import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.WindowConstants;
+import javax.swing.event.AncestorEvent;
+import javax.swing.event.AncestorListener;
 import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
 import javax.swing.filechooser.FileFilter;
@@ -86,8 +88,12 @@ import javax.swing.table.TableColumn;
 import javax.swing.table.TableColumnModel;
 import javax.swing.text.JTextComponent;
 
+import com.applang.VelocityUtil.Visitor;
+
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
+import static com.applang.VelocityUtil.NODE;
+import static com.applang.VelocityUtil.getTextOffsets;
 
 public class SwingUtil
 {
@@ -563,7 +569,7 @@ public class SwingUtil
     		final Object message, String title,
             int optionType, final int messageType,
             Icon icon,
-            Object[] options, Object initialOption, 
+            final Object[] options, final Object initialOption, 
             Object...params) 
     {
 		Integer[] keyEvents = param(new Integer[0], 0, params);
@@ -572,10 +578,7 @@ public class SwingUtil
     		Modality modality = Modality.NONE;
     		modality.index = type & ~3;
     		final int _optionType = optionType - 4;
-    		final Object[] _options = options;
-    		final Object _initialOption = initialOption;
     		final Function<Boolean> optionHandler = param(null, 1, params);
-    		final Object[] args = arrayreduce(params, 2, params.length - 2);
     		return showDialog(JOptionPane.getFrameForComponent(parent), parent, 
 					title,
     				new ComponentFunction<Component[]>() {
@@ -584,8 +587,8 @@ public class SwingUtil
 				    				messageType,
 				    				_optionType,
 				    				null,
-				    				_options, 
-				    				_initialOption);
+				    				options, 
+				    				initialOption);
 				            optionPane.addPropertyChangeListener(new PropertyChangeListener() {
 				                public void propertyChange(PropertyChangeEvent e) {
 				                    String prop = e.getPropertyName();
@@ -599,12 +602,12 @@ public class SwingUtil
 				                        }
 				                        else {
 				                        	optionPane.setValue(JOptionPane.UNINITIALIZED_VALUE);
-				                        	dialogResult = Arrays.asList(_options).indexOf(value);
+				                        	dialogResult = Arrays.asList(options).indexOf(value);
 				                        }
 				                        
 				                        Boolean visibility = false;
 				                        if (optionHandler != null)
-				                        	visibility = optionHandler.apply(args);
+				                        	visibility = optionHandler.apply(e, options);
 				                        
 				                		dlg.setVisible(visibility);
 				                	};
@@ -716,7 +719,7 @@ public class SwingUtil
     	return textComponent.getText();
 	}
 
-    public static <T> T showResizableDialog(final Component component, Function<T> show, Object...params) {
+    public static <T> T showResizableDialog(final JComponent component, Function<T> show, Object...params) {
 		JScrollPane scrollPane = new JScrollPane(component);
 		component.addHierarchyListener(new HierarchyListener() {
 			public void hierarchyChanged(HierarchyEvent e) {
@@ -727,6 +730,14 @@ public class SwingUtil
 						dialog.setResizable(true);
 					}
 				}
+			}
+		});
+		component.addAncestorListener(new AncestorListener() {
+			public void ancestorRemoved(AncestorEvent event) {
+			}
+			public void ancestorMoved(AncestorEvent event) {
+			}
+			public void ancestorAdded(AncestorEvent event) {
 			}
 		});
 		return show.apply(arrayappend(new Object[]{scrollPane}, params));
@@ -1061,7 +1072,7 @@ public class SwingUtil
         
         @Override
         public void actionPerformed(ActionEvent ae) {
-        	if (actionBlocked || getType() == null)
+        	if (actionBlocked || (getType() == null && getValue(Action.NAME) == null))
         		return;
         	
         	message("");

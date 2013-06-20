@@ -1,17 +1,18 @@
 package android.app;
 
-import java.awt.Dialog;
-import java.awt.event.KeyEvent;
 import java.io.File;
 import java.lang.reflect.Method;
 
+import android.app.Dialog;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Resources;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.KeyEvent;
 
 import static com.applang.Util.*;
 
@@ -63,8 +64,12 @@ public class Activity extends Context
 
 	protected void onCreate(Bundle savedInstanceState) {
 	}
+	
+	protected void onDestroy()  {
+	}
     
-    public final void showDialog(int id) {
+    @SuppressWarnings("deprecation")
+	public final void showDialog(int id) {
     	dlg = onCreateDialog(id);
     	if (dlg != null)
     		dlg.show();
@@ -75,8 +80,8 @@ public class Activity extends Context
 	protected Dialog onCreateDialog(int id) {
 		return null;
 	}
-	
-	protected void onDestroy()  {
+
+	protected void onPrepareDialog(int id, android.app.Dialog dialog) {
 	}
 
     /** Standard activity result: operation canceled. */
@@ -108,7 +113,7 @@ public class Activity extends Context
 		}
     }
 
-	public Object getResources() {
+	public Resources getResources() {
 		// TODO Auto-generated method stub
 		return null;
 	}

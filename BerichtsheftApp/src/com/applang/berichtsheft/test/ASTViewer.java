@@ -1,7 +1,6 @@
 package com.applang.berichtsheft.test;
 
 import static com.applang.Util.*;
-import static com.applang.Util2.*;
 import static com.applang.SwingUtil.*;
 import static com.applang.VelocityUtil.*;
 
@@ -11,7 +10,6 @@ import com.applang.berichtsheft.ui.components.ActionPanel;
 import com.applang.berichtsheft.ui.components.TextArea;
 import com.applang.berichtsheft.ui.components.TextComponent;
 
-import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Point;
 import java.awt.event.ActionEvent;
@@ -19,29 +17,29 @@ import java.awt.event.ActionListener;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.beans.PropertyChangeEvent;
 import java.io.File;
 import java.io.StringReader;
 import java.util.Map;
 import java.util.Vector;
 
 import javax.swing.JButton;
+import javax.swing.JDialog;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
-import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
-import javax.swing.event.AncestorEvent;
-import javax.swing.event.AncestorListener;
 import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
 
-import org.apache.velocity.runtime.RuntimeSingleton;
 import org.apache.velocity.runtime.parser.Token;
 import org.apache.velocity.runtime.parser.node.Node;
 import org.apache.velocity.runtime.parser.node.SimpleNode;
@@ -93,11 +91,8 @@ public class ASTViewer extends ActionPanel
     
     class ManipAction extends Action
     {
-    	Object[] params = null;
-    	
-		public ManipAction(ActionType type, Object...params) {
+		public ManipAction(ActionType type) {
 			super(type);
-			this.params = params;
         }
         
 		public ManipAction(String text) {
@@ -107,6 +102,8 @@ public class ASTViewer extends ActionPanel
         @Override
         protected void action_Performed(ActionEvent ae) {
         	ActionType type = (ActionType)getType();
+        	if (type == null)
+        		type = ActionType.INSERT;
         	switch (type) {
 			case VMFILE:
 				vmFile = getVm();
@@ -118,37 +115,39 @@ public class ASTViewer extends ActionPanel
 					structure(0);
 				break;
 			default:
-				map = map();
+				map = map(popupEvent);
 				if (map != null) {
-					params[3] = map;
 					Object node = map.get(NODE);
+					if (type.index == MODIFY) {
+						setSelection(node, false);
+					}
+					else if (type.index == DELETE) {
+						setSelection(node, false);
+						textArea.setSelectedText(null);
+					}
+					else if (type.index == INSERT) {
+						setSelection(node, true);
+					}
 					if (Visitor.nodeGroup(node) == DIRECTIVE) {
 						switch (type) {
+						case SET:
+							break;
 						case FOREACH:
-						case INSERT:
-							params[0] = 2;
-							showAST(params);
-							break;
-						case DELETE:
-							params[0] = 3;
-							showAST(params);
-							break;
-						case MODIFY:
-							params[0] = 4;
-							showAST(params);
 							break;
 						default:
 							break;
 						}
 					}
-					else if (type.index == MODIFY) {
-						params[0] = 4;
-						showAST(params);
-					}
 				}
 				break;
 			}
         }
+    }
+    
+    private void setSelection(Object node, boolean noSpan) {
+    	int[] span = Visitor.span(node);
+    	span = getTextOffsets(textArea.getText(), span);
+    	textArea.setSelection(span[0], noSpan ? -1 : span[1]);
     }
     
 	class ASTModel extends DefaultTableModel
@@ -167,6 +166,7 @@ public class ASTViewer extends ActionPanel
 					row.addElement(indents + "_" + blocks);
 					row.addElement("-- lost+found --");
 					row.addElement(Visitor.formatLC(Visitor.getBeginToken(t)));
+					row.addElement(Visitor.formatLC(Visitor.getEndToken(t)));
 					row.addElement(t.image);
 				}
 				else {
@@ -182,7 +182,14 @@ public class ASTViewer extends ActionPanel
 		};
 		
 		boolean detail = true;
+		public boolean isDetail() {
+			return detail;
+		}
+
 		boolean essentials = true;
+		public boolean isEssentials() {
+			return essentials;
+		}
 		
 		public ASTModel(String text, Object...params) {
 			detail = paramBoolean(detail, 0, params);
@@ -190,7 +197,8 @@ public class ASTViewer extends ActionPanel
 			if (detail) {
 				columns.addElement("level");
 				columns.addElement("class");
-				columns.addElement("position");
+				columns.addElement("begin");
+				columns.addElement("end");
 				columns.addElement("tokens");
 			}
 			else {
@@ -198,7 +206,7 @@ public class ASTViewer extends ActionPanel
 				columns.addElement("category");
 			}
 	        try {
-				document = RuntimeSingleton.parse( new StringReader(text), "");
+				document = parse( new StringReader(text), "");
 				
 				Visitor.walk(document, new Function<Object>() {
 					public Object apply(Object...params) {
@@ -215,6 +223,7 @@ public class ASTViewer extends ActionPanel
 									row.addElement(indents + "_" + blocks);
 									row.addElement(node.getClass().getSimpleName());
 									row.addElement(Visitor.formatLC(Visitor.beginLC(node)));
+									row.addElement(Visitor.formatLC(Visitor.endLC(node)));
 									row.addElement(Visitor.tokens(node));
 								}
 								else {
@@ -251,10 +260,78 @@ public class ASTViewer extends ActionPanel
 		}
 		
 		public void setColumnWidths(JTable table) {
-			setWidthAsPercentages(table, getColumnIdentifiers().size() > 2 ? 
-					new double[]{0.10, 0.30, 0.10, 0.50} : 
+			int cols = getColumnIdentifiers().size();
+			setWidthAsPercentages(table, cols > 2 ? 
+					new double[]{0.10, 0.20, 0.10, 0.10, 0.50} : 
 					new double[]{0.80, 0.20});
 		}
+	}
+	
+	private JTable configureTable(final ASTModel model) {
+		final JTable table = new JTable(model);
+		model.setColumnWidths(table);
+		table.setPreferredScrollableViewportSize(size);
+		table.addComponentListener(new ComponentAdapter() {
+			@Override
+			public void componentResized(ComponentEvent e) {
+				size = table.getSize();
+			}
+		});
+		JPopupMenu popupMenu = newPopupMenu(
+			menuRecord("+", INSERT, ActionType.INSERT, newMenu(ActionType.INSERT.description())),
+			menuRecord("delete", DELETE, ActionType.DELETE, new ManipAction(ActionType.DELETE)),
+			menuRecord("modify", MODIFY, ActionType.MODIFY, new ManipAction(ActionType.MODIFY)) 
+		);
+		table.addMouseListener(new PopupAdapter(popupMenu));
+		table.addMouseListener(new MouseAdapter() {
+			public void mouseClicked(MouseEvent e) {
+				if (e.getClickCount() == 1) {
+					map = map(e);
+					if (map != null) {
+						Object node = map.get(NODE);
+						setSelection(node, false);
+					}
+				}
+			}
+		});
+		model.addTableModelListener(new TableModelListener() {
+			public void tableChanged(TableModelEvent e) {
+				int column = e.getColumn();
+				switch (e.getType()) {
+				case TableModelEvent.UPDATE:
+			        if ("tokens".equals(model.columns.get(column))) {
+			        	int row = e.getFirstRow();
+			        	ValMap map = model.maps.get(row);
+			        	Node node = (Node) map.get(NODE);
+			        	Object value = model.getValueAt(row, column);
+						Visitor.update(node, value);
+			        }
+					break;
+				}
+			}
+	    });
+		return table;
+	}
+	
+	private int showText(Object...params) {
+		JTextArea textArea = new JTextArea();
+		textArea.setEditable(true);
+		textArea.setPreferredSize(size);
+		String title = String.format("Evaluation : '%s'", this.title);
+		UserContext.setupVelocity(null, true);
+		textArea.setText(evaluate(new UserContext(), text, TAG));
+		JOptionPane optionPane = new JOptionPane(new JScrollPane(textArea), 
+				JOptionPane.PLAIN_MESSAGE, 
+				JOptionPane.DEFAULT_OPTION, 
+				null, 
+				null, null);
+		JDialog dialog = optionPane.createDialog(ASTViewer.this, title);
+		dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        dialog.setModal(true);
+        dialog.setResizable(true);
+        dialog.setVisible(true);
+		Object value = optionPane.getValue();
+		return value instanceof Integer ? (int) value : JOptionPane.CLOSED_OPTION;
 	}
 	
 	Dimension size = new Dimension(700, 200);
@@ -263,67 +340,13 @@ public class ASTViewer extends ActionPanel
 	ValMap map = null;
 	int manip = -1;
 
-	private int showAST(final Object[] params) {
-		manip = (int)params[0];
-		boolean detail = (boolean)params[1];
-		boolean essentials = (boolean)params[2];
-		map = params[3] instanceof ValMap ? (ValMap) params[3] : null;
+	private int showAST(final Object...params) {
+		manip = paramInteger(0, 0, params);
+		final boolean detail = paramBoolean(true, 1, params);
+		final boolean essentials = paramBoolean(true, 2, params);
+		map = param(null, 3, params);
 		if (manip > 0) {
-			final JTextArea textArea = new JTextArea();
-    		textArea.setEditable(true);
-    		textArea.setPreferredSize(size);
-    		String title;
-    		int optionType = JOptionPane.DEFAULT_OPTION;
-    		switch (manip) {
-			case 1:
-				title = String.format("Evaluation : '%s'", this.title);
-	    		UserContext.setupVelocity(null, true);
-	    		textArea.setText(evaluate(new UserContext(), text, TAG));
-				break;
-			default:
-				title = String.format("%s : '%s'", 
-						manip == 2 ? "Insert" :
-							(manip == 3 ? "Delete" : "Modify"), 
-						this.title);
-				optionType = JOptionPane.OK_CANCEL_OPTION;
-				textArea.setText(text);
-				textArea.addAncestorListener(new AncestorListener() {
-					public void ancestorRemoved(AncestorEvent event) {
-					}
-					public void ancestorMoved(AncestorEvent event) {
-					}
-					public void ancestorAdded(AncestorEvent event) {
-						if (map != null) {
-							Object node = map.get(NODE);
-							int[] span = Visitor.span(node);
-							span = getTextOffsets(text, span);
-							textArea.setSelectionStart(span[0]);
-							if (manip == 2)
-								textArea.setSelectionEnd(span[0]);
-							else
-								textArea.setSelectionEnd(span[1] + 1);
-							println(textArea.getSelectedText());
-						}
-						textArea.requestFocusInWindow();						
-					}
-				});
-				break;
-			}
-			JPanel container = new JPanel();
-			container.add(new JScrollPane(textArea));
-			int option = JOptionPane.showOptionDialog(ASTViewer.this, 
-					container, 
-					title, 
-					optionType,
-					JOptionPane.PLAIN_MESSAGE, 
-					null, 
-					null, null);
-			if (map != null) {
-				if (option == JOptionPane.OK_OPTION)
-					text = textArea.getText();
-				params[3] = null;
-			}
-			params[0] = 0;
+			int option = showText(params);
 			return option < 0 ? option : 2;
 		}
 		else {
@@ -337,86 +360,69 @@ public class ASTViewer extends ActionPanel
 			eval.setMnemonic(KeyEvent.VK_V);
 			eval.addActionListener(new ActionListener() {
 				public void actionPerformed(ActionEvent e) {
-					params[0] = 1;
-					showAST(params);
+					showAST(1, detail, essentials, map);
 				}
 			});
-			final ASTModel model = new ASTModel(text, detail, essentials);
-			final JTable table = new JTable(model);
-			model.setColumnWidths(table);
-			table.setPreferredScrollableViewportSize(size);
-			table.addComponentListener(new ComponentAdapter() {
-				@Override
-				public void componentResized(ComponentEvent e) {
-					size = table.getSize();
-				}
-			});
-			JPopupMenu popupMenu = newPopupMenu(
-				menuRecord("+", INSERT, ActionType.INSERT, newMenu(ActionType.INSERT.description())),
-				menuRecord("delete", DELETE, ActionType.DELETE, new ManipAction(ActionType.DELETE, params)),
-				menuRecord("modify", MODIFY, ActionType.MODIFY, new ManipAction(ActionType.MODIFY, params)) 
-			);
-			table.addMouseListener(new PopupAdapter(popupMenu));
-			model.addTableModelListener(new TableModelListener() {
-				public void tableChanged(TableModelEvent e) {
-					int column = e.getColumn();
-					switch (e.getType()) {
-					case TableModelEvent.UPDATE:
-				        if ("tokens".equals(model.columns.get(column))) {
-				        	int row = e.getFirstRow();
-				        	ValMap map = model.maps.get(row);
-				        	Node node = (Node) map.get(NODE);
-				        	Object value = model.getValueAt(row, column);
-							Visitor.update(node, value);
-				        }
-						break;
-					}
-				}
-		    });
+			ASTModel model = new ASTModel(text, detail, essentials);
+			final JTable table = configureTable(model);
 			String title = String.format("AST (%d rows) : '%s' ", model.getDataVector().size(), this.title);
-			int option = showResizableDialog(table, new Function<Integer>() {
-				public Integer apply(Object...parms) {
-					JPanel container = new JPanel();
-					container.add((Component)parms[0]);
-					return showOptionDialog(ASTViewer.this, 
-							container, 
-							(String)parms[1], 
+			int option = showOptionDialog(ASTViewer.this, 
+							new JScrollPane(table), 
+							title, 
 							4 + JOptionPane.DEFAULT_OPTION, 
 							JOptionPane.PLAIN_MESSAGE, 
 							null, 
-							(Object[])parms[2], parms[3], 
+							options, null, 
 							null, 
 							new Function<Boolean>() {
-								public Boolean apply(Object... params) {
+								public Boolean apply(Object... parms) {
+									PropertyChangeEvent e = (PropertyChangeEvent) parms[0];
+									JOptionPane optionPane = (JOptionPane) e.getSource();
+									Object[] options = (Object[]) parms[1];
+									ASTModel model = (ASTModel) table.getModel();
+									boolean flag;
 									switch (dialogResult) {
 									case 0:
-										params[1] = !(boolean) params[1];
+										flag = !model.isDetail();
+										table.setModel(new ASTModel(text, 
+												flag, 
+												model.isEssentials()));
+										options[0] = flag ? "Info" : "Detail";
 										break;
 									case 1:
-										params[2] = !(boolean) params[2];
+										flag = !model.isEssentials();
+										table.setModel(new ASTModel(text, 
+												model.isDetail(), 
+												flag));
+										options[1] = flag ? "all" : "essentials";
+										break;
+									case 2:
+										text = Visitor.tail(model.document);
+										table.setModel(new ASTModel(text, 
+												model.isDetail(), 
+												model.isEssentials()));
 										break;
 									default:
-										break;
+										return false;
 									}
-									return false;
+									optionPane.setOptions(options);
+									optionPane.updateUI();
+									return true;
 								}
 							}
 					);
-				}
-			}, title, options, null);
-			if (manip < 1)
-				params[3] = Visitor.tail(model.document);
 			return option;
 		}
 	}
 	
-	ValMap map() {
+	ValMap map(MouseEvent me) {
 		ValMap map = null;
-    	if (popupEvent != null) {
-			JTable table = (JTable) popupEvent.getComponent();
+    	if (me != null) {
+			JTable table = (JTable) me.getComponent();
 			if (table != null) {
-				Point pt = new Point(popupEvent.getX(), popupEvent.getY());
+				Point pt = new Point(me.getX(), me.getY());
 				int row = table.rowAtPoint(pt);
+				table.setRowSelectionInterval(row, row);
 				ASTModel model = (ASTModel) table.getModel();
 				map = model.maps.get(row);
 			}
@@ -430,6 +436,7 @@ public class ASTViewer extends ActionPanel
 			for (String key : UserContext.directives().keySet()) {
 				menu.add(new JMenuItem()).setAction(new ManipAction(key));
 			}
+			menu.setIcon(iconFrom(type.iconName()));
 		}
 		return new Object[] {type.description(), action, 
 			name, "", null, null, null, null, 
@@ -438,7 +445,7 @@ public class ASTViewer extends ActionPanel
 	    		public void popupMenuWillBecomeVisible(PopupMenuEvent e) {
 	    			JPopupMenu popup = (JPopupMenu)e.getSource();
 	    			printContainer("popupMenuWillBecomeVisible", popup, false);
-	    			ValMap map = map();
+	    			ValMap map = map(popupEvent);
 					if (map != null) {
 						boolean enabled = isPossible(actionIdent, map);
 						String s = name;
@@ -471,27 +478,8 @@ public class ASTViewer extends ActionPanel
 	
 	public void structure(int mode) {
 		title = vmFile.getName();
-		Object[] params = new Object[]{0,true,true,null};
-		do {
-			text = getText();
-			int option = showAST(params);
-			setText(text);
-			
-			switch (option) {
-			case 0:
-				params[1] = !(boolean) params[1];
-				break;
-			case 1:
-				params[2] = !(boolean) params[2];
-				break;
-			case 2:
-				break;
-			case 3:
-				break;
-			default:
-				return;
-			}
-		} while (true);
+		text = getText();
+		showAST();
 	}
 
 	public ASTViewer(TextComponent textArea, Object...params) {

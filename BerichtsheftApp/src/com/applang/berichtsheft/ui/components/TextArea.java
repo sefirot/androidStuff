@@ -4,7 +4,8 @@ import java.awt.event.KeyListener;
 
 import javax.swing.JTextArea;
 
-import com.applang.SwingUtil;
+import static com.applang.Util.*;
+import static com.applang.SwingUtil.*;
 
 public class TextArea implements TextComponent
 {
@@ -13,7 +14,7 @@ public class TextArea implements TextComponent
 		textArea.setLineWrap(true);
 		textArea.setWrapStyleWord(true);
 		textArea.setTabSize(4);
-		SwingUtil.addTabKeyForwarding(textArea);
+		addTabKeyForwarding(textArea);
 	}
 
 	public JTextArea textArea = new JTextArea();
@@ -45,5 +46,24 @@ public class TextArea implements TextComponent
 
 	@Override
 	public void spellcheck() {
+	}
+
+	@Override
+	public void setSelection(int start, int end) {
+		textArea.setSelectionStart(start);
+		textArea.setSelectionEnd(end);
+		textArea.requestFocus();
+	}
+
+	@Override
+	public void setSelectedText(String text) {
+		int start = textArea.getSelectionStart();
+		textArea.replaceRange(text, start, textArea.getSelectionEnd());
+		setSelection(start, start + (notNullOrEmpty(text) ? 0 : text.length()));
+	}
+
+	@Override
+	public String getSelectedText() {
+		return textArea.getSelectedText();
 	}
 }

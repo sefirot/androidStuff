@@ -10,4 +10,7 @@ public interface TextComponent
 	public boolean isDirty();
 	public void setDirty(boolean dirty);
 	public void spellcheck();
+	public void setSelection(int start, int end);
+	public void setSelectedText(String text);
+	public String getSelectedText();
 }

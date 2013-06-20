@@ -24,4 +24,19 @@ public class ContentResolver
 		return null;
 	}
 
+	public int delete(Uri contentUri, String string, Object object) {
+		// TODO Auto-generated method stub
+		return -1;
+	}
+
+	public Uri insert(Uri contentUri, ContentValues values) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public String getType(Uri uri) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
 }
