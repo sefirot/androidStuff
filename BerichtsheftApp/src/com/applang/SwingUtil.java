@@ -37,13 +37,16 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.StringWriter;
+import java.io.Writer;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.EventListener;
+import java.util.Iterator;
 import java.util.List;
-import java.util.TreeSet;
+import java.util.Set;
 import java.util.regex.MatchResult;
 import java.util.regex.Pattern;
 
@@ -52,6 +55,7 @@ import javax.swing.AbstractButton;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
+import javax.swing.DefaultComboBoxModel;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
@@ -88,26 +92,33 @@ import javax.swing.table.TableColumn;
 import javax.swing.table.TableColumnModel;
 import javax.swing.text.JTextComponent;
 
-import com.applang.VelocityUtil.Visitor;
+import android.util.Log;
+
+import com.applang.Util.Function;
+import com.applang.Util.ValList;
 
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
-import static com.applang.VelocityUtil.NODE;
-import static com.applang.VelocityUtil.getTextOffsets;
 
 public class SwingUtil
 {
+    private static final String TAG = SwingUtil.class.getSimpleName();
+
 	public interface ComponentFunction<T> {
 		public T apply(Component comp, Object[] parms);
 	}
 	
-	public static <T> Object[] iterateComponents(Container container, ComponentFunction<T> func, Object... params) {
+	public static Component[] components(Component...params) {
+		return params;
+	}
+	
+	public static <T> Object[] iterateComponents(Container container, ComponentFunction<T> func, Object...params) {
 		params = reduceDepth(params);
 		
 		if (container != null) {
 			Component[] components = params.length > 0 ? 
 				container.getComponents() : 
-				new Component[] {container};
+				components(container);
 				
 			for (Component comp : components) {
 				T t = func.apply(comp, params);
@@ -216,12 +227,12 @@ public class SwingUtil
         
 		try {
 			func.apply(component, arrayextend(params, true, timing));
+			long current = timing.current();
+			return current;
 		}
 		finally {
 			timing.finalize();
 		}
-		
-		return timing.millis;
 	}
 
 	public static class Deadline extends SwingWorker<Void, Void>
@@ -292,8 +303,8 @@ public class SwingUtil
 			}
 		}
 		
-		static int delay = 1000;
-		static int wait = 1000;
+		public static int delay = 1000;
+		public static int wait = 1000;
 		
 		public static Deadline start(int millis, Integer... keyEvents) {
 			Deadline.wait = millis;
@@ -341,6 +352,15 @@ public class SwingUtil
 			}
 		};
 	}
+	
+    /**
+     * closes the <code>Window</code> programmatically
+     * @param wnd
+     */
+    public static void pullThePlug(Window wnd) {
+        WindowEvent wev = new WindowEvent(wnd, WindowEvent.WINDOW_CLOSING);
+        Toolkit.getDefaultToolkit().getSystemEventQueue().postEvent(wev);
+    }
 	
 	public static class Bounds extends Rectangle
 	{
@@ -396,17 +416,20 @@ public class SwingUtil
 				Object... params)
 		{
 			String key = key(category, title);
-			putSetting(key, Util2.toString("", new Bounds(window, params)));
+			putSetting(key, Util2.toString(new Bounds(window, params)));
 		}
+	}
+
+	public interface UIFunction extends ComponentFunction<Component[]> {
 	}
 
 	private static boolean finished = false;
 	
 	public static void showFrame(Component relative, 
 			String title, 
-    		ComponentFunction<Component[]> assembleUI,
-    		ComponentFunction<Component[]> arrangeUI,
-    		final ComponentFunction<Component[]> completeUI,
+			UIFunction assembleUI,
+			UIFunction arrangeUI,
+    		final UIFunction completeUI,
     		boolean deadline, 
     		Integer... keyEvents)
 	{
@@ -424,10 +447,9 @@ public class SwingUtil
 							frame.getContentPane().add(widget);
 			}
 			
-			frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-			frame.setLocationRelativeTo(relative);
 			frame.pack();
-			
+			frame.setLocationRelativeTo(relative);
+			frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 			frame.setVisible(true);
 			
 			if (arrangeUI != null)
@@ -458,29 +480,23 @@ public class SwingUtil
 		}
 	}
 	
-    /**
-     * closes the <code>Window</code> programmatically
-     * @param wnd
-     */
-    public static void pullThePlug(Window wnd) {
-        WindowEvent wev = new WindowEvent(wnd, WindowEvent.WINDOW_CLOSING);
-        Toolkit.getDefaultToolkit().getSystemEventQueue().postEvent(wev);
-    }
-	
 	public static int dialogResult = Modality.CLOSED_OPTION;
 	
     public static int showDialog(Component parent, Component relative, 
     		String title, 
-    		ComponentFunction<Component[]> assembleUI,
-    		ComponentFunction<Component[]> arrangeUI,
-    		final ComponentFunction<Component[]> completeUI,
-    		Modality modality, 
+    		UIFunction assembleUI,
+    		UIFunction arrangeUI,
+    		final UIFunction completeUI,
+    		int modality, 
     		Integer... keyEvents)
     {
     	dialogResult = Modality.CLOSED_OPTION;
     	
+    	boolean modal = Modality.hasFlags(modality, Modality.MODAL);
 		Frame frame = JOptionPane.getFrameForComponent(parent);
-		final JDialog dlg = new JDialog(frame, title, modality.flags(Modality.MODAL));
+		final JDialog dlg = new JDialog(frame, title, modal);
+		boolean alwaysOnTop = Modality.hasFlags(modality, Modality.ALWAYS_ON_TOP);
+		dlg.setAlwaysOnTop(alwaysOnTop);
 		
 		if (assembleUI != null) {
 			Component[] widgets = assembleUI.apply(dlg, null);
@@ -492,21 +508,19 @@ public class SwingUtil
 						dlg.getContentPane().add(widget);
 		}
 		
-		boolean deadline = modality.flags(Modality.TIMEOUT);
+		boolean deadline = Modality.hasFlags(modality, Modality.TIMEOUT);
 		if (deadline)
 			Deadline.start(dlg);
 		
 		dlg.pack();
 		dlg.setLocationRelativeTo(relative);
 		dlg.setDefaultCloseOperation(WindowConstants.HIDE_ON_CLOSE);
+		
+		if (modal && arrangeUI != null)
+			arrangeUI.apply(dlg, null);
 
 		if (!deadline)
 			Deadline.start(null, keyEvents);
-		
-		dlg.setVisible(true);
-		
-		if (arrangeUI != null)
-			arrangeUI.apply(dlg, null);
 		
 		dlg.addWindowListener(new WindowAdapter() {
 			public void windowClosing(WindowEvent event) {
@@ -514,23 +528,35 @@ public class SwingUtil
 					completeUI.apply(dlg, null);
 			}
 		});
+		
+		dlg.setVisible(true);
+		
+		if (!modal && arrangeUI != null)
+			arrangeUI.apply(dlg, null);
     	
 		noprintln("dialogResult", dialogResult);
 		
 		return dialogResult;
 	}
 	
-    public enum Modality {
-    	NONE(0), MODAL(4), TIMEOUT(8), MODAL_TIMEOUT(12);
-
-        int index;   
-
-        Modality(int index) {
-            this.index = index;
+    public static class Modality
+    {
+    	public static final int NONE = 0;
+    	public static final int MODAL = 4;
+    	public static final int TIMEOUT = 8;
+    	public static final int MODAL_TIMEOUT = 12;
+    	public static final int ALWAYS_ON_TOP = 16;
+        
+        public static int getOptionType(int index) {
+        	return (index + 1) % 4 - 1;
         }
 
-        public boolean flags(Modality flag) { 
-            return (index & flag.index) > 0; 
+        public static int getFlags(int index) { 
+            return (index + 1) / 4 * 4; 
+        }
+
+        public static boolean hasFlags(int index, int flags) { 
+			return (getFlags(index) & flags) > 0; 
         }
 
         //
@@ -567,57 +593,56 @@ public class SwingUtil
 	
     public static int showOptionDialog(Component parent, 
     		final Object message, String title,
-            int optionType, final int messageType,
+    		final int optionType, final int messageType,
             Icon icon,
             final Object[] options, final Object initialOption, 
             Object...params) 
     {
 		Integer[] keyEvents = param(new Integer[0], 0, params);
-    	int type = Math.abs(optionType);
-    	if (type > Modality.OK_CANCEL_OPTION) {
-    		Modality modality = Modality.NONE;
-    		modality.index = type & ~3;
-    		final int _optionType = optionType - 4;
+    	if (optionType > Modality.OK_CANCEL_OPTION) {
     		final Function<Boolean> optionHandler = param(null, 1, params);
     		return showDialog(JOptionPane.getFrameForComponent(parent), parent, 
 					title,
-    				new ComponentFunction<Component[]>() {
-						public Component[] apply(final Component dlg, Object[] parms) {
+    				new UIFunction() {
+						public Component[] apply(final Component dialog, Object[] parms) {
 				    		final JOptionPane optionPane = new JOptionPane(message, 
 				    				messageType,
-				    				_optionType,
+				    				Modality.getOptionType(optionType),
 				    				null,
 				    				options, 
 				    				initialOption);
-				            optionPane.addPropertyChangeListener(new PropertyChangeListener() {
-				                public void propertyChange(PropertyChangeEvent e) {
-				                    String prop = e.getPropertyName();
-				                    if (dlg.isVisible() && optionPane.equals(e.getSource()) && 
-				                    	JOptionPane.VALUE_PROPERTY.equals(prop))
-				                    {
-				                        Object value = optionPane.getValue();
-				                        if (value == JOptionPane.UNINITIALIZED_VALUE) {
-				                        	dialogResult = Modality.CLOSED_OPTION;
-				                        	return;
-				                        }
-				                        else {
-				                        	optionPane.setValue(JOptionPane.UNINITIALIZED_VALUE);
-				                        	dialogResult = Arrays.asList(options).indexOf(value);
-				                        }
-				                        
-				                        Boolean visibility = false;
-				                        if (optionHandler != null)
-				                        	visibility = optionHandler.apply(e, options);
-				                        
-				                		dlg.setVisible(visibility);
-				                	};
-				                }
-				            });
-							return new Component[] {optionPane};
+				    		optionPane.addPropertyChangeListener(new PropertyChangeListener() {
+				    			public void propertyChange(PropertyChangeEvent ev) {
+				    				Object source = ev.getSource();
+				    				String prop = ev.getPropertyName();
+				    				boolean visible = dialog.isVisible();
+				    				if (visible && 
+				    						optionPane.equals(source) && 
+				    						JOptionPane.VALUE_PROPERTY.equals(prop))
+				    				{
+				    					Object value = optionPane.getValue();
+				    					if (value == JOptionPane.UNINITIALIZED_VALUE) {
+				    						dialogResult = Modality.CLOSED_OPTION;
+				    						return;
+				    					}
+				    					optionPane.setValue(JOptionPane.UNINITIALIZED_VALUE);
+				    					
+				    					if (options != null)
+				    						dialogResult = list(options).indexOf(value);
+				    					
+				    					Boolean visibility = false;
+				    					if (optionHandler != null)
+				    						visibility = optionHandler.apply(ev, options);
+				    					
+				    					dialog.setVisible(visibility);
+				    				};
+				    			}
+				    		});
+							return components(optionPane);
 						}
 					},
 					null, null, 
-					modality,
+					optionType,
     				keyEvents);
     	}
     	else {
@@ -631,20 +656,20 @@ public class SwingUtil
     	}
 	}
     
-    private static ValList defaultOptions(int optionType) {
+    public static ValList defaultOptions(int optionType) {
     	ValList list = new ValList();
        	switch (optionType) {
     	case JOptionPane.YES_NO_OPTION:
-    		list.addAll(Arrays.asList(new Object[] { "Yes", "No", null }));
+    		list.addAll(list(objects( "Yes", "No", null )));
         	break;
     	case JOptionPane.YES_NO_CANCEL_OPTION:
-    		list.addAll(Arrays.asList(new Object[] { "Yes", "No", "Cancel", "Cancel" }));
+    		list.addAll(list(objects( "Yes", "No", "Cancel", "Cancel" )));
         	break;
     	case JOptionPane.OK_CANCEL_OPTION:
-    		list.addAll(Arrays.asList(new Object[] { "OK", "Cancel", "Cancel" }));
+    		list.addAll(list(objects( "OK", "Cancel", "Cancel" )));
     		break;
     	default:
-    		list.addAll(Arrays.asList(new Object[] { "Close", "Close" }));
+    		list.addAll(list(objects( "Close", "Close" )));
     		break;
        	}
     	return list;
@@ -687,8 +712,7 @@ public class SwingUtil
     		optionType = JOptionPane.DEFAULT_OPTION;
     		textComponent = new JTextArea(text);
     		textComponent.setEditable(false);
-			widgets = new Object[] {
-    				new JScrollPane(textComponent)};
+			widgets = objects(new JScrollPane(textComponent));
 			break;
     	    
     	case JOptionPane.YES_NO_OPTION:
@@ -705,7 +729,7 @@ public class SwingUtil
     		textComponent = textField;
     		textComponent.requestFocusInWindow();
 		    
-    		widgets = new Object[] {label, textComponent};
+    		widgets = objects(label, textComponent);
     	    break;
     	}
     	
@@ -740,86 +764,86 @@ public class SwingUtil
 			public void ancestorAdded(AncestorEvent event) {
 			}
 		});
-		return show.apply(arrayappend(new Object[]{scrollPane}, params));
+		return show.apply(arrayappend(objects(scrollPane), params));
     }
-	
-    public static void showModelessOptionDialog(Component parentComponent,
-	        Object message, String title, int optionType, int messageType,
-	        Icon icon, final Object[] options, Object initialValue) {
-		final JOptionPane optionPane = new JOptionPane(
-		        message, optionType, messageType, icon, options, initialValue);
-		final JDialog dialog = optionPane.createDialog(parentComponent, title);
-		dialog.setModal(false);
-		optionPane.addPropertyChangeListener(new PropertyChangeListener() {
-            public void propertyChange(PropertyChangeEvent e) {
-                String prop = e.getPropertyName();
-                Object source = e.getSource();
-				if (dialog.isVisible() && optionPane.equals(source) && 
-                	JOptionPane.VALUE_PROPERTY.equals(prop))
-                {
-                    Object value = optionPane.getValue();
-                    if (value == JOptionPane.UNINITIALIZED_VALUE) {
-                    	dialogResult = Modality.CLOSED_OPTION;
-                    	return;
-                    }
-                    else
-                    	optionPane.setValue(JOptionPane.UNINITIALIZED_VALUE);
-                    
-                    dialogResult = Arrays.asList(options).indexOf(value);
-                    dialog.setVisible(false);
-            	};
-            }
-        });
-		dialog.setVisible(true);
-	}
-    
+
 	@SuppressWarnings("unchecked")
-	public static File getFileFromStore(final String title, String storeName, FileNameExtensionFilter filter) {
-		File file = null;
-		String[] fileNames = null;
-		int option = 1;
-		File store = new File(storeName);
-		if (store.exists()) {
-			fileNames = contentsFromFile(store).split(Util.NEWLINE_REGEX);
-			if (fileNames.length > 0) {
-				String fileName = fileNames[0];
-				if (fileNames.length > 2) {
-					fileNames = arrayreduce(fileNames, 1, fileNames.length - 1);
-					fileNames = new TreeSet<String>(Arrays.asList(fileNames))
-							.toArray(new String[0]);
-					fileNames = arrayextend(fileNames, true, fileName);
+	public static File getFileFromStore(int type, 
+			final String title, 
+			FileNameExtensionFilter filter, 
+			Function<File> chooser, 
+			Function<String[]> loader, 
+			Job<String[]> saver, 
+			Object...params) {
+		Function<String[]> lister = new Function<String[]>() {
+			public String[] apply(Object... params) {
+				List<String> list = new ArrayList<String>();
+				String element = param(null, 0, params);
+				String[] array = param(null, 1, params);
+				if (array != null) {
+					arrayexclude(arrayindexof(element, array), array, list);
 				}
+				boolean sort = paramBoolean(false, 2, params);
+				if (sort) {
+					Set<String> set = sorted(list);
+					list = new ArrayList<String>();
+					list.addAll(set);
+				}
+				boolean first = paramBoolean(true, 3, params);
+				if (first)
+					list.add(0, element);
+				return list.toArray(new String[0]);
 			}
+		};
+		String fileName = param(null, 0, params);
+		File file = notNullOrEmpty(fileName) ? new File(fileName) : null;
+		boolean allowEdit = type > 0;
+		int option = 1;
+		String[] fileNames = null;
+		try {
+			fileNames = loader.apply(params);
+		} catch (Exception e) {
+			Log.e(TAG, "getFileFromStore", e);
+		}
+		boolean storeEmpty = nullOrEmpty(fileNames);
+		if (!storeEmpty) {
+			if (!notNullOrEmpty(fileName))
+				fileName = fileNames[0];
+			fileNames = lister.apply(fileName, fileNames, true);
 			@SuppressWarnings({ "rawtypes" })
 			JComboBox combo = new JComboBox(fileNames);
 			JLabel label = new JLabel("Store");
 			label.setLabelFor(combo);
-			Object message = new Object[]{label ,combo};
-			Object[] options = new Object[]{"OK","Load","Edit","Remove","Cancel"};
+			Object message = objects(label, combo);
+			Object[] options = allowEdit ? 
+					objects("OK","Add","Remove","Edit","Cancel") : 
+					objects("OK","Add","Remove","Cancel");
 			option = JOptionPane.showOptionDialog(null, message, title, 
 					JOptionPane.DEFAULT_OPTION, 
 					JOptionPane.PLAIN_MESSAGE, 
 					null, 
 					options, options[0]);
-			if (option == 4)
+			if (option < 0 || option == options.length - 1)
 				return null;
-			if (option == 3) {
+			if (option == 2) {			//	Remove
 				if (fileNames != null) {
-					List<String> list = new ArrayList<String>();
-					excludeFromArray(combo.getSelectedIndex(), fileNames, list);
-					fileNames = list.toArray(new String[0]);
-					contentsToFile(store, join(NEWLINE, fileNames));
+					fileNames = lister.apply(combo.getSelectedItem(), fileNames, false, false);
+					try {
+						saver.perform(fileNames, params);
+					} catch (Exception e) {
+						Log.e(TAG, "getFileFromStore", e);
+					}
 				}
-				return getFileFromStore(title, storeName, filter);
+				return getFileFromStore(type, title, filter, chooser, loader, saver, params);
 			}
 			if (option > -1)
 				file = new File(combo.getSelectedItem().toString());
-			if (option == 2) {
+			if (option == 3) {			//	Edit
 				JTextArea textArea = new JTextArea("");
 	    		textArea.setEditable(true);
 	    		textArea.setPreferredSize(new Dimension(500,200));
 	    		textArea.setText(contentsFromFile(file));
-				options = new Object[]{"OK","Cancel","Save"};
+				options = objects("OK","Save","Cancel");
 				option = showResizableDialog(textArea, new Function<Integer>() {
 					public Integer apply(Object...params) {
 						return JOptionPane.showOptionDialog(null, params[0], title, 
@@ -829,37 +853,42 @@ public class SwingUtil
 								(Object[])params[1], params[2]);
 					}
 				}, options, options[1]);
-				if (option == 1)
+				if (option < 0 || option == options.length - 1)
 					return null;
-				if (option == 0) {
+				if (option == 0) {		//	OK
 					file = tempFile("." + filter.getExtensions()[0]);
 					contentsToFile(file, textArea.getText());
 					return file;
 				}
-				file = chooseFile(false, null, title, 
-						file, 
-						filter);
+				file = chooser == null ? 
+						chooseFile(false, null, title, file, filter) : 
+						chooser.apply(false, null, title, file, filter);
 				if (file != null)
 					contentsToFile(file, textArea.getText());
 			}
 		}
-		if (option == 1)
-			file = chooseFile(true, null, title, 
-					file, 
-					filter);
+		if (option == 1) {				//	Add
+			file = chooser == null ? 
+					chooseFile(true, null, title, file, filter) : 
+					chooser.apply(true, null, title, file, filter);
+		}
 		if (file != null) {
-			String fileName = file.getPath();
+			fileName = file.getPath();
 			if (fileName.indexOf(NEWLINE) < 0) {
-				List<String> list = new ArrayList<String>();
-				list.add(fileName);
-				if (fileNames != null) {
-					excludeFromArray(arrayindexof(fileNames, fileName), fileNames, list);
+				fileNames = lister.apply(fileName, fileNames);
+				try {
+					saver.perform(fileNames, params);
+				} catch (Exception e) {
+					Log.e(TAG, "getFileFromStore", e);
 				}
-				fileNames = list.toArray(new String[0]);
-				contentsToFile(store, join(NEWLINE, fileNames));
 			}
-			if (option > 0)
-				return getFileFromStore(title, storeName, filter);
+			if (!storeEmpty && option > 0) {
+				if (isAvailable(0, params))
+					params[0] = fileName;
+				else
+					params = objects(fileName);
+				return getFileFromStore(type, title, filter, chooser, loader, saver, params);
+			}
 		}
 		return file;
 	}
@@ -971,6 +1000,7 @@ public class SwingUtil
 	
 	public static Container container = null;
 	public static boolean underTest = false;
+	public static Function<String> messRedirection = null;
 
 	public static JLabel messageBox(Container container) {
 		JLabel label = new JLabel("");
@@ -980,22 +1010,35 @@ public class SwingUtil
 		return label;
 	}
 
-	public static boolean question(String text) {
-		return JOptionPane.YES_OPTION == JOptionPane.showConfirmDialog(
-				container, text, 
-				"Question", 
-				JOptionPane.YES_NO_OPTION);
+	public static void message(String text) {
+		if (messRedirection != null)
+			messRedirection.apply(text);
+		else {
+			Container rootContainer = underTest ? container : getRootContainer(container);
+			JLabel mess = findComponent(rootContainer, "mess");
+			if (mess != null) 
+				mess.setText(text);
+			else if (underTest)
+				println(text);
+			else
+				alert(text);
+		}
 	}
 
-	public static void message(String text) {
-		Container rootContainer = underTest ? container : getRootContainer(container);
-		JLabel mess = findComponent(rootContainer, "mess");
-		if (mess != null)
-			mess.setText(text);
-		else if (underTest)
-			println(text);
-		else
-			JOptionPane.showMessageDialog(container, text, "Message", JOptionPane.PLAIN_MESSAGE);
+	public static void alert(String text, Object...params) {
+		JOptionPane.showMessageDialog(
+				container, 
+				text, 
+				param("Alert", 0, params), 
+				JOptionPane.PLAIN_MESSAGE);
+	}
+
+	public static boolean question(String text) {
+		return JOptionPane.YES_OPTION == JOptionPane.showConfirmDialog(
+				container, 
+				text, 
+				"Question", 
+				JOptionPane.OK_CANCEL_OPTION);
 	}
 
 	public static void handleException(Exception e) {
@@ -1014,7 +1057,7 @@ public class SwingUtil
 		if (notNullOrEmpty(path)) {
 			InputStream is = null;
 			try {
-				is = SwingUtil.class.getResourceAsStream("/resources/" + path);
+				is = SwingUtil.class.getResourceAsStream(path);
 				BufferedReader rd = new BufferedReader(new InputStreamReader(is, Charset.forName(encoding)));
 				return readAll(rd);
 			} catch (Exception e) {
@@ -1029,7 +1072,7 @@ public class SwingUtil
 
 	public static ImageIcon iconFrom(String path) {
 		if (notNullOrEmpty(path)) {
-			URL url = SwingUtil.class.getResource("/images/" + path);
+			URL url = SwingUtil.class.getResource(path);
 			return new ImageIcon(url);
 		}
 		else
@@ -1056,7 +1099,7 @@ public class SwingUtil
 
 		public void setType(IActionType type) {
 			this.type = type;
-			putValue(SMALL_ICON, iconFrom(this.type.iconName()));
+			putValue(SMALL_ICON, iconFrom("/images/" + this.type.iconName()));
 			putValue(SHORT_DESCRIPTION, this.type.description());
 //			putValue(MNEMONIC_KEY, KeyEvent.CHAR_UNDEFINED);
 		}
@@ -1142,7 +1185,7 @@ public class SwingUtil
     					((JMenu)container).addSeparator();
         		}
         	}
-        	else if ("+".equals(name)) {
+        	else if ("+".equals(text) || "+".equals(name)) {
         		JMenu menu = param(null, 1, parms);
         		menu.setName(name);
 				container.add(menu);
@@ -1217,7 +1260,7 @@ public class SwingUtil
     }
 	
     public static JMenu newMenu(String name, Object... params) {
-    	return addButtons(new JMenu(name), params);
+		return addButtons(new JMenu(name), params);
 	}
 	
     public static JPopupMenu newPopupMenu(Object... params) {
@@ -1399,6 +1442,10 @@ public class SwingUtil
 		}
 	}
 	
+	public static Font monoSpaced(Object... params) {
+		return new Font("Monospaced", param(0, 0, params), param(12, 1, params));
+	}
+	
 	public static void printContainer(String message, Container container, Object... params) {
 		if (paramBoolean(true, 0, params)) {
 			print(message + " : ");
@@ -1410,5 +1457,165 @@ public class SwingUtil
 				}
 			});
 		}
+	}
+	
+	@SuppressWarnings("rawtypes")
+	public static class Memory extends DefaultComboBoxModel
+	{
+		@SuppressWarnings({ "unchecked" })
+		public static void update(JComboBox cb, Object...params)
+		{
+			Object value = param(null, 0, params);
+			Object value2 = param(null, 1, params);
+			
+			if (value instanceof Boolean) {
+				cb.setModel(new Memory(cb.getName()));
+				if ((Boolean)value && cb.getModel().getSize() > 0) {
+					Object el = cb.getModel().getElementAt(0);
+					cb.getModel().setSelectedItem(el);
+				}
+			}
+			else {
+				boolean add = value != null;
+				Object removal = add ? value : value2;
+				
+				Memory memory = (Memory)cb.getModel();
+				if (memory.contains(removal)) 
+					cb.removeItem(removal);
+				
+				if (add) {
+					cb.addItem(value);
+					cb.setSelectedItem(value);
+				}
+			}
+		}
+		
+		ArrayDeque<Object> deque = null;
+	
+		int capacity = 10;
+		
+		public int getCapacity() {
+			return capacity;
+		}
+	
+		public void setCapacity(int capacity) {
+			this.capacity = capacity;
+		}
+	
+		String name = "";
+	
+		public String getName() {
+			return name;
+		}
+	
+		public void setName(String name) {
+			this.name = name;
+		}
+	
+		public Memory() {
+		}
+		
+		public Memory(String name, Object... params) {
+			this.name = name;
+			
+			capacity = getSetting(name + ".memory.capacity", capacity);
+			ValList values = (ValList) getListSetting(name + ".memory", new ValList());
+			deque = new ArrayDeque<Object>(values);
+	
+			for (Object p : params)
+				addElement(p);
+		}
+		
+		public void contentsChanged() {
+			Object[] values = deque.toArray();
+			putListSetting(name + ".memory", list(values));
+		}
+	
+	    Object selectedObject = null;
+	    
+		@Override
+	    public void setSelectedItem(Object anItem) {
+	    	super.setSelectedItem(anItem);
+	    	selectedObject = anItem;
+	    }
+	    
+		public boolean contains(Object o) {
+			return deque.contains(o);
+		}
+		
+		@Override
+		public int getSize() {
+			return deque.size();
+		}
+	
+		@Override
+		public Object getElementAt(int index) {
+			Object el = null;
+			Iterator<Object> it = deque.iterator();
+			int i = 0;
+			while (i <= index && it.hasNext()) {
+				el = it.next();
+				if (i >= index)
+					break;
+				i++;
+			}
+			return el;
+		}
+	
+		@Override
+		public void addElement(Object obj) {
+			deque.addFirst(obj.toString());
+			while (getSize() > capacity)
+				deque.removeLast();
+			
+			fireIntervalAdded(this, 1, 1);
+	        if ( getSize() == 1 && selectedObject == null && obj != null ) {
+	            setSelectedItem(obj);
+	        }
+	        
+	        contentsChanged();
+	    }
+	
+		@Override
+		public void removeElement(Object obj) {
+			Iterator<Object> it = deque.iterator();
+			int index = 0;
+			while (it.hasNext()) {
+				Object el = it.next();
+				if (obj.equals(el)) {
+					deque.remove(el);
+					fireIntervalRemoved(this, index, index);
+					break;
+				}
+				index++;
+			}
+	        
+	        contentsChanged();
+		}
+	
+		@Override
+		public void insertElementAt(Object obj, int index) {
+			throw new UnsupportedOperationException("Not implemented");
+		}
+	
+		@Override
+		public void removeElementAt(int index) {
+			throw new UnsupportedOperationException("Not implemented");
+		}
+	
+		@Override
+		public void removeAllElements() {
+			throw new UnsupportedOperationException("Not implemented");
+		}
+	
+		@Override
+		public String toString() {
+			Writer writer = format(new StringWriter(), "[");
+			writer = formatAssociation(writer, "name", this.name, 0);
+			writer = formatAssociation(writer, "capacity", this.capacity, 1);
+			writer = formatAssociation(writer, "deque", this.deque, 1);
+			return format(writer, "]").toString();
+		}
+		
 	}
 }

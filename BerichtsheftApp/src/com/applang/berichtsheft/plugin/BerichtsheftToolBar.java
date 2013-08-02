@@ -1,0 +1,200 @@
+package com.applang.berichtsheft.plugin;
+
+import java.awt.Insets;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.File;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Set;
+
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JToolBar;
+
+import org.gjt.sp.jedit.ActionSet;
+import org.gjt.sp.jedit.EditAction;
+import org.gjt.sp.jedit.EditBus;
+import org.gjt.sp.jedit.View;
+import org.gjt.sp.jedit.jEdit;
+import org.gjt.sp.jedit.EditBus.EBHandler;
+import org.gjt.sp.jedit.msg.DynamicMenuChanged;
+import org.gjt.sp.util.Log;
+
+import com.applang.berichtsheft.components.ActionPanel;
+import com.applang.berichtsheft.components.WeatherManager;
+
+import static com.applang.Util.*;
+
+import console.commando.CommandoButton;
+import console.commando.CommandoCommand;
+import console.commando.CommandoDialog;
+
+public class BerichtsheftToolBar extends JToolBar
+{
+	public static void init() {
+		remove();
+		View views[]  = jEdit.getViews();
+
+		for (int i=0; i<views.length; ++i) {
+			create(views[i]);
+		}
+	}
+
+	public static BerichtsheftToolBar create(View view) {
+		BerichtsheftToolBar tb = null;
+		if (jEdit.getBooleanProperty(BerichtsheftPlugin.OPTION_PREFIX + "show-toolbar")) {
+			tb = new BerichtsheftToolBar(view);
+			view.addToolBar(tb);
+			smToolBarMap.put(view, tb);
+		}
+		return tb;
+	}
+
+	public static void remove() {
+		if (commands != null) {
+			jEdit.removeActionSet(commands);
+			commands.removeAllActions();
+		}
+		Iterator<View> itr = smToolBarMap.keySet().iterator();
+		while (itr.hasNext())
+		{
+			View v = itr.next();
+			if (v == null) continue;
+			BerichtsheftToolBar tb = smToolBarMap.get(v);
+			if (tb != null) {
+				v.removeToolBar(tb);
+			}
+		}
+		smToolBarMap.clear();
+	}
+
+	public static void remove(View v) {
+		BerichtsheftToolBar tb = smToolBarMap.get(v);
+		if (tb != null) {
+			v.removeToolBar(tb);
+			smToolBarMap.remove(v);
+			tb.updateButtons(true);
+		}
+	}
+	
+	private static ActionSet commands = new ActionSet("Plugin: Berichtsheft - Commando Commands");
+
+	public static void scanDirectory(String directory)
+	{
+		if (directory != null)
+		{
+			File[] files = new File(directory).listFiles();
+			if (files != null)
+			{
+				for (int i = 0; i < files.length; i++)
+				{
+					File file = files[i];
+					String fileName = file.getAbsolutePath();
+					if (!fileName.endsWith(".xml") || file.isHidden())
+						continue;
+					EditAction action = CommandoCommand.create(fileName);
+					commands.addAction(action);
+				}
+			}
+		}
+	}
+
+	/**
+		A fix for keyboard bindings that are dynamically generated.
+	*/
+	static private void redoKeyboardBindings(ActionSet actionSet)
+	/* Code duplication from jEdit.initKeyBindings() is bad, but
+	   otherwise invoking 'rescan commando directory' will leave
+	   old actions in the input handler
+	*/
+	{
+		EditAction[] ea = actionSet.getActions();
+		for (int i = 0; i < ea.length; ++i)
+		{
+			String shortcut1 = jEdit.getProperty(ea[i].getName() + ".shortcut");
+			if (shortcut1 != null)
+				jEdit.getInputHandler().addKeyBinding(shortcut1, ea[i]);
+
+			String shortcut2 = jEdit.getProperty(ea[i].getName() + ".shortcut2");
+			if (shortcut2 != null)
+				jEdit.getInputHandler().addKeyBinding(shortcut2, ea[i]);
+		}
+	}
+	
+	private BerichtsheftToolBar(View dockable)
+	{
+		view = dockable;
+		setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
+		setFloatable(true);
+		
+		scanDirectory(BerichtsheftPlugin.userCommandDirectory);
+		redoKeyboardBindings(commands);
+		jEdit.addActionSet(commands);
+		Log.log(Log.DEBUG, BerichtsheftToolBar.class, "Loaded " + commands.size() + " actions");
+		
+		updateButtons(false);
+	}
+
+	public void addNotify() {
+		super.addNotify();
+		EditBus.addToBus(this);
+	}
+
+	public void removeNotify() {
+		super.removeNotify();
+		EditBus.removeFromBus(this);
+	}
+
+	@EBHandler
+	public void handleMessage(DynamicMenuChanged msg)
+	{
+		if (BerichtsheftPlugin.MENU.equals(msg.getMenuName()))
+			updateButtons(false);
+	}
+
+	ActionListener actionHandler = new ActionListener()
+	{
+		public void actionPerformed(ActionEvent evt)
+		{
+			new CommandoDialog(view, evt.getActionCommand());
+		}
+	};
+	
+	private void updateButtons(boolean remove)
+	{
+		if (remove) {
+			for (int i = 0; i < getComponentCount(); i++)
+				if (getComponent(i) instanceof ActionPanel) 
+					((ActionPanel)getComponent(i)).finish();
+			return;
+		}
+		removeAll();
+		if (!remove) {
+			Set<String> names = sorted(com.applang.Util.list(commands.getActionNames()));
+			for (String name : names) {
+				CommandoCommand command = (CommandoCommand) commands.getAction(name);
+				CommandoButton button = new CommandoButton(command);
+				button.setActionCommand(command.getName());
+				button.addActionListener(actionHandler);
+				button.setRequestFocusEnabled(false);
+				button.setMargin(new Insets(1, 2, 1, 2));
+				add(button);
+			}
+
+//			WeatherManager actionPanel = new WeatherManager(BerichtsheftPlugin.getTextEditor());
+//			actionPanel.addToContainer(this, null);
+//			add(Box.createGlue());
+		}
+	}
+
+	private View view;
+
+	/**
+	 * For each view, we might add a toolbar.
+	 * This map keeps track of what
+	 * views had toolbars added to them.
+	 */
+	static HashMap<View, BerichtsheftToolBar> smToolBarMap = 
+			new HashMap<View, BerichtsheftToolBar>();
+}

@@ -23,7 +23,17 @@ import org.xml.sax.InputSource;
 import org.xml.sax.XMLReader;
 import org.xml.sax.helpers.XMLReaderFactory;
 
-import com.applang.*;
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.Intent;
+
+import com.applang.BaseDirective;
+import com.applang.Dialogs;
+
+import static com.applang.Util.*;
+import static com.applang.Util2.*;
+import static com.applang.SwingUtil.*;
+import static com.applang.ZipUtil.*;
 
 public class BerichtsheftApp
 {
@@ -32,14 +42,48 @@ public class BerichtsheftApp
 	/**
 	 * @param args
 	 */
-	public static void main(String[] args) {
-		args = new String[] {
+	public static void main(String...args) {
+/*		args = strings(
+				"-settings=/home/lotharla/work/.jedit/jars/Fest/jedit_settings", 
+				"-newview", 
+				"-noserver", 
+				"-nosplash" );
+*/
+		if (nullOrEmpty(args))
+			args = strings(
 				"-settings=.jedit", 
 				"-newview", 
 				"-noserver", 
-				"-nosplash", 
-				"/tmp/.notes" };
+				"-nosplash" );
 		jEdit.main(args);
+	}
+	
+	public static final String NAME = "berichtsheft";
+	public static final String packageName = "com.applang.berichtsheft";
+
+	public static Activity getActivity() {
+		Activity activity = new Activity();
+		activity.setPackageInfo(packageName, "../Berichtsheft");
+		return activity;
+	}
+	
+	public static String prompt(int type, String title, String message, String[] values, String...defaults) {
+		switch (type) {
+		case Dialogs.DIALOG_LIST:
+			return AlertDialog.chooser(getActivity(), message, values, defaults);
+
+		default:
+			AlertDialog.modal = type / 100 < 1;
+			Intent intent = new Intent(Dialogs.PROMPT_ACTION)
+			.putExtra(BaseDirective.TYPE, type % 100)
+			.putExtra(BaseDirective.TITLE, title)
+			.putExtra(BaseDirective.PROMPT, message)
+			.putExtra(BaseDirective.VALUES, values)
+			.putExtra(BaseDirective.DEFAULTS, defaults);
+			getActivity().startActivity(intent);
+			String result = intent.getExtras().getString(BaseDirective.RESULT);
+			return "null".equals(String.valueOf(result)) ? null : result;
+		}
 	}
 	
 	public static String parameters(Object... params) {
@@ -50,16 +94,16 @@ public class BerichtsheftApp
 				"<weekInYear>%d</weekInYear>" +
 				"<dayInWeek>%s</dayInWeek>" +
 			"</params>",
-			Util.paramString("", 0, params),
-			Util.paramInteger(2013, 1, params),
-			Util.paramInteger(1, 2, params),
-			Util.paramString("\\d", 3, params));
+			paramString("", 0, params),
+			paramInteger(2013, 1, params),
+			paramInteger(1, 2, params),
+			paramString("\\d", 3, params));
 	}
 
-	public static boolean manipContent(int phase, String vorlage, String dokument, Util.Job<File> manipulation, Object... params) {
+	public static boolean manipContent(int phase, String vorlage, String dokument, Job<File> manipulation, Object... params) {
 		boolean begin = phase > -1;
 		boolean end = phase < 1;
-		File tempDir = Util2.tempDir(begin, "berichtsheft", "odt");
+		File tempDir = tempDir(begin, BerichtsheftApp.NAME, "odt");
 		try {
 			int unzipped = 0;
 			if (begin) {
@@ -68,8 +112,8 @@ public class BerichtsheftApp
 					throw new Exception(String.format("Vorlage '%s' missing",
 							vorlage));
 				File archive = new File(tempDir, "Vorlage.zip");
-				Util.copyFile(source, archive);
-				unzipped = ZipUtil.unzipArchive(archive, new ZipUtil.UnzipJob(
+				copyFile(source, archive);
+				unzipped = unzipArchive(archive, new UnzipJob(
 						tempDir.getPath()), false);
 				archive.delete();
 			}
@@ -81,7 +125,7 @@ public class BerichtsheftApp
 				File destination = new File(dokument);
 				if (destination.exists())
 					destination.delete();
-				int zipped = ZipUtil.zipArchive(destination, tempDir.getPath(),
+				int zipped = zipArchive(destination, tempDir.getPath(),
 						tempDir.getPath());
 				if (phase == 0 && unzipped > zipped)
 					throw new Exception(
@@ -98,19 +142,19 @@ public class BerichtsheftApp
 			}
 			return true;
 		} catch (Exception e) {
-			SwingUtil.handleException(e);
+			handleException(e);
 			return false;
 		}
 		finally {
 			if (end)
-				Util.deleteDirectory(tempDir);
+				deleteDirectory(tempDir);
 		}
 	}
 
 	public static boolean export(String vorlage, String dokument, final String databaseFilename, Object... params) {
-		final Integer year = Util.paramInteger(2013, 0, params);
-		final Integer weekInYear = Util.paramInteger(1, 1, params);
-		final String dayInWeek = Util.paramString("\\d", 2, params);
+		final Integer year = paramInteger(2013, 0, params);
+		final Integer weekInYear = paramInteger(1, 1, params);
+		final String dayInWeek = paramString("\\d", 2, params);
 		
 		if (dokument.endsWith("_"))
 			dokument = dokument + String.format("%d_%d", year, weekInYear) + ".odt";
@@ -119,7 +163,7 @@ public class BerichtsheftApp
 				0, 
 				vorlage, 
 				dokument, 
-				new Util.Job<File>() {
+				new Job<File>() {
 					public void perform(File content, Object[] params) throws Exception {
 						File _content = new File(content.getParent(), "_content.xml");
 						content.renameTo(_content);
@@ -151,8 +195,8 @@ public class BerichtsheftApp
 			throw new Exception(String.format("TransformerFactory feature '%s' missing", SAXResult.FEATURE));
 	    
 		SAXTransformerFactory saxTFactory = ((SAXTransformerFactory) tFactory);	  
-		TransformerHandler tHandler1 = saxTFactory.newTransformerHandler(new StreamSource(Util2.getSetting("control.xsl", "scripts/control.xsl")));
-		TransformerHandler tHandler2 = saxTFactory.newTransformerHandler(new StreamSource(Util2.getSetting("content.xsl", "scripts/content.xsl")));
+		TransformerHandler tHandler1 = saxTFactory.newTransformerHandler(new StreamSource(getSetting("control.xsl", "scripts/control.xsl")));
+		TransformerHandler tHandler2 = saxTFactory.newTransformerHandler(new StreamSource(getSetting("content.xsl", "scripts/content.xsl")));
 		tHandler2.getTransformer().setParameter("inputfile", inputFilename);
 		tHandler1.setResult(new SAXResult(tHandler2));
 		

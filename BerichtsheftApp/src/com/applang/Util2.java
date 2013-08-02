@@ -1,11 +1,16 @@
 package com.applang;
 
+import java.awt.Graphics2D;
+import java.awt.Image;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
 import java.beans.XMLDecoder;
 import java.beans.XMLEncoder;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -23,7 +28,9 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.regex.MatchResult;
 import java.util.regex.Pattern;
@@ -44,29 +51,28 @@ import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpression;
 import javax.xml.xpath.XPathFactory;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.json.JSONStringer;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-
-import com.applang.Util.Function;
-import com.applang.Util.ValList;
-import com.applang.Util.ValMap;
 
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
-import android.database.Cursor;
 import android.util.Log;
 import android.view.ViewGroup.LayoutParams;
 import android.widget.LinearLayout;
 
 import static com.applang.Util.*;
+import static com.applang.Util1.*;
 import static com.applang.SwingUtil.*;
 
 public class Util2
 {
 	public static class Settings 
 	{
-		static Properties properties = null;
+		public static Properties properties = null;
 		
 		public static void clear() {
 			properties = new Properties();
@@ -77,7 +83,9 @@ public class Util2
 		}
 		
 		public static String defaultFilename() {
-			String dir = relativePath();
+			String dir = System.getProperty("settings.dir", "");
+			if (!notNullOrEmpty(dir))
+				dir = relativePath();
 			File[] array = new File(dir).listFiles();
 	    	for (File file : array) {
 	    		String path = file.getPath();
@@ -85,7 +93,7 @@ public class Util2
 	    			return path;
 	    	}
 	    	String[] parts = dir.split("\\\\|/");
-	    	return parts[parts.length - 1] + ".properties";
+	    	return pathCombine(dir, parts[parts.length - 1] + ".properties");
 		}
 		
 		/**
@@ -109,8 +117,9 @@ public class Util2
 					properties.load(fis);
 					fis.close();
 				}
+			} catch (FileNotFoundException e) {
 			} catch (Exception e) {
-				e.printStackTrace();
+				Log.e(TAG, "Settings.load", e);
 			} finally {
 				if (dec != null)
 					dec.close();
@@ -140,7 +149,7 @@ public class Util2
 		        }
 			} 
 		    catch (Exception e) {
-				e.printStackTrace();
+				Log.e(TAG, "Settings.save", e);
 			} 
 			finally {
 				if (enc != null)
@@ -166,6 +175,28 @@ public class Util2
 		Settings.properties.put(key, value);
 	}
 
+	@SuppressWarnings("rawtypes")
+	public static void putListSetting(String key, Collection value) {
+		try {
+			JSONStringer jsonWriter = new JSONStringer();
+			toJSON(jsonWriter, "", value, null);
+			Settings.properties.put(key, jsonWriter.toString());
+		} catch (Exception e) {
+			Log.e(TAG, "putListSetting", e);
+		}
+	}
+
+	@SuppressWarnings("rawtypes")
+	public static void putMapSetting(String key, Map value) {
+		try {
+			JSONStringer jsonWriter = new JSONStringer();
+			toJSON(jsonWriter, "", value, null);
+			Settings.properties.put(key, jsonWriter.toString());
+		} catch (Exception e) {
+			Log.e(TAG, "putMapSetting", e);
+		}
+	}
+
 	/**
 	 * @param <T>	the type of the value
 	 * @param key	the name under which the setting item is known
@@ -178,7 +209,37 @@ public class Util2
 		try {
 			if (Settings.contains(key))
 				return (T)Settings.properties.get(key);
-		} catch (Exception e) {}
+		} catch (Exception e) {
+			Log.e(TAG, "getSetting", e);
+		}
+		
+		return defaultValue;
+	}
+
+	@SuppressWarnings("rawtypes")
+	public static Collection getListSetting(String key, Collection defaultValue) {
+		try {
+			if (Settings.contains(key)) {
+				String s = (String) Settings.properties.get(key);
+				return (ValList) walkJSON(null, new JSONArray(s), null);
+			}
+		} catch (Exception e) {
+			Log.e(TAG, "getListSetting", e);
+		}
+		
+		return defaultValue;
+	}
+
+	@SuppressWarnings("rawtypes")
+	public static Map getMapSetting(String key, Map defaultValue) {
+		try {
+			if (Settings.contains(key)) {
+				String s = (String) Settings.properties.get(key);
+				return (ValMap) walkJSON(null, new JSONObject(s), null);
+			}
+		} catch (Exception e) {
+			Log.e(TAG, "getMapSetting", e);
+		}
 		
 		return defaultValue;
 	}
@@ -313,22 +374,39 @@ public class Util2
 	}
 
 	public static void print(Object... params) {
-		System.out.print(format(new StringWriter(), params).toString());
+		Object out = param(null, 0, params);
+		if (out instanceof Writer)
+			try {
+				params = arrayreduce(params, 1, params.length - 1);
+				((Writer)out).write(format(new StringWriter(), params).toString());
+			} catch (IOException e) {
+				Log.e(TAG, "print", e);
+			}
+		else
+			System.out.print(format(new StringWriter(), params).toString());
 	}
 
 	public static void println(Object... params) {
-		System.out.println(format(new StringWriter(), params).toString());
+		Object out = param(null, 0, params);
+		if (out instanceof Writer)
+			try {
+				params = arrayreduce(params, 1, params.length - 1);
+				((Writer)out).write(format(new StringWriter(), params).toString() + NEWLINE);
+			} catch (IOException e) {
+				Log.e(TAG, "println", e);
+			}
+		else
+			System.out.println(format(new StringWriter(), params).toString());
 	}
 
 	public static void noprint(Object... params) {}
 
 	public static void noprintln(Object... params) {}
 
-	public static String toString(String description, Object o) {
+	public static String toString(Object o) {
 		String value = o.toString();
 		int brac = value.indexOf('[');
-		return (notNullOrEmpty(description) ? description : "") + 
-				value.substring(brac > -1 ? brac : 0);
+		return value.substring(brac > -1 ? brac : 0);
 	}
 	
 	public static class DataBaseConnect
@@ -583,10 +661,10 @@ public class Util2
 
 	//	used in xsl scripts
 	public static String tempPath(String subdir, String name) {
-		return Util2.pathCombine(Util2.tempDir(false, subdir).getPath(), name);
+		return pathCombine(tempDir(false, subdir).getPath(), name);
 	}
 
-	public static File tempDir(boolean deleteOnExistence, String... subdirs) {
+	public static File tempDir(boolean deleteOnExistence, String...subdirs) {
 		File tempDir = fileOf(arrayextend(subdirs, true, tempPath()));
 		if (!tempDir.mkdirs()) {
 	    	if (deleteOnExistence && deleteDirectory(tempDir))
@@ -595,9 +673,9 @@ public class Util2
 		return tempDir;
 	}
 
-	public static File tempFile(String nameWithExtension, String... subdirs) {
+	public static File tempFile(String nameWithExtension, String...subdirs) {
 		try {
-			File tempDir = fileOf(arrayextend(subdirs, true, tempPath()));
+			File tempDir = tempDir(false, subdirs);
 			String[] parts = nameWithExtension.split("\\.");
 			return File.createTempFile(
 					parts.length > 0 && parts[0].length() > 2 ? parts[0] : "tmp", 
@@ -608,7 +686,7 @@ public class Util2
 		}
 	}
 
-	public static String pathCombine(String... parts) {
+	public static String pathCombine(String...parts) {
 		File combined = fileOf(join(File.separator, parts));
 		if (combined == null)
 			return "";
@@ -654,21 +732,14 @@ public class Util2
 		}
 		return a;
 	}
-    
-    public static ValList contentAuthorities(Context context, String startsWith) {
-    	ValList list = new ValList();
-//    	List<ProviderInfo> providers = context.getPackageManager().queryContentProviders(null, 0, 0);
-//        for (ProviderInfo provider : providers) {
-//            String authority = provider.authority;
-//            if (authority.startsWith(startsWith))
-//            	list.add(authority);
-//        }
-        return list;
-    }
-    
-    public static String resourcePackageName(Activity activity) {
-    	return null;
-    }
+	
+	public static <T> List<T> arrayexclude(int index, T[] array, List<T> list) {
+		if (index > 0)
+			list.addAll(list(Arrays.copyOfRange(array,	0, index)));
+		if (index < array.length - 1)
+			list.addAll(list(Arrays.copyOfRange(array,	index + 1, array.length)));
+		return list;
+	}
 
 	@SuppressWarnings("hiding")
 	public static class Task<Result> extends SwingWorker<Result, Intent>
@@ -732,52 +803,43 @@ public class Util2
 		
 		private Job<Result> followUp;
     }
-	
-	public static ValMap getResultMap(Cursor cursor, Function<String> key, Function<Object> value) {
-		ValMap map = new ValMap();
-		try {
-	    	if (cursor.moveToFirst()) 
-	    		do {
-					String k = key.apply(cursor);
-					Object v = value.apply(cursor);
-					map.put(k, v);
-	    		} while (cursor.moveToNext());
-		} catch (Exception e) {
-            Log.e(TAG, "traversing cursor", e);
-			return null;
-		}
-		finally {
-			cursor.close();
-		}
-		return map;
+
+	public static BufferedImage verticalflip(Image img) {
+		int w = img.getWidth(null);
+		int h = img.getHeight(null);
+		BufferedImage bimg = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g = bimg.createGraphics();
+		g.drawImage(img, 0, 0, w, h, 0, h, w, 0, null);
+		g.dispose();
+		return bimg;
+	}
+	public static BufferedImage horizontalflip(Image img) {
+		int w = img.getWidth(null);
+		int h = img.getHeight(null);
+		BufferedImage bimg = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g = bimg.createGraphics();
+		g.drawImage(img, 0, 0, w, h, w, 0, 0, h, null);
+		g.dispose();
+		return bimg;
+	}
+	public static BufferedImage rotate(Image img, int angle) {
+		int w = img.getWidth(null);
+		int h = img.getHeight(null);
+		BufferedImage bimg = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g = bimg.createGraphics();
+		g.rotate(Math.toRadians(angle), w/2, h/2);
+		g.drawImage(img, 0, 0, null);
+		return bimg;
+	}
+	public static BufferedImage resize(Image img, int newW, int newH) {
+		int w = img.getWidth(null);
+		int h = img.getHeight(null);
+		BufferedImage bimg = new BufferedImage(newW, newH, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g = bimg.createGraphics();
+		g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+		g.drawImage(img, 0, 0, newW, newH, 0, 0, w, h, null);
+		g.dispose();
+		return bimg;
 	}
 
-	public static ValList getRecord(Cursor cursor) {
-		ValList list = new ValList();
-		for (int i = 0; i < cursor.getColumnCount(); i++)
-			list.add(cursor.getString(i));
-		return list;
-	}
-
-	public static <T> List<T> excludeFromArray(int index, T[] array, List<T> list) {
-		if (index > 0)
-			list.addAll(Arrays.asList(Arrays.copyOfRange(array,	0, index)));
-		if (index < array.length - 1)
-			list.addAll(Arrays.asList(Arrays.copyOfRange(array,	index + 1, array.length)));
-		return list;
-	}
-
-	public static LinearLayout linearLayout(Context context, int orientation, int width, int height) {
-        LinearLayout linear = new LinearLayout(context);
-        linear.setOrientation(orientation);
-		linear.setLayoutParams(new LayoutParams(width, height));
-		return linear;
-	}
-
-	public static LinearLayout.LayoutParams linearLayoutParams(int width, int height, Integer... ltrb) {
-    	LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(width, height);
-		layoutParams.setMargins(param(0, 0, ltrb), param(0, 1, ltrb), param(0, 2, ltrb), param(0, 3, ltrb));
-		return layoutParams;
-	}
-    
 }

@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+
+<!DOCTYPE SERVICES SYSTEM "services.dtd">
+
+<SERVICES>
+	<SERVICE CLASS="projectviewer.gui.NodePropertyProvider" NAME="SQLite">
+		new com.applang.berichtsheft.plugin.NodeProperties();
+    </SERVICE>
+    <SERVICE CLASS="console.Shell" NAME="Berichtsheft">
+		new com.applang.berichtsheft.plugin.BerichtsheftShell("Berichtsheft");
+    </SERVICE>
+</SERVICES>

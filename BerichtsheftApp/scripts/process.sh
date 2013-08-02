@@ -12,6 +12,10 @@ raw=/home/lotharla/work/Niklas/Bemerkungen*
 
 case "$1" in
 
+desc)
+	/home/lotharla/gawk-4.0.0/gawk -f "${dir}/descriptions.awk" < "/home/lotharla/work/Niklas/www1.ncdc.noaa.gov/553356121374dat.txt"
+	;;
+
 21nov2012)
 #	datetime(created/1000,'unixepoch','localtime','start of day')
 	let start=1000*$(date +%s -d"Nov 21, 2012 00:00:00")

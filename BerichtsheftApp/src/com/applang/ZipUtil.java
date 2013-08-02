@@ -1,5 +1,7 @@
 package com.applang;
 
+import static com.applang.Util.*;
+
 import java.io.*;
 import java.util.*;
 import java.util.zip.*;
@@ -107,7 +109,7 @@ public class ZipUtil
 	}
 	
 	public static int unzipArchive(File archive, Util.Job<ZipEntry> extract, boolean exclude, String... names) {
-		List<String> filter = Arrays.asList(names);
+		List<String> filter = list(names);
 		
 		int cnt = 0;
 		

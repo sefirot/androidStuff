@@ -1,9 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry excluding="com/applang/Prompt.java" kind="src" path="src"/>
+	<classpathentry excluding="com/applang/Prompt.java|com/applang/_Dialogs.java" kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/3"/>
-	<classpathentry kind="lib" path=".jedit/jedit.jar" sourcepath=".jedit"/>
+	<classpathentry kind="lib" path="/home/lotharla/work/jEdit/jEdit/build/jedit.jar" sourcepath="/home/lotharla/work/jEdit/jEdit">
+		<attributes>
+			<attribute name="javadoc_location" value="file:/home/lotharla/jEdit/5.0.0/doc/api/"/>
+		</attributes>
+	</classpathentry>
 	<classpathentry kind="lib" path=".jedit/jars/serializer.jar"/>
 	<classpathentry kind="lib" path=".jedit/jars/sqlite-jdbc-3.7.8-SNAPSHOT.jar"/>
 	<classpathentry kind="lib" path=".jedit/jars/xalan.jar"/>
@@ -32,15 +36,21 @@
 			<attribute name="javadoc_location" value="file:/home/lotharla/velocity-1.7/docs/api/"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="/home/lotharla/work/Niklas/androidStuff/BerichtsheftApp/.jedit/jars/velocity-tools-generic-2.0.jar" sourcepath="/home/lotharla/velocity-tools-2.0/velocity-tools-2.0-src/src/main/java">
+	<classpathentry kind="lib" path=".jedit/jars/velocity-tools-generic-2.0.jar" sourcepath="/home/lotharla/velocity-tools-2.0/velocity-tools-2.0-src/src/main/java">
 		<attributes>
 			<attribute name="javadoc_location" value="file:/home/lotharla/velocity-tools-2.0/docs/"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="/home/lotharla/sqlite4java-282/sqlite4java.jar" sourcepath="/home/lotharla/sqlite4java-282/src">
+	<classpathentry kind="lib" path=".jedit/jars/sqlite4java.jar" sourcepath="/home/lotharla/sqlite4java-282/src">
 		<attributes>
 			<attribute name="javadoc_location" value="file:/home/lotharla/sqlite4java-282/doc/"/>
 		</attributes>
 	</classpathentry>
+	<classpathentry kind="lib" path=".jedit/jars/ProjectViewer.jar" sourcepath="/ProjectViewer">
+		<attributes>
+			<attribute name="javadoc_location" value="jar:file:/home/lotharla/work/.jedit/jars/ProjectViewer.jar!/javadoc"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="lib" path=".jedit/jars/Console.jar" sourcepath="/Console"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

@@ -1,13 +1,5 @@
 package com.applang.berichtsheft.test;
 
-import java.awt.Component;
-import java.awt.Dimension;
-import java.awt.Point;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
-import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -33,30 +25,12 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.TimeZone;
-import java.util.Vector;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.regex.MatchResult;
 import java.util.regex.Pattern;
 
-import javax.swing.JButton;
 import javax.swing.JCheckBox;
-import javax.swing.JLabel;
-import javax.swing.JMenu;
-import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JPopupMenu;
-import javax.swing.JScrollPane;
-import javax.swing.JTable;
-import javax.swing.JTextArea;
-import javax.swing.event.AncestorEvent;
-import javax.swing.event.AncestorListener;
-import javax.swing.event.PopupMenuEvent;
-import javax.swing.event.TableModelEvent;
-import javax.swing.event.TableModelListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
-import javax.swing.table.DefaultTableModel;
 
 import org.json.JSONObject;
 import org.apache.velocity.VelocityContext;
@@ -85,15 +59,16 @@ import com.applang.UserContext.EvaluationTask;
 import com.applang.Util.Function;
 import com.applang.Util.Job;
 import com.applang.Util.ValMap;
+import com.applang.Util1;
+import com.applang.VelocityUtil.CustomDirective;
 import com.applang.VelocityUtil.Visitor;
-import com.applang.berichtsheft.ui.components.DatePicker;
+import com.applang.berichtsheft.components.ASTViewer;
+import com.applang.berichtsheft.components.DatePicker;
 
 import junit.framework.TestCase;
 
 public class VelocityTests extends TestCase
 {
-    private static final String TAG = VelocityTests.class.getSimpleName();
-    
 	protected static void setUpBeforeClass() throws Exception {
 	}
 
@@ -148,7 +123,7 @@ public class VelocityTests extends TestCase
 	}
 
 	public void testCollection() throws Exception {
-		String[] args = new String[] {"uno","dos","tres"};
+		String[] args = strings("uno","dos","tres");
 		
 		VelocityContext context = new VelocityContext();
 		context.put("args", args);
@@ -218,7 +193,7 @@ public class VelocityTests extends TestCase
 	
 	public void testNodes() {
 		String resName = "hello.vm";
-		final String vm = resourceFrom(resName, "UTF-8");
+		final String vm = resourceFrom("/assets/" + resName, "UTF-8");
 		SimpleNode doc = parse(new StringReader(vm), resName);
 		assertNotNull(doc);
 		Visitor.walk(doc, new Function<Object>() {
@@ -273,14 +248,6 @@ public class VelocityTests extends TestCase
 		int[] endLC = Visitor.endLC(n);
 		assertEquals(1, endLC[0]);
 		assertEquals(endColumn, endLC[1]);
-	}
-	
-	File getVm() {
-		File vm = getFileFromStore("Velocity template", 
-				"/home/lotharla/work/velocity/.vm", 
-				new FileNameExtensionFilter("vm files", "vm"));
-		assertTrue(vm.exists());
-		return vm;
 	}
 	
 	private void printTail(Node node) {
@@ -340,401 +307,11 @@ public class VelocityTests extends TestCase
 	}
 	
 	public void testVisitor() {
-		File vm = getVm();
+		File vm = ASTViewer.getVm();
 		Object[] params = new Object[]{true,true};
 		askParams(params);
 		printAST(contentsFromFile(vm), params);
 	}
-    
-	class ASTModel extends DefaultTableModel
-	{
-		public Vector<Vector<String>> data = new Vector<Vector<String>>();
-		public Vector<String> columns = new Vector<String>();
-		
-		Job<Object[]> checkout = new Job<Object[]>() {
-			public void perform(Object[] objects, Object[] params) throws Exception {
-				int indents = (int) objects[0];
-				Node node = (Node) objects[1];
-				int blocks = Visitor.blockDepth(node);
-    			Token t = (Token) objects[2];
-				Vector<String> row = new Vector<String>();
-				if (detail) {
-					row.addElement(indents + "_" + blocks);
-					row.addElement("-- lost+found --");
-					row.addElement(Visitor.formatLC(Visitor.getBeginToken(t)));
-					row.addElement(t.image);
-				}
-				else {
-					row.addElement(indentedLine(t.image, 
-							indentor, 
-							indents,
-							blocks));
-					row.addElement("");
-				}
-				data.addElement(row);
-				maps.addElement(nodeMap(node, indents, t));
-			}
-		};
-		
-		boolean detail = true;
-		boolean essentials = true;
-		
-		public ASTModel(String text, Object...params) {
-			detail = paramBoolean(detail, 0, params);
-			essentials = paramBoolean(essentials, 1, params);
-			if (detail) {
-				columns.addElement("level");
-				columns.addElement("class");
-				columns.addElement("position");
-				columns.addElement("tokens");
-			}
-			else {
-				columns.addElement("info");
-				columns.addElement("category");
-			}
-	        try {
-				document = RuntimeSingleton.parse( new StringReader(text), "");
-				
-				Visitor.walk(document, new Function<Object>() {
-					public Object apply(Object...params) {
-						Node node = param(null, 0, params);
-						Visitor.visitLostAndFound(checkout, 
-								null, 
-								Visitor.beginLC(node));
-						int indents = paramInteger(0, 1, params);
-						if (!Visitor.isProcessNode(node)) {
-							if (!essentials || Visitor.isEssential.apply(node)) {
-								Vector<String> row = new Vector<String>();
-								int blocks = Visitor.blockDepth(node);
-								if (detail) {
-									row.addElement(indents + "_" + blocks);
-									row.addElement(node.getClass().getSimpleName());
-									row.addElement(Visitor.formatLC(Visitor.beginLC(node)));
-									row.addElement(Visitor.tokens(node));
-								}
-								else {
-									String line = indentedLine(
-											Visitor.nodeInfo(node), 
-											indentor, 
-											indents, 
-											blocks);
-									row.addElement(line);
-									row.addElement(Visitor.nodeCategory(node));
-								}
-								data.addElement(row);
-								maps.addElement(nodeMap(node, indents, null));
-							}
-						}
-						return null;
-					}
-				});
-				Visitor.visitLostAndFound(checkout, 
-						null, 
-						Integer.MAX_VALUE, 0);
-			} catch (Exception e) {
-				fail(e.getMessage());
-			}
-	        setDataVector(data, columns);	
-		}
-		
-		public SimpleNode document = null;
-		public Vector<ValMap> maps = new Vector<ValMap>();
-		
-		@SuppressWarnings("rawtypes")
-		public Vector getColumnIdentifiers() {
-			return this.columnIdentifiers;
-		}
-		
-		public void setColumnWidths(JTable table) {
-			setWidthAsPercentages(table, getColumnIdentifiers().size() > 2 ? 
-					new double[]{0.10, 0.30, 0.10, 0.50} : 
-					new double[]{0.80, 0.20});
-		}
-	}
-	
-	public void testAST() throws Exception {
-		final File vm = getVm();
-		title = vm.getName();
-    	text = contentsFromFile(vm);
-		Object[] params = new Object[]{0,true,true,null};
-		do {
-			switch (showAST(params)) {
-			case 0:
-				params[1] = !(boolean) params[1];
-				break;
-			case 1:
-				params[2] = !(boolean) params[2];
-				break;
-			case 2:
-				break;
-			case 3:
-				break;
-			default:
-				return;
-			}
-		} while (true);
-	}
-	
-	Dimension size = new Dimension(700, 200);
-	String title = null;
-	String text = null;
-	ValMap map = null;
-	int manip = -1;
-
-	private int showAST(final Object[] params) {
-//		println(params);
-		manip = (int)params[0];
-		boolean detail = (boolean)params[1];
-		boolean essentials = (boolean)params[2];
-		map = params[3] instanceof ValMap ? (ValMap) params[3] : null;
-		final JLabel mess = new JLabel();
-		mess.setName("mess");
-		if (manip > 0) {
-			final JTextArea textArea = new JTextArea();
-    		textArea.setEditable(true);
-    		textArea.setPreferredSize(size);
-    		String title;
-    		int optionType = JOptionPane.DEFAULT_OPTION;
-    		switch (manip) {
-			case 1:
-				title = String.format("Evaluation : '%s'", this.title);
-	    		UserContext.setupVelocity(null, true);
-	    		textArea.setText(evaluate(new UserContext(), text, TAG));
-				break;
-			default:
-				title = String.format("%s : '%s'", 
-						manip == 2 ? "Insert" :
-							(manip == 3 ? "Delete" : "Modify"), 
-						this.title);
-				optionType = JOptionPane.OK_CANCEL_OPTION;
-				textArea.setText(text);
-				textArea.addAncestorListener(new AncestorListener() {
-					public void ancestorRemoved(AncestorEvent event) {
-					}
-					public void ancestorMoved(AncestorEvent event) {
-					}
-					public void ancestorAdded(AncestorEvent event) {
-						if (map != null) {
-							Object node = map.get(NODE);
-							int[] span = Visitor.span(node);
-							span = getTextOffsets(text, span);
-							textArea.setSelectionStart(span[0]);
-							if (manip == 2)
-								textArea.setSelectionEnd(span[0]);
-							else
-								textArea.setSelectionEnd(span[1] + 1);
-							println(textArea.getSelectedText());
-						}
-						textArea.requestFocusInWindow();						
-					}
-				});
-				break;
-			}
-			container = new JPanel();
-			container.add(new JScrollPane(textArea));
-			container.add(mess);
-			int option = JOptionPane.showOptionDialog(null, 
-					container, 
-					title, 
-					optionType,
-					JOptionPane.PLAIN_MESSAGE, 
-					null, 
-					null, null);
-			if (map != null) {
-				if (option == JOptionPane.OK_OPTION)
-					text = textArea.getText();
-				params[3] = null;
-			}
-			params[0] = 0;
-			return option < 0 ? option : 2;
-		}
-		else {
-			JButton eval = new JButton("Evaluation");
-			Object[] options = new Object[] {
-				detail ? "Info" : "Detail",
-				essentials ? "all" : "essentials",
-				"Update", 
-				eval, 
-			};
-			eval.setMnemonic(KeyEvent.VK_V);
-			eval.addActionListener(new ActionListener() {
-				public void actionPerformed(ActionEvent e) {
-					params[0] = 1;
-					showAST(params);
-				}
-			});
-			final ASTModel model = new ASTModel(text, detail, essentials);
-			final JTable table = new JTable(model);
-			model.setColumnWidths(table);
-			table.setPreferredScrollableViewportSize(size);
-			table.addComponentListener(new ComponentAdapter() {
-				@Override
-				public void componentResized(ComponentEvent e) {
-					size = table.getSize();
-				}
-			});
-			JPopupMenu popupMenu = newPopupMenu(
-				menuRecord("+", INSERT, ActionType.INSERT, newMenu(ActionType.INSERT.description())),
-				menuRecord("delete", DELETE, ActionType.DELETE, new ManipAction(ActionType.DELETE, params)),
-				menuRecord("modify", MODIFY, ActionType.MODIFY, new ManipAction(ActionType.MODIFY, params)) 
-			);
-			table.addMouseListener(new PopupAdapter(popupMenu));
-			model.addTableModelListener(new TableModelListener() {
-				public void tableChanged(TableModelEvent e) {
-					int column = e.getColumn();
-					switch (e.getType()) {
-					case TableModelEvent.UPDATE:
-				        if ("tokens".equals(model.columns.get(column))) {
-				        	int row = e.getFirstRow();
-				        	ValMap map = model.maps.get(row);
-				        	Node node = (Node) map.get(NODE);
-				        	Object value = model.getValueAt(row, column);
-							Visitor.update(node, value);
-				        }
-						break;
-					}
-				}
-		    });
-			String title = String.format("AST (%d rows) : '%s' ", model.getDataVector().size(), this.title);
-			int option = showResizableDialog(table, new Function<Integer>() {
-				public Integer apply(Object...params) {
-					container = new JPanel();
-					container.add((Component)params[0]);
-					container.add(mess);
-					return JOptionPane.showOptionDialog(null, 
-							container, 
-							(String)params[1], 
-							JOptionPane.DEFAULT_OPTION, 
-							JOptionPane.PLAIN_MESSAGE, 
-							null, 
-							(Object[])params[2], params[3]);
-				}
-			}, title, options, null);
-			if (manip < 1)
-				params[3] = Visitor.tail(model.document);
-			return option;
-		}
-	}
-	
-	ValMap map() {
-		ValMap map = null;
-    	if (popupEvent != null) {
-			JTable table = (JTable) popupEvent.getComponent();
-			if (table != null) {
-				Point pt = new Point(popupEvent.getX(), popupEvent.getY());
-				int row = table.rowAtPoint(pt);
-				ASTModel model = (ASTModel) table.getModel();
-				map = model.maps.get(row);
-			}
-		}
-		return map;
-	}
-	
-	Object[] menuRecord(final String name, final int actionIdent, ActionType type, Object action) {
-		if (action instanceof JMenu) {
-			JMenu menu = (JMenu) action;
-			for (String key : UserContext.directives().keySet()) {
-				menu.add(new JMenuItem()).setAction(new ManipAction(key));
-			}
-		}
-		return new Object[] {type.description(), action, 
-			name, "", null, null, null, null, 
-	        new PopupMenuAdapter() {
-	        	@Override
-	    		public void popupMenuWillBecomeVisible(PopupMenuEvent e) {
-	    			JPopupMenu popup = (JPopupMenu)e.getSource();
-	    			printContainer("popupMenuWillBecomeVisible", popup, false);
-	    			ValMap map = map();
-					if (map != null) {
-						boolean enabled = isPossible(actionIdent, map);
-						String s = name;
-						if ("+-".indexOf(s) > -1)
-							s = "\\" + s;
-						JMenuItem menuItem = findComponent(popup, s);
-						menuItem.setEnabled(enabled);
-						if (menuItem instanceof JMenu) {
-							JMenu menu = (JMenu) menuItem;
-							final Map<String, String> anweisungen = UserContext.directives(map);
-							for (int i = 0; i < menu.getItemCount(); i++) {
-								JMenuItem item = menu.getItem(i);
-								String text = item.getText();
-								if (!anweisungen.containsKey(text))
-									item.setEnabled(false);
-							}
-						}
-					}
-	    		}
-	        }
-		};
-	}
-
-	enum ActionType implements IActionType
-	{
-		DELETE		(0, "minus_16x16.png", "delete"), 
-		INSERT		(1, "plus_16x16.png", "insert"), 
-		MODIFY		(2, "bausteine_16x16.png", "modify"), 
-		SET			(3, "", "set"), 
-		FOREACH		(4, "", "foreach"), 
-		ACTIONS		(9, "", "Actions"); 		//	needs to stay last !
-		
-	    private final String iconName;
-	    private final String toolTip;
-	    private final int index;   
-	    
-	    ActionType(int index, String iconName, String toolTip) {
-	    	this.index = index;
-	        this.iconName = iconName;
-	        this.toolTip = toolTip;
-	    }
-
-	    public int index() { return index; }
-	    public String iconName()   { return iconName; }
-	    public String description() { return toolTip; }
-	}
-    
-    class ManipAction extends Action
-    {
-    	Object[] params = null;
-    	
-		public ManipAction(ActionType type, Object...params) {
-			super(type);
-			this.params = params;
-        }
-        
-		public ManipAction(String text) {
-			super(text);
-        }
-        
-        @Override
-        protected void action_Performed(ActionEvent ae) {
-        	ActionType t = (ActionType)getType();
-        	map = map();
-    		if (map != null) {
-				Object node = map.get(NODE);
-				println(Visitor.tokens((Node)map.get(NODE)));
-				if (Visitor.nodeGroup(node) == DIRECTIVE) {
-					params[3] = map;
-					switch (t) {
-					case FOREACH:
-					case INSERT:
-						params[0] = 2;
-						showAST(params);
-						break;
-					case DELETE:
-						params[0] = 3;
-						showAST(params);
-						break;
-					case MODIFY:
-						params[0] = 4;
-						showAST(params);
-						break;
-					default:
-						break;
-					}
-				}
-			}
-        }
-    }
 	
 	public void testUpdateAST() throws Exception {
 		String string = "#set($hello='Hello')" +
@@ -765,11 +342,11 @@ public class VelocityTests extends TestCase
 		
 		SimpleNode document = parse(new StringReader(string), "");
 		String[] array = VelocityTests.listReferences(document);
-		assertTrue(Arrays.asList(array).contains("$ref_R"));
-		assertTrue(Arrays.asList(array).contains("$arg_L"));
+		assertTrue(list(array).contains("$ref_R"));
+		assertTrue(list(array).contains("$arg_L"));
 		String arg1 = "$xxx";
 		String arg2 = "zzz";
-		println(string = VelocityTests.updateReferences(document, new String[] {arg1,arg2}));
+		println(string = VelocityTests.updateReferences(document, strings(arg1,arg2)));
 		assertTrue(string.contains(arg1));
 		assertTrue(string.contains(arg2));
 		assertNull(parse(new StringReader(string), ""));
@@ -991,7 +568,7 @@ public class VelocityTests extends TestCase
 		JSONObject json = new JSONObject(jsonText);
 //		println(json.toString(4));
 		
-		Object openweather = walkJSON(null, json, new Function<Object>() {
+		Object openweather = Util1.walkJSON(null, json, new Function<Object>() {
 			public Object apply(Object...params) {
 				Object[] path = param(null, 0, params);
 				Object value = param(null, 1, params);
@@ -1023,7 +600,7 @@ public class VelocityTests extends TestCase
 		JSONObject json = new JSONObject(jsonText);
 //		println(json.toString(4));
 		
-		Object openweather = walkJSON(null, json, new Function<Object>() {
+		Object openweather = Util1.walkJSON(null, json, new Function<Object>() {
 			public Object apply(Object...params) {
 				Object[] path = param(null, 0, params);
 				Object value = param(null, 1, params);
@@ -1057,7 +634,7 @@ public class VelocityTests extends TestCase
 	    String text = readFromUrl(url, "UTF-8");
 		println(text);
 		
-		walkJSON(null, new JSONObject(text), new Function<Object>() {
+		Util1.walkJSON(null, new JSONObject(text), new Function<Object>() {
 			public Object apply(Object...params) {
 				Object[] path = param(null, 0, params);
 				Object value = param(null, 1, params);
@@ -1106,13 +683,13 @@ public class VelocityTests extends TestCase
 	{
 	    public CursorDirective() {
 			super();
-	        arguments = new String[] {"message_S","variable_R",
+	        arguments = strings("message_S","variable_R",
 	        		"uri_U",
 	        		"projection_L",
 	        		optionalize("selection_S"),
 	        		optionalize("selectionArgs_L"),
 	        		optionalize("sortOrder_S"),
-	        		optionalize("flag_B")};
+	        		optionalize("flag_B"));
 		}
 		@Override
 		public String getName() {
@@ -1128,6 +705,57 @@ public class VelocityTests extends TestCase
 				ParseErrorException, MethodInvocationException {
 			return false;
 		}
+	}
+	
+	/**
+	 * A directive to prompt the user for a value.
+	 */
+	class Prompt extends CustomDirective
+	//    implements VelocityConstants
+	{
+	   /**
+	    * Return name of this directive.
+	    */
+	   public String getName()
+	   {
+	      return "prompt";
+	   }
+	
+	   /**
+	    * Return type of this directive.
+	    */
+	   public int getType()
+	   {
+	      return LINE;
+	   }
+	
+	   /**
+	    * Prompt the user for a value.
+	    */
+	   public boolean render(InternalContextAdapter context, Writer writer, Node node) throws MethodInvocationException
+	   {
+	      Object prompt = getRequiredValue(node, 0, "label", context);
+	      if (prompt == null) {
+	         return false;
+	      }
+	      String key = getRequiredVariable(node, 1, "key");
+	      Object defaultValue = getOptionalValue(node, 2, context);
+	      boolean overrideContext = getOptionalBoolean(node, 3, context);
+	
+	      if (!overrideContext && context.getInternalUserContext().get(key) != null) {
+	         return true;
+	      }
+	
+//	      JEditTextArea textArea = (JEditTextArea) context.get(TEXT_AREA);
+	      Object value = JOptionPane.showInputDialog(null, prompt,
+	                                                 "Velocity Prompt",
+	                                                 JOptionPane.QUESTION_MESSAGE,
+	                                                 null, null, defaultValue);
+	      if (value != null) {
+	         context.getInternalUserContext().put(key, value);
+	      }
+	      return true;
+	   }
 	}
 	
 	public void testAssemble() throws Exception {

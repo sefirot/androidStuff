@@ -1,39 +1,59 @@
 package com.applang.berichtsheft.test;
 
 import static com.applang.Util.*;
+import static com.applang.Util1.*;
 import static com.applang.Util2.*;
 import static com.applang.SwingUtil.*;
-import static com.applang.VelocityUtil.*;
 
 import java.awt.BorderLayout;
-import java.awt.Button;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Random;
  
+import javax.swing.AbstractAction;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.SwingWorker;
 
 import org.json.JSONArray;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.parser.Parser;
 
-import android.app.Activity;
-import android.content.Intent;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.content.DialogInterface.OnClickListener;
+import android.net.Uri;
+import android.util.Log;
+import android.widget.TextView;
 
 import com.applang.BaseDirective;
 import com.applang.Dialogs;
 import com.applang.UserContext.EvaluationTask;
+import com.applang.berichtsheft.BerichtsheftApp;
+import com.applang.berichtsheft.R;
+import com.applang.berichtsheft.components.DataView;
+import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 
 import junit.framework.TestCase;
 
@@ -41,10 +61,6 @@ public class HelperTests extends TestCase {
 
     private static final String TAG = HelperTests.class.getSimpleName();
     
-	public HelperTests(String name) {
-		super(name);
-	}
-
 	protected static void setUpBeforeClass() throws Exception {
 	}
 
@@ -63,10 +79,54 @@ public class HelperTests extends TestCase {
 	private JButton cancel;
 	private JButton start;
 	private JTextField textField;
-	 
-	class NumberWorker extends Task<String> {
+	
+	public void testBeanShell() throws Exception {
+		String path = ".jedit/console/commando/android.xml";
+		File file = new File(path);
+		assertTrue(fileExists(file));
+		String xml = contentsFromFile(file);
+		Document doc = Jsoup.parse(xml, "", Parser.xmlParser());
+		for (Element elem : doc.getElementsByTag("COMMAND")) {
+			File tempFile = BerichtsheftPlugin.getTempFile("script.bsh");
+			contentsToFile(tempFile, 
+					String.format("void doSomethingUseful() {\n" +
+							"    void run() {\n" +
+							"        view = jEdit.getLastView();\n" +
+							"		 %s\n" +
+							"    }\n" +
+							"    if(jEdit.getLastView() == null)\n" +
+							"        VFSManager.runInAWTThread(this);\n" +
+							"    else\n" +
+							"        run();\n" +
+							"}\n" +
+							"doSomethingUseful();", elem.text()));
+			BerichtsheftApp.main("-noserver",
+					"-nosplash",
+					"-nosettings",
+					String.format("-run=%s", tempFile.getPath()));
+		}
+	}
+
+	public void testProcess() throws Exception {
+    	ProcessBuilder builder = new ProcessBuilder(
+        		"awk", 
+        		"'NR > 1 {print $1}'", "scripts/descriptions.awk");
+        builder.directory(new File(System.getProperty("user.dir")));
+        builder.redirectErrorStream(true);
+        Process process = builder.start();
+        
+        OutputStream os = process.getOutputStream();
+        OutputStreamWriter osw = new OutputStreamWriter(os);
+        osw.close();
+        
+        InputStream is = process.getInputStream();
+        BufferedReader bisr = new BufferedReader(new InputStreamReader(is, Charset.forName("UTF-8")));
+        bisr.close();
+	}
+	
+	class RandomWorker extends Task<String> {
  
-		public NumberWorker(Job<String> followUp, Object... params) {
+		public RandomWorker(Job<String> followUp, Object... params) {
 			super(null, followUp, params);
 		}
 
@@ -95,10 +155,11 @@ public class HelperTests extends TestCase {
  
 	}
 	
+	@SuppressWarnings("unused")
 	private void start() {
 		start.setEnabled(false);
 		textField.setText("");
-		worker = new NumberWorker(new Job<String>() {
+		worker = new RandomWorker(new Job<String>() {
 			public void perform(String message, Object[] params) throws Exception {
 				textField.setText(message);
 				worker = null;
@@ -117,7 +178,7 @@ public class HelperTests extends TestCase {
 				"#set($key=\"\")\n" +
 				"#prompt(\"label\",$key,\"value\")\n" +
 				"$key";
-		worker = new EvaluationTask(new Activity(), null, null, null, new Job<Object>() {
+		worker = new EvaluationTask(BerichtsheftApp.getActivity(), null, null, null, new Job<Object>() {
 			public void perform(Object s, Object[] params) throws Exception {
 				textField.setText(s.toString());
 				worker = null;
@@ -132,7 +193,7 @@ public class HelperTests extends TestCase {
 	public void testSwingworker() throws Exception {
 		showFrame(null, 
 				"test", 
-	    		new ComponentFunction<Component[]>() {
+	    		new UIFunction() {
 					@Override
 					public Component[] apply(Component comp, Object[] parms) {
 						JFrame frame = (JFrame)comp;
@@ -158,7 +219,7 @@ public class HelperTests extends TestCase {
 						buttons.add(cancel);
 						panel.add(buttons);
 				 
-						ImageIcon image = iconFrom("spinner.gif");
+						ImageIcon image = iconFrom("/images/spinner.gif");
 						label = new JLabel(image);
 						JPanel answer = new JPanel(new GridLayout(1, 2));
 						textField = new JTextField("");
@@ -175,19 +236,49 @@ public class HelperTests extends TestCase {
 						return null;
 					}
 	    		},
-	    		new ComponentFunction<Component[]>() {
-					@Override
+	    		new UIFunction() {
 					public Component[] apply(Component comp, Object[] parms) {
 						return null;
 					}
 	    		},
-	    		new ComponentFunction<Component[]>() {
-					@Override
+	    		new UIFunction() {
 					public Component[] apply(Component comp, Object[] parms) {
 						return null;
 					}
 	    		},
 	    		true);
+	}
+	
+	public void testOptionDialogModeless() {
+		showFrame(null, "", 
+			new UIFunction() {
+				public Component[] apply(Component comp, Object[] parms) {
+					final JFrame frame = (JFrame) comp;
+					JButton btn = new JButton("modeless");
+					btn.addActionListener(new ActionListener() {
+						public void actionPerformed(ActionEvent e) {
+							showOptionDialog(frame, "modeless", 
+									"test",
+									Modality.ALWAYS_ON_TOP + JOptionPane.DEFAULT_OPTION, 
+									JOptionPane.PLAIN_MESSAGE,
+									null, 
+									objects("opt1","opt2"), null, 
+									null, 
+									new Function<Boolean>() {
+										public Boolean apply(Object... params) {
+											println("dialogResult " + dialogResult);
+											return question("keep this dialog");
+										}
+									}
+							);
+						}
+					});
+					return components(btn);
+				}
+			}, 
+			null, 
+			null, 
+			true);
 	}
 	
 	public void testInputDialog() throws Exception {
@@ -201,38 +292,6 @@ public class HelperTests extends TestCase {
 					null, null, value);
 			println(dialogResult, String.valueOf(result));
 		}
-	}
-	
-	public void testOptionDialogModeless() {
-		showFrame(null, "", 
-			new ComponentFunction<Component[]>() {
-				public Component[] apply(Component comp, Object[] parms) {
-					final JFrame frame = (JFrame) comp;
-					Button btn = new Button("modeless");
-					btn.addActionListener(new ActionListener() {
-						public void actionPerformed(ActionEvent e) {
-							showOptionDialog(frame, "modeless", 
-									"test",
-									JOptionPane.DEFAULT_OPTION + 4, 
-									JOptionPane.PLAIN_MESSAGE,
-									null, 
-									new Object[]{"opt1","opt2"}, null, 
-									null, 
-									new Function<Boolean>() {
-										public Boolean apply(Object... params) {
-											println("dialogResult " + dialogResult);
-											return question("keep this dialog");
-										}
-									}
-							);
-						}
-					});
-					return new Component[] {btn};
-				}
-			}, 
-			null, 
-			null, 
-			true);
 	}
 	
 	public void testOptionDialog() throws Exception {
@@ -252,15 +311,92 @@ public class HelperTests extends TestCase {
 		}
 	}
 	
-	public void testDialogs() {
+	public void testSingleChoice() {
+		println(JOptionPane.showInputDialog(null, "states", "united", 
+				JOptionPane.PLAIN_MESSAGE,
+	            null,
+	            getStateStrings(), null));
+	}
+	
+	@SuppressWarnings("deprecation")
+	public void testMultiChoice() {
+		@SuppressWarnings({ "rawtypes", "unchecked" })
+    	JList list = new JList(getStateStrings());
+		JOptionPane.showMessageDialog(null, list, "united", 
+				JOptionPane.PLAIN_MESSAGE);
+		println(Arrays.toString(list.getSelectedValues()));
+	}
+	
+	public void testTiming() throws Exception {
+		showFrame(null, "frame",
+				new UIFunction() {
+					public Component[] apply(final Component comp, Object[] parms) {
+						return components(new JButton(new AbstractAction("dialog") {
+							public void actionPerformed(ActionEvent ev) {
+								showDialog(comp, comp, "dialog", 
+										new UIFunction() {
+											public Component[] apply(final Component comp, Object[] parms) {
+												return components(new JButton(new AbstractAction("timing") {
+													public void actionPerformed(ActionEvent e) {
+														waiting(comp, new ComponentFunction<Void>(){
+															public Void apply(Component comp, Object[] parms) {
+																Timing timing = param(null, 0, parms);
+																while (timing.current() < 1000) {
+																	println(timing.current(), comp);
+																	delay(100);
+																}
+																return null;
+															}
+														});
+													}
+												}));
+											}
+										}, 
+										null, 
+										null, 
+										Modality.NONE);
+							}
+						}));
+					}
+				}, null, null, true);
+	}
+	
+	public void testDialogFeed() throws Exception {
+		final int id = 1;
+		final AlertDialog dialog = new AlertDialog.Builder(BerichtsheftApp.getActivity(), false)
+				.setView(new TextView(null, true).setId(id))
+				.setNeutralButton(R.string.button_close, new OnClickListener() {
+					public void onClick(DialogInterface dialog, int which) {
+						dialog.dismiss();
+					}
+				})
+				.create();
+		dialog.open();
+		TextView tv = (TextView) dialog.findViewById(id);
+		tv.getComponent().setPreferredSize(new Dimension(100,100));
+		tv.append("Random\n");
+		show_Frame("",
+				new AbstractAction("random") {
+					@Override
+					public void actionPerformed(ActionEvent ev) {
+						try {
+							Writer out = dialog.feed(id);
+							out.write( String.format("%f%n", Math.random()) );
+							out.close();
+						} catch (Exception e) {
+							Log.e(TAG, "", e);
+						}
+					}
+				});
+	}
+	
+	public void testPrompts() {
 		BaseDirective.setOptions(-1);
-		Intent intent = new Intent(Dialogs.PROMPT_ACTION)
-				.putExtra(BaseDirective.TYPE, Dialogs.DIALOG_LIST)
-				.putExtra(BaseDirective.VALUES, 
-						BaseDirective.options.keySet().toArray(new String[0]));
-		new Activity().startActivity(intent);
-		String result = intent.getExtras().getString(BaseDirective.RESULT);
-		if ("null".equals(result))
+		String result = BerichtsheftApp.prompt(
+				Dialogs.DIALOG_LIST, 
+				"", "Prompts", 
+				toStrings(BaseDirective.options.keySet()));
+		if (result == null)
 			return;
 		
 		int type = (int) BaseDirective.options.get(result);
@@ -278,6 +414,8 @@ public class HelperTests extends TestCase {
 			break;
 		case Dialogs.DIALOG_YES_NO_MESSAGE:
 			prompt = "macht nix";
+			values.add("ja");
+			values.add("nein");
 			break;
 		case Dialogs.DIALOG_YES_NO_LONG_MESSAGE:
 			prompt = "macht nix";
@@ -290,30 +428,66 @@ public class HelperTests extends TestCase {
 		case Dialogs.DIALOG_SINGLE_CHOICE:
 		case Dialogs.DIALOG_MULTIPLE_CHOICE:
 			prompt = "United";
-			values.addAll(Arrays.asList(getStateStrings()));
+			values.addAll(list(getStateStrings()));
 			break;
 		default:
 			break;
 		}
-		intent = new Intent(Dialogs.PROMPT_ACTION)
-				.putExtra(BaseDirective.TYPE, type)
-				.putExtra(BaseDirective.TITLE, result)
-				.putExtra(BaseDirective.PROMPT, prompt)
-				.putExtra(BaseDirective.VALUES, values.toArray(new String[0]));
-		new Activity().startActivity(intent);
-		result = intent.getExtras().getString(BaseDirective.RESULT);
-		println(result);
-		testDialogs();
+		result = BerichtsheftApp.prompt(type, result, prompt, toStrings(values));
+		println(String.valueOf(result));
+		testPrompts();
     }
 
     public static String[] getStateStrings() {
     	try {
-			String res = resourceFrom("states.json", "UTF-8");
+			String res = resourceFrom("/res/raw/states.json", "UTF-8");
 			return ((ValList) walkJSON(null, new JSONArray(res), null)).toArray(new String[0]);
 		} catch (Exception e) {
 			fail(e.getMessage());
 			return null;
 		}
 	}
+    
+    Uri uri = getConstantByName("com.applang.provider.WeatherInfo", "Weathers", "CONTENT_URI");
 
+    public void testDataView() throws Exception {
+    	String propFileName = "/tmp/.properties";
+    	Settings.load(propFileName);
+		final DataView dv = new DataView(BerichtsheftApp.getActivity());
+		dv.askUri(null, null);
+		uri = dv.getUri();
+    	Deadline.wait = 2000;
+    	showFrame(null, uri.toString(), new UIFunction() {
+    		public Component[] apply(final Component comp, Object[] parms) {
+    			dv.load(uri);
+    			return components(dv);
+    		}
+    	}, null, null, true);
+    	Settings.save(propFileName);
+    }
+
+    public void testFileView() throws Exception {
+    	
+    }
+	
+	public static void show_Frame(Object...params) {
+		final javax.swing.Action action = param(null, 1, params);
+		showFrame(null, param("", 0, params),
+				new UIFunction() {
+					public Component[] apply(final Component comp, Object[] parms) {
+						return components(action != null ? 
+								new JButton(action) : 
+								new JButton(new AbstractAction("Dispose") {
+									@Override
+									public void actionPerformed(ActionEvent ev) {
+										pullThePlug((JFrame)comp);
+									}
+								}));
+					}
+				}, null, null, true);
+	}
+	
+	public static void main(String...args) {
+		HelperTests.show_Frame("", null);
+	}
 }
