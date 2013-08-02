@@ -4,8 +4,6 @@ import java.io.Reader;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -69,9 +67,6 @@ import org.apache.velocity.runtime.parser.node.ASTprocess;
 import org.apache.velocity.runtime.parser.node.Node;
 import org.apache.velocity.runtime.parser.node.SimpleNode;
 import org.apache.velocity.runtime.visitor.BaseVisitor;
-import org.json.JSONArray;
-import org.json.JSONObject;
-import org.json.JSONStringer;
 
 import android.util.Log;
 
@@ -81,10 +76,6 @@ public class VelocityUtil
 {
 	public static final Character VRI = '$';
 	public static final Character VDI = '#';
-	
-	public static final String[] BRACKETS = {"[", "]"};
-	public static final String[] PARENS = {"(", ")"};
-	public static final String[] BRACES = {"{", "}"};
 	
 	public static final Character ARGUMENT_TYPER = '_';
 	public static final String[] ARGUMENT_SEPARATORS = {", ", " "};
@@ -919,83 +910,6 @@ public class VelocityUtil
 		}
 	}
 
-	@SuppressWarnings("unchecked")
-	public static Object walkJSON(Object[] path, Object json, Function<Object> filter, Object...params) throws Exception {
-		Object object = json;
-		
-		if (path == null)
-			path = new Object[0];
-		
-		if (json instanceof JSONObject) {
-			JSONObject jo = (JSONObject) json;
-			ValMap map = new ValMap();
-			Iterator<String> it = jo.keys();
-			while (it.hasNext()) {
-				String key = it.next();
-				Object value = jo.get(key);
-				Object[] path2 = arrayappend(path, key);
-				String string = value.toString();
-				if (string.startsWith(BRACKETS[0])) 
-					value = walkJSON(path2, jo.getJSONArray(key), filter, params);
-				else if (string.startsWith(BRACES[0]))
-					value = walkJSON(path2, jo.getJSONObject(key), filter, params);
-				else
-					value = walkJSON(path2, value, filter, params);
-				map.put(key, value);
-			}
-			object = map;
-		}
-		else if (json instanceof JSONArray) {
-			JSONArray ja = (JSONArray) json;
-			ValList list = new ValList();
-			for (int i = 0; i < ja.length(); i++) 
-				list.add(walkJSON(arrayappend(path, i), ja.get(i), filter, params));
-			object = list;
-		}
-		else if (filter != null)
-			object = filter.apply(path, json, params);
-		
-		return object;
-	}
-
-	public static Object member(Object[] path, Object object) {
-		for (int i = 0; i < path.length; i++) {
-			if (path[i] instanceof Integer) 
-				object = ((ValList)object).get((Integer) path[i]);
-			else
-				object = ((ValMap)object).get(path[i].toString());
-		}
-		return object;
-	}
-
-	@SuppressWarnings("rawtypes")
-	public static void toJSON(JSONStringer stringer, String string, Object object, Function<Object> filter, Object...params) throws Exception {
-		if (notNullOrEmpty(string))
-			stringer.key(string);
-		
-		if (object instanceof Map) {
-			stringer.object();
-			Map map = (Map) object;
-			for (Object key : map.keySet()) 
-				toJSON(stringer, key.toString(), map.get(key), filter, params);
-			stringer.endObject();
-		}
-		else if (object instanceof Collection) {
-			stringer.array();
-			Iterator it = ((Collection) object).iterator();
-			while (it.hasNext()) 
-				toJSON(stringer, "", it.next(), filter, params);
-			stringer.endArray();
-		}
-		else {
-			if (filter != null)
-				object = filter.apply(object, params);
-			
-			if (object != null) 
-				stringer.value(object);
-		}
-	}
-	
 	@SuppressWarnings("rawtypes")
 	public static String[] arrayOfStrings(Object value) {
 		Object[] values;
@@ -1059,7 +973,7 @@ public class VelocityUtil
 	public static final Pattern CONTENT_PATTERN = Pattern.compile(".+");
 	public static final String END = "end";
 	public static final Pattern END_PATTERN = Pattern.compile(VDI_PATTERN + enclose("\\{?", END, "\\}?"));
-	public static final String BLOCK_END = UNKNOWN + VDI + enclose(BRACES[0], END, BRACES[1]);
+	public static final String BLOCK_END = UNKNOWN + VDI + enclose(Util1.BRACES[0], END, Util1.BRACES[1]);
 	public static final Pattern DIRECTIVE_PATTERN = 
 			Pattern.compile(VDI_PATTERN + "\\!?\\{?(" + IDENTIFIER_PATTERN + ")\\}?" +
 					"\\(\\s*" + PARENS_TERM + "\\s*\\)");
@@ -1068,13 +982,13 @@ public class VelocityUtil
 		return Pattern.compile(VDI_PATTERN + "\\!?\\{?(" + name + ")\\}?");
 	}
 	
-	public static final String[] UNARY_OPERATORS = new String[] {"!","not",""};
+	public static final String[] UNARY_OPERATORS = strings("!","not","");
 	public static final String[] ASSIGN_OPERATORS = 
-			new String[] {"=","in"};
+			strings("=","in");
 	public static final String[] COMPARE_OPERATORS = 
-			new String[] {"==","!=","<",">","<=",">=","eq","ne","lt","gt","le","ge"};
+			strings("==","!=","<",">","<=",">=","eq","ne","lt","gt","le","ge");
 	public static final String[] ARITHMETIC_OPERATORS = 
-			new String[] {"+","-","*","/","%"};
+			strings("+","-","*","/","%");
 	public static ArrayList<Pattern> termPatterns = new ArrayList<Pattern>();
 	static {
 		for (String op : ASSIGN_OPERATORS) {
@@ -1100,9 +1014,9 @@ public class VelocityUtil
 			MatchResult m = findFirstIn(term, termPatterns.get(i));
 			if (m != null) {
 				if (m.groupCount() < 2)
-					return new String[] {m.group(1)};
+					return strings(m.group(1));
 				else
-					return new String[] {m.group(1), m.group(2)};
+					return strings(m.group(1), m.group(2));
 			}
 		}
 		return new String[0];
@@ -1148,7 +1062,7 @@ public class VelocityUtil
 	}
 
 	public static boolean isDummy(int typeIndex, String text) {
-		return Arrays.asList(getDummies(typeIndex)).contains(text);
+		return list(getDummies(typeIndex)).contains(text);
 	}
 	
 	public static Boolean compliesWith(int typeIndex, String text) {
@@ -1182,7 +1096,7 @@ public class VelocityUtil
 	public static final Pattern ARGUMENT_PATTERN = 
 			Pattern.compile("((" + ARGUMENT_TYPER + ")?" + "(" + VRI_PATTERN + ")?" + 
 					IDENTIFIER_PATTERN + ARGUMENT_TYPER + "(?i)[" + join("", DATA_TYPES) + "](?-i))|" +
-							"(" + UNKNOWN_PATTERN + "(?=\\s*\\" + PARENS[1] + "))");
+							"(" + UNKNOWN_PATTERN + "(?=\\s*\\" + Util1.PARENS[1] + "))");
 	
 	public static String firstIdentifierFrom(String particle) {
 		MatchResult mr = findFirstIn(particle, IDENTIFIER_PATTERN);
@@ -1236,7 +1150,7 @@ public class VelocityUtil
 	    }
 	    matcher.appendTail(sb);
 	    String s = sb.toString();
-	    s = s.replaceAll("(" + ARGUMENT_SEPARATORS[sep] + ")+(?=\\s*?\\" + PARENS[1] + ")", "");
+	    s = s.replaceAll("(" + ARGUMENT_SEPARATORS[sep] + ")+(?=\\s*?\\" + Util1.PARENS[1] + ")", "");
 	    return s;
 	}
 	

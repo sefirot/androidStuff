@@ -51,6 +51,7 @@ public class WeatherInfoProvider extends ContentProvider {
 
     private static final int WEATHERS = 1;
     private static final int WEATHER_ID = 2;
+    private static final int RAW = 3;
 
     private static final UriMatcher sUriMatcher;
 
@@ -67,12 +68,23 @@ public class WeatherInfoProvider extends ContentProvider {
 		return values;
     }
 
+    public static String[] FULL_PROJECTION = strings(
+    		Weathers._ID, // 0
+    		Weathers.DESCRIPTION, // 1
+    		Weathers.LOCATION, // 2
+    		Weathers.PRECIPITATION, // 3
+    		Weathers.MAXTEMP, // 4
+    		Weathers.MINTEMP, // 5
+    		Weathers.CREATED_DATE, // 6
+    		Weathers.MODIFIED_DATE // 7
+    );
+
     /**
      * This class helps open, create, and upgrade the database file.
      */
-    private static class DatabaseHelper extends SQLiteOpenHelper {
+    public static class DatabaseHelper extends SQLiteOpenHelper {
 
-        DatabaseHelper(Context context) {
+    	public DatabaseHelper(Context context) {
             super(context, DATABASE_NAME, null, DATABASE_VERSION);
         }
 
@@ -100,6 +112,10 @@ public class WeatherInfoProvider extends ContentProvider {
     }
 
     private DatabaseHelper mOpenHelper;
+    
+    public SQLiteOpenHelper openHelper() {
+    	return mOpenHelper;
+    }
 
     @Override
     public boolean onCreate() {
@@ -113,6 +129,9 @@ public class WeatherInfoProvider extends ContentProvider {
         SQLiteQueryBuilder qb = new SQLiteQueryBuilder();
 
         switch (sUriMatcher.match(uri)) {
+        case RAW:
+        	return mOpenHelper.getReadableDatabase().rawQuery(selection, selectionArgs);
+
         case WEATHERS:
             qb.setTables(WEATHERS_TABLE_NAME);
             qb.setProjectionMap(sWeathersProjectionMap);
@@ -148,6 +167,7 @@ public class WeatherInfoProvider extends ContentProvider {
     @Override
     public String getType(Uri uri) {
         switch (sUriMatcher.match(uri)) {
+        case RAW:
         case WEATHERS:
             return Weathers.CONTENT_TYPE;
 
@@ -263,6 +283,7 @@ public class WeatherInfoProvider extends ContentProvider {
 
     static {
         sUriMatcher = new UriMatcher(UriMatcher.NO_MATCH);
+        sUriMatcher.addURI(WeatherInfo.AUTHORITY, null, RAW);
         sUriMatcher.addURI(WeatherInfo.AUTHORITY, "weathers", WEATHERS);
         sUriMatcher.addURI(WeatherInfo.AUTHORITY, "weathers/#", WEATHER_ID);
 

@@ -1,7 +1,6 @@
 package com.applang;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import android.app.Activity;
@@ -26,7 +25,7 @@ import android.database.Cursor;
 import android.graphics.Color;
 
 import static com.applang.Util.*;
-import static com.applang.Util2.*;
+import static com.applang.Util1.*;
 import static com.applang.VelocityUtil.*;
 
 import com.applang.berichtsheft.R;
@@ -47,6 +46,8 @@ public class Dialogs extends Activity
     public static final int DIALOG_MULTIPLE_CHOICE_CURSOR = 8;
     public static final int DIALOG_TEXT_ENTRY = 9;
     public static final int DIALOG_TEXT_INFO = 10;
+
+    protected Dialog mDialog;
 /*
     public static final int MAX_PROGRESS = 100;
     public static int sProgress;
@@ -73,14 +74,14 @@ public class Dialogs extends Activity
 */
 	private int checkedItem = -1;
 	private List<Boolean> checkedItems = new ArrayList<Boolean>();
-	CursorProvider provider = new CursorProvider(this);
+	CursorHelper cursorHelper = new CursorHelper(this);
 	private Cursor cursor;
 	
-	class CursorProvider
+	class CursorHelper
 	{
 		Activity activity;
 		
-		public CursorProvider(Activity activity) {
+		public CursorHelper(Activity activity) {
 			this.activity = activity;
 		}
 		
@@ -106,7 +107,7 @@ public class Dialogs extends Activity
         	activity.getContentResolver().update(uri, 
         			contentValues, 
         			values[0] + "=? and (" + selection + ")", 
-        			arrayappend(new String[]{"" + cursor.getLong(0)}, selectionArgs));
+        			arrayappend(strings("" + cursor.getLong(0)), selectionArgs));
 		}
 	}
 
@@ -124,6 +125,11 @@ public class Dialogs extends Activity
 
 	@Override
     protected Dialog onCreateDialog(int id) {
+		mDialog = createDialog(id);
+		return mDialog;
+	}
+
+    protected Dialog createDialog(int id) {
 		switch (id) {
 /*		case DIALOG_PROGRESS:
         	sProgress = 0;
@@ -175,7 +181,7 @@ public class Dialogs extends Activity
                         _finish(RESULT_OK, values[1]);
                     }
                 })
-                .setNeutralButton(R.string.button_cancel, new DialogInterface.OnClickListener() {
+                .setNeutralButton(values[2], new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int whichButton) {
                         _finish(RESULT_CANCELED, null);
                     }
@@ -196,8 +202,8 @@ public class Dialogs extends Activity
                 })
                 .create();
         case DIALOG_SINGLE_CHOICE:
-        	if (defaultValues.size() > 0) {
-        		checkedItem = Arrays.asList(values).indexOf(defaultValues.get(0));
+        	if (defaultValues != null && defaultValues.size() > 0) {
+        		checkedItem = list(values).indexOf(defaultValues.get(0));
         	}
             return new AlertDialog.Builder(Dialogs.this)
 	    		.setCancelable(false)
@@ -210,7 +216,7 @@ public class Dialogs extends Activity
                 })
                 .setPositiveButton(R.string.button_ok, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int whichButton) {
-                        _finish(RESULT_OK, values[checkedItem]);
+                        _finish(RESULT_OK, checkedItem < 0 ? null : values[checkedItem]);
                     }
                 })
                 .setNegativeButton(R.string.button_cancel, new DialogInterface.OnClickListener() {
@@ -221,14 +227,16 @@ public class Dialogs extends Activity
                .create();
         case DIALOG_MULTIPLE_CHOICE:
             for (int i = 0; i < values.length; i++) {
-            	checkedItems.add(defaultValues.contains(values[i]));
+            	checkedItems.add(defaultValues != null ? 
+            			defaultValues.contains(values[i]) : 
+            			false);
 			}
 			return new AlertDialog.Builder(Dialogs.this)
     			.setCancelable(false)
                 .setIcon(R.drawable.ic_launcher)
                 .setTitle(prompt)
                 .setMultiChoiceItems(values,
-                		Util.toPrimitiveArray(checkedItems),
+                		toBooleanArray(checkedItems),
                         new DialogInterface.OnMultiChoiceClickListener() {
                             public void onClick(DialogInterface dialog, int whichButton, boolean isChecked) {
                             	checkedItems.set(whichButton, isChecked);
@@ -253,7 +261,7 @@ public class Dialogs extends Activity
                .create();
         case DIALOG_SINGLE_CHOICE_CURSOR:
         	try {
-				cursor = provider.query(info);
+				cursor = cursorHelper.query(info);
 				if (defaultValues.size() > 0) {
 					if (cursor.moveToFirst())
 						do {
@@ -300,7 +308,7 @@ public class Dialogs extends Activity
 			} 
         case DIALOG_MULTIPLE_CHOICE_CURSOR:
         	try {
-				cursor = provider.query(info);
+				cursor = cursorHelper.query(info);
 				if (cursor.moveToFirst())
 					do {
 						checkedItems.add(cursor.getInt(2) != 0);
@@ -321,7 +329,7 @@ public class Dialogs extends Activity
 						public void onClick(DialogInterface dialog, int whichButton) {
 							int i;
 							for (i = 0, cursor.moveToFirst(); i < checkedItems.size(); i++, cursor.moveToNext())
-								provider.update(info, checkedItems.get(i));
+								cursorHelper.update(info, checkedItems.get(i));
 				            _finish(RESULT_OK, null);
 				        }
 				    })
@@ -337,7 +345,7 @@ public class Dialogs extends Activity
 			} 
 	    case DIALOG_TEXT_ENTRY:
 	    case DIALOG_TEXT_INFO:
-            LinearLayout linearLayout = linearLayout(this, 
+            LinearLayout linearLayout = Util1.linearLayout(this, 
             		LinearLayout.HORIZONTAL, 
             		LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT);
             TextView textView = id == DIALOG_TEXT_ENTRY ? 
@@ -345,7 +353,7 @@ public class Dialogs extends Activity
             		new TextView(this);
             textView.setText(values[0]);
             textView.setMovementMethod(new ScrollingMovementMethod());
-            linearLayout.addView(textView, linearLayoutParams(
+            linearLayout.addView(textView, Util1.linearLayoutParams(
             		LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 
             		margin,	halfMargin, margin, halfMargin));
     		switch (id) {
@@ -414,8 +422,13 @@ public class Dialogs extends Activity
         	if (info.containsKey(BaseDirective.VARIABLE))
         		var = info.getString(BaseDirective.VARIABLE);
         	
+        	String[] array;
         	if (userContext != null) 
-        		defaultValues = Arrays.asList(arrayOfStrings(userContext.get(var)));
+        		array = arrayOfStrings(userContext.get(var));
+        	else
+        		array = info.getStringArray(BaseDirective.DEFAULTS);
+        	if (array != null)
+        		defaultValues = list(array);
         	
         	if (info.containsKey(BaseDirective.VALUES))
         		values = info.getStringArray(BaseDirective.VALUES);
@@ -431,8 +444,12 @@ public class Dialogs extends Activity
 	protected void _finish(int resultCode, Object value) {
         if (userContext != null) {
         	userContext.put(var, value);
+        	setResult(resultCode);
         }
-    	setResult(resultCode);
+        else
+        	setResult(resultCode, getIntent().putExtra(BaseDirective.RESULT, String.valueOf(value)));
+    	if (mDialog != null)
+    		mDialog.dismiss();
     	BaseDirective._notify();
     	finish();
     }

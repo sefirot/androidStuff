@@ -33,10 +33,6 @@ import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
 import android.view.View;
-import android.view.ViewGroup;
-import android.view.ViewGroup.LayoutParams;
-import android.widget.LinearLayout;
-import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 public class Util2
@@ -51,28 +47,6 @@ public class Util2
         }
         else 
         	return "";
-    }
-    
-    public static ValList contentAuthorities(Context context, String startsWith) {
-    	ValList list = new ValList();
-    	List<ProviderInfo> providers = context.getPackageManager().queryContentProviders(null, 0, 0);
-        for (ProviderInfo provider : providers) {
-            String authority = provider.authority;
-            if (authority.startsWith(startsWith))
-            	list.add(authority);
-        }
-        return list;
-    }
-    
-    public static String[] databases(Context context) {
-    	ArrayList<String> list = new ArrayList<String>();
-    	for (Object authority : contentAuthorities(context, "com.applang")) 
-    		try {
-    			Class<?> c = Class.forName(authority.toString() + "Provider");
-    			Object name = c.getDeclaredField("DATABASE_NAME").get(null);
-    			list.add(name.toString());
-    		} catch (Exception e) {};
-    	return list.toArray(new String[0]);
     }
 	
 	public static String readAsset(Activity activity, String fileName) {
@@ -92,32 +66,6 @@ public class Util2
         return sb.toString();
     }
 	
-	public static ValMap getResultMap(Cursor cursor, Function<String> key, Function<Object> value) {
-		ValMap map = new ValMap();
-		try {
-	    	if (cursor.moveToFirst()) 
-	    		do {
-					String k = key.apply(cursor);
-					Object v = value.apply(cursor);
-					map.put(k, v);
-	    		} while (cursor.moveToNext());
-		} catch (Exception e) {
-            Log.e(TAG, "traversing cursor", e);
-			return null;
-		}
-		finally {
-			cursor.close();
-		}
-		return map;
-	}
-
-	public static ValList getRecord(Cursor cursor) {
-		ValList list = new ValList();
-		for (int i = 0; i < cursor.getColumnCount(); i++)
-			list.add(cursor.getString(i));
-		return list;
-	}
-
 	public static class WorkerThread extends Thread
 	{	
 		public final static int DONE = 0, RUNNING = 1;
@@ -261,29 +209,51 @@ public class Util2
 	        			Toast.LENGTH_SHORT).show();
 		}
 		
-		public static File directory(Context context, boolean export) {
-			String dir = "data/" + context.getPackageName() + "/databases";
+		public static File directory(String path, boolean export) {
 	    	return export ? 
-	    			new File(Environment.getExternalStorageDirectory(), dir) : 
-	    			new File(Environment.getDataDirectory(), dir);
+	    			new File(Environment.getExternalStorageDirectory(), path) : 
+	    			new File(Environment.getDataDirectory(), path);
 	    }
 	    
 		public static boolean doImpex(Context context, String[] fileNames, boolean export) {
 			try {
-				for (String fileName : fileNames) 
-					doCopy(context, fileName, export);
+				String path = getDatabasesPath(context);
+				for (String fileName : fileNames) {
+					File importDir = directory(path, false);
+					File exportDir = directory(path, true);
+					
+					doCopy(fileName, export, importDir, exportDir);
+				}
 			} catch (IOException e) {
-				Log.e(TAG, e.getMessage(), e);
+				Log.e(TAG, "doImpex", e);
+				return false;
+			}
+			
+			return true;
+	    }
+
+		public static String getDatabasesPath(Context context) {
+			return "data/" + context.getPackageName() + "/databases";
+		}
+	    
+		public static boolean doAppex(String[] fileNames) {
+			try {
+				String path = "app";
+				for (String fileName : fileNames) {
+					File importDir = directory(path, false);
+					File exportDir = directory(path, true);
+					
+					doCopy(fileName, true, importDir, exportDir);
+				}
+			} catch (IOException e) {
+				Log.e(TAG, "doAppex", e);
 				return false;
 			}
 			
 			return true;
 	    }
 	    
-		public static boolean doCopy(Context context, String fileName, boolean export) throws IOException {
-			File importDir = directory(context, false);
-			File exportDir = directory(context, true);
-			
+		public static boolean doCopy(String fileName, boolean export, File importDir, File exportDir) throws IOException {
 			File source, destination;
 			if (export) {
 				source = new File(importDir, fileName);
@@ -407,31 +377,6 @@ public class Util2
 		alertDialog.show();
 	}
 
-	public static LinearLayout linearLayout(Context context, int orientation, int width, int height) {
-        LinearLayout linear = new LinearLayout(context);
-        linear.setOrientation(orientation);
-		linear.setLayoutParams(new LayoutParams(width, height));
-		return linear;
-	}
-
-	public static LinearLayout.LayoutParams linearLayoutParams(int width, int height, Integer... ltrb) {
-    	LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(width, height);
-		layoutParams.setMargins(param(0, 0, ltrb), param(0, 1, ltrb), param(0, 2, ltrb), param(0, 3, ltrb));
-		return layoutParams;
-	}
-
-	public static RelativeLayout.LayoutParams relativeLayoutParams(int width, int height, Integer... ltrb) {
-		RelativeLayout.LayoutParams layoutParams = new RelativeLayout.LayoutParams(width, height);
-		layoutParams.setMargins(param(0, 0, ltrb), param(0, 1, ltrb), param(0, 2, ltrb), param(0, 3, ltrb));
-		return layoutParams;
-	}
-
-	public static RelativeLayout relativeLayout(Context context, int width, int height) {
-		RelativeLayout relative = new RelativeLayout(context);
-        relative.setLayoutParams(new LayoutParams(width, height));
-		return relative;
-	}
-
 	public static void popupContextMenu(Activity activity, View view) {
 		activity.registerForContextMenu(view);
 		activity.openContextMenu(view);
@@ -480,43 +425,5 @@ public class Util2
 		private Job<Result> followUp;
 		private Object[] params;
     }
-    
-    public static View getContentView(Activity activity) {
-    	View rootView = activity.findViewById(android.R.id.content);
-		ViewGroup viewGroup = (ViewGroup)rootView;
-		return viewGroup.getChildAt(0);
-    }
-	
-	public static Object[] iterateViews(ViewGroup container, Function<Object[]> func, int indent, Object... params) {
-		if (container != null) {
-			for (int i = 0; i < container.getChildCount(); i++) {
-				View v = container.getChildAt(i);
-				params = func.apply(v, indent, params);
-				if (v instanceof ViewGroup) {
-					iterateViews((ViewGroup) v, func, indent + 1, params);
-				}
-			}
-		}
-		return params;
-	}
-	
-	public static String viewHierarchy(Activity activity) {
-		Object[] params = iterateViews((ViewGroup)activity.findViewById(android.R.id.content), 
-				new Function<Object[]>() {
-					public Object[] apply(Object... params) {
-						View v = param(null, 0, params);
-						int indent = paramInteger(null, 1, params);
-						Object[] parms = param(null, 2, params);
-						String s = (String) parms[0];
-						String line = /*v.getId() + " : " + */v.getClass().getSimpleName();
-						s += indentedLine(line, TAB, indent);
-						parms[0] = s;
-						return parms;
-					}
-				}, 
-				0, 
-				new Object[] {""});
-		return paramString("", 0, params);
-	}
 	
 }

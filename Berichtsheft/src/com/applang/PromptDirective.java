@@ -17,9 +17,9 @@ public class PromptDirective extends BaseDirective
 {
 	public PromptDirective() {
 		super();
-		arguments = new String[] { "message_S","variable_R",
+		arguments = strings("message_S","variable_R",
 				VelocityUtil.optionalize("values_L"),
-				VelocityUtil.optionalize("option_S") };
+				VelocityUtil.optionalize("option_S"));
 	}
 
 	/**

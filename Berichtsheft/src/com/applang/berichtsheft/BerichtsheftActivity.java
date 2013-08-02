@@ -1,9 +1,11 @@
 package com.applang.berichtsheft;
 
 import static com.applang.Util.*;
+import static com.applang.Util1.*;
 import static com.applang.Util2.*;
 import static com.applang.VelocityUtil.*;
 
+import java.util.Arrays;
 import java.util.Map;
 import java.util.TreeSet;
 
@@ -11,7 +13,6 @@ import com.applang.BaseDirective;
 import com.applang.Dialogs;
 import com.applang.UserContext;
 import com.applang.Util.Job;
-import com.applang.VelocityUtil.CustomContext;
 import com.applang.pflanzen.PlantsList;
 import com.applang.provider.NotePadProvider;
 import com.applang.tagesberichte.Tagesberichte;
@@ -45,8 +46,8 @@ public class BerichtsheftActivity extends Activity
         
         showDialog(0);
         
-//		String mButtonMessage = android.os.Build.VERSION.SDK;	//		getString(R.string.button_message_template)
-//		Toast.makeText(this, mButtonMessage, Toast.LENGTH_LONG).show();	 
+        System.out.printf("VERSION.SDK : %s\n", android.os.Build.VERSION.SDK);
+        System.out.printf("databaseList : %s\n", Arrays.toString(this.databaseList()));
 	}
 
     @Override
@@ -118,6 +119,7 @@ public class BerichtsheftActivity extends Activity
 		}
 	
 	private void impex() {
+		final String[] databases = databases(BerichtsheftActivity.this, "com.applang.provider");
 		AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(this);
 		alertDialogBuilder.setTitle("Application data");
 		alertDialogBuilder
@@ -126,13 +128,13 @@ public class BerichtsheftActivity extends Activity
 				.setPositiveButton("Export",
 						new DialogInterface.OnClickListener() {
 							public void onClick(DialogInterface dialog,	int id) {
-								ImpexTask.doExport(BerichtsheftActivity.this, databases(BerichtsheftActivity.this), null);
+								ImpexTask.doExport(BerichtsheftActivity.this, databases, null);
 							}
 						})
 				.setNegativeButton("Import",
 						new DialogInterface.OnClickListener() {
 							public void onClick(DialogInterface dialog,	int id) {
-								ImpexTask.doImport(BerichtsheftActivity.this, databases(BerichtsheftActivity.this), null);
+								ImpexTask.doImport(BerichtsheftActivity.this, databases, null);
 							}
 						})
 				.setNeutralButton("Cancel", null);

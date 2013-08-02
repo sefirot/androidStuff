@@ -75,7 +75,7 @@ public class BausteinEvaluator extends Activity
 			mUri = NotePadProvider.contentUri(1);
 		}
 		Cursor cursor = managedQuery(mUri, 
-				NoteColumns.FULL_PROJECTION, 
+				NotePadProvider.FULL_PROJECTION, 
 				selection, selectionArgs, 
 				null);
 		if (cursor.moveToFirst()) {

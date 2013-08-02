@@ -61,7 +61,7 @@ public class BaseDirective extends CustomDirective
 		info.putString(PROMPT, getName());
 		info.putString(VARIABLE, var = UserContext.hidden("default"));
 		info.putStringArray(VALUES, arguments);
-		info.putInt(TYPE, ConstructDialogs.DIALOG_CONSTRUCT);
+		info.putInt(TYPE, (Integer)getConstantByName("ConstructDialogs", null, "DIALOG_CONSTRUCT"));
 		
 		Node node = (Node) context.get(UserContext.hidden(NODE));
 		if (node != null) 
@@ -71,7 +71,7 @@ public class BaseDirective extends CustomDirective
 		try {
 			userContext = context;
 			
-			performDialog(ConstructDialogs.CONSTRUCT_ACTION);
+			performDialog((String)getConstantByName("ConstructDialogs", null, "CONSTRUCT_ACTION"));
 			
 			value = userContext.get(var);
 		} 
@@ -101,6 +101,7 @@ public class BaseDirective extends CustomDirective
 	public static final String PROMPT = "prompt";
 	public static final String VARIABLE = "var";
 	public static final String VALUES = "values";
+	public static final String DEFAULTS = "defaults";
 	public static final String TYPE = "type";
 	public static final String RESULT = "result";
 	public static final String STYLE = "style";

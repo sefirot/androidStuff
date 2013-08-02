@@ -34,6 +34,7 @@ public class PlantInfoProvider extends ContentProvider {
 
     private static final int PLANTS = 1;
     private static final int PLANT_ID = 2;
+    private static final int RAW = 3;
 
     private static final UriMatcher sUriMatcher;
 
@@ -48,12 +49,21 @@ public class PlantInfoProvider extends ContentProvider {
 		return values;
     }
 
+	public static String[] FULL_PROJECTION = strings(
+			Plants._ID, // 0
+	        Plants.NAME, // 1
+	        Plants.FAMILY, // 2
+	        Plants.BOTNAME, // 3
+	        Plants.BOTFAMILY, // 4
+	        Plants.GROUP // 5
+	);
+
     /**
      * This class helps open, create, and upgrade the database file.
      */
-    private static class DatabaseHelper extends SQLiteOpenHelper {
+	public static class DatabaseHelper extends SQLiteOpenHelper {
 
-        DatabaseHelper(Context context) {
+		public DatabaseHelper(Context context) {
             super(context, DATABASE_NAME, null, DATABASE_VERSION);
         }
 
@@ -79,6 +89,10 @@ public class PlantInfoProvider extends ContentProvider {
     }
 
     private DatabaseHelper mOpenHelper;
+    
+    public SQLiteOpenHelper openHelper() {
+    	return mOpenHelper;
+    }
 
     @Override
     public boolean onCreate() {
@@ -92,6 +106,9 @@ public class PlantInfoProvider extends ContentProvider {
         SQLiteQueryBuilder qb = new SQLiteQueryBuilder();
 
         switch (sUriMatcher.match(uri)) {
+        case RAW:
+        	return mOpenHelper.getReadableDatabase().rawQuery(selection, selectionArgs);
+
         case PLANTS:
             qb.setTables(PLANTS_TABLE_NAME);
             qb.setProjectionMap(sPlantsProjectionMap);
@@ -127,6 +144,7 @@ public class PlantInfoProvider extends ContentProvider {
     @Override
     public String getType(Uri uri) {
         switch (sUriMatcher.match(uri)) {
+        case RAW:
         case PLANTS:
             return Plants.CONTENT_TYPE;
 
@@ -215,6 +233,7 @@ public class PlantInfoProvider extends ContentProvider {
 
     static {
         sUriMatcher = new UriMatcher(UriMatcher.NO_MATCH);
+        sUriMatcher.addURI(PlantInfo.AUTHORITY, null, RAW);
         sUriMatcher.addURI(PlantInfo.AUTHORITY, "plants", PLANTS);
         sUriMatcher.addURI(PlantInfo.AUTHORITY, "plants/#", PLANT_ID);
 

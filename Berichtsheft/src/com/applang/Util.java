@@ -11,6 +11,7 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.io.Writer;
+import java.lang.reflect.Field;
 import java.net.URL;
 import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
@@ -23,12 +24,15 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.Vector;
 import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
@@ -39,6 +43,8 @@ import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.w3c.dom.Document;
 
+import android.util.Log;
+
 public class Util
 {
     static final String TAG = Util.class.getSimpleName();
@@ -47,9 +53,9 @@ public class Util
 		Locale.setDefault(Locale.GERMAN);
 	}
 	
+	private static Random random = new Random();
     private static final int millisPerDay = 1000*60*60*24;
 	private static Calendar calendar = Calendar.getInstance(Locale.US);
-    private static Random random = new Random();
 
 	static void setWeekDate(int year, int weekOfYear, int dayOfWeek) {
 		while (dayOfWeek > 7) {
@@ -75,24 +81,39 @@ public class Util
 		calendar.set(Calendar.SECOND, 0);
 		calendar.set(Calendar.MILLISECOND, 0);
 	}
+
+	public static Calendar getCalendar() {
+		return calendar;
+	}
+
+	public static int[] getCalendarDate(long time) {
+		calendar.setTimeInMillis(time);
+		return new int[] {calendar.get(Calendar.DAY_OF_MONTH), 
+				calendar.get(Calendar.MONTH), 
+				calendar.get(Calendar.YEAR)};
+	}
 	/**
 	 * calculates the milliseconds after 1970-01-01 for a given start of a day (midnight)
 	 * @param year
-	 * @param weekOrMonth week of year (1..53) or if negative number of month (-11..0)
+	 * @param week week of year (1..53) or if zero or negative number of month (-11..0)
 	 * @param day day of week or day of month
 	 * @return
 	 */
-	public static long timeInMillis(int year, int weekOrMonth, int day) {
-		if (weekOrMonth < 1)
-			setMonthDate(year, -weekOrMonth, day);
-		else
-			setWeekDate(year, weekOrMonth, day);
+	public static long timeInMillis(int year, int week, int day) {
+		if (week < 1)
+			return dateInMillis(year, -week, day);
+		setWeekDate(year, week, day);
 		return calendar.getTimeInMillis();
 	}
 
-	public static long timeInMillis(int year, int weekOrMonth, int day, int shift) {
-		timeInMillis(year, weekOrMonth, day);
-		calendar.add(Calendar.DATE, shift);
+	public static long dateInMillis(int year, int month, int day) {
+		setMonthDate(year, month, day);
+		return calendar.getTimeInMillis();
+	}
+
+	public static long dateInMillis(int year, int month, int day, int days) {
+		setMonthDate(year, month, day);
+		calendar.add(Calendar.DATE, days);
 		return calendar.getTimeInMillis();
 	}
 
@@ -180,8 +201,9 @@ public class Util
 
 	public static Date toDate(String dateString, Object...params) {
 		try {
-			String pattern = param("yyyy-MM-dd",0,params);
-			return new SimpleDateFormat(pattern, Locale.US).parse(dateString);
+			String pattern = param("yyyy-MM-dd", 0, params);
+			Locale locale = param(Locale.US,1,params);
+			return new SimpleDateFormat(pattern, locale).parse(dateString);
 		} catch (Exception e) {
 			return null;
 		}
@@ -315,7 +337,6 @@ public class Util
 	public static Object[] reduceDepth(Object[] params) {
 		while (params != null && params.length == 1 && params[0] instanceof Object[])
 			params = (Object[])params[0];
-
 		return params;
 	}
 
@@ -325,7 +346,6 @@ public class Util
 			try {
 				return (T)value;
 			} catch (Exception e) {}
-
 		return elseValue;
 	}
 	/**
@@ -344,8 +364,14 @@ public class Util
 				T returnValue = (T)params[index];
 				return returnValue;
 			} catch (ClassCastException e) {}
-
 		return defaultParam;
+	}
+	
+	public static int param(int defaultParam, int index, int... params) {
+		if (params != null && index > -1 && params.length > index)
+			return params[index];
+		else
+			return defaultParam;
 	}
 	
 	public static Boolean paramBoolean(Boolean defaultParam, int index, Object... params) {
@@ -388,6 +414,30 @@ public class Util
 				return new File((String)params[index]);
 		}
 		return defaultParam;
+	}
+	
+	public static Object[] objects(Object...params) {
+		return params;
+	}
+	
+	public static String[] strings(String...params) {
+		return params;
+	}
+	
+	public static String[] toStrings(Object...params) {
+		return arraycast(params, strings());
+	}
+	
+	public static <T> String[] toStrings(Collection<T> collection) {
+		return collection.toArray(strings());
+	}
+	
+	public static <T> List<T> list(T[] array) {
+		return Arrays.asList(array);
+	}
+	
+	public static <T> Set<T> sorted(Collection<T> collection) {
+		return new TreeSet<T>(collection);
 	}
 	
 	public interface Function<T> {
@@ -465,9 +515,14 @@ public class Util
     	return file;
     }
 
+	public static ValList split(String string, String regex) {
+		String[] parts = string.split(regex);
+		return new ValList(list(parts));
+    }
+
 	public static <T> String join(String delimiter, @SuppressWarnings("unchecked") T... params) {
 	    StringBuilder sb = new StringBuilder();
-	    Iterator<T> iter = new ArrayList<T>(Arrays.asList(params)).iterator();
+	    Iterator<T> iter = new ArrayList<T>(list(params)).iterator();
 	    if (iter.hasNext())
 	        do {
 		        sb.append(String.valueOf(iter.next()))
@@ -481,11 +536,11 @@ public class Util
     	return enclose("\"", string, "\"");
 	}
 
-    public static String enclose(String pad, String string, Object... params) {
-    	pad = valueOrElse("", pad);
-    	string = pad.concat(valueOrElse("", string));
+    public static String enclose(String decor, String string, Object... params) {
+    	decor = valueOrElse("", decor);
+    	string = decor.concat(valueOrElse("", string));
     	if (params.length < 1)
-    		return string.concat(pad);
+    		return string.concat(decor);
     	
     	for (int i = 0; i < params.length; i++) 
     		string = string.concat(param("", i, params));
@@ -564,11 +619,14 @@ public class Util
 		}
 	}
 
-	public static String readAll(Reader rd) throws IOException {
+	public static String readAll(Reader rd, Object... params) throws IOException {
+		Integer chars = paramInteger(null, 0, params);
 		StringBuilder sb = new StringBuilder();
-		int cp;
+		int cp, i = 0;
 		while ((cp = rd.read()) != -1) {
 			sb.append((char) cp);
+			if (chars != null && ++i >= chars)
+				break;
 		}
 		return sb.toString();
 	}
@@ -591,11 +649,16 @@ public class Util
 		return findAllIn(text, pattern);
 	}
 	
+	//	used in scripts
 	public static String contentsFromFile(File file) {
+		return contentsFromFile(file, null);
+	}
+	
+	public static String contentsFromFile(File file, Integer chars) {
 		Reader fr = null;
 		try {
 			fr = new InputStreamReader(new FileInputStream(file));
-			return readAll(fr);
+			return readAll(fr, chars);
 		} catch (Exception e) {
 			return null;
 		}
@@ -606,9 +669,13 @@ public class Util
 				} catch (IOException e) {}
 		}
 	}
- 
-	public static File contentsToFile(File file, String s, Object... params) {
-	    boolean append = paramBoolean(false, 0, params);
+	 
+	//	used in scripts
+	public static File contentsToFile(File file, String s) {
+		return contentsToFile(file, s, false);
+	}
+	 
+	public static File contentsToFile(File file, String s, boolean append) {
 		Writer fw = null;
 		try {
 			fw = new OutputStreamWriter(new FileOutputStream(file, append));
@@ -682,6 +749,23 @@ public class Util
 		}
 		public ValMap(Map<? extends String, ? extends Object> m) {
 			super(m);
+		}
+		
+		public ValList getList(String key) {
+			Object value = get(key);
+			if (value == null) {
+				ValList list = new ValList();
+				put(key, list);
+				return list;
+			}
+			else if (value instanceof ValList)
+				return (ValList) value;
+			else
+				return null;
+		}
+		
+		public Object getListValue(String key, int index) {
+			return getList(key).get(index);
 		}
 	}
 	
@@ -779,14 +863,14 @@ public class Util
 	 * @param <T>	type of the given array
 	 * @param <U>	type of the cast array
 	 * @param array	the given array
-	 * @param a	prototype of the cast array
+	 * @param a	prototype for the cast array
 	 * @return	the cast array
 	 */
 	public static <T, U> U[] arraycast(T[] array, U[] a) {
-		return Arrays.asList(array).toArray(a);
+		return list(array).toArray(a);
 	}
 
-	public static boolean[] toPrimitiveArray(List<Boolean> list) {
+	public static boolean[] toBooleanArray(List<Boolean> list) {
 	    boolean[] primitives = new boolean[list.size()];
 	    for (int i = 0; i < primitives.length; i++) {
 	        primitives[i] = list.get(i).booleanValue();
@@ -794,15 +878,49 @@ public class Util
 	    return primitives;
 	}
 
+	public static int[] toIntArray(List<Integer> list) {
+		int[] primitives = new int[list.size()];
+	    for (int i = 0; i < primitives.length; i++) {
+	        primitives[i] = list.get(i).intValue();
+	    }
+	    return primitives;
+	}
+
+	public static List<Integer> fromIntArray(int[] array) {
+		List<Integer> list = new ArrayList<Integer>();
+	    for (int i = 0; i < array.length; i++) {
+	        list.add(array[i]);
+	    }
+	    return list;
+	}
+
 	@SuppressWarnings("unchecked")
 	public static <T> T[] arrayappend(T[] array, T... elements) {
-		ArrayList<T> list = new ArrayList<T>(Arrays.asList(array));
-		list.addAll(new ArrayList<T>(Arrays.asList(elements)));
+		ArrayList<T> list = new ArrayList<T>(list(array));
+		list.addAll(new ArrayList<T>(list(elements)));
 		return list.toArray(array);
 	}
 
-	public static <T> int arrayindexof(T[] array, T element) {
-		return Arrays.asList(array).indexOf(element);
+	public static <T> int arrayindexof(T element, T[] array) {
+		return list(array).indexOf(element);
+	}
+
+	public static <T> void arrayreverse(T[] array) {
+		int len = array.length;
+		for (int i = 0; i < len / 2; i++) {
+			T element = array[i];
+			array[i] = array[len - i - 1];
+			array[len - i - 1] = element;
+		}
+	}
+
+	public static void arrayreverse(int[] array) {
+		int len = array.length;
+		for (int i = 0; i < len / 2; i++) {
+			int element = array[i];
+			array[i] = array[len - i - 1];
+			array[len - i - 1] = element;
+		}
 	}
 
 	public static Document xmlDocument(File file) {
@@ -820,13 +938,26 @@ public class Util
 	public static <T> Collection<T> filter(Collection<T> target, boolean negate, Predicate<T> predicate) {
         Collection<T> result = new ArrayList<T>();
         for (T element: target) {
-            boolean apply = predicate.apply(element);
-			if (apply) {
+			if (predicate.apply(element)) {
 				if (!negate)
 	                result.add(element);
 			}
 			else if (negate)
                 result.add(element);
+        }
+        return result;
+    }
+
+	public static <T> List<Integer> filterIndex(List<T> target, boolean negate, Predicate<T> predicate) {
+		List<Integer> result = new ArrayList<Integer>();
+        for (int i = 0; i < target.size(); i++) {
+        	T element = target.get(i);
+			if (predicate.apply(element)) {
+				if (!negate)
+	                result.add(i);
+			}
+			else if (negate)
+                result.add(i);
         }
         return result;
     }
@@ -853,7 +984,9 @@ public class Util
 	public static final String NEWLINE = "\n";	//	System.getProperty("line.separator");
 	public static final String TAB_REGEX = "\\t";
 	public static final String NEWLINE_REGEX = "\\n";
-    
+	public static final String[] FOLD_MARKER = strings("{{{", "}}}");
+	public static final String[] FOLD_MARKER_REGEX = strings("\\{\\{\\{", "\\}\\}\\}");
+
 	public static String indentedLine(String line, Object level, Object...params) {
 	    StringBuffer sb = new StringBuffer();
 	    int indents = paramInteger(0, 0, params);
@@ -870,6 +1003,86 @@ public class Util
 	    sb.append(line);
 	    sb.append(NEWLINE);
 	    return sb.toString();
+	}
+	
+	public static boolean isSQLite(File file) {
+		if (fileExists(file)) {
+			String header16 = contentsFromFile(file, 16);
+			return header16.startsWith("SQLite format 3");
+		}
+		return false;
+	}
+
+	/**
+	 * Recursive method used to find all classes in a given directory and subdirs.
+	 *
+	 * @param directory   The base directory
+	 * @param packageName The package name for classes found inside the base directory
+	 * @return The classes
+	 * @throws ClassNotFoundException
+	 */
+	@SuppressWarnings("rawtypes")
+	public static List<Class> findClasses(File directory, String packageName) throws ClassNotFoundException {
+	    List<Class> classes = new ArrayList<Class>();
+	    if (directory.exists()) {
+	    	File[] files = directory.listFiles();
+	    	for (File file : files) {
+	    		if (file.isDirectory()) {
+	    			assert !file.getName().contains(".");
+	    			classes.addAll(findClasses(file, packageName + "." + file.getName()));
+	    		} else if (file.getName().endsWith(".class")) {
+	    			classes.add(Class.forName(packageName + '.' + file.getName().substring(0, file.getName().length() - 6)));
+	    		}
+	    	}
+	    }
+	    return classes;
+	}
+
+	/**
+	 * Scans all classes accessible from the context class loader which belong to the given package and subpackages.
+	 *
+	 * @param packageName The base package
+	 * @return The classes
+	 * @throws ClassNotFoundException
+	 * @throws IOException
+	 */
+	@SuppressWarnings("rawtypes")
+	public static Class[] getLocalClasses(String packageName) throws ClassNotFoundException, IOException {
+	    ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+	    assert classLoader != null;
+	    String path = packageName.replace('.', '/');
+	    Enumeration<URL> resources = classLoader.getResources(path);
+	    List<File> dirs = new ArrayList<File>();
+	    while (resources.hasMoreElements()) {
+	        URL resource = resources.nextElement();
+	        dirs.add(new File(resource.getFile()));
+	    }
+	    ArrayList<Class> classes = new ArrayList<Class>();
+	    for (File directory : dirs) {
+	        classes.addAll(findClasses(directory, packageName));
+	    }
+	    return classes.toArray(new Class[classes.size()]);
+	}
+
+	@SuppressWarnings("unchecked")
+	public static <T extends Object> T getConstantByName(String className, String innerClassName, String fieldName) {
+		try {
+			Class<?> c = Class.forName(className);
+			if (notNullOrEmpty(innerClassName)) {
+				Class<?>[] declaredClasses = c.getDeclaredClasses();
+				c = null;
+				for (Class<?> inner : declaredClasses) 
+					if (innerClassName.equals(inner.getSimpleName())) 
+						c = inner;
+			}
+			if (c != null)
+				for (Field field : c.getDeclaredFields()) 
+					if (fieldName.equals(field.getName()))
+						return (T)field.get(null);
+		} catch (Exception e) {
+			Log.e(TAG, "getConstant", e);
+		}
+		return null;
 	}
 
 }
