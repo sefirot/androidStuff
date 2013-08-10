@@ -6,4 +6,6 @@
     <dimen name="text_size">20sp</dimen>
     <dimen name="margin">10dp</dimen>
     <dimen name="margin_half">5dp</dimen>
+    <dimen name="image_height">100dip</dimen>
+    <dimen name="image_width">150dip</dimen>
 </resources>
