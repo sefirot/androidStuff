@@ -57,7 +57,7 @@ public class UserContext extends CustomContext implements Serializable
 	}
     
 	public ValList suggestions() {
-    	ValList list = new ValList();
+    	ValList list = list();
     	for (Object item : allReferences()) {
     		String listItem = VRI + item.toString();
     		list.add(listItem);

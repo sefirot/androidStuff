@@ -232,9 +232,13 @@ public class Util
 		else
 			return prototype.getClass().getName().equals(o.getClass().getName());
 	}
+	
+	public static String stringValueOf(Object value) {
+		return value != null ? String.valueOf(value) : "";
+	}
 
 	public static boolean notNullOrEmpty(Object value) {
-		return value != null && String.valueOf(value).length() > 0;
+		return stringValueOf(value).length() > 0;
 	}
 
 	public static <T> boolean nullOrEmpty(T[] value) {
@@ -520,7 +524,7 @@ public class Util
 		return new ValList(list(parts));
     }
 
-	public static <T> String join(String delimiter, @SuppressWarnings("unchecked") T... params) {
+	public static <T> String join(String delimiter, @SuppressWarnings("unchecked") T...params) {
 	    StringBuilder sb = new StringBuilder();
 	    Iterator<T> iter = new ArrayList<T>(list(params)).iterator();
 	    if (iter.hasNext())
@@ -536,7 +540,7 @@ public class Util
     	return enclose("\"", string, "\"");
 	}
 
-    public static String enclose(String decor, String string, Object... params) {
+    public static String enclose(String decor, String string, Object...params) {
     	decor = valueOrElse("", decor);
     	string = decor.concat(valueOrElse("", string));
     	if (params.length < 1)
@@ -548,7 +552,7 @@ public class Util
     	return string;
 	}
 
-    public static String strip(boolean atStart, String string, Object... params) {
+    public static String strip(boolean atStart, String string, Object...params) {
     	for (int i = 0; i < params.length; i++) {
     		Object param = param("", i, params);
 			String pad = String.valueOf(param);
@@ -560,7 +564,7 @@ public class Util
     	return string;
 	}
 
-	public static String trim(boolean left, String s, String... regex) {
+	public static String trim(boolean left, String s, String...regex) {
 		for (String rgx : regex) {
 			Matcher m = Pattern.compile(left ? "^" + rgx : rgx + "$").matcher(s);
 		    StringBuffer sb = new StringBuffer();
@@ -572,7 +576,7 @@ public class Util
 		return s;
 	}
     
-    public static void copyContents(InputStream in, OutputStream out, Object... params) throws IOException {
+    public static void copyContents(InputStream in, OutputStream out, Object...params) throws IOException {
 		byte scoop[] = new byte[paramInteger(4096, 0, params).intValue()];
 		
 		int n;
@@ -619,7 +623,7 @@ public class Util
 		}
 	}
 
-	public static String readAll(Reader rd, Object... params) throws IOException {
+	public static String readAll(Reader rd, Object...params) throws IOException {
 		Integer chars = paramInteger(null, 0, params);
 		StringBuilder sb = new StringBuilder();
 		int cp, i = 0;
@@ -696,7 +700,7 @@ public class Util
 	 * <table border="1"><tr><th>index</th><th>description</th></tr><tr><td>0</td><td>a path as <code>String</code> to relativize against 'user.dir'</td></tr></table>
 	 * @return	if path is null returns the absolute 'user.dir' system property otherwise the path relative to 'user.dir'.
 	 */
-	public static String relativePath(Object... params) {
+	public static String relativePath(Object...params) {
 		String base = paramString(System.getProperty("user.dir"), 1, params);
 		String path = paramString(null, 0, params);
 		if (path == null)
@@ -709,6 +713,12 @@ public class Util
 		return file == null ? 
 				false : 
 				file.exists() && file.isFile();
+	}
+
+	public static boolean fileExists(String path) {
+		return notNullOrEmpty(path) ? 
+				fileExists(new File(path)) : 
+				false;
 	}
 	
 	public static class ValList extends ArrayList<Object>
@@ -736,6 +746,9 @@ public class Util
 		}
 	}
 	
+	public static ValList list() {	return new ValList();	}
+	public static ValMap map() {	return new ValMap();	}
+	
 	public static class ValMap extends HashMap<String,Object>
 	{
 		public ValMap() {
@@ -754,7 +767,7 @@ public class Util
 		public ValList getList(String key) {
 			Object value = get(key);
 			if (value == null) {
-				ValList list = new ValList();
+				ValList list = list();
 				put(key, list);
 				return list;
 			}
@@ -923,13 +936,29 @@ public class Util
 		}
 	}
 
-	public static Document xmlDocument(File file) {
+	public static Document xmlDocument(File file, Object...params) {
+		FileInputStream fis = null;
 	    try {
 			DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
 			DocumentBuilder db = dbf.newDocumentBuilder();
-			return db.parse(file);
+			String systemId = param(null, 0, params);
+			if (systemId == null)
+				return db.parse(file);
+			else {
+				fis = new FileInputStream(file);
+				return db.parse(fis, systemId);
+			}
 	    } catch (Exception e) {
+			Log.e(TAG, "xmlDocument", e);
 	    	return null;
+	    }
+	    finally {
+	    	if (fis != null)
+				try {
+					fis.close();
+				} catch (IOException e) {
+					Log.e(TAG, "xmlDocument", e);
+				}
 	    }
 	}
     

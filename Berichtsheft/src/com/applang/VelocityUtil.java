@@ -499,7 +499,7 @@ public class VelocityUtil
 		}
 		
 		public static ValList getEssentials(Node parent) {
-			ValList list = new ValList();
+			ValList list = list();
 			for (int i = 0; i < parent.jjtGetNumChildren(); i++) {
 				Node child = parent.jjtGetChild(i);
 				if (isEssential.apply(child))
@@ -1115,7 +1115,7 @@ public class VelocityUtil
 	}
 	
 	public static ValList argumentsFrom(String signature) {
-		ValList args = new ValList();
+		ValList args = list();
 		for (MatchResult m : findAllIn(signature, ARGUMENT_PATTERN)) 
 			args.add(m.group());
 		return args;

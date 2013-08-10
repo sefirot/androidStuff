@@ -3,13 +3,13 @@ package com.applang;
 import static com.applang.Util.*;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONStringer;
 
@@ -68,7 +68,7 @@ public class Util1
 	}
 
 	public static ValList getRecord(Cursor cursor) {
-		ValList list = new ValList();
+		ValList list = list();
 		for (int i = 0; i < cursor.getColumnCount(); i++)
 			list.add(cursor.getString(i));
 		return list;
@@ -149,7 +149,7 @@ public class Util1
 
 	@SuppressWarnings("rawtypes")
 	public static ValList contentAuthorities(Context context, String packageName) {
-		ValList list = new ValList();
+		ValList list = list();
 		try {
 			Class[] cls = getLocalClasses(packageName);
 			for (Class c : filter(list(cls), false, new Predicate<Class>() {
@@ -183,6 +183,10 @@ public class Util1
     		.build();
     }
 
+	public static String encodeUri(String uriString, boolean decode) {
+		return decode ? Uri.decode(uriString) : Uri.encode(uriString);
+	}
+
 	public static boolean hasAuthority(Uri uri) {
 		return notNullOrEmpty(uri.getAuthority());
 	}
@@ -214,6 +218,10 @@ public class Util1
 			return uri.getFragment();
 	}
 	
+	public static String dbTableName(String uriString) {
+		return dbTableName(Uri.parse(uriString));
+	}
+	
 	public static ValMap schema(Context context, Uri uri) {
     	uri = dbTable(uri, null);
 		Cursor cursor = context.getContentResolver().query(
@@ -231,21 +239,25 @@ public class Util1
 		return schema;
 	}
 	
-	public static ValMap table_info(Context context, Uri uri, String table) {
+	public static ValMap table_info(Context context, String uriString, String tableName) {
+		return table_info(context, Uri.parse(uriString), tableName);
+	}
+	
+	public static ValMap table_info(Context context, Uri uri, String tableName) {
     	uri = dbTable(uri, null);
 		Cursor cursor = context.getContentResolver().query(
 				uri, 
 				null, 
-				String.format("pragma table_info(%s)", table),  
+				String.format("pragma table_info(%s)", tableName),  
 				null, 
 				null);
 		final ValMap info = new ValMap();
-		info.put("cid", new ValList());
-		info.put("name", new ValList());
-		info.put("type", new ValList());
-		info.put("notnull", new ValList());
-		info.put("dflt_value", new ValList());
-		info.put("pk", new ValList());
+		info.getList("cid");
+		info.getList("name");
+		info.getList("type");
+		info.getList("notnull");
+		info.getList("dflt_value");
+		info.getList("pk");
 		traverse(cursor, new Job<Cursor>() {
 			public void perform(Cursor c, Object[] params) throws Exception {
 				for (int i = 0; i < c.getColumnCount(); i++) {
@@ -267,6 +279,14 @@ public class Util1
 		if (indices.size() == 1) {
 			pk.set(indices.get(0), -Integer.valueOf(pk.get(indices.get(0)).toString()));
 		}
+		ValList fieldNames = info.getList("name");
+		indices = filterIndex(pk, false, new Predicate<Object>() {
+			public boolean apply(Object t) {
+				return Integer.valueOf(t.toString()) < 0;
+			}
+		});
+		if (indices.size() == 1)
+			info.put("PRIMARY_KEY", fieldNames.get(indices.get(0)));
 		return info;
 	}
     
@@ -278,7 +298,7 @@ public class Util1
 				"select name from sqlite_master where type = 'table'", 
 				null, 
 				null);
-		final ValList tables = new ValList();
+		final ValList tables = list();
 		traverse(cursor, new Job<Cursor>() {
 			public void perform(Cursor c, Object[] params) throws Exception {
 				tables.add(c.getString(0));
@@ -325,7 +345,7 @@ public class Util1
 	}
 
 	@SuppressWarnings("unchecked")
-	public static Object walkJSON(Object[] path, Object json, Function<Object> filter, Object...params) throws Exception {
+	public static Object walkJSON(Object[] path, Object json, Function<Object> filter, Object...params) {
 		Object object = json;
 		
 		if (path == null)
@@ -333,17 +353,32 @@ public class Util1
 		
 		if (json instanceof JSONObject) {
 			JSONObject jo = (JSONObject) json;
-			ValMap map = new ValMap();
+			ValMap map = map();
 			Iterator<String> it = jo.keys();
 			while (it.hasNext()) {
 				String key = it.next();
-				Object value = jo.get(key);
+				Object value = null;
+				try {
+					value = jo.get(key);
+				} catch (JSONException e) {}
 				Object[] path2 = arrayappend(path, key);
-				String string = value.toString();
-				if (string.startsWith(BRACKETS[0])) 
-					value = walkJSON(path2, jo.getJSONArray(key), filter, params);
-				else if (string.startsWith(BRACES[0]))
-					value = walkJSON(path2, jo.getJSONObject(key), filter, params);
+				String string = String.valueOf(value);
+				if (string.startsWith(BRACKETS[0])) {
+					try {
+						JSONArray jsonArray = jo.getJSONArray(key);
+						value = walkJSON(path2, jsonArray, filter, params);
+					} catch (JSONException e) {
+						value = walkJSON(path2, value, filter, params);
+					}
+				}
+				else if (string.startsWith(BRACES[0])) {
+					try {
+						JSONObject jsonObject = jo.getJSONObject(key);
+						value = walkJSON(path2, jsonObject, filter, params);
+					} catch (JSONException e) {
+						value = walkJSON(path2, value, filter, params);
+					}
+				}
 				else
 					value = walkJSON(path2, value, filter, params);
 				map.put(key, value);
@@ -352,9 +387,13 @@ public class Util1
 		}
 		else if (json instanceof JSONArray) {
 			JSONArray ja = (JSONArray) json;
-			ValList list = new ValList();
-			for (int i = 0; i < ja.length(); i++) 
-				list.add(walkJSON(arrayappend(path, i), ja.get(i), filter, params));
+			ValList list = list();
+			for (int i = 0; i < ja.length(); i++) {
+				try {
+					Object value = ja.get(i);
+					list.add(walkJSON(arrayappend(path, i), value, filter, params));
+				} catch (JSONException e) {}
+			}
 			object = list;
 		}
 		else if (filter != null)
