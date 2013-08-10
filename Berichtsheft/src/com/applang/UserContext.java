@@ -10,7 +10,7 @@ import org.apache.velocity.app.Velocity;
 import org.apache.velocity.app.event.EventCartridge;
 import org.apache.velocity.app.event.ReferenceInsertionEventHandler;
 import org.apache.velocity.runtime.parser.node.Node;
-import org.apache.velocity.tools.generic.MathTool;
+//import org.apache.velocity.tools.generic.MathTool;
 
 import com.applang.Util.Function;
 import com.applang.Util.Job;
@@ -43,7 +43,7 @@ public class UserContext extends CustomContext implements Serializable
 	public UserContext(ValMap map) {
 		super(map);
 		if (map != null) {
-			map.put(MATH_TOOL.substring(1), new MathTool());
+	//		map.put(MATH_TOOL.substring(1), new MathTool());
 		}
 	}
 

@@ -80,14 +80,6 @@
         <item>Familiennamen</item>
     </string-array>
         
-    <string name="query">Abfrage</string>
-    <string name="answer_one">answer one</string>
-    <string name="answer_two">answer two</string>
-    <string name="query_hint">"   Hinweis"</string>
-    <string name="donkey_bridge">"   Eselsbrücke"</string>
-    <string name="query_sentence_port">Nenne unten fehlende Angaben zu folgender Pflanze:</string>
-    <string name="saved_query">Gespeicherte Abfrage:</string>
-    <string name="modified_date">Letzte Änderung:</string>
 
     <string-array name="category_array">
         <item>Bericht</item>
@@ -123,5 +115,8 @@
         <item>something is required here</item>
         <item>any type of data is required here</item>
     </string-array>
-	
+        <string name="query">Abfrage</string>
+        <string name="query_show">Zeig</string>
+        <string name="query_check">Prüfe</string>
+        
 </resources>

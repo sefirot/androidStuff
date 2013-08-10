@@ -3,6 +3,7 @@ package com.applang.pflanzen;
 
 import java.util.Random;
 
+import com.applang.Util;
 import com.applang.berichtsheft.R;
 import com.applang.berichtsheft.R.layout;
 import com.applang.provider.NotePad.NoteColumns;
@@ -18,8 +19,14 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.FrameLayout.LayoutParams;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
+import android.widget.Toast;
+
 import java.util.Random;
 
 public class PlantsQuery extends Activity
@@ -43,144 +50,191 @@ public class PlantsQuery extends Activity
   private View mView1;
   private View mView2;
   private View mView3;
-
-  private void assertQueryEqual(View paramView)
+  
+  
+  protected void onCreate(final Bundle savedInstanceState)
   {
-    String str1 = this.mFirstGuessText.getText().toString();
-    String str2 = this.mSecondGuessText.getText().toString();
-    String str3 = this.mCursor.getString(2);
-    String str4 = this.mCursor.getString(3);
-    int i;
-    if (str1 != null)
-      if (str1.compareTo(str4) == 0)
-      {
-        this.mFirstAnswerText.setText("Botanischer Name ist richtig!");
-        i = 0 + 1;
-        if ((str2 == null) || (str3 == null))
-          break label172;
-        if (str2.compareTo(str3) != 0)
-          break label160;
-        this.mSecondAnswerText.setText("Pflanzenfamilie ist richtig!");
-        i++;
-      }
-    Button localButton;
-    while (true)
-    {
-      localButton = (Button)findViewById(2131296297);
-      if (i != 2)
-        break label184;
-      endOfStep(paramView);
-      return;
-      mFirstAnswerText.setText("Botanischer Name ist falsch!");
-      i = 0;
-      break;
-      this.mFirstAnswerText.setText("Botanischer Name fehlt!");
-      i = 0;
-      break;
-      label160: this.mSecondAnswerText.setText("Pflanzenfamilie ist falsch!");
-      continue;
-      label172: this.mSecondAnswerText.setText("Familename fehlt!");
-    }
-    label184: paramView.setTag(Integer.valueOf(2));
-    localButton.setText("Nochmal");
-  }
-
-  private void endOfStep(View paramView)
-  {
-    Button localButton1 = (Button)findViewById(2131296297);
-    Button localButton2 = (Button)findViewById(2131296298);
-    localButton1.setText("Weiter");
-    localButton2.setText("Speichern");
-    localButton1.setTag(Integer.valueOf(0));
-    localButton2.setTag(Integer.valueOf(0));
-  }
-
-  private void showRightAnswer(View paramView)
-  {
-    String str1 = this.mCursor.getString(2);
-    String str2 = this.mCursor.getString(3);
-    mFirstGuessText.setText("");
-    this.mSecondGuessText.setText("");
-    this.mFirstGuessText.setHint("Bot. Name: " + str2);
-    this.mSecondGuessText.setHint("Familie: " + str1);
-  }
-
-  protected String getRandomEntry()
-  {
-    this.mCursor = managedQuery(this.mUri, PROJECTION_ID, null, null, null);
-    int i = this.mCursor.getCount();
-    int j = new Random().nextInt(i);
-    if (j != 0)
-    {
-      this.mCursor = managedQuery(this.mUri, PROJECTION, null, null, null);
-      this.mCursor.moveToPosition(j);
-      String str1 = this.mCursor.getString(2);
-      String str2 = this.mCursor.getString(3);
-      if ((str1 != null) && (str2 != null) && (str1 != "") && (str2 != ""))
-        return this.mCursor.getString(1);
-      return "No Entry";
-    }
-    return "No Entry";
-  }
-
-  protected void onCreate(final Bundle paramBundle)
-  {
-    super.onCreate(paramBundle);
-    this.mUri = getIntent().getData();
-    setContentView(2130903047);
-    this.mLargeText = ((TextView)findViewById(2131296287));
-    this.mFirstGuessText = ((EditText)findViewById(2131296293));
-    this.mSecondGuessText = ((EditText)findViewById(2131296295));
-    this.mFirstAnswerText = ((TextView)findViewById(2131296288));
-    this.mSecondAnswerText = ((TextView)findViewById(2131296289));
+    super.onCreate(savedInstanceState);
+    mUri = getIntent().getData();
+    setContentView(R.layout.plants_query_view);
+    mLargeText = ((TextView)findViewById(R.id.largeText));
+    mFirstGuessText = ((EditText)findViewById(R.id.query_edit_name));
+    mSecondGuessText = ((EditText)findViewById(R.id.query_edit_fam));
     String str = getRandomEntry();
-    if (str != "No Entry")
-      this.mLargeText.setText(str);
-    while (true)
-    {
-      final Button localButton1 = (Button)findViewById(2131296297);
-      Button localButton2 = (Button)findViewById(2131296298);
-      localButton1.setTag(Integer.valueOf(1));
-      localButton2.setTag(Integer.valueOf(1));
-      localButton1.setOnClickListener(new View.OnClickListener()
+    if (str == "no entry") {
+      onCreate(savedInstanceState);
+    } else {
+      mLargeText.setText(str);
+    }  
+ 
+      final Button checkButton = (Button)findViewById(R.id.query_check_button);
+      Button showButton = (Button)findViewById(R.id.query_show_button);
+      checkButton.setTag(1);
+      showButton.setTag(1);
+      checkButton.setOnClickListener(new View.OnClickListener()
       {
         public void onClick(View paramAnonymousView)
         {
           int i = ((Integer)paramAnonymousView.getTag()).intValue();
-          if (i == 1)
-          {
-            PlantsQuery.this.assertQueryEqual(paramAnonymousView);
-            return;
+          if (i == 1) {
+            assertQueryEqual(paramAnonymousView);  
           }
-          if (i == 2)
-          {
-            PlantsQuery.this.assertQueryEqual(paramAnonymousView);
-            localButton1.setText("Weiter");
-            paramAnonymousView.setTag(Integer.valueOf(0));
-            return;
+          if (i == 2) {
+            onCreate(savedInstanceState);
           }
-          PlantsQuery.this.onCreate(paramBundle);
-          paramAnonymousView.setTag(Integer.valueOf(1));
         }
       });
-      localButton2.setOnClickListener(new View.OnClickListener()
+      showButton.setOnClickListener(new View.OnClickListener()
       {
         public void onClick(View paramAnonymousView)
         {
           if (((Integer)paramAnonymousView.getTag()).intValue() == 1)
           {
-            PlantsQuery.this.showRightAnswer(paramAnonymousView);
-            PlantsQuery.this.endOfStep(paramAnonymousView);
-            return;
+        	paramAnonymousView.setTag(2);
+        	checkButton.setTag(2);
+        	showRightAnswer(paramAnonymousView);
+            endOfStep(paramAnonymousView);
+         // return;
           }
-          PlantsQuery.this.finish();
-          paramAnonymousView.setTag(Integer.valueOf(1));
+          /*finish();
+          paramAnonymousView.setTag(1);*/
         }
       });
-      if (paramBundle != null)
-        this.mOriginalContent = paramBundle.getString("origContent");
-      return;
-      onCreate(paramBundle);
+      if (savedInstanceState != null)
+        mOriginalContent = savedInstanceState.getString("origContent");
+      //  onCreate(savedInstanceState);
+      // return;
+      
+    }
+ // }
+
+  protected String getRandomEntry()
+  {
+    mCursor = managedQuery(mUri, PROJECTION_ID, null, null, null);
+    int i = mCursor.getCount();
+    int j = new Random().nextInt(i);
+    if (j != 0)
+    {
+      mCursor = managedQuery(mUri, PROJECTION, null, null, null);
+      mCursor.moveToPosition(j);
+      String str1 = mCursor.getString(2);
+      String str2 = mCursor.getString(3);
+      if ((str1 != null) && (str2 != null) && (str1 != "") && (str2 != "")) {
+        return mCursor.getString(1);
+      }
+    }
+    return "no entry";
+  }
+  
+  private void assertQueryEqual(View paramView)
+  {
+    String nameGuess = this.mFirstGuessText.getText().toString();
+    String famGuess = this.mSecondGuessText.getText().toString();
+    String familyName = this.mCursor.getString(4) + " ";
+    String plantName = this.mCursor.getString(3) + " ";
+    Button checkButton = (Button)findViewById(R.id.query_check_button);
+    int count = 0;    
+    
+    
+    if (nameGuess.equals("") || famGuess.equals("")) {
+    	Toast.makeText(this, "Beides angeben!", Toast.LENGTH_LONG).show();
+    }
+    else {
+    	if (nameGuess.compareTo(plantName) == 0 && famGuess.compareTo(familyName) != 0) {
+	        count++;
+	        showThumbRating(count);
+	        checkButton.setText("Nochmal");
+	        showRightAnswer(paramView);
+    	} else if (nameGuess.compareTo(plantName) != 0 && famGuess.compareTo(familyName) == 0) {
+	        count++;
+	        showThumbRating(count);
+	        checkButton.setText("Nochmal");
+	        paramView.setTag(0);
+	        showRightAnswer(paramView);
+		} else if (nameGuess.compareTo(plantName) == 0 && famGuess.compareTo(familyName) == 0) {
+	        count = 2;
+	        showThumbRating(count);
+	        paramView.setTag(2);
+	        showRightAnswer(paramView);
+	        endOfStep(paramView);        
+		} else if (nameGuess.compareTo(plantName) != 0 && famGuess.compareTo(familyName) != 0) {
+	        showThumbRating(count);
+	        paramView.setTag(2);
+	        showRightAnswer(paramView);
+	        endOfStep(paramView);
+		} 
+    }  
+  }
+
+  private void showThumbRating(int count){
+	 
+	  ImageView thumb = ((ImageView)findViewById(R.id.image_view));
+	  
+		switch (count) {
+	    case 1:
+	    	thumb.setImageResource(R.drawable.thumbs_aside_225);
+			break;
+		case 2:
+			thumb.setImageResource(R.drawable.thumbs_up_225);
+			break;
+		case 0:
+			thumb.setImageResource(R.drawable.thumbs_down_225);
+			break;
+	    }
+  }
+
+  
+
+  private void showRightAnswer(View paramView)
+  {
+    String famName = mCursor.getString(4);
+    String plantName = mCursor.getString(3);
+    LinearLayout queryLayout = ((LinearLayout)findViewById(R.id.query_layout));
+    EditText queryEditName = ((EditText)findViewById(R.id.query_edit_name));
+    EditText queryEditFam = ((EditText)findViewById(R.id.query_edit_fam));
+    TextView queryTextName = new TextView(this);
+    TextView queryTextFam = new TextView(this);
+    LayoutParams textViewLayoutParams = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+    queryTextName.setLayoutParams(textViewLayoutParams);
+    queryTextName.setTextSize(23);
+	queryTextName.setTextColor(this.getResources().getColor(R.color.light_green));
+	queryTextName.setGravity(0x11);
+    queryTextFam.setLayoutParams(textViewLayoutParams);
+    queryTextFam.setTextSize(23);
+	queryTextFam.setTextColor(this.getResources().getColor(R.color.close_mangenta));
+    int checkNum = ((Integer)paramView.getTag()).intValue();
+    
+    switch (checkNum) {
+    case 0:
+    	queryLayout.removeView(queryEditFam);
+		queryTextFam.setText(famName);
+		queryLayout.addView(queryTextFam,2);
+		paramView.setTag(1);
+		break;
+    case 1:
+    	queryLayout.removeView(queryEditName);
+		queryTextName.setText(plantName);
+		queryLayout.addView(queryTextName,1);
+		break;
+	case 2:
+		queryLayout.removeView(queryEditName);
+		queryTextName.setText(plantName);
+		queryLayout.addView(queryTextName,1);
+		
+		queryLayout.removeView(queryEditFam);
+		queryTextFam.setText(famName);
+		queryLayout.addView(queryTextFam,2);
+		break;
     }
   }
+
+  private void endOfStep(View paramView)
+  {
+	Button checkButton = (Button)findViewById(R.id.query_check_button);
+    Button showButton = (Button)findViewById(R.id.query_show_button);
+    checkButton.setText("Weiter");
+    showButton.setText("Speichern");
+  }
+   
 }
+
