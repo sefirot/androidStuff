@@ -76,8 +76,8 @@ public class ContentResolver
 		return acquireProvider(uri).insert(uri, initialValues);
 	}
     
-	public void update(Uri uri, ContentValues values, String where, String[] whereArgs) {
-        acquireProvider(uri).update(uri, values, where, whereArgs);
+	public int update(Uri uri, ContentValues values, String where, String[] whereArgs) {
+        return acquireProvider(uri).update(uri, values, where, whereArgs);
 	}
 
 	public String getType(Uri uri) {

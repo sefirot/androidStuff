@@ -25,6 +25,7 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellRenderer;
+import javax.swing.table.TableColumn;
 
 import android.app.AlertDialog;
 import android.content.ContentResolver;
@@ -37,6 +38,8 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
+import com.applang.Util.ValList;
+import com.applang.Util.ValMap;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.R;
 
@@ -241,6 +244,16 @@ public class DataView extends JPanel
 				}
 			return null;
 		}
+	}
+	
+	public static ValList getProjection(JTable table) {
+		ValList projection = new ValList();
+		int[] cols = table.getSelectedColumns();
+		for (int i = 0; i < cols.length; i++) {
+			TableColumn col = table.getTableHeader().getColumnModel().getColumn(cols[i]);
+			projection.add(col.getHeaderValue());
+		}
+		return projection;
 	}
 	
 	public static JComponent dbTablesComponent(Context context, Uri uri, 
@@ -469,5 +482,18 @@ public class DataView extends JPanel
 			}
 		}
 		return list.toArray();
+	}
+
+	public String addQueryStringToUri(ValList projection) {
+		String tableName = dbTableName(getUri());
+		ValMap schema = schema(tableName);
+		ValList fields = schema.getList("name");
+		Uri.Builder builder = getUri().buildUpon();
+		for (Object field : projection) {
+			int index = fields.indexOf(field);
+			Object type = schema.getListValue("type", index);
+			builder.appendQueryParameter(field.toString(), type.toString());
+		}
+		return builder.toString();
 	}
 }

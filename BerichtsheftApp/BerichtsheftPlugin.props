@@ -89,3 +89,4 @@ AWK_COMMAND=awk
 SQLITE_COMMAND=sqlite3
 commando.visible.android=true
 commando.visible.transport=true
+commando.extras=Format

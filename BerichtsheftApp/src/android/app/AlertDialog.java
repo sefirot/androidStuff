@@ -252,12 +252,8 @@ public class AlertDialog extends Dialog implements DialogInterface
 
 		@SuppressWarnings({ "rawtypes", "unchecked" })
         public Builder setItems(final CharSequence[] items, final OnClickListener listener) {
-			final JList list = new JList(new DefaultListModel() { 
-				{
-					for (CharSequence item : items) 
-						addElement(item);
-				}
-			});
+			final JList list = 
+					new JList(defaultListModel(com.applang.Util.list(items)));
 			list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 			list.addMouseListener(new MouseAdapter() {
 				public void mouseClicked(MouseEvent ev) {

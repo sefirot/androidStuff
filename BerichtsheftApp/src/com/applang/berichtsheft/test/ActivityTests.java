@@ -165,7 +165,7 @@ public class ActivityTests extends TestCase
 
 		ContentResolver contentResolver = mActivity.getContentResolver();
 		
-		ValList list = new ValList();
+		ValList list = list();
 		Cursor cursor = notesCursor(0, "title like ?", "Velocity%");
 		assertTrue(cursor.moveToFirst());
 		long id = 0;

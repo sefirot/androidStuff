@@ -862,7 +862,7 @@ public class MiscTests extends XMLTestCase
 			NamedNodeMap attributes = el.getAttributes();
 			for (int j = 0; j < attributes.getLength(); j++) {
 				Node node = attributes.item(j);
-				System.out.println(node.getNodeName() + " : " + node.getNodeValue());
+				println("%s : %s", node.getNodeName(), node.getNodeValue());
 			}
 		}
 	}

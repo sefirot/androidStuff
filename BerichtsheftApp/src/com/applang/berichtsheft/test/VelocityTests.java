@@ -769,7 +769,7 @@ public class VelocityTests extends TestCase
 	private void assembleTest(String value) {
 		String name = firstIdentifierFrom(value);
 		ValList args = argumentsFrom(value);
-		ValList list = new ValList();
+		ValList list = list();
 		for (Object arg : args) {
 			String type = argumentType(arg.toString());
 			Object[] dummies = (Object[]) getDummies(type);

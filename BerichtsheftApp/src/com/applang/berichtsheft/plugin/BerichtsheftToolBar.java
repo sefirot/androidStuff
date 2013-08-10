@@ -8,7 +8,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Set;
 
-import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JToolBar;
 
@@ -22,7 +21,6 @@ import org.gjt.sp.jedit.msg.DynamicMenuChanged;
 import org.gjt.sp.util.Log;
 
 import com.applang.berichtsheft.components.ActionPanel;
-import com.applang.berichtsheft.components.WeatherManager;
 
 import static com.applang.Util.*;
 
@@ -78,9 +76,9 @@ public class BerichtsheftToolBar extends JToolBar
 		}
 	}
 	
-	private static ActionSet commands = new ActionSet("Plugin: Berichtsheft - Commando Commands");
+	public static ActionSet commands = new ActionSet("Plugin: Berichtsheft - Commando Commands");
 
-	public static void scanDirectory(String directory)
+	static void scanDirectory(String directory)
 	{
 		if (directory != null)
 		{
@@ -121,6 +119,13 @@ public class BerichtsheftToolBar extends JToolBar
 				jEdit.getInputHandler().addKeyBinding(shortcut2, ea[i]);
 		}
 	}
+
+	public static void scanCommandoActions() {
+		scanDirectory(BerichtsheftPlugin.userCommandDirectory);
+		redoKeyboardBindings(commands);
+		jEdit.addActionSet(commands);
+		Log.log(Log.DEBUG, BerichtsheftToolBar.class, "Loaded " + commands.size() + " actions");
+	}
 	
 	private BerichtsheftToolBar(View dockable)
 	{
@@ -128,10 +133,7 @@ public class BerichtsheftToolBar extends JToolBar
 		setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
 		setFloatable(true);
 		
-		scanDirectory(BerichtsheftPlugin.userCommandDirectory);
-		redoKeyboardBindings(commands);
-		jEdit.addActionSet(commands);
-		Log.log(Log.DEBUG, BerichtsheftToolBar.class, "Loaded " + commands.size() + " actions");
+		scanCommandoActions();
 		
 		updateButtons(false);
 	}
@@ -157,7 +159,8 @@ public class BerichtsheftToolBar extends JToolBar
 	{
 		public void actionPerformed(ActionEvent evt)
 		{
-			new CommandoDialog(view, evt.getActionCommand());
+			String cmd = evt.getActionCommand();
+			new CommandoDialog(view, cmd);
 		}
 	};
 	

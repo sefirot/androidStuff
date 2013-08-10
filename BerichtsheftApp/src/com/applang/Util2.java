@@ -54,15 +54,15 @@ import javax.xml.xpath.XPathFactory;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.json.JSONStringer;
+import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+import com.applang.Util.ValList;
+
 import android.app.Activity;
-import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
-import android.view.ViewGroup.LayoutParams;
-import android.widget.LinearLayout;
 
 import static com.applang.Util.*;
 import static com.applang.Util1.*;
@@ -106,6 +106,9 @@ public class Util2
 			
 			if (properties == null)
 				clear();
+			
+			if (!fileExists(fileName))
+				return;
 			
 			XMLDecoder dec = null;
 			try {
@@ -210,7 +213,7 @@ public class Util2
 			if (Settings.contains(key))
 				return (T)Settings.properties.get(key);
 		} catch (Exception e) {
-			Log.e(TAG, "getSetting", e);
+			Log.d(TAG, "getSetting", e);
 		}
 		
 		return defaultValue;
@@ -224,7 +227,7 @@ public class Util2
 				return (ValList) walkJSON(null, new JSONArray(s), null);
 			}
 		} catch (Exception e) {
-			Log.e(TAG, "getListSetting", e);
+			Log.d(TAG, "getListSetting", e);
 		}
 		
 		return defaultValue;
@@ -238,7 +241,7 @@ public class Util2
 				return (ValMap) walkJSON(null, new JSONObject(s), null);
 			}
 		} catch (Exception e) {
-			Log.e(TAG, "getMapSetting", e);
+			Log.d(TAG, "getMapSetting", e);
 		}
 		
 		return defaultValue;
@@ -403,10 +406,21 @@ public class Util2
 
 	public static void noprintln(Object... params) {}
 
+	public static String toString(Object[] o) {
+		ValList list = list();
+		for (Object object : (Object[])o) 
+			list.add(Arrays.toString((Object[])object));
+		return Arrays.toString(list.toArray());
+	}
+
 	public static String toString(Object o) {
-		String value = o.toString();
-		int brac = value.indexOf('[');
-		return value.substring(brac > -1 ? brac : 0);
+		if (o instanceof Object[][]) 
+			return toString((Object[])o);
+		else {
+			String value = o.toString();
+			int brac = value.indexOf('[');
+			return value.substring(brac > -1 ? brac : 0);
+		}
 	}
 	
 	public static class DataBaseConnect
@@ -640,6 +654,14 @@ public class Util2
 		return sw.toString();
 	}
 
+	public static Element selectElement(Object item, String xpath) {
+		NodeList nodes = evaluateXPath(item, xpath);
+		if (nodes.getLength() > 0)
+			return (Element) nodes.item(0);
+		else
+			return null;
+	}
+
 	public static NodeList evaluateXPath(Object item, String path) {
 	    try {
 			XPathFactory factory = XPathFactory.newInstance();
@@ -840,6 +862,37 @@ public class Util2
 		g.drawImage(img, 0, 0, newW, newH, 0, 0, w, h, null);
 		g.dispose();
 		return bimg;
+	}
+
+	public static void setPermissions(String fileName, int mode) {
+		try {
+			String chmod = String.format("chmod %s %s", Integer.toOctalString(mode), fileName);
+			Runtime.getRuntime().exec(chmod);
+		} catch (Exception e) {
+			Log.e(TAG, fileName, e);
+		}
+	}
+
+	public static String runShellScript(String name, String script) {
+		String fileName = pathCombine(new String[]{tempPath(), name});
+		String path = fileName + ".sh";
+		String fn = "\"" + fileName + "\"";
+		script = enclose("[ -e " + fn + " ] && rm " + fn + "\n", script, " > " + fn);
+		File file = new File(path);
+		contentsToFile(file, "#!/bin/bash\n" + script);
+		Process proc = null;
+		try {
+			file.setExecutable(true);
+			proc = Runtime.getRuntime().exec(path);
+			proc.waitFor();
+		} catch (Exception e) {
+			Log.e(TAG, "runShellScript", e);
+		} finally {
+			if (proc != null)
+				proc.destroy();
+		}
+		String contents = contentsFromFile(new File(fileName));
+		return contents != null ? contents.trim() : "";
 	}
 
 }

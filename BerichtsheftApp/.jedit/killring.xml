@@ -1,28 +1,97 @@
 <?xml version="1.1" encoding="UTF-8" ?>
 <!DOCTYPE KILLRING SYSTEM "killring.dtd">
 <KILLRING>
-<ENTRY>)</ENTRY>
-<ENTRY>0</ENTRY>
-<ENTRY>fi</ENTRY>
-<ENTRY>"[^/]+/$"</ENTRY>
-<ENTRY>"/"</ENTRY>
-<ENTRY>SwingUtil.dialogResult &gt; -1</ENTRY>
-<ENTRY>						if (!push)
-							continue;
+<ENTRY>			
+			infile = jEdit.getProperty("AWK_INFILE", "");
+			progfile = jEdit.getProperty("AWK_PROGFILE", "");
+			outfile = jEdit.getProperty("AWK_OUTFILE", "");
 </ENTRY>
-<ENTRY>	buf.append(response);</ENTRY>
-<ENTRY>buf.toString()</ENTRY>
-<ENTRY>!"null".equals(String.valueOf(device))</ENTRY>
-<ENTRY>if (push)
-						</ENTRY>
-<ENTRY>OUT</ENTRY>
-<ENTRY>			buf = new StringBuffer();
+<ENTRY>if (!</ENTRY>
+<ENTRY>generateAwkScript</ENTRY>
+<ENTRY>progfile</ENTRY>
+<ENTRY>
+				throw new RuntimeException("template update failed")</ENTRY>
+<ENTRY>if (performAwk &amp;amp;&amp;amp; infile.length() &amp;gt; 0) {
+				cmd = jEdit.getProperty("AWK_COMMAND");
+				if (params.length() &amp;gt; 0)
+					cmd += " "+params;
+				if (progfile.length() &amp;lt; 1) {
+					buf.append("prog=$(zenity --text-info --editable --title program &amp;lt;&amp;lt;&amp;lt;\"{print}\")");
+					buf.append(" ; "+cmd+" \"$prog\"");
+				}
+				else
+					buf.append(cmd+" -f \""+progfile+ "\"");
+				</ENTRY>
+<ENTRY>				if (outfile.length() &amp;gt; 0) {
+					buf.append(" &amp;gt; \""+outfile+"\"");
+				}
+			}
 </ENTRY>
-<ENTRY>push</ENTRY>
-<ENTRY>push ? "ADB_OUTFILE" : </ENTRY>
-<ENTRY>IN</ENTRY>
-<ENTRY>DB</ENTRY>
-<ENTRY>pull</ENTRY>
-<ENTRY>INFILE</ENTRY>
-<ENTRY>FILE_ENTRY</ENTRY>
+<ENTRY>			buf.append(" \""+infile+"\"");
+</ENTRY>
+<ENTRY>BerichtsheftDockable.doTransport(oper, new Object[]{template}));</ENTRY>
+<ENTRY> \""+infile+"\"</ENTRY>
+<ENTRY>import com.applang.berichtsheft.plugin.*;</ENTRY>
+<ENTRY>TRANSPORT_OPERATION</ENTRY>
+<ENTRY>oper</ENTRY>
+<ENTRY>, new Object[]{template})</ENTRY>
+<ENTRY>System</ENTRY>
+<ENTRY>		&lt;COMMAND SHELL="BeanShell"&gt;
+			progfile = jEdit.getProperty("AWK_PROGFILE", "");
+			outfile = jEdit.getProperty("AWK_OUTFILE", "");
+			
+			buf = new StringBuffer();
+			if (noDbOper) {
+				import com.applang.*;
+			
+				buf.append("void openPath(path)	{ if(path != null) jEdit.openFile(view,path); }");
+				
+				buf.append("waitForConsole(view); ");
+				progFileExists = Util.fileExists(progfile);
+				if (progFileExists) {
+					buf.append("openPath(\""+progfile+"\"); ");
+					buf.append("waitForConsole(view); ");
+				}
+				if (Util.fileExists(outfile)) {
+					if (progFileExists) {
+						buf.append("view.splitHorizontally(); ");
+						buf.append("waitForConsole(view); ");
+					}
+					buf.append("openPath(\""+outfile+"\"); ");
+					buf.append("waitForConsole(view); ");
+				}
+			}
+			buf.toString();
+		&lt;/COMMAND&gt;
+		&lt;COMMAND SHELL="System"&gt;
+			sqlfile = jEdit.getProperty("AWK_OUTFILE", "");
+			
+			jEdit.setProperty("SQLITE_FILE", sqlfile);
+			jEdit.setProperty("SQLITE_DBFILE", dbfile);
+			jEdit.setBooleanProperty("NO_DB_OPERATION", noDbOper);
+			
+			buf = new StringBuffer();
+			if (!noDbOper) {
+				buf.append(jEdit.getProperty("SQLITE_COMMAND"));
+	
+				if (dbfile.length() &gt; 0)
+					buf.append(" \""+dbfile+"\"");
+	
+	 			if (sqlfile.length() &gt; 0) 
+					buf.append(" &amp;lt; \""+sqlfile+"\"");
+			}
+			buf.toString();
+		&lt;/COMMAND&gt;
+</ENTRY>
+<ENTRY>			jEdit.setProperty("TRANSPORT_TEMPLATE", template);
+</ENTRY>
+<ENTRY>
+		&lt;CAPTION LABEL="SQLite"&gt;
+
+		&lt;FILE_ENTRY EVAL="jEdit.getProperty(&amp;quot;SQLITE_DBFILE&amp;quot;, &amp;quot;&amp;quot;)" LABEL="SQLite database file" VARNAME="dbfile"/&gt;
+
+		&lt;/CAPTION&gt;
+</ENTRY>
+<ENTRY>TRANSPORT_TEMPLATE</ENTRY>
+<ENTRY>template</ENTRY>
 </KILLRING>

@@ -10,6 +10,7 @@ import java.awt.Font;
 import java.awt.Frame;
 import java.awt.KeyboardFocusManager;
 import java.awt.LayoutManager;
+import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.Robot;
 import java.awt.Toolkit;
@@ -43,6 +44,7 @@ import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.EventListener;
 import java.util.Iterator;
 import java.util.List;
@@ -56,6 +58,7 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
 import javax.swing.DefaultComboBoxModel;
+import javax.swing.DefaultListModel;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
@@ -425,7 +428,7 @@ public class SwingUtil
 
 	private static boolean finished = false;
 	
-	public static void showFrame(Component relative, 
+	public static void showFrame(Object relative, 
 			String title, 
 			UIFunction assembleUI,
 			UIFunction arrangeUI,
@@ -448,7 +451,12 @@ public class SwingUtil
 			}
 			
 			frame.pack();
-			frame.setLocationRelativeTo(relative);
+			if (relative == null || relative instanceof Component)
+				frame.setLocationRelativeTo((Component)relative);
+			else if (relative instanceof Point)
+				frame.setLocation((Point)relative);
+			else if (relative instanceof Rectangle)
+				frame.setBounds((Rectangle)relative);
 			frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 			frame.setVisible(true);
 			
@@ -629,10 +637,12 @@ public class SwingUtil
 				    					
 				    					if (options != null)
 				    						dialogResult = list(options).indexOf(value);
+				    					else 
+				    						dialogResult = (Integer) value;
 				    					
 				    					Boolean visibility = false;
 				    					if (optionHandler != null)
-				    						visibility = optionHandler.apply(ev, options);
+				    						visibility = optionHandler.apply(ev, options, message);
 				    					
 				    					dialog.setVisible(visibility);
 				    				};
@@ -648,7 +658,7 @@ public class SwingUtil
     	else {
     		Deadline.start(null, keyEvents);
     		parent = JOptionPane.getFrameForComponent(parent);
-        	return JOptionPane.showOptionDialog(parent, 
+        	return dialogResult = JOptionPane.showOptionDialog(parent, 
         			message, title, 
         			optionType, messageType, 
         			icon, 
@@ -657,7 +667,7 @@ public class SwingUtil
 	}
     
     public static ValList defaultOptions(int optionType) {
-    	ValList list = new ValList();
+    	ValList list = list();
        	switch (optionType) {
     	case JOptionPane.YES_NO_OPTION:
     		list.addAll(list(objects( "Yes", "No", null )));
@@ -679,13 +689,13 @@ public class SwingUtil
     		Object message, String title,
             int optionType, int messageType,
             Icon icon,
-            Object[] selections, Object initialSelection, 
+            Object[] selections, Object initialValue, 
             Integer... keyEvents) 
     {
     	dialogResult = JOptionPane.CLOSED_OPTION;
     	
         Object[] options = selections;
-        Object initialOption = initialSelection;
+        Object initialOption = initialValue;
         if (options == null) {
         	ValList list = defaultOptions(optionType);
         	initialOption = list.remove(-1);
@@ -694,7 +704,7 @@ public class SwingUtil
         
         Object[] widgets = null;
     	JTextComponent textComponent = null;
-    	String text = notNullOrEmpty(initialSelection) ? initialSelection.toString() : "";
+    	String text = notNullOrEmpty(initialValue) ? initialValue.toString() : "";
     	
 		parent = JOptionPane.getFrameForComponent(parent);
 		
@@ -706,7 +716,7 @@ public class SwingUtil
         			message, title, 
         			messageType, 
         			icon, 
-        			selections, initialSelection);
+        			selections, initialValue);
         	
     	default:
     		optionType = JOptionPane.DEFAULT_OPTION;
@@ -743,7 +753,7 @@ public class SwingUtil
     	return textComponent.getText();
 	}
 
-    public static <T> T showResizableDialog(final JComponent component, Function<T> show, Object...params) {
+    public static <T> T showResizableDialog(final JComponent component, AncestorListener ancestorListener, Function<T> show, Object...params) {
 		JScrollPane scrollPane = new JScrollPane(component);
 		component.addHierarchyListener(new HierarchyListener() {
 			public void hierarchyChanged(HierarchyEvent e) {
@@ -756,14 +766,7 @@ public class SwingUtil
 				}
 			}
 		});
-		component.addAncestorListener(new AncestorListener() {
-			public void ancestorRemoved(AncestorEvent event) {
-			}
-			public void ancestorMoved(AncestorEvent event) {
-			}
-			public void ancestorAdded(AncestorEvent event) {
-			}
-		});
+		component.addAncestorListener(ancestorListener);
 		return show.apply(arrayappend(objects(scrollPane), params));
     }
 
@@ -844,7 +847,7 @@ public class SwingUtil
 	    		textArea.setPreferredSize(new Dimension(500,200));
 	    		textArea.setText(contentsFromFile(file));
 				options = objects("OK","Save","Cancel");
-				option = showResizableDialog(textArea, new Function<Integer>() {
+				option = showResizableDialog(textArea, null, new Function<Integer>() {
 					public Integer apply(Object...params) {
 						return JOptionPane.showOptionDialog(null, params[0], title, 
 								JOptionPane.DEFAULT_OPTION, 
@@ -1459,6 +1462,16 @@ public class SwingUtil
 		}
 	}
 	
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	public static DefaultListModel defaultListModel(final Collection<?> collection) {
+		return new DefaultListModel() { 
+			{
+				for (Object item : collection) 
+					addElement(item);
+			}
+		};
+	}
+	
 	@SuppressWarnings("rawtypes")
 	public static class Memory extends DefaultComboBoxModel
 	{
@@ -1519,7 +1532,7 @@ public class SwingUtil
 			this.name = name;
 			
 			capacity = getSetting(name + ".memory.capacity", capacity);
-			ValList values = (ValList) getListSetting(name + ".memory", new ValList());
+			ValList values = (ValList) getListSetting(name + ".memory", list());
 			deque = new ArrayDeque<Object>(values);
 	
 			for (Object p : params)

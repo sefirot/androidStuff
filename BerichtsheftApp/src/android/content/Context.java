@@ -1,6 +1,7 @@
 package android.content;
 
 import static com.applang.Util.*;
+import static com.applang.Util2.*;
 
 import java.awt.Point;
 import java.io.File;
@@ -66,15 +67,6 @@ public class Context
     public static final int S_IWOTH = 00002;
     public static final int S_IXOTH = 00001;
     
-    public static void setPermissions(String fileName, int mode) {
-    	try {
-    		String chmod = String.format("chmod %s %s", Integer.toOctalString(mode), fileName);
-			Runtime.getRuntime().exec(chmod);
-    	} catch (Exception e) {
-    		Log.e(TAG, fileName, e);
-    	}
-    }
-
     public void setPackageInfo(String packageName, Object...params) {
     	if (packageName == null) 
     		mPackageInfo = param(null, 0, params);

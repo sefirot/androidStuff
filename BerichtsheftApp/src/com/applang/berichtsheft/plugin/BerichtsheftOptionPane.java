@@ -29,12 +29,12 @@ public class BerichtsheftOptionPane extends AbstractOptionPane implements Action
 	public static ValMap separators, decorations;
 	static {
 		separators = new ValMap();
-		separators.put("none", strings("",""));
-		separators.put("newline", strings(NEWLINE, NEWLINE_REGEX));
-		separators.put("tab", strings(TAB, TAB_REGEX));
+		separators.put("none", "");
+		separators.put("newline", NEWLINE);
+		separators.put("tab", TAB);
 		decorations = new ValMap();
-		decorations.put("none", strings("","","",""));
-		decorations.put("fold", arrayappend(FOLD_MARKER, FOLD_MARKER_REGEX));
+		decorations.put("none", strings("",""));
+		decorations.put("fold", FOLD_MARKER);
 	}
 	
 	private FontSelector fontSelector;
