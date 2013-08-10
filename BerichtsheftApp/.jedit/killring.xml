@@ -1,87 +1,97 @@
 <?xml version="1.1" encoding="UTF-8" ?>
 <!DOCTYPE KILLRING SYSTEM "killring.dtd">
 <KILLRING>
-<ENTRY>  mittag - tomaten buccatti cocktail, spitze paprika &amp; gurken &amp; salat usw. geerntet,  feierabend - wasserrohre am neugestzten mangold bei gärtnerei abgebaut &amp; nach bach gefahren &amp; für den lauch &amp; mais aufgebaut, mangold &amp; bundzwiebeln gejähtet</ENTRY>
-<ENTRY>  1 - Paprika wir im august grün geerntet, da sie zu spät rot wird (sept - okt.). auch wäre dann nur mit  60% der grünernte zurechnen und die paprika müsste per faden und per doppellagiges netzgitter stabilisiert werden.  2 - Bewässerung im feld entweder über metallrohre (system bauer veraltet)  oder schlauchrolle. der traktor betreibt die wasserpumpe am feldbrunnen, an der rolle lässt sich die einzugsgeschwindigkeit des schlauch einstellen, 15 meter pro min normal. das wasser treibt die einzugsturbine an, umso mehr wasser gepumpt wird desto mehr wasser gerät durch die turbine (und nicht den beipass) und die rolle wird schneller eingezogen un weniger wasser wird auf den feld gebracht (lasst sich berechnen). am sprenkler lässt spritzweite, wasserstrahl &amp; drehsektor einstellen. problem  äussere beete bei halbkreis bewässerung mit rückwärtigen einzug erhalten weniger wasser.</ENTRY>
-<ENTRY>  bewässerung voon 100m feld verbraucht ca 15-18 l diesel. würde sich eine solarbetrieben pumpe lohnen?</ENTRY>
-<ENTRY>  bis mittag -  brombeeren, tomaten buccati &amp; tasty tom, paprika, stangenbohnen, gurken, mais, mangold geerntet, bis feierabend - endivien, zuckerhut salat gesetzt, lauch &amp; mais bewässert mangold &amp; fenchel gejähtet, lauch &amp; bundzwiebeln geerntet</ENTRY>
-<ENTRY>  gurken werden jeden tag geerntet! bei optimalen bedingungen wächst eine innerhalb eines tages zu einem vielpfünder, der sich schlecht verkaufen lässt.</ENTRY>
-<ENTRY>{{{ Monday, 13.Aug.2012 'bemerkungen'
-  1 - Paprika wir im august grün geerntet, da sie zu spät rot wird (sept - okt.). auch wäre dann nur mit  60% der grünernte zurechnen und die paprika müsste per faden und per doppellagiges netzgitter stabilisiert werden.  2 - Bewässerung im feld entweder über metallrohre (system bauer veraltet)  oder schlauchrolle. der traktor betreibt die wasserpumpe am feldbrunnen, an der rolle lässt sich die einzugsgeschwindigkeit des schlauch einstellen, 15 meter pro min normal. das wasser treibt die einzugsturbine an, umso mehr wasser gepumpt wird desto mehr wasser gerät durch die turbine (und nicht den beipass) und die rolle wird schneller eingezogen un weniger wasser wird auf den feld gebracht (lasst sich berechnen). am sprenkler lässt spritzweite, wasserstrahl &amp; drehsektor einstellen. problem  äussere beete bei halbkreis bewässerung mit rückwärtigen einzug erhalten weniger wasser.
-}}}
+<ENTRY>			
+			infile = jEdit.getProperty("AWK_INFILE", "");
+			progfile = jEdit.getProperty("AWK_PROGFILE", "");
+			outfile = jEdit.getProperty("AWK_OUTFILE", "");
 </ENTRY>
-<ENTRY>1 - Paprika wir im august grün geerntet, da sie zu spät rot wird (sept - okt.). auch wäre dann nur mit  60% der grünernte zurechnen und die paprika müsste per faden und per doppellagiges netzgitter stabilisiert werden.  </ENTRY>
-<ENTRY>2 - Bewässerung im feld entweder über metallrohre (system bauer veraltet)  oder schlauchrolle. der traktor betreibt die wasserpumpe am feldbrunnen, an der rolle lässt sich die einzugsgeschwindigkeit des schlauch einstellen, 15 meter pro min normal. das wasser treibt die einzugsturbine an, umso mehr wasser gepumpt wird desto mehr wasser gerät durch die turbine (und nicht den beipass) und die rolle wird schneller eingezogen un weniger wasser wird auf den feld gebracht (lasst sich berechnen). am sprenkler lässt spritzweite, wasserstrahl &amp; drehsektor einstellen. problem  äussere beete bei halbkreis bewässerung mit rückwärtigen einzug erhalten weniger wasser.</ENTRY>
-<ENTRY>{{{ :folding=explicit: }}}
-{{{ Monday, 13.Aug.2012 'bemerkungen 1'
-  1 - Paprika wir im august grün geerntet, da sie zu spät rot wird (sept - okt.). auch wäre dann nur mit  60% der grünernte zurechnen und die paprika müsste per faden und per doppellagiges netzgitter stabilisiert werden.  
-}}}
-{{{ Monday, 13.Aug.2012 'bemerkungen 2'
-  2 - Bewässerung im feld entweder über metallrohre (system bauer veraltet)  oder schlauchrolle. der traktor betreibt die wasserpumpe am feldbrunnen, an der rolle lässt sich die einzugsgeschwindigkeit des schlauch einstellen, 15 meter pro min normal. das wasser treibt die einzugsturbine an, umso mehr wasser gepumpt wird desto mehr wasser gerät durch die turbine (und nicht den beipass) und die rolle wird schneller eingezogen un weniger wasser wird auf den feld gebracht (lasst sich berechnen). am sprenkler lässt spritzweite, wasserstrahl &amp; drehsektor einstellen. problem  äussere beete bei halbkreis bewässerung mit rückwärtigen einzug erhalten weniger wasser.
-}}}
-{{{ Tuesday, 14.Aug.2012 'bemerkung'
-  gurken werden jeden tag geerntet! bei optimalen bedingungen wächst eine innerhalb eines tages zu einem vielpfünder, der sich schlecht verkaufen lässt.
-}}}
-{{{ Wednesday, 15.Aug.2012 'bemerkung'
-  heute ist die einzugsmesstrommel an der schlauchrolle beim bewässern der endivien eingeknickt, konnte aber mit einen schraubschlüssel repariert werden;
-}}}
-{{{ Thursday, 16.Aug.2012 'bemerkungen'
-  1 - knoten machen um bündel, der sofort zu zieht = faden um den bündel legen und kreuzen, die obere seite nocheinmal um da bündel schlagen  und kreuzstelle festhalten, den wiederkommenden faden längs unter der kreuzstelle durführen und zuziehen, 2 - blankenberg ist nur regenbewässert, bei dem heissen wetter bis 30 C reicht der nachtregen keine zwei stunden. grundwasser auf dem hügel liegt auf sieniveau ( 80 meter tief). andere bauern haben trotzdem brunneb gebohrt und an einen wassertank angeschlossen, gutewr loss boden und einzige stelle in der umgebung wo auch getreide angebaut wird.
-}}}</ENTRY>
-<ENTRY>{{{ :folding=explicit: }}}
-{{{ Monday, 06.Aug.2012 'bemerkungen'
-  1 - Franzosenkraut ist dieses Jahr unkraut nummer 1 auf allen schlägen. angeblich sollen es die franzosen im zweiten weltkrieg abgeworfen haben, um die ernten zu verringern. es wird meine pflanze der nächsten woche; 2 -gemüsemesser werden mit ein schleifstein grob angeschliffen um mit einem feineren handschleifgerät scharf gemacht. es wir bei den gemüsezwiebeln, lauch unkraut schneiden eingesetzt. die hippe benutzen wir zum salat schneiden;
-}}}
-{{{ Wednesday, 08.Aug.2012 'bemerkungen'
-  1 - buschbohnen ergeben 3€ pro kilo und sich vergleichweise leicht zu pflegen( gefahr der fäule und unkrauttrieb bei nassen wetter). vielen biobauern ist der ernteaufwand trotzdem zu hoch; 2 - zwiebeln werden entweder aus dem samen gezogen (generativ vermehrt) oder als jungzwiebel eingekauft und gesetzt. ihr welkes laub ist ein zeichne von reife.
-}}}
-{{{ Thursday, 09.Aug.2012 'bemerkungen'
-  1 - der neugesetzte wirsing wurde zu 60% von schnecken gefressen. optionen  umsetzen der 40% auf weniger beete oder nachstzen. es wurde umgesetzt; 2 - rhabarber &amp; erdbeeren sind zweijährige kulturen, sie tragen deutlich blätter bzw früchte im zweiten jahr;
-}}}</ENTRY>
-<ENTRY>  mittag - buntenn mangold &amp; salat I kopfsalat &amp; salat II roter eichblatt &amp; salat batavia &amp; tomaten buccatti &amp; gemüsezwiebeln &amp; mangold &amp; bundzwiebeln geerntet, feierabend  stangenbohnen geerntet, franzosenkraut im weisskohl geschnitten;</ENTRY>
-<ENTRY>{{{ :folding=explicit: }}}
-{{{ Monday, 13.Aug.2012 'Bericht'
-  mittag - tomaten buccatti cocktail, spitze paprika &amp; gurken &amp; salat usw. geerntet,  feierabend - wasserrohre am neugestzten mangold bei gärtnerei abgebaut &amp; nach bach gefahren &amp; für den lauch &amp; mais aufgebaut, mangold &amp; bundzwiebeln gejähtet
-}}}
-{{{ Tuesday, 14.Aug.2012 'Bericht'
-  bis mittag -  brombeeren, tomaten buccati &amp; tasty tom, paprika, stangenbohnen, gurken, mais, mangold geerntet, bis feierabend - endivien, zuckerhut salat gesetzt, lauch &amp; mais bewässert mangold &amp; fenchel gejähtet, lauch &amp; bundzwiebeln geerntet
-}}}
-{{{ Wednesday, 15.Aug.2012 'Bericht'
-  mittag - kisten gewaschen &amp; augeklappt, tomaten alle &amp; paprika &amp; mangold &amp; mais &amp; salat I grüner eichblatt &amp; salat II roter eich. &amp; batavia grün bundzwiebeln &amp; wenig staudensellerie geerntet, feierabend  lauch gerntet, mangold gehackt, endivien kursblatt (?) &amp; zuckerhut &amp; ? in bach gesetzt, gurkenhaus unkraut gerupft;
-}}}
-{{{ Thursday, 16.Aug.2012 'Bericht'
-  mittag - kisten geklappt, gemüsezwiebeln geschnitten, salat in blankenberg angeschaut, unkraut im gurken und tomaten gerupft, paprika geerntet, heupakete zum sitzen für das hoffest umgelagert, feierabend - scheune in der gärtnerei aufegeräumt, 12 reihen zwiebeln am steinacker geerntet; 
-}}}
-{{{ Friday, 17.Aug.2012 'Bericht'
-  mittag - kisten laden, für den hofladen tomaten ernten, stangebohnen aus den gewächshaus gerissen, es werden dort kohlrabi gesetzt, die grünmasse wurde vor den eingang zum feld blankenberg zum pferdemist gefahren, feierabend - die restlichhen aus der abernte (3 kisten aus 8 reihen a 50m) ins kühlhaus gefahren, rotkohl zu ende gejähtet, 2 reihen kartoffeln nicola  &amp; 2 reihen laura geerntet;
-}}}</ENTRY>
-<ENTRY>  2 - Bewässerung im feld entweder über metallrohre (system bauer veraltet)  oder schlauchrolle. der traktor betreibt die wasserpumpe am feldbrunnen, an der rolle lässt sich die einzugsgeschwindigkeit des schlauch einstellen, 15 meter pro min normal. das wasser treibt die einzugsturbine an, umso mehr wasser gepumpt wird desto mehr wasser gerät durch die turbine (und nicht den beipass) und die rolle wird schneller eingezogen un weniger wasser wird auf den feld gebracht (lasst sich berechnen). am sprenkler lässt spritzweite, wasserstrahl &amp; drehsektor einstellen. problem  äussere beete bei halbkreis bewässerung mit rückwärtigen einzug erhalten weniger wasser.</ENTRY>
-<ENTRY>{{{ :folding=explicit: }}}
-{{{ Monday, 13.Aug.2012 'bemerkungen 1'
-  1 - Paprika wir im august grün geerntet, da sie zu spät rot wird (sept - okt.). auch wäre dann nur mit  60% der grünernte zurechnen und die paprika müsste per faden und per doppellagiges netzgitter stabilisiert werden.
-}}}
-{{{ Monday, 13.Aug.2012 'bemerkungen 2'
-  2 - Bewässerung im feld entweder über metallrohre (system bauer veraltet)  oder schlauchrolle. der traktor betreibt die wasserpumpe am feldbrunnen, an der rolle lässt sich die einzugsgeschwindigkeit des schlauch einstellen, 15 meter pro min normal. das wasser treibt die einzugsturbine an, umso mehr wasser gepumpt wird desto mehr wasser gerät durch die turbine (und nicht den beipass) und die rolle wird schneller eingezogen un weniger wasser wird auf den feld gebracht (lasst sich berechnen). am sprenkler lässt spritzweite, wasserstrahl &amp; drehsektor einstellen. problem  äussere beete bei halbkreis bewässerung mit rückwärtigen einzug erhalten weniger wasser.
-}}}
-{{{ Tuesday, 14.Aug.2012 'bemerkung'
-  gurken werden jeden tag geerntet! bei optimalen bedingungen wächst eine innerhalb eines tages zu einem vielpfünder, der sich schlecht verkaufen lässt.
-}}}
-{{{ Wednesday, 15.Aug.2012 'bemerkung'
-  heute ist die einzugsmesstrommel an der schlauchrolle beim bewässern der endivien eingeknickt, konnte aber mit einen schraubschlüssel repariert werden;
-}}}
-{{{ Thursday, 16.Aug.2012 'bemerkungen'
-  1 - knoten machen um bündel, der sofort zu zieht = faden um den bündel legen und kreuzen, die obere seite nocheinmal um da bündel schlagen  und kreuzstelle festhalten, den wiederkommenden faden längs unter der kreuzstelle durführen und zuziehen, 2 - blankenberg ist nur regenbewässert, bei dem heissen wetter bis 30 C reicht der nachtregen keine zwei stunden. grundwasser auf dem hügel liegt auf sieniveau ( 80 meter tief). andere bauern haben trotzdem brunneb gebohrt und an einen wassertank angeschlossen, gutewr loss boden und einzige stelle in der umgebung wo auch getreide angebaut wird.
-}}}
-{{{ Monday, 13.Aug.2012 'Bemerkung'
-  1 - Paprika wir im august grün geerntet, da sie zu spät rot wird (sept - okt.). auch wäre dann nur mit  60% der grünernte zurechnen und die paprika müsste per faden und per doppellagiges netzgitter stabilisiert werden.  
-}}}
-{{{ Monday, 13.Aug.2012 'Bemerkung'
-  2 - Bewässerung im feld entweder über metallrohre (system bauer veraltet)  oder schlauchrolle. der traktor betreibt die wasserpumpe am feldbrunnen, an der rolle lässt sich die einzugsgeschwindigkeit des schlauch einstellen, 15 meter pro min normal. das wasser treibt die einzugsturbine an, umso mehr wasser gepumpt wird desto mehr wasser gerät durch die turbine (und nicht den beipass) und die rolle wird schneller eingezogen un weniger wasser wird auf den feld gebracht (lasst sich berechnen). am sprenkler lässt spritzweite, wasserstrahl &amp; drehsektor einstellen. problem  äussere beete bei halbkreis bewässerung mit rückwärtigen einzug erhalten weniger wasser.
-}}}</ENTRY>
-<ENTRY>Mangold pikieren bzw. ziehen bedeutet das Vereinzeln von gekeimten Pflanzen, da es Saatgut  nur in einem Knäuel von 2-6 Keimanlagen gibt. Die mehrfach gekeimten Mangoldjungpflanzen werden im Presstopfformat in einer Kiste zu 120 Stück geliefert. Vor dem Setzen werden alle bis auf den größten Keimling  Mangold per Hand gerupft bevor sie zum Setzen auf den Bus oder Hänger geladen werden. </ENTRY>
-<ENTRY>Heute haben wir Salat (Eichblatt, Batavia &amp; Kopfsalat) geernetet. Auf dem Hof wurde das Gemüse in Kisten gewaschen und auf Paletten bzw. Rollis gestellt und in die Verpackerhalle gefahren. Salatsorten für die Abokisten wird in Salat I (größere Menge) und Salat II (kleinere Menge) unterschieden. Sonderbestellung bestimmte Salatsorten werden zusätlich geerntet und falls ausrteichend Platz auf der Palette zu einen eigenen Stapel zusammengestellt, ansonsten auf die Salat I&amp;II- Stapel verteilt. Am Nachmittag haben wir Lauch &amp; Bundzwiebeln geerntet &amp; Mangold gezogen und in Bach gesetzt.  </ENTRY>
-<ENTRY>Porree - oder Lauchernte wird ähnlich wie bei den Gemüsezwiebeln mit dem langen Gemüsemesser durchgeführt. Wenn der Boden trocken ist, kann es vorteilhaft sein die Reihe Lauchstangen  mit dem Spaten vorzustechen, damit sie sich leichter ziehen lassen. Ansonsten zieht man mit der linken Hand in der Mitte ansetzend, dann schält man mit der rechten die welken Blätter hin zum Wurzelansatz, der mit dem Messer geschnitten wird. Anschliessend wird die Lauchstange so gedreht, dass sich die Blattspitzen mit 1-2 Schlägen sauber und gerade abschlagen lassen. Dazu braucht man ein scharfes Messer.  </ENTRY>
-<ENTRY>kein fehler im system</ENTRY>
-<ENTRY>kein system im fehler</ENTRY>
-<ENTRY>kein fehler imt sysem</ENTRY>
+<ENTRY>if (!</ENTRY>
+<ENTRY>generateAwkScript</ENTRY>
+<ENTRY>progfile</ENTRY>
+<ENTRY>
+				throw new RuntimeException("template update failed")</ENTRY>
+<ENTRY>if (performAwk &amp;amp;&amp;amp; infile.length() &amp;gt; 0) {
+				cmd = jEdit.getProperty("AWK_COMMAND");
+				if (params.length() &amp;gt; 0)
+					cmd += " "+params;
+				if (progfile.length() &amp;lt; 1) {
+					buf.append("prog=$(zenity --text-info --editable --title program &amp;lt;&amp;lt;&amp;lt;\"{print}\")");
+					buf.append(" ; "+cmd+" \"$prog\"");
+				}
+				else
+					buf.append(cmd+" -f \""+progfile+ "\"");
+				</ENTRY>
+<ENTRY>				if (outfile.length() &amp;gt; 0) {
+					buf.append(" &amp;gt; \""+outfile+"\"");
+				}
+			}
+</ENTRY>
+<ENTRY>			buf.append(" \""+infile+"\"");
+</ENTRY>
+<ENTRY>BerichtsheftDockable.doTransport(oper, new Object[]{template}));</ENTRY>
+<ENTRY> \""+infile+"\"</ENTRY>
+<ENTRY>import com.applang.berichtsheft.plugin.*;</ENTRY>
+<ENTRY>TRANSPORT_OPERATION</ENTRY>
+<ENTRY>oper</ENTRY>
+<ENTRY>, new Object[]{template})</ENTRY>
+<ENTRY>System</ENTRY>
+<ENTRY>		&lt;COMMAND SHELL="BeanShell"&gt;
+			progfile = jEdit.getProperty("AWK_PROGFILE", "");
+			outfile = jEdit.getProperty("AWK_OUTFILE", "");
+			
+			buf = new StringBuffer();
+			if (noDbOper) {
+				import com.applang.*;
+			
+				buf.append("void openPath(path)	{ if(path != null) jEdit.openFile(view,path); }");
+				
+				buf.append("waitForConsole(view); ");
+				progFileExists = Util.fileExists(progfile);
+				if (progFileExists) {
+					buf.append("openPath(\""+progfile+"\"); ");
+					buf.append("waitForConsole(view); ");
+				}
+				if (Util.fileExists(outfile)) {
+					if (progFileExists) {
+						buf.append("view.splitHorizontally(); ");
+						buf.append("waitForConsole(view); ");
+					}
+					buf.append("openPath(\""+outfile+"\"); ");
+					buf.append("waitForConsole(view); ");
+				}
+			}
+			buf.toString();
+		&lt;/COMMAND&gt;
+		&lt;COMMAND SHELL="System"&gt;
+			sqlfile = jEdit.getProperty("AWK_OUTFILE", "");
+			
+			jEdit.setProperty("SQLITE_FILE", sqlfile);
+			jEdit.setProperty("SQLITE_DBFILE", dbfile);
+			jEdit.setBooleanProperty("NO_DB_OPERATION", noDbOper);
+			
+			buf = new StringBuffer();
+			if (!noDbOper) {
+				buf.append(jEdit.getProperty("SQLITE_COMMAND"));
+	
+				if (dbfile.length() &gt; 0)
+					buf.append(" \""+dbfile+"\"");
+	
+	 			if (sqlfile.length() &gt; 0) 
+					buf.append(" &amp;lt; \""+sqlfile+"\"");
+			}
+			buf.toString();
+		&lt;/COMMAND&gt;
+</ENTRY>
+<ENTRY>			jEdit.setProperty("TRANSPORT_TEMPLATE", template);
+</ENTRY>
+<ENTRY>
+		&lt;CAPTION LABEL="SQLite"&gt;
+
+		&lt;FILE_ENTRY EVAL="jEdit.getProperty(&amp;quot;SQLITE_DBFILE&amp;quot;, &amp;quot;&amp;quot;)" LABEL="SQLite database file" VARNAME="dbfile"/&gt;
+
+		&lt;/CAPTION&gt;
+</ENTRY>
+<ENTRY>TRANSPORT_TEMPLATE</ENTRY>
+<ENTRY>template</ENTRY>
 </KILLRING>

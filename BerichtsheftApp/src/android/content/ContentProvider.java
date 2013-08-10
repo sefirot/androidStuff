@@ -1,45 +1,146 @@
 package android.content;
 
+import java.io.File;
+
 import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteOpenHelper;
 import android.net.Uri;
+
+import static com.applang.Util.*;
+import static com.applang.Util1.*;
+import static com.applang.Util2.*;
 
 public class ContentProvider {
     private Context mContext = null;
 
-    public final Context getContext() {
+    public void setContext(Context context) {
+		this.mContext = context;
+	}
+
+	public final Context getContext() {
         return mContext;
     }
 
-	public String getType(Uri uri) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
 	public boolean onCreate() {
-		// TODO Auto-generated method stub
 		return false;
 	}
 
-	public Cursor query(Uri uri, String[] projection, String selection,
-			String[] selectionArgs, String sortOrder) {
-		// TODO Auto-generated method stub
+	public String getType(Uri uri) {
+		if (notNullOrEmpty(uri.getPath()) && notNullOrEmpty(uri.getFragment())) {
+			if (notNullOrEmpty(uri.getQuery()))
+				return ContentResolver.CURSOR_ITEM_BASE_TYPE;
+			else
+				return ContentResolver.CURSOR_DIR_BASE_TYPE;
+		}
 		return null;
+	}
+    
+    public SQLiteOpenHelper openHelper() {
+    	return null;
+    }
+
+	protected SQLiteDatabase mDb = null;
+	protected String mTable = "";
+	
+	protected boolean open(Uri uri, int mode) {
+		if (mDb != null && mDb.isOpen())
+			return true;
+		else if (mode < 0)
+			return false;
+		
+		SQLiteOpenHelper oh = openHelper();
+		if (oh != null) {
+			switch (mode) {
+			case SQLiteDatabase.OPEN_READONLY:
+				mDb = oh.getReadableDatabase();
+				break;
+			default:
+				mDb = oh.getWritableDatabase();
+			}
+		}
+		else {
+			File file = new File(uri.getPath());
+			if (!fileExists(file))
+				return false;
+			mDb = SQLiteDatabase.openDatabase(
+					file.getPath(), 
+					null, 
+					mode);
+		}
+		
+		mTable = dbTableName(uri);
+		if (!notNullOrEmpty(mTable))
+			mTable = "sqlite_master";
+		
+		return open(uri, -1);
+	}
+	
+	public void close() {
+		if (mDb != null) {
+			mDb.close();
+			mDb = null;
+		}
+	}
+
+	@Override
+	protected void finalize() throws Throwable {
+		close();
+		super.finalize();
+	}
+	
+	public String sql = null;
+
+	public Cursor rawQuery(Uri uri, String...sql) {
+		Cursor cursor = null;
+		if (open(uri, SQLiteDatabase.OPEN_READONLY)) {
+			String[] args = null;
+			if (sql.length > 0) {
+				this.sql = sql[0];
+				args = arrayreduce(sql, 1, sql.length - 1);
+			}
+			else
+				this.sql = "select * from " + mTable;
+			cursor = mDb.rawQuery(this.sql, args);
+		}
+		return cursor;
+	}
+
+	public Cursor query(Uri uri, String[] projection,
+			String selection, String[] selectionArgs,
+			String sortOrder) {
+		Cursor cursor = null;
+		if (open(uri, SQLiteDatabase.OPEN_READONLY)) {
+			cursor = mDb.query(mTable, 
+					projection, 
+					selection, selectionArgs, 
+					null, null, 
+					sortOrder);
+		}
+		return cursor;
 	}
 
 	public Uri insert(Uri uri, ContentValues initialValues) {
-		// TODO Auto-generated method stub
+		if (open(uri, SQLiteDatabase.OPEN_READWRITE)) {
+			long rowId = mDb.insert(mTable, null, initialValues);
+			return uri.buildUpon().query("" + rowId).build();
+		}
 		return null;
 	}
 
 	public int delete(Uri uri, String where, String[] whereArgs) {
-		// TODO Auto-generated method stub
-		return 0;
+		int retval = 0;
+		if (open(uri, SQLiteDatabase.OPEN_READWRITE)) {
+			retval = mDb.delete(mTable, where, whereArgs);
+		}
+		return retval;
 	}
 
-	public int update(Uri uri, ContentValues values, String where,
-			String[] whereArgs) {
-		// TODO Auto-generated method stub
-		return 0;
+	public int update(Uri uri, ContentValues values, String where, String[] whereArgs) {
+		int retval = 0;
+		if (open(uri, SQLiteDatabase.OPEN_READWRITE)) {
+			retval = mDb.update(mTable, values, where, whereArgs);
+		}
+		return retval;
 	}
-
 }

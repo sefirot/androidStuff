@@ -11,6 +11,8 @@ import android.util.Log;
 import java.io.File;
 import java.sql.SQLException;
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static com.applang.Util.*;
 
@@ -20,6 +22,10 @@ import static com.applang.Util.*;
  */
 public class SQLiteDatabase {
     private static final String TAG = SQLiteDatabase.class.getSimpleName();
+    
+    public SQLiteDatabase() {
+        Logger.getLogger("com.almworks.sqlite4java").setLevel(Level.SEVERE);
+    }
     
     public static String getSQLiteVersion() {
 		try {
@@ -44,13 +50,13 @@ public class SQLiteDatabase {
         public Cursor newCursor(SQLiteConnection con, final SQLiteStatement stm);
     }
     
-    CursorFactory cursorFactory = new CursorFactory() {
+    private CursorFactory mFactory = new CursorFactory() {
 		
 		@Override
 		public Cursor newCursor(SQLiteConnection con, final SQLiteStatement stm) {
 			return new Cursor()
 			{
-				int cnt = 0;
+				int cnt = 0, position = -1;
 				
 				{
 					if (stm != null)
@@ -69,6 +75,11 @@ public class SQLiteDatabase {
 				public int getCount() {
 					return cnt;
 				}
+				
+				@Override
+				public int getPosition() {
+					return position;
+				}
 						
 				@Override
 				public boolean moveToFirst() {
@@ -76,6 +87,8 @@ public class SQLiteDatabase {
 			    		return false;
 			    	
 					try {
+						position = -1;
+						
 						if (stm.hasStepped())
 							stm.reset(false);
 						
@@ -91,10 +104,39 @@ public class SQLiteDatabase {
 			    		return false;
 			    	
 					try {
+						position++;
 						return stm.step();
 					} catch (com.almworks.sqlite4java.SQLiteException e) {
+						position = -1;
 						return false;
 					}
+				}
+				
+				@Override
+				public boolean moveToPosition(int position) {
+					boolean retval = stm != null && position > -1 && position < cnt;
+					if (position < this.position) {
+						this.position = -1;
+					}
+					while (retval && position > this.position) {
+						retval = this.position < 0 ? moveToFirst() : moveToNext();
+					}
+					return retval;
+				}
+				
+				@Override
+				public boolean moveToPrevious() {
+					return moveToPosition(position - 1);
+				}
+				
+				@Override
+				public boolean moveToLast() {
+					return moveToPosition(cnt - 1);
+				}
+				
+				@Override
+				public boolean move(int offset) {
+					return moveToPosition(position + offset);
 				}
 				
 				@Override
@@ -109,31 +151,6 @@ public class SQLiteDatabase {
 				public void close() {
 			    	if (stm != null)
 			    		stm.dispose();
-				}
-				
-				@Override
-				public boolean requery() {
-					throw new UnsupportedOperationException("Not implemented");
-				}
-				
-				@Override
-				public boolean moveToPrevious() {
-					throw new UnsupportedOperationException("Not implemented");
-				}
-				
-				@Override
-				public boolean moveToPosition(int position) {
-					throw new UnsupportedOperationException("Not implemented");
-				}
-				
-				@Override
-				public boolean moveToLast() {
-					throw new UnsupportedOperationException("Not implemented");
-				}
-				
-				@Override
-				public boolean move(int offset) {
-					throw new UnsupportedOperationException("Not implemented");
 				}
 				
 				@Override
@@ -170,7 +187,18 @@ public class SQLiteDatabase {
 				public int getType(int columnIndex) {
 					try {
 						if (stm != null && stm.hasRow())
-							return stm.columnType(columnIndex);
+							switch (stm.columnType(columnIndex)) {
+							case SQLiteConstants.SQLITE_FLOAT:
+								return FIELD_TYPE_FLOAT;
+							case SQLiteConstants.SQLITE_INTEGER:
+								return FIELD_TYPE_INTEGER;
+							case SQLiteConstants.SQLITE_TEXT:
+								return FIELD_TYPE_STRING;
+							case SQLiteConstants.SQLITE_BLOB:
+								return FIELD_TYPE_BLOB;
+							case SQLiteConstants.SQLITE_NULL:
+								return FIELD_TYPE_NULL;
+							}
 					} catch (com.almworks.sqlite4java.SQLiteException e) {}
 					
 					return -1;
@@ -237,19 +265,29 @@ public class SQLiteDatabase {
 				}
 				
 				@Override
-				public int getPosition() {
-					throw new UnsupportedOperationException("Not implemented");
+				public byte[] getBlob(int columnIndex) {
+					try {
+						if (stm != null && stm.hasRow())
+							return stm.columnBlob(columnIndex);
+					} catch (com.almworks.sqlite4java.SQLiteException e) {}
+					
+					return null;
 				}
 				
 				@Override
-				public String[] getColumnNames() {
-					throw new UnsupportedOperationException("Not implemented");
+				public int getColumnCount() {
+					try {
+						if (stm != null)
+							return stm.columnCount();
+					} catch (com.almworks.sqlite4java.SQLiteException e) {}
+					
+					return 0;
 				}
 				
 				@Override
 				public String getColumnName(int columnIndex) {
 					try {
-						if (stm != null && stm.hasRow())
+						if (stm != null)
 							return stm.getColumnName(columnIndex);
 					} catch (com.almworks.sqlite4java.SQLiteException e) {}
 					
@@ -257,8 +295,16 @@ public class SQLiteDatabase {
 				}
 				
 				@Override
+				public String[] getColumnNames() {
+					String[] names = new String[getColumnCount()];
+					for (int i = 0; i < names.length; i++)
+						names[i] = getColumnName(i);
+					return names;
+				}
+				
+				@Override
 				public int getColumnIndex(String columnName) {
-					throw new UnsupportedOperationException("Not implemented");
+					return list(getColumnNames()).indexOf(columnName);
 				}
 				
 				@Override
@@ -267,23 +313,8 @@ public class SQLiteDatabase {
 				}
 				
 				@Override
-				public int getColumnCount() {
-					try {
-						if (stm != null && stm.hasRow())
-							return stm.columnCount();
-					} catch (com.almworks.sqlite4java.SQLiteException e) {}
-					
-					return 0;
-				}
-				
-				@Override
-				public byte[] getBlob(int columnIndex) {
-					try {
-						if (stm != null && stm.hasRow())
-							return stm.columnBlob(columnIndex);
-					} catch (com.almworks.sqlite4java.SQLiteException e) {}
-					
-					return null;
+				public boolean requery() {
+					throw new UnsupportedOperationException("Not implemented");
 				}
 				
 				@Override
@@ -302,17 +333,32 @@ public class SQLiteDatabase {
 
     public static SQLiteDatabase openDatabase(String path, CursorFactory factory, int flags) {
     	SQLiteDatabase db = new SQLiteDatabase();
+        db.mFlags = flags;
 		try {
 			db.connection = new SQLiteConnection(new File(path));
 			db.connection.open((flags & CREATE_IF_NECESSARY) > 0);
 		} catch (com.almworks.sqlite4java.SQLiteException e) {
 			Log.e(TAG, "openDatabase", e);
+			return null;
 		}
 		
 		if (factory != null)
-			db.cursorFactory = factory;
+			db.mFactory = factory;
 		
         return db;
+    }
+
+    public static SQLiteDatabase openOrCreateDatabase(File file, CursorFactory factory) {
+        return openOrCreateDatabase(file.getPath(), factory);
+    }
+
+    public static SQLiteDatabase openOrCreateDatabase(String path, CursorFactory factory) {
+        return openDatabase(path, factory, CREATE_IF_NECESSARY);
+    }
+
+    public static SQLiteDatabase create(CursorFactory factory) {
+        // This is a magic string with special meaning for SQLite.
+        return openDatabase(":memory:", factory, CREATE_IF_NECESSARY);
     }
 
 	public boolean isOpen() {
@@ -406,7 +452,8 @@ public class SQLiteDatabase {
     	SQLiteStatement stm = null;
     	try {
     		stm = doBind(connection.prepare(sql), selectionArgs);
-    		return cursorFactory.newCursor(connection, stm);
+    		return (cursorFactory != null ? cursorFactory : mFactory)
+    				.newCursor(connection, stm);
     	} catch (com.almworks.sqlite4java.SQLiteException e) {
     		throw new SQLiteException(2, TAG, e);
     	} 
@@ -508,22 +555,23 @@ public class SQLiteDatabase {
             String[] selectionArgs, String groupBy, String having,
             String orderBy) {
 
-        try {
-			return query(false, table, columns, selection, selectionArgs, groupBy,
-			        having, orderBy, null /* limit */);
-		} catch (SQLiteException e) {
-			return null;
-		}
+		return query(false, table, columns, selection, selectionArgs, groupBy,
+		        having, orderBy, null /* limit */);
     }
 
 	public Cursor query(boolean distinct, String table, String[] columns,
 			String selection, String[] selectionArgs, 
 			String groupBy, String having, String orderBy, String limit) throws SQLiteException 
 	{
-        String sql = SQLiteQueryBuilder.buildQueryString(
-                distinct, table, columns, selection, groupBy, having, orderBy, limit);
-        
-		return rawQuery(sql, selectionArgs);
+		try {
+			String sql = SQLiteQueryBuilder.buildQueryString(
+					distinct, table, columns, selection, groupBy, having, orderBy, limit);
+			
+			return rawQuery(sql, selectionArgs);
+		} catch (SQLiteException e) {
+			Log.e(TAG, "query", e);
+			return null;
+		}
 	}
 
 	/**
@@ -534,6 +582,31 @@ public class SQLiteDatabase {
     public void setVersion(int version) {
         execSQL("PRAGMA user_version = " + version);
     }
+    /**
+     * Gets the database version.
+     *
+     * @return the database version
+     */
+    public int getVersion() {
+        Cursor cursor = null;
+        lock();
+        try {
+        	cursor = rawQuery("PRAGMA user_version;", null);
+        	int version = 0;
+            if (cursor != null && cursor.moveToFirst()) {
+            	version = cursor.getInt(0);
+            }
+            return version;
+        } catch (SQLiteException e) {
+			Log.e(TAG, "getVersion", e);
+			return 0;
+		} finally {
+            if (cursor != null) 
+            	cursor.close();
+            unlock();
+        }
+    }
+
     /**
      * Control whether or not the SQLiteDatabase is made thread-safe by using locks
      * around critical sections. This is pretty expensive, so if you know that your
@@ -549,6 +622,12 @@ public class SQLiteDatabase {
      * around critical sections
      */
     private boolean mLockingEnabled = false;
+    
+    void lock() {
+    }
+    
+    void unlock() {
+    }
 
     /**
      * Sets the locale for this database.  Does nothing if this database has
@@ -558,12 +637,12 @@ public class SQLiteDatabase {
      * In this case the database remains unchanged.
      */
     public void setLocale(Locale locale) {
-//        lock();
-//        try {
+        lock();
+        try {
 //            native_setLocale(locale.toString(), mFlags);
-//        } finally {
-//            unlock();
-//        }
+        } finally {
+            unlock();
+        }
     }
     
     public void beginTransaction() {
@@ -604,4 +683,14 @@ public class SQLiteDatabase {
             throw new IllegalStateException("Invalid tables");
         }
     }
+    
+    public static final int OPEN_READWRITE = 0x00000000;
+    public static final int OPEN_READONLY = 0x00000001;
+    private static final int OPEN_READ_MASK = 0x00000001;
+
+    private int mFlags;
+
+	public boolean isReadOnly() {
+        return (mFlags & OPEN_READ_MASK) == OPEN_READONLY;
+	}
 }

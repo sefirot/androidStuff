@@ -3,69 +3,90 @@
 
 # jEdit only needs to load the plugin the first time the user accesses it
 # the presence of this property also tells jEdit the plugin is using the new API
-plugin.com.applang.berichtsheft.ui.BerichtsheftPlugin.activate=startup
+plugin.com.applang.berichtsheft.plugin.BerichtsheftPlugin.activate=startup
 
 # These two properties are required for all plugins
-plugin.com.applang.berichtsheft.ui.BerichtsheftPlugin.name=Berichtsheft
-plugin.com.applang.berichtsheft.ui.BerichtsheftPlugin.author=Lothar Langer
+plugin.com.applang.berichtsheft.plugin.BerichtsheftPlugin.name=Berichtsheft
+plugin.com.applang.berichtsheft.plugin.BerichtsheftPlugin.author=Lothar Langer
 
 # Even if you don't store additional files, this is a good idea to set:
-plugin.com.applang.berichtsheft.ui.BerichtsheftPlugin.usePluginHome=true
+plugin.com.applang.berichtsheft.plugin.BerichtsheftPlugin.usePluginHome=true
 
 # version number == jEdit version number
-plugin.com.applang.berichtsheft.ui.BerichtsheftPlugin.version=5.0
+plugin.com.applang.berichtsheft.plugin.BerichtsheftPlugin.version=5.0
 
 # online help
-plugin.com.applang.berichtsheft.ui.BerichtsheftPlugin.docs=index.html
+plugin.com.applang.berichtsheft.plugin.BerichtsheftPlugin.docs=index.html
 
 # List dependencies of plugins with .depend.N property suffix:
-plugin.com.applang.berichtsheft.ui.BerichtsheftPlugin.depend.0=jdk 1.6
+plugin.com.applang.berichtsheft.plugin.BerichtsheftPlugin.depend.0=jdk 1.6
 # See jEdit.getBuild() to understand version numbering scheme.
-plugin.com.applang.berichtsheft.ui.BerichtsheftPlugin.depend.1=jedit 05.00.01.00
+plugin.com.applang.berichtsheft.plugin.BerichtsheftPlugin.depend.1=jedit 05.00.01.00
+plugin.com.applang.berichtsheft.plugin.BerichtsheftPlugin.depend.2=plugin console.ConsolePlugin 5.1
+plugin.com.applang.berichtsheft.plugin.BerichtsheftPlugin.depend.3=plugin projectviewer.ProjectPlugin 3.5.0
 
-plugin.com.applang.berichtsheft.ui.BerichtsheftPlugin.description=This plugin provides a dockable panel for controlling the 'Berichtsheft' process.
+plugin.com.applang.berichtsheft.plugin.BerichtsheftPlugin.description=This plugin provides a dockable panel for controlling the 'Berichtsheft' process.
 # plugin menu
-plugin.com.applang.berichtsheft.ui.BerichtsheftPlugin.menu=berichtsheft \
+plugin.com.applang.berichtsheft.plugin.BerichtsheftPlugin.menu=berichtsheft \
 	- \
-	berichtsheft.choose-file \
-	berichtsheft.save-file \
-	berichtsheft.copy-to-buffer
+	berichtsheft.choose-uri \
+	berichtsheft.transport-to-buffer \
+	berichtsheft.transport-from-buffer
 
 # action labels for actions supplied by dockables.xml
 berichtsheft.label=Berichtsheft
 
 # action labels for actions supplied by actions.xml
-berichtsheft.choose-file.label=Choose database file
-berichtsheft.save-file.label=Save notepad file
-berichtsheft.copy-to-buffer.label=Copy notepad to buffer
+berichtsheft.choose-uri.label=Choose database
+berichtsheft.update-uri.label=Update database view
+berichtsheft.transport-from-buffer.label=Transport selected text from current buffer into database
+berichtsheft.transport-to-buffer.label=Transport selected items to current buffer
 
 # plugin option pane
-plugin.com.applang.berichtsheft.ui.BerichtsheftPlugin.option-pane=berichtsheft
+plugin.com.applang.berichtsheft.plugin.BerichtsheftPlugin.option-pane=berichtsheft
 
 # Option pane activation BeanShell snippet
-options.berichtsheft.code=new com.applang.berichtsheft.ui.BerichtsheftOptionPane();
+options.berichtsheft.code=new com.applang.berichtsheft.plugin.BerichtsheftOptionPane();
 
 # Option pane labels
 options.berichtsheft.label=Berichtsheft
-options.berichtsheft.file=File:
-options.berichtsheft.choose-file=Choose
-options.berichtsheft.choose-file.title=Choose a Berichtsheft database
+options.berichtsheft.adb=ADB command :
+options.berichtsheft.awk=AWK command :
+options.berichtsheft.sqlite=SQLite command :
+options.berichtsheft.choose=Choose
+options.berichtsheft.choose-uri.title=Choose a Berichtsheft database
 options.berichtsheft.choose-font=Font:
 options.berichtsheft.show-toolbar.title=Display toolbar
+options.berichtsheft.tools.title=Tools
+options.berichtsheft.transport.title=Transport options
+options.berichtsheft.field-separator.title=Field separator :
+options.berichtsheft.field-decoration.title=Field decoration :
+options.berichtsheft.record-separator.title=Record separator :
+options.berichtsheft.record-decoration.title=Record decoration :
 
 # window title
 berichtsheft.title=Berichtsheft
 
 # window toolbar buttons
-berichtsheft.choose-file.icon=Open.png
-berichtsheft.save-file.icon=Save.png
-berichtsheft.copy-to-buffer.icon=CopyToBuffer.png
+berichtsheft.choose-uri.icon=Open.png
+berichtsheft.update-uri.icon=22x22/actions/view-refresh.png
+berichtsheft.transport-to-buffer.icon=RunToBuffer.png
+berichtsheft.transport-from-buffer.icon=RunToBuffer.png
 
 # default settings
 options.berichtsheft.show-toolbar=true
+options.berichtsheft.show-uri=true
 options.berichtsheft.font=Monospaced
 options.berichtsheft.fontstyle=0
 options.berichtsheft.fontsize=14
+options.berichtsheft.field-separator=tab
+options.berichtsheft.field-decoration=none
+options.berichtsheft.record-separator=newline
+options.berichtsheft.record-decoration=none
 
-# Setting not defined but supplied for completeness
-options.berichtsheft.filepath=/home/lotharla/work/Niklas/androidStuff/BerichtsheftApp/databases/*
+ADB_COMMAND=adb
+AWK_COMMAND=awk
+SQLITE_COMMAND=sqlite3
+commando.visible.android=true
+commando.visible.transport=true
+commando.extras=Format

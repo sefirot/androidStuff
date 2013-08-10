@@ -82,13 +82,5 @@ public final class NotePad {
          */
         public static final String MODIFIED_DATE = "modified";
         public static final String REF_ID2 = MODIFIED_DATE;
-        
-        public static String[] FULL_PROJECTION = new String[] {
-			_ID, // 0
-			TITLE, // 1
-			NOTE, // 2
-			CREATED_DATE, // 3
-			MODIFIED_DATE, // 4
-		};
     }
 }

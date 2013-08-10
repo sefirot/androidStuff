@@ -1,0 +1,39 @@
+commandoANDROID_FILE_ENTRY(view,pane,ns,label,var,options)
+{
+	entry = new JTextField(20);
+	value = ns.getVariable(var);
+	if(value != null)
+		entry.setText(value.toString());
+
+	valueChanged()
+	{
+		ns.setVariable(var,entry.getText());
+	}
+
+	dim = entry.getPreferredSize();
+	dim.width = Integer.MAX_VALUE;
+	entry.setMaximumSize(dim);
+
+	box = new Box(BoxLayout.X_AXIS);
+	box.add(entry);
+	box.add(Box.createHorizontalStrut(12));
+
+	btn = new RolloverButton(GUIUtilities.loadIcon("Open.png"));
+	btn.setToolTipText("Choose a file");
+	listener = new ActionListener()
+	{
+		actionPerformed(evt)
+		{
+			import com.applang.berichtsheft.plugin.*;
+			file = BerichtsheftPlugin.chooseFileFromSdcard(view, false, entry.getText());
+			if(file != null)
+				entry.setText(file);
+		}
+	};
+	btn.addActionListener(listener);
+	box.add(btn);
+
+	pane.addComponent(label,box);
+
+	return this;
+}

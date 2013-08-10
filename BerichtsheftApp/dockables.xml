@@ -10,6 +10,6 @@
 
 <DOCKABLES>
 	<DOCKABLE NAME="berichtsheft">
-		new com.applang.berichtsheft.ui.Berichtsheft(view, position);
+		new com.applang.berichtsheft.plugin.BerichtsheftDockable(view, position);
 	</DOCKABLE>
 </DOCKABLES>

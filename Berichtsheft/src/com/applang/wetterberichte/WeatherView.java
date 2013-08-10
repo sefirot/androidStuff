@@ -1,6 +1,7 @@
 package com.applang.wetterberichte;
 
 import static com.applang.Util.*;
+import static com.applang.Util1.*;
 import static com.applang.Util2.*;
 import static com.applang.VelocityUtil.*;
 

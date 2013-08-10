@@ -1,5 +1,5 @@
 package android.text.method;
 
-public class ScrollingMovementMethod {
+public class ScrollingMovementMethod extends MovementMethod {
 
 }

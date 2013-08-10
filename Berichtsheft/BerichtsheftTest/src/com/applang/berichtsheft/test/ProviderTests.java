@@ -20,6 +20,7 @@ import android.net.Uri;
 import android.util.Log;
 
 import static com.applang.Util.*;
+import static com.applang.Util1.*;
 import static com.applang.Util2.*;
 import static com.applang.VelocityUtil.*;
 
@@ -150,7 +151,7 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
     }
     
     public void testData3() throws Exception {
-    	for (String database : databases(mActivity)) 
+    	for (String database : databases(mActivity, "com.applang.provider")) 
     		mActivity.deleteDatabase(database);
     	
     	String helloVm = readAsset(mActivity, "hello.vm");
@@ -203,7 +204,7 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
 				{ 1L, "here", "overcast", 11.1f, 1f, -1f, 0l, now() }, 	
 			});
 	        
-		keepTestData(databases(mActivity));
+		keepTestData(databases(mActivity, "com.applang.provider"));
     }
 
     public String[] getStateStrings() {
@@ -220,7 +221,7 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
     private Cursor notesCursor(int tableIndex, String selection, String... selectionArgs) {
 		Cursor cursor = mActivity.managedQuery(
         		NotePadProvider.contentUri(tableIndex), 
-        		NoteColumns.FULL_PROJECTION, 
+        		NotePadProvider.FULL_PROJECTION, 
         		selection, selectionArgs,
         		NoteColumns.DEFAULT_SORT_ORDER);
         assertNotNull(cursor);
@@ -241,7 +242,7 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
     public ValMap noteMap(int tableIndex, String selection, String... selectionArgs) {
         Cursor cursor = notesCursor(tableIndex, selection, selectionArgs);
 		
-        ValMap map = getResultMap(cursor, 
+        ValMap map = getResults(cursor, 
         	new Function<String>() {
 				public String apply(Object... params) {
 					Cursor cursor = param(null, 0, params);
@@ -322,17 +323,6 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
 					NotePadProvider.countNotes(contentResolver, i, "", null)[0].intValue());
     }
 
-    private String[] PROJECTION_WEATHERS = new String[] {
-            Weathers._ID, // 0
-            Weathers.DESCRIPTION, // 1
-            Weathers.LOCATION, // 2
-            Weathers.PRECIPITATION, // 3
-            Weathers.MAXTEMP, // 4
-            Weathers.MINTEMP, // 5
-            Weathers.CREATED_DATE, // 6
-            Weathers.MODIFIED_DATE, // 7
-    };
-
     public void testWeatherInfoProvider() throws IOException {
 		mActivity.deleteDatabase(WeatherInfoProvider.DATABASE_NAME);
 		
@@ -349,7 +339,7 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
     	
         Cursor cursor = contentResolver.query(
         		Weathers.CONTENT_URI, 
-        		PROJECTION_WEATHERS, 
+        		WeatherInfoProvider.FULL_PROJECTION, 
         		Weathers.LOCATION + "=?", new String[]{"here"},
         		Weathers.DEFAULT_SORT_ORDER);
         assertEquals(1, cursor.getCount());
@@ -358,15 +348,6 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
         assertEquals("overcast", cursor.getString(1));
         assertEquals(11.1f, cursor.getFloat(3));
         cursor.close();
-    };
-
-    private String[] PROJECTION_PLANTS = new String[] {
-            Plants._ID, // 0
-            Plants.NAME, // 1
-            Plants.FAMILY, // 2
-            Plants.BOTNAME, // 3
-            Plants.BOTFAMILY, // 4
-            Plants.GROUP, // 5
     };
 
     public void testPlantInfoProvider() throws IOException {
@@ -385,7 +366,7 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
     	
         Cursor cursor = contentResolver.query(
         		Plants.CONTENT_URI, 
-        		PROJECTION_PLANTS, 
+        		PlantInfoProvider.FULL_PROJECTION, 
         		Plants.NAME + "=?", new String[]{"Paradeiser"},
                 Plants.DEFAULT_SORT_ORDER);
         assertEquals(1, cursor.getCount());
@@ -407,7 +388,7 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
 		
 		assertEquals(0, contentResolver.query(
 			Plants.CONTENT_URI, 
-			PROJECTION_PLANTS, 
+			PlantInfoProvider.FULL_PROJECTION, 
 			null, null, null).getCount());
 		
 		  
@@ -441,7 +422,7 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
     public void _testImpex() throws InterruptedException {
 		for (boolean flag : new boolean[]{true,false}) {
 			assertTrue(isExternalStorageAvailable());
-			File directory = ImpexTask.directory(mActivity, !flag);
+			File directory = ImpexTask.directory(ImpexTask.getDatabasesPath(mActivity), !flag);
 			assertTrue(directory.exists());
 			String fileName = "databases/plant_info.db";
 			final File file = new File(directory, fileName);
@@ -465,7 +446,21 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
 		}
     }
     
-    public void testDirectives() {
+    public void testMisc() {
+    	ContentResolver contentResolver = mActivity.getContentResolver();
+    	ValList tables = new ValList();
+		Cursor cursor = contentResolver.query(NotePadProvider.contentUri("raw"), 
+				null, 
+				"select name from sqlite_master where type = 'table'", 
+				null, 
+				null);
+		if (cursor.moveToFirst())
+			do {
+				tables.add(cursor.getString(0));
+			} while (cursor.moveToNext());
+		cursor.close();
+		System.out.println(tables.toString());
+		
     	Map<String,String> anweisungen = UserContext.directives();
 		for (String key : anweisungen.keySet()) {
 			System.out.println(anweisungen.get(key));

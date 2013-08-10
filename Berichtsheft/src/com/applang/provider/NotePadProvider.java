@@ -41,7 +41,7 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import static com.applang.Util.*;
-import static com.applang.Util2.*;
+import static com.applang.Util1.*;
 
 /**
  *	Provides access to a database of notes. Each note has a title, the note
@@ -64,7 +64,7 @@ public class NotePadProvider extends ContentProvider
     }
     
     public static int tableIndex(String name) {
-    	return Arrays.asList(DATABASE_TABLES).indexOf(name);
+    	return list(DATABASE_TABLES).indexOf(name);
     }
    
     public static Uri contentUri(int index) {
@@ -72,7 +72,7 @@ public class NotePadProvider extends ContentProvider
     }
     
     public static Uri contentUri(String name) {
-    	return Uri.parse("content://" + NotePad.AUTHORITY + "/" + name);
+    	return com.applang.Util1.contentUri(NotePad.AUTHORITY, name);
     }
     
     public static int tableIndex(int defaultValue, Uri uri) {
@@ -87,9 +87,9 @@ public class NotePadProvider extends ContentProvider
     	}
     }
     
-    public static long parseId(long defaultValue, Uri contentUri) {
+    public static long parseId(long defaultValue, Uri uri) {
     	try {
-			return ContentUris.parseId(contentUri);
+			return ContentUris.parseId(uri);
 		} catch (Exception e) {
 			return defaultValue;
 		}
@@ -118,19 +118,28 @@ public class NotePadProvider extends ContentProvider
 		}
 	};
 
-	public static final int NOTES = 1;
-	public static final int NOTE_ID = 2;
-	public static final int NOTES_WORDS = 3;
-	public static final int NOTES_BAUSTEINE = 4;
+	public static final int NOTES = 0;
+	public static final int NOTES_BAUSTEINE = 1;
+	public static final int NOTES_WORDS = 2;
+	public static final int RAW = 3;
+	public static final int NOTE_ID = 4;
 	public static final int NOTES_CREATE = 5;
 	public static final int NOTES_DROP = 6;
 	public static final int NOTES_MEMORY = 7;
     
     private static final UriMatcher sUriMatcher;
 
-    private static class DatabaseHelper extends SQLiteOpenHelper
+	public static String[] FULL_PROJECTION = strings(
+		NoteColumns._ID, // 0
+		NoteColumns.TITLE, // 1
+		NoteColumns.NOTE, // 2
+		NoteColumns.CREATED_DATE, // 3
+		NoteColumns.MODIFIED_DATE // 4
+	);
+
+	public static class DatabaseHelper extends SQLiteOpenHelper
     {
-		DatabaseHelper(Context context, String dbName) {
+		public DatabaseHelper(Context context, String dbName) {
             super(context, dbName, null, DATABASE_VERSION);
         }
 
@@ -204,6 +213,10 @@ public class NotePadProvider extends ContentProvider
 	}
 
     private DatabaseHelper mOpenHelper = null;
+    
+    public SQLiteOpenHelper openHelper() {
+    	return mOpenHelper;
+    }
 
     @Override
     public boolean onCreate() {
@@ -214,14 +227,15 @@ public class NotePadProvider extends ContentProvider
     @Override
     public String getType(Uri uri) {
         switch (sUriMatcher.match(uri)) {
+        case RAW:
         case NOTES_CREATE:
         case NOTES_DROP:
         case NOTES_MEMORY:
         case NOTES_WORDS:
+        case NOTES_BAUSTEINE:
         case NOTES:
             return NoteColumns.CONTENT_TYPE;
 
-        case NOTES_BAUSTEINE:
         case NOTE_ID:
       		return NoteColumns.CONTENT_ITEM_TYPE;
 
@@ -234,16 +248,19 @@ public class NotePadProvider extends ContentProvider
     public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs, String sortOrder) {
         SQLiteQueryBuilder qb = new SQLiteQueryBuilder();
 
-        String name = uri.getPathSegments().get(0);
+		String tableName = dbTableName(uri);
         int type = sUriMatcher.match(uri);
         qb.setProjectionMap(projectionMap(type));
         
 		switch (type) {
+        case RAW:
+        	return mOpenHelper.getReadableDatabase().rawQuery(selection, selectionArgs);
+        	
         case NOTE_ID:
         	qb.appendWhere(NoteColumns._ID + "=" + uri.getPathSegments().get(1));
         	
         case NOTES:
-            qb.setTables(name);
+            qb.setTables(tableName);
             break;
 
         case NOTES_WORDS:
@@ -269,16 +286,18 @@ public class NotePadProvider extends ContentProvider
             return null;
 
         case NOTES_DROP:
-        	dropTable(tableIndex(name), mOpenHelper.getWritableDatabase());
+        	dropTable(tableIndex(tableName), mOpenHelper.getWritableDatabase());
             return null;
 
         case NOTES_CREATE:
-        	createTable(tableIndex(name), mOpenHelper.getWritableDatabase());
+        	createTable(tableIndex(tableName), mOpenHelper.getWritableDatabase());
             return null;
-
+			
         default:
             throw new IllegalArgumentException("Unknown URI " + uri);
         }
+        
+		SQLiteDatabase db = mOpenHelper.getReadableDatabase();
 
         String orderBy;
         if (notNullOrEmpty(sortOrder)) {
@@ -300,7 +319,6 @@ public class NotePadProvider extends ContentProvider
         	}
         }
         
-        SQLiteDatabase db = mOpenHelper.getReadableDatabase();
         Cursor c = qb.query(db, projection, selection, selectionArgs, groupBy, having, orderBy);
 
         // Tell the cursor what uri to watch, so it knows when its source data changes
@@ -339,7 +357,7 @@ public class NotePadProvider extends ContentProvider
         
         SQLiteDatabase db = mOpenHelper.getWritableDatabase();
         
-        String tableName = uri.getPathSegments().get(0);
+		String tableName = dbTableName(uri);
         long rowId = db.insert(tableName, NoteColumns.NOTE, values);
         if (rowId > 0) {
             Uri noteUri = ContentUris.withAppendedId(contentUri(tableName), rowId);
@@ -354,7 +372,7 @@ public class NotePadProvider extends ContentProvider
     public int delete(Uri uri, String where, String[] whereArgs) {
         SQLiteDatabase db = mOpenHelper.getWritableDatabase();
         int count;
-        String tableName = uri.getPathSegments().get(0);
+		String tableName = dbTableName(uri);
         switch (sUriMatcher.match(uri)) {
         case NOTES:
             count = db.delete(tableName, where, whereArgs);
@@ -379,7 +397,7 @@ public class NotePadProvider extends ContentProvider
     @Override
     public int update(Uri uri, ContentValues values, String where, String[] whereArgs) {
         SQLiteDatabase db = mOpenHelper.getWritableDatabase();
-        String tableName = uri.getPathSegments().get(0);
+		String tableName = dbTableName(uri);
         int count;
         switch (sUriMatcher.match(uri)) {
         case NOTES:
@@ -405,6 +423,7 @@ public class NotePadProvider extends ContentProvider
 
 	static {
         sUriMatcher = new UriMatcher(UriMatcher.NO_MATCH);
+        sUriMatcher.addURI(NotePad.AUTHORITY, null, RAW);
         sUriMatcher.addURI(NotePad.AUTHORITY, DATABASE_TABLES[0], NOTES);
         sUriMatcher.addURI(NotePad.AUTHORITY, DATABASE_TABLES[0] + "/#", NOTE_ID);
         sUriMatcher.addURI(NotePad.AUTHORITY, DATABASE_TABLES[1], NOTES);
@@ -445,7 +464,7 @@ public class NotePadProvider extends ContentProvider
 
     public static Integer[] countNotes(ContentResolver contentResolver, int tableIndex, String selection, String[] selectionArgs) {
 		Cursor cursor = contentResolver.query(contentUri(tableIndex), 
-				new String[]{"count"}, 
+				strings("count"), 
 				selection, selectionArgs, 
 				NoteColumns.DEFAULT_SORT_ORDER);
 		ArrayList<Integer> counts = new ArrayList<Integer>();
@@ -459,7 +478,7 @@ public class NotePadProvider extends ContentProvider
 
     public static String[] getTitles(ContentResolver contentResolver, int tableIndex, String selection, String[] selectionArgs) {
 		Cursor cursor = contentResolver.query(contentUri(tableIndex), 
-				new String[]{NoteColumns.TITLE}, 
+				strings(NoteColumns.TITLE), 
 				selection, selectionArgs, 
 				NoteColumns.DEFAULT_SORT_ORDER);
 		ArrayList<String> titles = new ArrayList<String>();
@@ -473,7 +492,7 @@ public class NotePadProvider extends ContentProvider
 
 	public static long getIdOfNote(ContentResolver contentResolver, int tableIndex, String selection, String[] selectionArgs) {
 		Cursor cursor = contentResolver.query(contentUri(tableIndex), 
-				new String[]{NoteColumns._ID}, 
+				strings(NoteColumns._ID), 
 				selection, selectionArgs, 
 				null);
 		long id = -1;
@@ -486,7 +505,7 @@ public class NotePadProvider extends ContentProvider
 	public static boolean fetchNoteById(long id, ContentResolver contentResolver, int tableIndex, Job<Cursor> job, Object... params) {
 		Cursor cursor = contentResolver.query(
 				ContentUris.withAppendedId(contentUri(tableIndex), id), 
-				NoteColumns.FULL_PROJECTION, 
+				NotePadProvider.FULL_PROJECTION, 
 				"", null, 
 	    		null);
 		
@@ -505,11 +524,11 @@ public class NotePadProvider extends ContentProvider
 	public static Set<String> wordSet(ContentResolver contentResolver, int tableIndex, String selection, String... selectionArgs) {
 		Cursor cursor = contentResolver.query(
 				contentUri(tableIndex), 
-				new String[] {NoteColumns.TITLE}, 
+				strings(NoteColumns.TITLE), 
 				selection, selectionArgs, 
 	    		null);
 		
-	    ValMap map = getResultMap(cursor, 
+	    ValMap map = getResults(cursor, 
 	    	new Function<String>() {
 				public String apply(Object... params) {
 					Cursor cursor = param(null, 0, params);
@@ -523,17 +542,17 @@ public class NotePadProvider extends ContentProvider
 	        }
 	    );
 	    
-	    return new TreeSet<String>(map.keySet());
+	    return sorted(map.keySet());
 	}
 
 	public static ValMap bausteinMap(ContentResolver contentResolver, String selection, String... selectionArgs) {
 		Cursor cursor = contentResolver.query(
 	    		contentUri(1), 
-	    		new String[] { NoteColumns.TITLE, NoteColumns.NOTE }, 
+	    		strings(NoteColumns.TITLE, NoteColumns.NOTE), 
 	    		selection, selectionArgs,
 	    		null);
 		
-	    ValMap map = getResultMap(cursor, 
+	    ValMap map = getResults(cursor, 
 	    	new Function<String>() {
 				public String apply(Object... params) {
 					Cursor cursor = param(null, 0, params);

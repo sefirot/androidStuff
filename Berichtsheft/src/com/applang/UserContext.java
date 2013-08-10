@@ -2,7 +2,6 @@ package com.applang;
 
 import java.io.Serializable;
 import java.lang.reflect.Method;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +18,7 @@ import com.applang.Util.ValMap;
 import com.applang.VelocityUtil.Visitor;
 
 import static com.applang.Util.*;
+import static com.applang.Util1.*;
 import static com.applang.Util2.*;
 import static com.applang.VelocityUtil.*;
 
@@ -53,11 +53,11 @@ public class UserContext extends CustomContext implements Serializable
 	}
 	
 	List<Object> allReferences() {
-		return Arrays.asList(getKeys());
+		return list(getKeys());
 	}
     
 	public ValList suggestions() {
-    	ValList list = new ValList();
+    	ValList list = list();
     	for (Object item : allReferences()) {
     		String listItem = VRI + item.toString();
     		list.add(listItem);
@@ -81,7 +81,7 @@ public class UserContext extends CustomContext implements Serializable
     		return;
     	
   		if (activity != null && activity.getIntent() != null) {
-  			String packageName = param(resourcePackageName(activity), 0, params);
+  			String packageName = param("com.applang.berichtsheft", 0, params);
 			Velocity.setProperty("packageName", packageName);
 			Velocity.setProperty(Velocity.RUNTIME_LOG_LOGSYSTEM_CLASS,
 					logClassname);
@@ -221,10 +221,10 @@ public class UserContext extends CustomContext implements Serializable
     		this.progressHandler = progressHandler;
     		this.progressJob = progressJob;
 			this.userContext = new UserContext(refMap, this);
-			for (Object authority : contentAuthorities(activity, "com.applang")) {
-				String[] parts = String.valueOf(authority).split("\\.");
-				String key = parts[parts.length - 1] + "Uri";
-				userContext.put(key, "content://" + authority);
+			for (Object authority : contentAuthorities(activity, providerPackage)) {
+				String auth = String.valueOf(authority);
+				String key = split(auth, "\\.").get(-1) + "Uri";
+				userContext.put(key, contentUri(auth, null).toString());
 			}
     	}
 
@@ -266,7 +266,6 @@ public class UserContext extends CustomContext implements Serializable
     		}
 		}
     	
-		@SuppressWarnings("unchecked")
 		@Override
 		protected Object doInBackground(Object... params) {
     		if (isAvailable(0, params)) {
@@ -281,7 +280,7 @@ public class UserContext extends CustomContext implements Serializable
 						publishProgress(
 							new Intent(Dialogs.PROMPT_ACTION)
 								.putExtra(BaseDirective.PROMPT, paramString("", 1, params))
-								.putExtra(BaseDirective.VALUES, new String[]{e.getMessage()})
+								.putExtra(BaseDirective.VALUES, strings(e.getMessage()))
 								.putExtra(BaseDirective.TYPE, Dialogs.DIALOG_TEXT_INFO));
 					}
     			}

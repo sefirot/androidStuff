@@ -12,13 +12,13 @@ public class CursorDirective extends PromptDirective
 {
     public CursorDirective() {
 		super();
-        arguments = new String[] {"message_S","variable_R",
+        arguments = strings("message_S","variable_R",
         		"uri_U",
         		"projection_L",
         		optionalize("selection_S"),
         		optionalize("selectionArgs_L"),
         		optionalize("sortOrder_S"),
-        		optionalize("option_S")};
+        		optionalize("option_S"));
 	}
 
 	public String getName() {

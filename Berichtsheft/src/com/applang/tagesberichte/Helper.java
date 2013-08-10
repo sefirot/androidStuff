@@ -1,6 +1,6 @@
 package com.applang.tagesberichte;
 
-import static com.applang.Util2.getContentView;
+import static com.applang.Util1.*;
 
 import com.applang.berichtsheft.R;
 

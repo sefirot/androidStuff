@@ -16,6 +16,16 @@
 	</natures>
 	<linkedResources>
 		<link>
+			<name>src/assets</name>
+			<type>2</type>
+			<locationURI>PARENT-1-PROJECT_LOC/Berichtsheft/assets</locationURI>
+		</link>
+		<link>
+			<name>src/res</name>
+			<type>2</type>
+			<locationURI>PARENT-1-PROJECT_LOC/Berichtsheft/res</locationURI>
+		</link>
+		<link>
 			<name>src/com/applang/BaseDirective.java</name>
 			<type>1</type>
 			<locationURI>PARENT-1-PROJECT_LOC/Berichtsheft/src/com/applang/BaseDirective.java</locationURI>
@@ -51,9 +61,19 @@
 			<locationURI>PARENT-1-PROJECT_LOC/Berichtsheft/src/com/applang/Util.java</locationURI>
 		</link>
 		<link>
+			<name>src/com/applang/Util1.java</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/Berichtsheft/src/com/applang/Util1.java</locationURI>
+		</link>
+		<link>
 			<name>src/com/applang/VelocityUtil.java</name>
 			<type>1</type>
 			<locationURI>PARENT-1-PROJECT_LOC/Berichtsheft/src/com/applang/VelocityUtil.java</locationURI>
+		</link>
+		<link>
+			<name>src/com/applang/berichtsheft/R.java</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/Berichtsheft/gen/com/applang/berichtsheft/R.java</locationURI>
 		</link>
 		<link>
 			<name>src/com/applang/provider/NotePad.java</name>

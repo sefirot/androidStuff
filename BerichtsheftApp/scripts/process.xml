@@ -47,7 +47,7 @@
 	</target>
     
     <target name="NotePicker">
-        <java fork="true" spawn="true" classname="com.applang.berichtsheft.ui.components.NotePicker">
+        <java fork="true" spawn="true" classname="com.applang.berichtsheft.components.NotePicker">
 			<classpath refid="project.class.path" />
         </java>
     </target>

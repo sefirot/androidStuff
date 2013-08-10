@@ -1,0 +1,23 @@
+<TRANSPORTS>
+	<FUNCTION name="unixepoch">
+			import com.applang.*;
+			import com.applang.berichtsheft.components.*;
+			pattern = DatePicker.calendarFormat;
+			if ("pull".equals(oper))
+				result = Util.toTime(input, new Object[]{pattern});
+			else if ("push".equals(oper))
+				result = Util.formatDate(Long.valueOf(input), new Object[]{pattern});
+			result
+	</FUNCTION>
+	<TRANSPORT desc="Test mit notes" uri="file:///home/lotharla/Downloads/note_pad2.db?title=TEXT&amp;note=TEXT&amp;created=INTEGER#notes">
+		<FUNCTION name="updateOrInsert-clause">
+			import com.applang.*;
+			long created = contentValues.getAsLong("created");
+			long[] interval = Util.dayInterval(created, 1);
+			title = contentValues.getAsString("title");
+			String.format("created between %d and %d and title = '%s'", interval[0], interval[1] - 1, title)
+		</FUNCTION>
+		
+		
+	<TEMPLATE><![CDATA['title'	'note'	'created|unixepoch']]></TEMPLATE></TRANSPORT>
+</TRANSPORTS>

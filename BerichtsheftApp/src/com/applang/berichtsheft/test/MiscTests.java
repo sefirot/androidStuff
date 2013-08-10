@@ -49,16 +49,17 @@ import org.xml.sax.helpers.XMLReaderFactory;
 
 import static com.applang.SwingUtil.*;
 import static com.applang.Util.*;
+import static com.applang.Util1.*;
 import static com.applang.Util2.*;
 
 import com.applang.Util;
 import com.applang.ZipUtil;
 import com.applang.berichtsheft.BerichtsheftApp;
-import com.applang.berichtsheft.ui.components.DatePicker;
-import com.applang.berichtsheft.ui.components.FormEditor;
-import com.applang.berichtsheft.ui.components.NotePicker;
-import com.applang.berichtsheft.ui.components.NotePicker.NoteFinder;
-import com.applang.berichtsheft.ui.components.TextArea;
+import com.applang.berichtsheft.components.DatePicker;
+import com.applang.berichtsheft.components.FormEditor;
+import com.applang.berichtsheft.components.NotePicker;
+import com.applang.berichtsheft.components.TextArea;
+import com.applang.berichtsheft.components.NotePicker.NoteFinder;
 
 //import com.sdicons.json.model.JSONValue;
 //import com.sdicons.json.parser.JSONParser;
@@ -126,6 +127,20 @@ public class MiscTests extends XMLTestCase
 		assertEquals(null, toDate("", DatePicker.calendarFormat));
 		
 		println("absolute zero : %10.2f °C", absoluteZero);
+		for (int i = Calendar.JANUARY; i <= Calendar.DECEMBER; i++) {
+			print("%02d\t", i);
+		}
+	}
+	
+	public void testDatePicker() {
+	    int[] dateParts = null;
+		do {
+			dateParts = DatePicker.pickAPeriod(dateParts, "pick day, week or month");
+			if (dateParts == null)
+				return;
+			
+			println(dateParts);
+		} while (true);
 	}
 
 	TextArea textArea = new TextArea();
@@ -140,11 +155,11 @@ public class MiscTests extends XMLTestCase
 	
 	public void testAllNotes() throws Exception {
 //		assertTrue(np.openConnection("databases/berichtsheft.db"));
-		assertTrue(np.openConnection("/home/lotharla/Downloads/note_pad(1).db"));
+		assertTrue(np.openConnection("/home/lotharla/Downloads/_note_pad1.db"));
 //		assertTrue(np.openConnection("/home/lotharla/work/Niklas/note_pad_april 5-03-2013.db"));
 		long[] time = new long[]{
-				timeInMillis(2013, 0, 1),
-				timeInMillis(2013, -6, 1),
+				dateInMillis(2013, 0, 1),
+				dateInMillis(2014, 0, 1),
 		};
 		PreparedStatement ps = np.preparePicking(true, NotePicker.allCategories, time);
 		ResultSet rs = ps.executeQuery();
@@ -217,19 +232,19 @@ public class MiscTests extends XMLTestCase
 		assertEquals(length, 
 				generateData(true, expat, 1, 
 				dates, 
-				new String[] {"1."}, 
+				strings("1."), 
 				2, length));
 		length = 7;
 		assertEquals(length, 
 				generateData(false, expat, 1, 
 				dates, 
-				new String[] {"2."}, 
+				strings("2."), 
 				21, length));
 		length = 10;
 		assertEquals(length, 
 				generateData(false, expat, 1, 
 				dates, 
-				new String[] {"3."}, 
+				strings("3."), 
 				28, length));
 		
 		assertEquals(36, np.finder.keyLine(NotePicker.allCategories).length);
@@ -259,18 +274,18 @@ public class MiscTests extends XMLTestCase
 			{2012, 52, Calendar.SUNDAY}, 
 			{2013, 1, Calendar.SUNDAY}, 
 	};
-	String[] categories = new String[] {
+	String[] categories = strings(
 			"Bemerkung", 
 			"Bericht", 
-			"Bericht", 
-	};
+			"Bericht" 
+	);
 
 	public void testNoteFinding() throws Exception {
 		testData();
 		
 		NoteFinder finder = np.finder;
 		String[] keys = finder.keyLine(NotePicker.allCategories);
-		assertEquals(Arrays.asList(keys).toString(), dates.length, keys.length);
+		assertEquals(list(keys).toString(), dates.length, keys.length);
 		
 		np.setPattern(categories[1]);
 		long epoch = timeInMillis(dates[1][0], dates[1][1], dates[1][2]);
@@ -322,9 +337,9 @@ public class MiscTests extends XMLTestCase
 				{2012, 51, Calendar.THURSDAY}, 
 				{2012, 52, Calendar.THURSDAY}, 
 				{2013, 2, Calendar.THURSDAY}, 
-		}, new String[] {
-				"x", "y", "z", 
-		}, 2);
+		}, strings(
+				"x", "y", "z" 
+		), 2);
 		
 		for (Object p : np.finder.specialPatterns.getValues()) {
 			np.setPattern(p.toString());
@@ -361,7 +376,7 @@ public class MiscTests extends XMLTestCase
 		setupKeinFehler();
 		
 		String[] keys = np.finder.keyLine(NotePicker.allCategories);
-		assertEquals(Arrays.asList(keys).toString(), 36, keys.length);
+		assertEquals(list(keys).toString(), 36, keys.length);
 		np.setPattern(NotePicker.allCategories);
 		
 		np.pickNote("1/13", np.getPattern());
@@ -714,7 +729,7 @@ public class MiscTests extends XMLTestCase
 	Connection con = null;
 
 	public void testContent() throws Exception {
-		File tempDir = tempDir(true, "berichtsheft", "odt");
+		File tempDir = tempDir(true, BerichtsheftApp.NAME, "odt");
 		try {
 			File source = new File("Vorlagen/Tagesberichte.odt");
 			assertTrue(source.exists());
@@ -794,8 +809,7 @@ public class MiscTests extends XMLTestCase
 		String dateString = DatePicker.pickADate(
 				timeInMillis(year, weekInYear, dayInWeek), 
 				DatePicker.weekFormat,
-				"Pick week for 'Tagesberichte'", 
-				null);
+				"Pick week for 'Tagesberichte'");
 		if (dateString.length() < 1)
 			return;
 		
@@ -848,14 +862,14 @@ public class MiscTests extends XMLTestCase
 			NamedNodeMap attributes = el.getAttributes();
 			for (int j = 0; j < attributes.getLength(); j++) {
 				Node node = attributes.item(j);
-				System.out.println(node.getNodeName() + " : " + node.getNodeValue());
+				println("%s : %s", node.getNodeName(), node.getNodeValue());
 			}
 		}
 	}
 	
 	public void testMimicry() throws Exception {
 		new File("/tmp/debug.out").delete();
-		File dir = tempDir(true, "berichtsheft");
+		File dir = tempDir(true, BerichtsheftApp.NAME);
 
 		String content = getSetting("content.xml", "scripts/content.xml");
 		String mask = getSetting("mask.xsl", "scripts/mask.xsl");
@@ -874,8 +888,8 @@ public class MiscTests extends XMLTestCase
 			assertTrue(mappings.containsKey("frame" + (i+1) + "_height"));
 		}
 		
-		String[] keys = new String[] {"control32_x"};
-		String[] values = new String[] {"xxx"};
+		String[] keys = strings("control32_x");
+		String[] values = strings("xxx");
 		
 		for (int i = 0; i < keys.length; i++) 
 			mappings.put(keys[i], values[i]);
@@ -915,5 +929,20 @@ public class MiscTests extends XMLTestCase
 				}
 			}
 		));
+	}
+	
+	@SuppressWarnings("rawtypes")
+	public void testClasses() throws Exception {
+		Class[] cls = getLocalClasses(providerPackage);
+		for (Class cl : filter(list(cls), false, new Predicate<Class>() {
+			@Override
+			public boolean apply(Class c) {
+				String name = c.getName();
+				return !name.contains("$") && !name.endsWith("Provider");
+			}
+		}))
+			println(cl);
+		
+		println(contentAuthorities(null, providerPackage));
 	}
 }

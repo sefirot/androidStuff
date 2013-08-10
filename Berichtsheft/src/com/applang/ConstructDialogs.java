@@ -1,6 +1,7 @@
 package com.applang;
 
 import static com.applang.Util.*;
+import static com.applang.Util1.*;
 import static com.applang.Util2.*;
 import static com.applang.VelocityUtil.*;
 
@@ -53,7 +54,6 @@ public class ConstructDialogs extends Dialogs
 	private static final String ARGUMENT = "argument";
     private static final String SECOND_FIELD = "second";
 	
-	private Dialog mDialog;
 	private LinearLayout contentView;
 	private ScrollView scrollView;
     private String[] defaults;
@@ -99,7 +99,7 @@ public class ConstructDialogs extends Dialogs
     private View focused = null;
     
     private LinearLayout contentPane(Integer... params) {
-    	LinearLayout vertLayout = linearLayout(this, 
+    	LinearLayout vertLayout = Util1.linearLayout(this, 
     			LinearLayout.VERTICAL, 
     			param(LayoutParams.FILL_PARENT, 0, params), 
     			param(LayoutParams.FILL_PARENT, 1, params));
