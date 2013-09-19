@@ -19,7 +19,7 @@ public class Activity extends Context
 {
 	protected static final String TAG = Activity.class.getSimpleName();
 	
-	public static ValMap activities = new ValMap();
+	public static ValMap activities = vmap();
 	static {
 		activities.put("com.applang.action.PROMPT", "com.applang.Dialogs");
 		activities.put("com.applang.action.CONSTRUCT", "com.applang.ConstructDialogs");

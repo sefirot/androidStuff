@@ -1,0 +1,40 @@
+commandoPERIOD(view,pane,ns,label,var,options)
+{
+	import com.applang.berichtsheft.plugin.*;
+	import com.applang.berichtsheft.components.*;
+	
+	entry = new JTextField(30);
+	value = ns.getVariable(var);
+	if(value != null)
+		entry.setText(value.toString());
+
+	valueChanged()
+	{
+		ns.setVariable(var,entry.getText());
+	}
+
+	dim = entry.getPreferredSize();
+	dim.width = Integer.MAX_VALUE;
+	entry.setMaximumSize(dim);
+
+	box = new Box(BoxLayout.X_AXIS);
+	box.add(entry);
+	box.add(Box.createHorizontalStrut(12));
+
+	btn = new RolloverButton(BerichtsheftPlugin.loadIcon("/images/calendar_22x22.png"));
+	btn.setToolTipText("Pick a period");
+	listener = new ActionListener()
+	{
+		actionPerformed(evt)
+		{
+			DatePicker.Period.pick();
+			entry.setText(DatePicker.Period.description());
+		}
+	};
+	btn.addActionListener(listener);
+	box.add(btn);
+
+	pane.addComponent(label,box);
+
+	return this;
+}

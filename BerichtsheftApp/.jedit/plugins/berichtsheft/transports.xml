@@ -1,23 +1,71 @@
 <TRANSPORTS>
-	<FUNCTION name="unixepoch">
-			import com.applang.*;
-			import com.applang.berichtsheft.components.*;
-			pattern = DatePicker.calendarFormat;
-			if ("pull".equals(oper))
-				result = Util.toTime(input, new Object[]{pattern});
-			else if ("push".equals(oper))
-				result = Util.formatDate(Long.valueOf(input), new Object[]{pattern});
-			result
+	<FUNCTION name="now">
+<BODY><![CDATA[import com.applang.*;
+pattern = com.applang.berichtsheft.components.DatePicker.calendarFormat;
+if ("pull".equals(oper))
+	result = Util.now();
+else if ("push".equals(oper))
+	result = Util.formatDate(Util.now(), new Object[]{pattern});
+result]]></BODY>
 	</FUNCTION>
-	<TRANSPORT desc="Test mit notes" uri="file:///home/lotharla/Downloads/note_pad2.db?title=TEXT&amp;note=TEXT&amp;created=INTEGER#notes">
-		<FUNCTION name="updateOrInsert-clause">
-			import com.applang.*;
-			long created = contentValues.getAsLong("created");
-			long[] interval = Util.dayInterval(created, 1);
-			title = contentValues.getAsString("title");
-			String.format("created between %d and %d and title = '%s'", interval[0], interval[1] - 1, title)
+	<FUNCTION name="unixepoch">
+<BODY><![CDATA[import com.applang.*;
+push = "push".equals(oper);
+if (value == void)
+	return push ? "" : null;
+pattern = com.applang.berichtsheft.components.DatePicker.calendarFormat;
+if (push)
+	result = Util.formatDate(value, new Object[]{pattern});
+else 
+	result = Util.toTime(value, new Object[]{pattern});
+result]]></BODY>
+	</FUNCTION>
+	<SCHEMA name="com.applang.provider.NotePad">
+		<FUNCTION name="updateOrInsert-clause" profile="tagesberichte">
+<BODY><![CDATA[import com.applang.*;
+long created = values.getAsLong("created");
+long[] interval = Util.dayInterval(created, 1);
+title = values.getAsString("title");
+String.format("created between %d and %d and title = '%s'", new Object[]{interval[0], interval[1] - 1, title})]]></BODY>
 		</FUNCTION>
+	<CONVERSIONS><![CDATA[{"bausteine":{"created":"unixepoch","modified":"unixepoch"}}]]></CONVERSIONS></SCHEMA>
+	<SCHEMA name="com.applang.provider.WeatherInfo">
+		<FUNCTION name="updateOrInsert-clause" profile="weather">
+<BODY><![CDATA[import com.applang.*;
+long created = values.getAsLong("created");
+long[] interval = Util.dayInterval(created, 1);
+location = values.getAsString("location");
+String.format("created between %d and %d and location = '%s'", new Object[]{interval[0], interval[1] - 1, location})]]></BODY>
+		</FUNCTION>
+	<CONVERSIONS><![CDATA[{"weathers":{"created":"unixepoch","modified":"unixepoch"}}]]></CONVERSIONS></SCHEMA>
+
+	<PROFILE name="plantinfo" oper="pull" recordDecoration="none" recordSeparator="whitespace" schema="com.applang.provider.PlantInfo">
 		
+	<TEMPLATE><![CDATA[`botfamily`	`family`
+`botname`	`name`]]></TEMPLATE></PROFILE>
+	<PROFILE name="tagesberichte" oper="pull" recordDecoration="fold" recordSeparator="whitespace" schema="com.applang.provider.NotePad">
+
 		
-	<TEMPLATE><![CDATA['title'	'note'	'created|unixepoch']]></TEMPLATE></TRANSPORT>
-</TRANSPORTS>
+	<TEMPLATE><![CDATA[ `modified|now``created|unixepoch` '`title`'
+`note`
+]]></TEMPLATE></PROFILE>
+	<PROFILE name="tagesberichte" oper="push" recordDecoration="fold" recordSeparator="whitespace" schema="com.applang.provider.NotePad">
+
+		
+	<TEMPLATE><![CDATA[ `created|unixepoch` '`title`'
+`note`
+]]></TEMPLATE></PROFILE>
+	<PROFILE name="wetter" oper="push" recordDecoration="none" recordSeparator="whitespace" schema="com.applang.provider.WeatherInfo">
+		
+	<TEMPLATE><![CDATA[`_id`	`location`
+`description`	`precipitation`
+`maxtemp`	`mintemp`
+`created|unixepoch`	`modified`]]></TEMPLATE></PROFILE>
+	<PROFILE name="weather" oper="download" schema="com.applang.provider.WeatherInfo">
+		
+	</PROFILE>
+	<FUNCTION name="test"><BODY><![CDATA[import com.applang.*;
+push = "push".equals(oper);
+if (value == void)
+	return push ? "" : null;
+]]></BODY></FUNCTION></TRANSPORTS>

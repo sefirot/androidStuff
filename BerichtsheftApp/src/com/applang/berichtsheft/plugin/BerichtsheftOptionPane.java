@@ -28,11 +28,12 @@ public class BerichtsheftOptionPane extends AbstractOptionPane implements Action
 {
 	public static ValMap separators, decorations;
 	static {
-		separators = new ValMap();
-		separators.put("none", "");
-		separators.put("newline", NEWLINE);
-		separators.put("tab", TAB);
-		decorations = new ValMap();
+		separators = vmap();
+		separators.put("none", strings("",""));
+		separators.put("newline", strings(NEWLINE, NEWLINE_REGEX));
+		separators.put("tab", strings(TAB, TAB_REGEX));
+		separators.put("whitespace", strings(NEWLINE, WHITESPACE_REGEX));
+		decorations = vmap();
 		decorations.put("none", strings("",""));
 		decorations.put("fold", FOLD_MARKER);
 	}
@@ -60,7 +61,7 @@ public class BerichtsheftOptionPane extends AbstractOptionPane implements Action
 	@Override
 	public void _init() {
 		fontSelector = new FontSelector(makeFont());
-		addComponent(jEdit.getProperty(BerichtsheftPlugin.OPTION_PREFIX + "choose-font"), fontSelector);
+		addComponent(BerichtsheftPlugin.getOptionProperty("choose-font"), fontSelector);
 		
 		addComponent( Box.createVerticalStrut(10) );
 
@@ -69,14 +70,13 @@ public class BerichtsheftOptionPane extends AbstractOptionPane implements Action
 		
 		for (int i = 0; i < commands.length; i++) {
 			String cmd = commands[i].getName();
-			JButton pickPath = new JButton(
-					jEdit.getProperty(BerichtsheftPlugin.OPTION_PREFIX + "choose"));
+			JButton pickPath = new JButton(BerichtsheftPlugin.getOptionProperty("choose"));
 			pickPath.setActionCommand(cmd);
 			pickPath.addActionListener(this);
 			JPanel pathPanel = new JPanel(new BorderLayout(0, 0));
 			pathPanel.add(commands[i], BorderLayout.CENTER);
 			pathPanel.add(pickPath, BorderLayout.EAST);
-			panel.add(new JLabel( jEdit.getProperty(BerichtsheftPlugin.OPTION_PREFIX + cmd.toLowerCase()) ));
+			panel.add(new JLabel( BerichtsheftPlugin.getOptionProperty(cmd.toLowerCase()) ));
 			panel.add( pathPanel );
 		}
 		
@@ -89,34 +89,34 @@ public class BerichtsheftOptionPane extends AbstractOptionPane implements Action
 		
 		fieldSeparatorSelector = new JComboBox(separators.keySet().toArray());
 		fieldSeparatorSelector.setSelectedItem(
-				jEdit.getProperty(BerichtsheftPlugin.OPTION_PREFIX + "field-separator"));
-		panel.add(new JLabel( jEdit.getProperty(BerichtsheftPlugin.OPTION_PREFIX + "field-separator.title") ));
+				BerichtsheftPlugin.getOptionProperty("field-separator"));
+		panel.add(new JLabel( BerichtsheftPlugin.getOptionProperty("field-separator.title") ));
 		panel.add( fieldSeparatorSelector );
 		
 		fieldDecorationSelector = new JComboBox(decorations.keySet().toArray());
 		fieldDecorationSelector.setSelectedItem(
-				jEdit.getProperty(BerichtsheftPlugin.OPTION_PREFIX + "field-decoration"));
-		panel.add(new JLabel( jEdit.getProperty(BerichtsheftPlugin.OPTION_PREFIX + "field-decoration.title") ));
+				BerichtsheftPlugin.getOptionProperty("field-decoration"));
+		panel.add(new JLabel( BerichtsheftPlugin.getOptionProperty("field-decoration.title") ));
 		panel.add( fieldDecorationSelector );
 		
 		recordSeparatorSelector = new JComboBox(separators.keySet().toArray());
 		recordSeparatorSelector.setSelectedItem(
-				jEdit.getProperty(BerichtsheftPlugin.OPTION_PREFIX + "record-separator"));
-		panel.add(new JLabel( jEdit.getProperty(BerichtsheftPlugin.OPTION_PREFIX + "record-separator.title") ));
+				BerichtsheftPlugin.getOptionProperty("record-separator"));
+		panel.add(new JLabel( BerichtsheftPlugin.getOptionProperty("record-separator.title") ));
 		panel.add( recordSeparatorSelector );
 		
 		recordDecorationSelector = new JComboBox(decorations.keySet().toArray());
 		recordDecorationSelector.setSelectedItem(
-				jEdit.getProperty(BerichtsheftPlugin.OPTION_PREFIX + "record-decoration"));
-		panel.add(new JLabel( jEdit.getProperty(BerichtsheftPlugin.OPTION_PREFIX + "record-decoration.title") ));
+				BerichtsheftPlugin.getOptionProperty("record-decoration"));
+		panel.add(new JLabel( BerichtsheftPlugin.getOptionProperty("record-decoration.title") ));
 		panel.add( recordDecorationSelector );
 			
 		addComponent(surroundingBox(panel, "transport.title"));
 		
 		addComponent( Box.createVerticalStrut(10) );
 		
-		showToolbar = new JCheckBox(jEdit.getProperty(BerichtsheftPlugin.OPTION_PREFIX + "show-toolbar.title"), 
-				jEdit.getBooleanProperty(BerichtsheftPlugin.OPTION_PREFIX + "show-toolbar"));
+		showToolbar = new JCheckBox(BerichtsheftPlugin.getOptionProperty("show-toolbar.title"), 
+				"true".equals(BerichtsheftPlugin.getOptionProperty("show-toolbar")));
 		addComponent(showToolbar);
 	}
 	
@@ -125,7 +125,7 @@ public class BerichtsheftOptionPane extends AbstractOptionPane implements Action
 		box.setBorder(
 			BorderFactory.createTitledBorder(
 				BorderFactory.createEtchedBorder(),
-				jEdit.getProperty(BerichtsheftPlugin.OPTION_PREFIX + titleName)
+				BerichtsheftPlugin.getOptionProperty(titleName)
 			)
 		);
 		box.setLayout(new BoxLayout(box, BoxLayout.Y_AXIS) );
@@ -137,17 +137,17 @@ public class BerichtsheftOptionPane extends AbstractOptionPane implements Action
 	@Override
 	public void _save() {
 		Font font = fontSelector.getFont();
-		jEdit.setProperty(BerichtsheftPlugin.OPTION_PREFIX + "font", font.getFamily());
+		BerichtsheftPlugin.setOptionProperty("font", font.getFamily());
 		for (int i = 0; i < commands.length; i++) 
 			jEdit.setProperty(commands[i].getName() + "_COMMAND", commands[i].getText());
-		jEdit.setProperty(BerichtsheftPlugin.OPTION_PREFIX + "fontsize", String.valueOf(font.getSize()));
-		jEdit.setProperty(BerichtsheftPlugin.OPTION_PREFIX + "fontstyle", String.valueOf(font.getStyle()));
-		jEdit.setProperty(BerichtsheftPlugin.OPTION_PREFIX + "field-separator", fieldSeparatorSelector.getSelectedItem().toString());
-		jEdit.setProperty(BerichtsheftPlugin.OPTION_PREFIX + "field-decoration", fieldDecorationSelector.getSelectedItem().toString());
-		jEdit.setProperty(BerichtsheftPlugin.OPTION_PREFIX + "record-separator", recordSeparatorSelector.getSelectedItem().toString());
-		jEdit.setProperty(BerichtsheftPlugin.OPTION_PREFIX + "record-decoration", recordDecorationSelector.getSelectedItem().toString());
+		BerichtsheftPlugin.setOptionProperty("fontsize", String.valueOf(font.getSize()));
+		BerichtsheftPlugin.setOptionProperty("fontstyle", String.valueOf(font.getStyle()));
+		BerichtsheftPlugin.setOptionProperty("field-separator", fieldSeparatorSelector.getSelectedItem().toString());
+		BerichtsheftPlugin.setOptionProperty("field-decoration", fieldDecorationSelector.getSelectedItem().toString());
+		BerichtsheftPlugin.setOptionProperty("record-separator", recordSeparatorSelector.getSelectedItem().toString());
+		BerichtsheftPlugin.setOptionProperty("record-decoration", recordDecorationSelector.getSelectedItem().toString());
 		jEdit.saveSettings();
-		jEdit.setProperty(BerichtsheftPlugin.OPTION_PREFIX + "show-toolbar", String.valueOf(showToolbar.isSelected()));
+		BerichtsheftPlugin.setOptionProperty("show-toolbar", String.valueOf(showToolbar.isSelected()));
 		BerichtsheftToolBar.init();
 	}
 
@@ -167,21 +167,14 @@ public class BerichtsheftOptionPane extends AbstractOptionPane implements Action
 	// helper method to get Font from plugin properties
 	static public Font makeFont() {
 		int style, size;
-		String family = jEdit.getProperty(BerichtsheftPlugin.OPTION_PREFIX
-				+ "font");
+		String family = BerichtsheftPlugin.getOptionProperty("font");
 		try {
-			size = Integer
-					.parseInt(jEdit
-							.getProperty(BerichtsheftPlugin.OPTION_PREFIX
-									+ "fontsize"));
+			size = Integer.parseInt(BerichtsheftPlugin.getOptionProperty("fontsize"));
 		} catch (NumberFormatException nf) {
 			size = 14;
 		}
 		try {
-			style = Integer
-					.parseInt(jEdit
-							.getProperty(BerichtsheftPlugin.OPTION_PREFIX
-									+ "fontstyle"));
+			style = Integer.parseInt(BerichtsheftPlugin.getOptionProperty("fontstyle"));
 		} catch (NumberFormatException nf) {
 			style = Font.PLAIN;
 		}

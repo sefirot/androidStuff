@@ -2,6 +2,9 @@ package com.applang;
 
 import static com.applang.Util.*;
 
+import java.io.File;
+import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
@@ -21,6 +24,7 @@ import com.applang.Util.ValMap;
 
 import android.app.Activity;
 import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
@@ -56,7 +60,7 @@ public class Util1
     }
 	
 	public static ValMap getResults(Cursor cursor, final Function<String> key, final Function<Object> value) {
-		final ValMap map = new ValMap();
+		final ValMap map = vmap();
 		traverse(cursor, new Job<Cursor>() {
 			public void perform(Cursor c, Object[] params) throws Exception {
 				String k = key.apply(c);
@@ -67,10 +71,11 @@ public class Util1
 		return map;
 	}
 
-	public static ValList getRecord(Cursor cursor) {
-		ValList list = list();
-		for (int i = 0; i < cursor.getColumnCount(); i++)
+	public static ValList getStrings(Cursor cursor) {
+		ValList list = vlist();
+		for (int i = 0; i < cursor.getColumnCount(); i++) {
 			list.add(cursor.getString(i));
+		}
 		return list;
 	}
 
@@ -139,33 +144,54 @@ public class Util1
 		return viewGroup.getChildAt(0);
 	}
 
-	public static String providerPackage = "com.applang.provider";
+	public static String[] providerPackages = strings("com.applang.provider");
 	
 	public static Predicate<String> isProvider = new Predicate<String>() {
 		public boolean apply(String t) {
-			return t.startsWith(providerPackage);
+			for (int i = 0; i < providerPackages.length; i++) {
+				if (t.startsWith(providerPackages[i]))
+					return true;
+			}
+			return false;
 		}
 	};
 
 	@SuppressWarnings("rawtypes")
-	public static ValList contentAuthorities(Context context, String packageName) {
-		ValList list = list();
+	public static ValList contentAuthorities(String...packageNames) {
+		ValList list = vlist();
 		try {
-			Class[] cls = getLocalClasses(packageName);
-			for (Class c : filter(list(cls), false, new Predicate<Class>() {
-				public boolean apply(Class c) {
-					String name = c.getName();
-					return !name.contains("$") && !name.endsWith("Provider");
+			for (String packageName : packageNames) {
+				Class[] cls = getLocalClasses(packageName);
+				for (Class c : filter(asList(cls), false, new Predicate<Class>() {
+					public boolean apply(Class c) {
+						String name = c.getName();
+						return !name.contains("$")
+								&& !name.endsWith("Provider");
+					}
+				})) {
+					Object name = c.getDeclaredField("AUTHORITY").get(null);
+					if (name != null)
+						list.add(name.toString());
 				}
-			})) {
-				Object name = c.getDeclaredField("AUTHORITY").get(null);
-				if (name != null)
-					list.add(name.toString());
 			}
 		} catch (Exception e) {
 			Log.e(TAG, "contentAuthorities", e);
 		}
 	    return list;
+	}
+
+	public static Object[] fullProjection(Object authority) {
+		try {
+			Class<?> cls = Class.forName(authority + "Provider");
+			Field field = cls.getDeclaredField("FULL_PROJECTION");
+			if (field == null)
+				return null;
+			else
+				return (Object[]) field.get(null);
+		} catch (Exception e) {
+			Log.e(TAG, "fullProjection", e);
+			return null;
+		}
 	}
 
 	public static Uri contentUri(String authority, String path) {
@@ -176,10 +202,10 @@ public class Util1
     		.build();
     }
 
-	public static Uri fileUri(String path, String table) {
+	public static Uri fileUri(String path, String fragment) {
     	return Uri.parse(path).buildUpon()
     		.scheme(ContentResolver.SCHEME_FILE)
-    		.fragment(table)
+    		.fragment(fragment)
     		.build();
     }
 
@@ -188,7 +214,7 @@ public class Util1
 	}
 
 	public static boolean hasAuthority(Uri uri) {
-		return notNullOrEmpty(uri.getAuthority());
+		return uri != null && notNullOrEmpty(uri.getAuthority());
 	}
 
 	public static String dbInfo(Uri uri) {
@@ -200,12 +226,12 @@ public class Util1
 			return uri.getPath();
 	}
 
-	public static Uri dbTable(Uri uri, String table) {
+	public static Uri dbTable(Uri uri, String tableName) {
 		Uri.Builder builder = uri.buildUpon();
 		if (hasAuthority(uri))
-			builder = builder.path(table);
+			builder = builder.path(tableName);
 		else
-			builder = builder.fragment(table);
+			builder = builder.fragment(tableName);
 		return builder.build();
 	}
 
@@ -230,7 +256,7 @@ public class Util1
 				"select name,sql from sqlite_master where type = 'table'", 
 				null, 
 				null);
-		final ValMap schema = new ValMap();
+		final ValMap schema = vmap();
 		traverse(cursor, new Job<Cursor>() {
 			public void perform(Cursor c, Object[] params) throws Exception {
 				schema.put(c.getString(0), c.getString(1));
@@ -245,13 +271,14 @@ public class Util1
 	
 	public static ValMap table_info(Context context, Uri uri, String tableName) {
     	uri = dbTable(uri, null);
-		Cursor cursor = context.getContentResolver().query(
+		ContentResolver contentResolver = context.getContentResolver();
+		Cursor cursor = contentResolver.query(
 				uri, 
 				null, 
 				String.format("pragma table_info(%s)", tableName),  
 				null, 
 				null);
-		final ValMap info = new ValMap();
+		final ValMap info = vmap();
 		info.getList("cid");
 		info.getList("name");
 		info.getList("type");
@@ -298,7 +325,7 @@ public class Util1
 				"select name from sqlite_master where type = 'table'", 
 				null, 
 				null);
-		final ValList tables = list();
+		final ValList tables = vlist();
 		traverse(cursor, new Job<Cursor>() {
 			public void perform(Cursor c, Object[] params) throws Exception {
 				tables.add(c.getString(0));
@@ -336,12 +363,87 @@ public class Util1
 
 	public static String[] databases(Context context, String packageName) {
 		ArrayList<String> list = new ArrayList<String>();
-		for (Object authority : contentAuthorities(context, packageName)) {
+		for (Object authority : contentAuthorities(providerPackages)) {
 			String name = databaseName(authority);
 			if (notNullOrEmpty(name))
 				list.add(name);
 		}
 		return list.toArray(new String[0]);
+	}
+	
+	public static File getDatabaseFile(Context context, Uri uri) {
+		if (hasAuthority(uri)) {
+			String name = databaseName(uri.getAuthority());
+			try {
+				return context.getDatabasePath(name).getCanonicalFile();
+			} catch (IOException e) {
+				Log.e(TAG, "getDatabasePath", e);
+				return null;
+			}
+		}
+		else
+			return new File(uri.getPath());
+	}
+
+	public static ContentValues contentValues(ValMap info, List<Object> projection, Object...items) {
+		ContentValues values = new ContentValues();
+		ValList names = info.getList("name");
+		for (int i = 0; i < projection.size(); i++) {
+			String name = stringValueOf(projection.get(i));
+			int index = names.indexOf(name);
+			Object type = info.getListValue("type", index);
+			Object item = param(null, i, items);
+			if ("TEXT".equals(type))
+				values.put(name, (String) item);
+			else if ("INTEGER".equals(type))
+				values.put(name, toLong(null, stringValueOf(item)));
+			else if ("REAL".equals(type) || "FLOAT".equals(type) || "DOUBLE".equals(type))
+				values.put(name, toDouble(Double.NaN, stringValueOf(item)));
+			else if ("BLOB".equals(type))
+				values.put(name, (byte[]) item);
+			else
+				values.putNull(name);
+		}
+		return values;
+	}
+
+	public static ContentValues contentValuesFromQuery(String uriString, Object...items) {
+		ContentValues values = new ContentValues();
+		Uri uri = Uri.parse(uriString);
+		if (uri != null) {
+			String query = uri.getQuery();
+			if (query != null) {
+				ValList list = split(query, "&");
+				for (int i = 0; i < list.size(); i++) {
+					String[] parts = list.get(i).toString().split("=");
+					Object item = param(null, i, items);
+					if ("TEXT".equals(parts[1]))
+						values.put(parts[0], (String) item);
+					else if ("INTEGER".equals(parts[1]))
+						values.put(parts[0], toLong(null, stringValueOf(item)));
+					else if ("REAL".equals(parts[1]))
+						values.put(parts[0],
+								toDouble(Double.NaN, stringValueOf(item)));
+					else if ("BLOB".equals(parts[1]))
+						values.put(parts[0], (byte[]) item);
+					else
+						values.putNull(parts[0]);
+				}
+			}
+		}
+		return values;
+	}
+
+	public static String uriWithQuery(Context context, Uri uri, String tableName, Object[] projection) {
+		ValMap info = table_info(context, uri, tableName);
+		ValList fields = info.getList("name");
+		Uri.Builder builder = dbTable(uri, tableName).buildUpon().query("");
+		for (Object field : projection) {
+			int index = fields.indexOf(field);
+			Object type = info.getListValue("type", index);
+			builder.appendQueryParameter(field.toString(), type.toString());
+		}
+		return builder.toString();
 	}
 
 	@SuppressWarnings("unchecked")
@@ -353,7 +455,7 @@ public class Util1
 		
 		if (json instanceof JSONObject) {
 			JSONObject jo = (JSONObject) json;
-			ValMap map = map();
+			ValMap map = vmap();
 			Iterator<String> it = jo.keys();
 			while (it.hasNext()) {
 				String key = it.next();
@@ -387,7 +489,7 @@ public class Util1
 		}
 		else if (json instanceof JSONArray) {
 			JSONArray ja = (JSONArray) json;
-			ValList list = list();
+			ValList list = vlist();
 			for (int i = 0; i < ja.length(); i++) {
 				try {
 					Object value = ja.get(i);

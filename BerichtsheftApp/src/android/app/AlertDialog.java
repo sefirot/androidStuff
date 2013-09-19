@@ -1,7 +1,6 @@
 package android.app;
 
 import java.awt.Container;
-import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
@@ -14,7 +13,6 @@ import java.io.PipedReader;
 import java.io.PipedWriter;
 import java.io.Writer;
 
-import javax.swing.DefaultListModel;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JLabel;
@@ -114,7 +112,7 @@ public class AlertDialog extends Dialog implements DialogInterface
 		}
         
 		String title = "";
-		ValList options = new ValList();
+		ValList options = vlist();
 		int optionType = JOptionPane.DEFAULT_OPTION;
 		
         public AlertDialog create() {
@@ -253,7 +251,7 @@ public class AlertDialog extends Dialog implements DialogInterface
 		@SuppressWarnings({ "rawtypes", "unchecked" })
         public Builder setItems(final CharSequence[] items, final OnClickListener listener) {
 			final JList list = 
-					new JList(defaultListModel(com.applang.Util.list(items)));
+					new JList(defaultListModel(asList(items)));
 			list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 			list.addMouseListener(new MouseAdapter() {
 				public void mouseClicked(MouseEvent ev) {
@@ -392,8 +390,6 @@ public class AlertDialog extends Dialog implements DialogInterface
 			JList list = findComponent(container, "list");
 			list.setSelectedValue(defaults[0], true);
 		}
-		Dimension size = dlg.getSize();
-		dlg.setSize(new Dimension(size.width, size.height));
 		dlg.open();
 		return (String) dlg.result;
 	}

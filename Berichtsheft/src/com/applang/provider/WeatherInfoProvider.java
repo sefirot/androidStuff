@@ -84,8 +84,8 @@ public class WeatherInfoProvider extends ContentProvider {
      */
     public static class DatabaseHelper extends SQLiteOpenHelper {
 
-    	public DatabaseHelper(Context context) {
-            super(context, DATABASE_NAME, null, DATABASE_VERSION);
+    	public DatabaseHelper(Context context, String dbName) {
+            super(context, dbName, null, DATABASE_VERSION);
         }
 
         @Override
@@ -119,7 +119,7 @@ public class WeatherInfoProvider extends ContentProvider {
 
     @Override
     public boolean onCreate() {
-        mOpenHelper = new DatabaseHelper(getContext());
+        mOpenHelper = new DatabaseHelper(getContext(), DATABASE_NAME);
         return true;
     }
 

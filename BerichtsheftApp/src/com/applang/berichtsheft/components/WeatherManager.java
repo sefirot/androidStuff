@@ -7,14 +7,17 @@ import java.io.IOException;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Calendar;
-import java.util.HashMap;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Locale;
 import java.util.Map;
 import java.util.regex.MatchResult;
 import java.util.regex.Pattern;
 
+import javax.swing.Box;
+import javax.swing.JLabel;
 import javax.swing.JPopupMenu;
 
 import org.jsoup.Jsoup;
@@ -24,7 +27,9 @@ import org.jsoup.select.Elements;
 
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.R;
+import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 import com.applang.berichtsheft.plugin.BerichtsheftShell;
+import com.applang.provider.WeatherInfo.Weathers;
 
 import android.app.AlertDialog;
 import android.content.DialogInterface;
@@ -34,6 +39,7 @@ import android.util.Log;
 import android.widget.TextView;
 
 import static com.applang.Util.*;
+import static com.applang.Util1.*;
 import static com.applang.Util2.*;
 import static com.applang.SwingUtil.*;
 
@@ -46,28 +52,46 @@ public class WeatherManager extends ActionPanel
 	 * @throws Exception 
 	 */
 	public static void main(String[] args) throws Exception {
-		TextArea textArea = new TextArea();
+		DataView dataView = new DataView();
 		
         String title = "WeatherInfo database";
-		final WeatherManager weatherManager = new WeatherManager(textArea, 
+		final WeatherManager weatherManager = new WeatherManager(dataView, 
 				null,
 				title);
 		
-		ActionPanel.createAndShowGUI(title, new Dimension(1000, 200), weatherManager, textArea.textArea);
+		ActionPanel.createAndShowGUI(title, 
+				new Dimension(1000, 200), 
+				weatherManager, 
+				dataView.getUIComponent());
 	}
 
-	public WeatherManager(TextComponent textArea, Object... params) {
-		super(textArea, params);
+	private JLabel uriLabel;
+	private DataView dataView;
+	
+	public WeatherManager() {
+		super(null);
+	}
+
+	public WeatherManager(DataComponent dataView, Object... params) {
+		super(dataView, params);
+		this.dataView = (DataView) dataComponent;
 		
-		addButton(ActionType.DATABASE.index(), new InfoAction(ActionType.DATABASE));
-		addButton(4, new InfoAction("Options"));
-		
-	    JPopupMenu popupMenu = newPopupMenu(
-	    	new Object[] {ActionType.IMPORT.description(), new InfoAction(ActionType.IMPORT)}, 
-	    	new Object[] {ActionType.TEXT.description(), new InfoAction(ActionType.TEXT)} 
-	    );
-	    
-	    attachDropdownMenu(buttons[4], popupMenu);
+		addButton(this, ActionType.CALENDAR.index(), new InfoAction(ActionType.CALENDAR));
+		addButton(this, 4, new InfoAction("Weather"));
+		addButton(this, ActionType.DATABASE.index(), new InfoAction(ActionType.DATABASE));
+		JPopupMenu popupMenu = newPopupMenu(
+			objects(ActionType.IMPORT.description(), new InfoAction(ActionType.IMPORT)),
+			objects(ActionType.TEXT.description(), new InfoAction(ActionType.TEXT))
+		);
+		attachDropdownMenu(buttons[4], popupMenu);
+		add(Box.createHorizontalStrut(10));
+		add(uriLabel = new JLabel());
+	}
+	
+	@Override
+	public void start(Object... params) {
+    	System.setProperty("settings.dir", ".jedit/plugins/berichtsheft");
+		super.start(params);
 	}
 	
 	@Override
@@ -83,7 +107,7 @@ public class WeatherManager extends ActionPanel
 		super.finish(params);
 	}
     
-    public class InfoAction extends Action
+    public class InfoAction extends CustomAction
     {
 		public InfoAction(ActionType type) {
 			super(type);
@@ -99,9 +123,17 @@ public class WeatherManager extends ActionPanel
         	if (t != null) {
 				switch (t) {
 				case DATABASE:
-					dbName = chooseDatabase(dbName);
-					if (notNullOrEmpty(dbName))
-						openConnection(dbName);
+					if (dataView.askUri(null, dbName)) {
+						String uriString = dataView.getUriString();
+						dataView.updateUri(uriString);
+						dbName = dbInfo(dataView.getUri());
+						if (notNullOrEmpty(dbName))
+							openConnection(dbName);
+						uriLabel.setText(dbName);
+					}
+					break;
+				case CALENDAR:
+					DatePicker.Period.pick();
 					break;
 				case IMPORT:
 					retrieveWeatherData();
@@ -152,7 +184,7 @@ public class WeatherManager extends ActionPanel
 		String monthString = "0" + dateParts[1];
 		monthString = monthString.substring(monthString.length() - 2, monthString.length());
 		switch (dateParts[3]) {
-		case Period.MONTH:
+		case DatePicker.Period.MONTH:
 			url = String.format(URL_MONTHREP, 
 					location, 
 					"" + dateParts[0], 
@@ -183,7 +215,7 @@ public class WeatherManager extends ActionPanel
 			.appendQueryParameter("year", "" + dateParts[0])
 			.appendQueryParameter("month", String.format("%02d", dateParts[1]));
 		switch (dateParts[3]) {
-		case Period.MONTH:
+		case DatePicker.Period.MONTH:
 			builder = builder.appendPath("monthrep");
 			break;
 		default:
@@ -201,6 +233,12 @@ public class WeatherManager extends ActionPanel
 	}
 	
 	public void parseSite(String location, int[] dateParts) {
+		switch (dateParts[3]) {
+		case DatePicker.Period.MONTH:
+			break;
+		default:
+			dateParts = DatePicker.extendPeriod(1, dateParts);
+		}
 		final Uri uri = siteUri("PA", location, "all", dateParts);
 		BerichtsheftShell.print("connecting '%s'\n... ", uri);
 		long millis = waiting(null, new ComponentFunction<Void>() {
@@ -209,7 +247,6 @@ public class WeatherManager extends ActionPanel
 					doc = Jsoup.connect(uri.toString())
 							.timeout(100000)
 							.get();
-					setText(doc.toString());
 				} catch (Exception e) {
 					handleException(e);
 					doc = null;
@@ -223,16 +260,16 @@ public class WeatherManager extends ActionPanel
 	
 	private Document doc = null;
 
-	public ValMap summary(Object...args) {
-		final ValMap summary = new ValMap();
+	public ValMap summary(boolean popup, String title) {
+		final ValMap summary = vmap();
 		AlertDialog dialog = null;
 		try {
-			if (param(true, 0, args)) {
+			if (popup) {
 				TextView tv = new TextView(null, true);
 				tv.getTextArea().setFont(monoSpaced());
 				tv.setId(1);
 				dialog = new AlertDialog.Builder(BerichtsheftApp.getActivity(),	false)
-						.setTitle(param("", 1, args))
+						.setTitle(title)
 						.setView(tv)
 						.setNeutralButton(R.string.button_close,
 								new OnClickListener() {
@@ -242,8 +279,7 @@ public class WeatherManager extends ActionPanel
 									}
 								}).create();
 				dialog.setModalExclusionType(AlertDialog.ModalExclusionType.APPLICATION_EXCLUDE);
-				dialog.setSize(new Dimension(800, 400));
-				dialog.open();
+				dialog.open(new Dimension(800, 400));
 			}
 			final Object out = dialog != null ? dialog.feed(1) : "";
 			waiting(null, new ComponentFunction<Void>() {
@@ -282,11 +318,9 @@ public class WeatherManager extends ActionPanel
 		} catch (IOException e) {
 			Log.e(TAG, "summary", e);
 		}
+//		if (!popup)
+//			println(com.applang.Util2.toString(summary));
 		return summary;
-	}
-	
-	public static void printSummary(ValMap map) {
-		println(map.toString().replaceAll("\\], ", "\\],\n"));
 	}
 /*
 	SKY COVER									weight
@@ -302,9 +336,9 @@ public class WeatherManager extends ActionPanel
 		aufgelockert : 5-8
 		stark bewölkt : 8-10
 */	
-	int weight(String cc, String we) {
+	int weight(Object cc, Object we) {
 		int skc = -1;
-		MatchResult mr = findFirstIn(cc, Pattern.compile("(\\d+)\\/8"));
+		MatchResult mr = findFirstIn(stringValueOf(cc), Pattern.compile("(\\d+)\\/8"));
 		if (mr != null)
 			skc = Integer.parseInt(mr.group(1));
 		switch (skc) {
@@ -345,43 +379,66 @@ public class WeatherManager extends ActionPanel
 			return "stark bewölkt";
 	}
 	
+	public static Pattern PRECIPITATION_PATTERN = clippingPattern("\\(", "\\)");
+	
 	public void evaluateSummary(ValMap summary) {
-//		printSummary(summary);
-		ValMap vormittag = new ValMap();
-		ValMap nachmittag = new ValMap();
+		ValMap vormittag = vmap(), nachmittag = vmap();
+		BidiMultiMap precip = bmap(3);
+		ArrayList<Double> temps = new ArrayList<Double>();
 		ValList list = summary.getList("D");
-		if (list == null || list.size() < 1)
+		if (!isAvailable(0, list))
 			return;
-		
 		String old = list.get(0).toString(), day = old;
 		for (int i = 0; i < list.size(); i++) {
 			String hour = summary.getListValue("h", i).toString();
+			Long instant = pointInTime(day, stripUnits(hour));
 			if ("06Z".compareTo(hour) <= 0 && "19Z".compareTo(hour) >= 0) {
 				int weight = weight(
-						summary.getListValue("CC", i).toString(), 
-						summary.getListValue("WE", i).toString());
+						summary.getListValue("CC", i), 
+						summary.getListValue("WE", i));
 				if ("12Z".compareTo(hour) < 0) 
 					nachmittag.getList(day).add(weight);
 				else
 					vormittag.getList(day).add(weight);
 			}
-			
+			Object oT = summary.getListValue("T", i);
+			oT = stripUnits(oT.toString());
+			temps.add(toDouble(Double.NaN, oT.toString()));
+			Object oPR = summary.getListValue("PR", i);
+			if (notNullOrEmpty(oPR)) {
+				MatchResult[] mr = findAllIn(oPR.toString(), PRECIPITATION_PATTERN);
+				if (mr.length > 0) {
+					Integer hours = toInt(0, stripUnits(mr[0].group(2)));
+					precip.add(instant, 
+							hoursFromDate(instant, -hours), 
+							toDouble(0.1, mr[0].group(1)));
+				}
+			}
 			if (i < list.size() - 1)
 				day = summary.getListValue("D", i + 1).toString();
 			else
 				day = "";
 			if (!old.equals(day)) {
-				String description = "";
-				String vm = averaged(vormittag.getList(old));
-				if (notNullOrEmpty(vm))
-					description += String.format("v.m. %s ", vm);
-				String nm = averaged(nachmittag.getList(old));
-				if (notNullOrEmpty(nm))
-					description += String.format("n.m. %s ", nm);
-				ValMap values = new ValMap();
-				values.put("description", description);
-				updateOrInsert(location, toInt(-1, old), values);
+				int oldDay = toInt(-1, old);
+				Long time = DatePicker.Period.getMillis(oldDay);
+				if (time != null) {
+					String description = "";
+					String vm = averaged(vormittag.getList(old));
+					if (notNullOrEmpty(vm))
+						description += String.format("v.m. %s ", vm);
+					String nm = averaged(nachmittag.getList(old));
+					if (notNullOrEmpty(nm))
+						description += String.format("n.m. %s ", nm);
+					ValMap values = vmap();
+					values.put(Weathers.DESCRIPTION, description);
+					values.put(Weathers.PRECIPITATION, interpolate(old, precip));
+					values.put(Weathers.MAXTEMP, Collections.max(temps));
+					values.put(Weathers.MINTEMP, Collections.min(temps));
+					if (null == updateOrInsert(location, time, values))
+						break;
+				}
 				old = day;
+				temps = new ArrayList<Double>();
 			}
 		}
 //		for (String d : vormittag.keySet()) {
@@ -392,6 +449,96 @@ public class WeatherManager extends ActionPanel
 //			list = nachmittag.getList(d);
 //			println("%s nachmittag", d, list, averaged(list));
 //		}
+	}
+	
+	private double interpolate(String day, BidiMultiMap precip) {
+		double value = 0.0;
+		long[] interval = intervalInTime(day);
+		timeLine = precip.getKeys().toArray(new Long[0]);
+//		println("timeLine", formatDates(timeLine));
+//		println("interval", formatDates(interval));
+		int[] index = new int[]{
+			index(interval[0]), index(interval[1])
+		};
+		long[] old = null;
+		for (int i = index[1]; i < index[0]; i++) {
+			ValList rec = precip.get(i);
+			long[] ival = interval(rec);
+			double precipitation = (double)rec.get(2);
+			double contrib = contribution(interval, ival, precipitation);
+			double isect = old == null ? 0.0 :  
+				intersection(ival, old);
+			double portion = (1.0 - isect) * contrib;
+//			println(formatDates(ival), precipitation, contrib, portion);
+			value += portion;
+			old = ival;
+		}
+//		println("precipitation on %s : %f", formatDate(epoch), value);
+		return value;
+	}
+	
+	private double contribution(long[] interval, long[] ival, double value) {
+		long upper = Math.min(interval[1], ival[1]);
+		long lower = Math.max(interval[0], ival[0]);
+		double portion = 1.0 * (upper - lower) / (ival[1] - ival[0]);
+		return portion * value;
+	}
+	
+	private long[] interval(ValList rec) {
+		return new long[]{
+			(long)rec.get(1), (long)rec.get(0)
+		};
+	}
+	
+	private double intersection(long[] ival1, long[] ival2) {
+		if (ival2[0] >= ival1[1] || ival2[1] <= ival1[0])
+			return 0.0;
+		else if (ival2[1] >= ival1[1] && ival2[0] <= ival1[0])
+			return 1.0;
+		else if (ival1[1] >= ival2[1] && ival1[0] <= ival2[0])
+			return 1.0;
+		else if (ival2[1] >= ival1[1])
+			return 1.0 * (ival1[1] - ival2[0]) / (ival2[1] - ival2[0]);
+		else
+			return 1.0 * (ival2[1] - ival1[0]) / (ival1[1] - ival1[0]);
+	}
+	
+	private int index(long epoch) {
+		return pointer(criterion(epoch));
+	}
+	
+	Long[] timeLine;
+	
+	private int criterion(long epoch) {
+		return Arrays.binarySearch(timeLine, epoch, new Comparator<Long>() {
+			@Override
+			public int compare(Long l1, Long l2) {
+				if (l1 < l2)
+					return 1;
+				else if (l1 > l2)
+					return -1;
+				else
+					return 0;
+			}
+		});
+	}
+	
+	private int pointer(int crit) {
+		if (crit < 0)
+			crit = -crit - 1;
+		return crit;
+	}
+
+	private long[] intervalInTime(String day) {
+		Long epoch = DatePicker.Period.getMillis(toInt(-1, day));
+		if (epoch == null)
+			return null;
+		else
+			return dayInterval(epoch, 1);
+	}
+
+	private Long pointInTime(String day, String hour) {
+		return DatePicker.Period.getMillisByHour(toInt(-1, day), toInt(0, hour));
 	}
 
 	void measurements(final String marker) {
@@ -431,7 +578,7 @@ public class WeatherManager extends ActionPanel
  	}
 
     void storeValues(Element table) {
-    	ValMap values = new ValMap();
+    	ValMap values = vmap();
     	Elements column = table.select("td:eq(0)");
     	boolean precipitation = column.get(1).text().toLowerCase().startsWith("prec");
     	Element row = table.select("tr").first();
@@ -444,117 +591,46 @@ public class WeatherManager extends ActionPanel
 	        	values.put("maxtemp", toFloat(Float.NaN, column.get(1).text()));
 	        	values.put("mintemp", toFloat(Float.NaN, column.get(2).text()));
         	}
-        	updateOrInsert(location, day, values);
+    		long time = DatePicker.Period.getMillis(day);
+			if (null == updateOrInsert(location, time, values))
+				break;
 		}
 	}
     
-    public static class Period
-    {
-    	public static final int MONTH = -1;
-    	
-    	public static int year, month, day, length;
-    	
-    	public static int[] getParts() {
-    		return new int[]{year, month, day, length};
-    	}
-    	
-    	public static void setParts(int...parts) {
-    		if (parts != null) {
-    			for (int i = 0; i < Math.min(4, parts.length); i++) 
-    				switch (i) {
-    				case 0:	year = parts[i];	break;
-    				case 1:	month = parts[i];	break;
-    				case 2:	day = parts[i];	break;
-    				case 3:	length = parts[i];	break;
-    				}
-    			if (length > 1) {
-    				for (int i = 1; i < length; i++) {
-    					long time = dateInMillis(year, month - 1, Period.day, -i);
-    	    			int d = getCalendar().get(Calendar.DAY_OF_MONTH);;
-						datesInMillis.put(d, time);
-					}
-    			}
-    		}
-    	}
-        
-        public static Long getMillis(int day) {
-        	if (length < 2 || day == Period.day)
-        		return dateInMillis(year, month - 1, day);
-        	else
-        		return datesInMillis.get(day);
-        }
-    	
-    	private static HashMap<Integer,Long> datesInMillis = new HashMap<Integer,Long>();
-    	private static String key = "weather.period";
-    	
-    	public static void save() {
-    		putSetting(key, Arrays.toString(getParts()));
-    	}
-        	
-        public static void load() {
-    		MatchResult[] matches = findAllIn(getSetting(key, ""), Pattern.compile("\\d+"));
-    		if (matches.length > 0) {
-    			int[] parts = new int[matches.length];
-    			for (int i = 0; i < parts.length; i++) {
-    				parts[i] = toInt(-1, matches[i].group());
-    			}
-    			setParts(parts);
-    		}
-    		else {
-    			Calendar cal = getCalendar();
-    			cal.setTimeInMillis(now());
-    			setParts(cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1, cal.get(Calendar.DAY_OF_MONTH));
-    		}
-    	}
-     	
-        public static String description() {
-        	switch (length) {
-			case MONTH:
-				return formatDate(getMillis(day), DatePicker.monthFormat);
-			default:
-				return String.format("%d day(s) ending %s", length, formatDate(getMillis(day), DatePicker.calendarFormat));
-			}
-    	}
-    }
-    
-    String location = "10519";			//	BONN-ROLEBER
+    public String location = "10519";			//	BONN-ROLEBER
+    public int[] period;
 	
 	public void retrieveWeatherData() {
-		Period.load();
-
-		int[] period = DatePicker.pickAPeriod(Period.getParts(), "Weather info : pick day, week or month");
-		if (period == null)
-			return;
-		
-		Period.setParts(period);
-		Period.save();
-		
+		period = DatePicker.Period.loadParts();
 		new Task<Void>(null, 
 			new Job<Void>() {
 				public void perform(Void t, Object[] params) throws Exception {
-					evaluate(true);
+					boolean popup = getCon() != null;
+					evaluate(popup);
 				}
 			}) {
 				@Override
 				protected Void doInBackground() throws Exception {
-					parseSite(location, Period.getParts());
+					parseSite(location, period);
 					return null;
 				}
 			}.execute();
 	}
 
 	public void evaluate(boolean popup) {
-		count = new int[2];
-		switch (Period.length) {
-		case Period.MONTH:
+		count = new int[] {0,0};
+		switch (DatePicker.Period.length) {
+		case DatePicker.Period.MONTH:
 			measurements("Daily extreme temperatures");
 			measurements("24 hours rainfall");
 			break;
 		default:
-			evaluateSummary(summary(popup, Period.description()));
+			evaluateSummary(summary(popup, DatePicker.Period.description()));
 			break;
 		}
-		BerichtsheftShell.print("%d record(s) updated, %d inserted", count[0], count[1], NEWLINE);
+		if (count[0] > 0 || count[1] > 0)
+			BerichtsheftPlugin.consoleMessage("berichtsheft.updateOrInsert.message", 
+				count[1], count[0]);
 	}
 
 	@Override
@@ -578,6 +654,15 @@ public class WeatherManager extends ActionPanel
 			handleException(e);
 			return false;
 		}
+	}
+
+	public void closeConnection() {
+		if (getCon() == null)
+			try {
+				getCon().close();
+			} catch (SQLException e) {
+				handleException(e);
+			}
 	}
 
 	public int update(long id, ValMap values) throws Exception {
@@ -635,8 +720,7 @@ public class WeatherManager extends ActionPanel
 	
 	private int[] count = new int[2];
 
-	public long updateOrInsert(String location, int day, ValMap values) {
-		long time = Period.getMillis(day);
+	public Object updateOrInsert(String location, long time, ValMap values) {
 		if (getCon() == null) {
 			message("database connection not open");
 			BerichtsheftShell.print(location, 

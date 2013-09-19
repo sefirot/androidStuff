@@ -11,6 +11,7 @@ import com.applang.berichtsheft.components.TextComponent;
 
 import cswilly.jeditPlugins.spell.SpellCheckPlugin;
 
+import org.gjt.sp.jedit.Buffer;
 import org.gjt.sp.jedit.View;
 import org.gjt.sp.jedit.textarea.JEditTextArea;
 import org.gjt.sp.jedit.textarea.Selection;
@@ -39,7 +40,8 @@ public class JEditTextEditor implements TextComponent
 	}
 	
 	public boolean hasTextArea() {
-		return getView() != null && getView().getTextArea() != null;
+		View view = getView();
+		return view != null && view.getTextArea() != null;
 	}
 	
 	public JEditTextArea getTextArea() {
@@ -63,22 +65,14 @@ public class JEditTextEditor implements TextComponent
 		else
 			return null;
 	}
-    
-	boolean dirty = false;
-	
-	public boolean isDirty() {
-		return dirty;
-	}
-
-	public void setDirty(boolean dirty) {
-		this.dirty = dirty;
-	}
 
 	@Override
 	public void spellcheck() {
 		if (hasTextArea()) {
-			SpellCheckPlugin.setBufferLanguage(getView(), getView().getBuffer());
-			SpellCheckPlugin.checkBuffer(getView(), getView().getBuffer());
+			View view = getView();
+			Buffer buffer = view.getBuffer();
+			SpellCheckPlugin.setBufferLanguage(view, buffer);
+			SpellCheckPlugin.checkBuffer(view, buffer);
 		}
 	}
 
@@ -92,7 +86,11 @@ public class JEditTextEditor implements TextComponent
 	@Override
 	public void setSelectedText(String text) {
 		if (hasTextArea()) {
-			getView().getTextArea().setSelectedText(text);
+			JEditTextArea textArea = getView().getTextArea();
+			int start = textArea.getCaretPosition();
+			textArea.setSelectedText(text);
+			if (notNullOrEmpty(text))
+				setSelection(start, start + text.length());
 		}
 	}
 

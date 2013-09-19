@@ -12,7 +12,7 @@
 	<xsl:param name="weekInYear" select="//weekInYear" />
 	<xsl:param name="dayInWeek" select="//dayInWeek" />
 	
-	<xsl:param name="Bericht"><![CDATA[(?i)(.*bericht.*|berufsschule)]]></xsl:param>
+	<xsl:param name="Bericht"><![CDATA[(?i)(.*bericht.*|berufsschule|lehrgang.*)]]></xsl:param>
 	<xsl:param name="Bemerkung"><![CDATA[(?i).*bemerk.*]]></xsl:param>
 	<xsl:param name="dateFormat" select="'dd.MM.yyyy'" />
 	<xsl:param name="weekFormat" select="'w/yy'" />

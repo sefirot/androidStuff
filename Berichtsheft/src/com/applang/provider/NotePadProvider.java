@@ -34,11 +34,9 @@ import android.net.Uri;
 import android.util.Log;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeSet;
 
 import static com.applang.Util.*;
 import static com.applang.Util1.*;
@@ -64,7 +62,7 @@ public class NotePadProvider extends ContentProvider
     }
     
     public static int tableIndex(String name) {
-    	return list(DATABASE_TABLES).indexOf(name);
+    	return asList(DATABASE_TABLES).indexOf(name);
     }
    
     public static Uri contentUri(int index) {
@@ -542,7 +540,7 @@ public class NotePadProvider extends ContentProvider
 	        }
 	    );
 	    
-	    return sorted(map.keySet());
+	    return sortedSet(map.keySet());
 	}
 
 	public static ValMap bausteinMap(ContentResolver contentResolver, String selection, String... selectionArgs) {

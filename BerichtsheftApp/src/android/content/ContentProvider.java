@@ -60,7 +60,8 @@ public class ContentProvider {
 			}
 		}
 		else {
-			File file = new File(uri.getPath());
+			String path = uri.getPath();
+			File file = new File(path);
 			if (!fileExists(file))
 				return false;
 			mDb = SQLiteDatabase.openDatabase(
@@ -70,7 +71,7 @@ public class ContentProvider {
 		}
 		
 		mTable = dbTableName(uri);
-		if (!notNullOrEmpty(mTable))
+		if (nullOrEmpty(mTable))
 			mTable = "sqlite_master";
 		
 		return open(uri, -1);
@@ -116,6 +117,7 @@ public class ContentProvider {
 					selection, selectionArgs, 
 					null, null, 
 					sortOrder);
+			cursor.setNotificationUri(getContext().getContentResolver(), uri);
 		}
 		return cursor;
 	}
@@ -123,7 +125,8 @@ public class ContentProvider {
 	public Uri insert(Uri uri, ContentValues initialValues) {
 		if (open(uri, SQLiteDatabase.OPEN_READWRITE)) {
 			long rowId = mDb.insert(mTable, null, initialValues);
-			return uri.buildUpon().query("" + rowId).build();
+	        getContext().getContentResolver().notifyChange(uri, null);
+			return ContentUris.withAppendedId(uri, rowId);
 		}
 		return null;
 	}
@@ -132,6 +135,7 @@ public class ContentProvider {
 		int retval = 0;
 		if (open(uri, SQLiteDatabase.OPEN_READWRITE)) {
 			retval = mDb.delete(mTable, where, whereArgs);
+	        getContext().getContentResolver().notifyChange(uri, null);
 		}
 		return retval;
 	}
@@ -140,6 +144,7 @@ public class ContentProvider {
 		int retval = 0;
 		if (open(uri, SQLiteDatabase.OPEN_READWRITE)) {
 			retval = mDb.update(mTable, values, where, whereArgs);
+	        getContext().getContentResolver().notifyChange(uri, null);
 		}
 		return retval;
 	}

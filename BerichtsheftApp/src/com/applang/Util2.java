@@ -58,10 +58,9 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-import com.applang.Util.ValList;
-
 import android.app.Activity;
 import android.content.Intent;
+import android.database.Cursor;
 import android.util.Log;
 
 import static com.applang.Util.*;
@@ -84,7 +83,7 @@ public class Util2
 		
 		public static String defaultFilename() {
 			String dir = System.getProperty("settings.dir", "");
-			if (!notNullOrEmpty(dir))
+			if (nullOrEmpty(dir))
 				dir = relativePath();
 			File[] array = new File(dir).listFiles();
 	    	for (File file : array) {
@@ -406,21 +405,35 @@ public class Util2
 
 	public static void noprintln(Object... params) {}
 
-	public static String toString(Object[] o) {
-		ValList list = list();
+	public static String toString(Object[][] o) {
+		ValList list = vlist();
 		for (Object object : (Object[])o) 
 			list.add(Arrays.toString((Object[])object));
-		return Arrays.toString(list.toArray());
+		String s = Arrays.toString(list.toArray());
+		return strip(true, strip(false, s , "]") , "[")
+				.replaceAll("(\\],) (\\[)", "$1\n\n$2");
+	}
+
+	public static String toString(ValMap o) {
+		return o.toString().replaceAll("\\], ", "\\],\n");
 	}
 
 	public static String toString(Object o) {
-		if (o instanceof Object[][]) 
-			return toString((Object[])o);
-		else {
-			String value = o.toString();
-			int brac = value.indexOf('[');
-			return value.substring(brac > -1 ? brac : 0);
+		String value = o.toString();
+		int brac = value.indexOf('[');
+		return value.substring(brac > -1 ? brac : 0);
+	}
+
+	public static void printMatchResults(String string, Pattern pattern) {
+		MatchResult[] mr = findAllIn(string, pattern);
+    	for (int i = 0; i < mr.length; i++) {
+    		MatchResult m = mr[i];
+    		println("%d-%d(%d,%d)%s", i, m.groupCount(), m.start(), m.end(), m.group());
+    		for (int j = 1; j <= m.groupCount(); j++) {
+    			println(m.group(j));
+    		}
 		}
+    	println("(%d)%s", string.length(), string);
 	}
 	
 	public static class DataBaseConnect
@@ -565,7 +578,7 @@ public class Util2
 	}
 	
 	public static ValMap getResultMap(PreparedStatement ps, Object...params) {
-		ValMap map = new ValMap();
+		ValMap map = vmap();
 		Function<String> keyConversion = param(null, 0, params);
 		Function<Object> valueConversion = param(null, 1, params);
 		try {
@@ -594,7 +607,7 @@ public class Util2
 			ResultSet rs = ps.executeQuery();
 			ResultSetMetaData rsmd = rs.getMetaData();
 			while (rs.next()) {
-				ValMap map = new ValMap();
+				ValMap map = vmap();
 				for (int i = 1; i <= rsmd.getColumnCount(); i++) {
 					Object value = rs.getObject(i);
 					Function<Object> conversion = param(null, i-1, params);
@@ -655,6 +668,8 @@ public class Util2
 	}
 
 	public static Element selectElement(Object item, String xpath) {
+		if (item == null)
+			return null;
 		NodeList nodes = evaluateXPath(item, xpath);
 		if (nodes.getLength() > 0)
 			return (Element) nodes.item(0);
@@ -757,9 +772,9 @@ public class Util2
 	
 	public static <T> List<T> arrayexclude(int index, T[] array, List<T> list) {
 		if (index > 0)
-			list.addAll(list(Arrays.copyOfRange(array,	0, index)));
+			list.addAll(asList(Arrays.copyOfRange(array,	0, index)));
 		if (index < array.length - 1)
-			list.addAll(list(Arrays.copyOfRange(array,	index + 1, array.length)));
+			list.addAll(asList(Arrays.copyOfRange(array,	index + 1, array.length)));
 		return list;
 	}
 
@@ -893,6 +908,30 @@ public class Util2
 		}
 		String contents = contentsFromFile(new File(fileName));
 		return contents != null ? contents.trim() : "";
+	}
+	
+	public static Object getCellValue(Cursor cursor, int rowIndex, int columnIndex) {
+		if (rowIndex < 0 || cursor.moveToPosition(rowIndex))
+			switch (cursor.getType(columnIndex)) {
+			case Cursor.FIELD_TYPE_FLOAT:
+				return cursor.getDouble(columnIndex);
+			case Cursor.FIELD_TYPE_INTEGER:
+				return cursor.getLong(columnIndex);
+			case Cursor.FIELD_TYPE_STRING:
+				return cursor.getString(columnIndex);
+			case Cursor.FIELD_TYPE_BLOB:
+				return cursor.getBlob(columnIndex);
+			case Cursor.FIELD_TYPE_NULL:
+				break;
+			}
+		return null;
+	}
+
+	public static ValList getRow(Cursor cursor) {
+		ValList list = vlist();
+		for (int c = 0; c < cursor.getColumnCount(); c++) 
+			list.add(getCellValue(cursor, -1, c));
+		return list;
 	}
 
 }

@@ -499,7 +499,7 @@ public class VelocityUtil
 		}
 		
 		public static ValList getEssentials(Node parent) {
-			ValList list = list();
+			ValList list = vlist();
 			for (int i = 0; i < parent.jjtGetNumChildren(); i++) {
 				Node child = parent.jjtGetChild(i);
 				if (isEssential.apply(child))
@@ -1032,7 +1032,7 @@ public class VelocityUtil
 		return DATA_TYPES[index].compareToIgnoreCase(type) == 0;
 	}
 	
-	private static final ValMap DUMMIES = new ValMap();
+	private static final ValMap DUMMIES = vmap();
 	static {
 		for (int i = 0; i < DATA_TYPES.length; i++) {
 			Object dummy;
@@ -1062,7 +1062,7 @@ public class VelocityUtil
 	}
 
 	public static boolean isDummy(int typeIndex, String text) {
-		return list(getDummies(typeIndex)).contains(text);
+		return asList(getDummies(typeIndex)).contains(text);
 	}
 	
 	public static Boolean compliesWith(int typeIndex, String text) {
@@ -1115,7 +1115,7 @@ public class VelocityUtil
 	}
 	
 	public static ValList argumentsFrom(String signature) {
-		ValList args = list();
+		ValList args = vlist();
 		for (MatchResult m : findAllIn(signature, ARGUMENT_PATTERN)) 
 			args.add(m.group());
 		return args;
@@ -1198,7 +1198,7 @@ public class VelocityUtil
 	public static final int MODIFY = 2;
 	
 	public static ValMap nodeMap(Object node, int indents, Object token) {
-		ValMap map = new ValMap();
+		ValMap map = vmap();
 		map.put(NODE, node);
 		map.put(INDENTS, indents);
 		if (token != null)

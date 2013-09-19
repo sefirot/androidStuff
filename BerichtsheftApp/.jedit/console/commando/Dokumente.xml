@@ -1,0 +1,20 @@
+<COMMANDO>
+	<UI>
+		<URI_ENTRY LABEL="Berichtsheft database" VARNAME="uri" 
+			EVAL="jEdit.getProperty(&quot;TRANSPORT_URI&quot;, &quot;&quot;)"/>
+
+		<PERIOD LABEL="Berichtsheft period" VARNAME="period" 
+			EVAL="com.applang.berichtsheft.components.DatePicker.Period.getDescription()"/>
+ 	</UI>
+
+	<COMMANDS>
+		<COMMAND SHELL="BeanShell">
+			jEdit.setProperty("TRANSPORT_URI", uri);
+			
+			buf = new StringBuffer();
+			buf.append("import com.applang.berichtsheft.plugin.*; ");
+			buf.append("DataDockable.doTransport(view, \"odt\", new Object[]{}); ");
+			buf.toString();
+		</COMMAND>
+	</COMMANDS>
+</COMMANDO>
