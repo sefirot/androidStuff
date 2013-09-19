@@ -22,8 +22,8 @@ import java.util.HashMap;
 /**
  * Provides access to a database of plants.
  */
-public class PlantInfoProvider extends ContentProvider {
-
+public class PlantInfoProvider extends ContentProvider
+{
     private static final String TAG = "PlantInfoProvider";
 
     public static final String DATABASE_NAME = "plant_info.db";
@@ -63,8 +63,8 @@ public class PlantInfoProvider extends ContentProvider {
      */
 	public static class DatabaseHelper extends SQLiteOpenHelper {
 
-		public DatabaseHelper(Context context) {
-            super(context, DATABASE_NAME, null, DATABASE_VERSION);
+		public DatabaseHelper(Context context, String dbName) {
+            super(context, dbName, null, DATABASE_VERSION);
         }
 
         @Override
@@ -96,7 +96,7 @@ public class PlantInfoProvider extends ContentProvider {
 
     @Override
     public boolean onCreate() {
-        mOpenHelper = new DatabaseHelper(getContext());
+        mOpenHelper = new DatabaseHelper(getContext(), DATABASE_NAME);
         return true;
     }
 

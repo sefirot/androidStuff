@@ -37,7 +37,7 @@ public class UserContext extends CustomContext implements Serializable
 //	}
 	
 	public UserContext() {
-		this(new ValMap());
+		this(vmap());
 	}
 
 	public UserContext(ValMap map) {
@@ -53,11 +53,11 @@ public class UserContext extends CustomContext implements Serializable
 	}
 	
 	List<Object> allReferences() {
-		return list(getKeys());
+		return asList(getKeys());
 	}
     
 	public ValList suggestions() {
-    	ValList list = list();
+    	ValList list = vlist();
     	for (Object item : allReferences()) {
     		String listItem = VRI + item.toString();
     		list.add(listItem);
@@ -197,7 +197,7 @@ public class UserContext extends CustomContext implements Serializable
 	}
 	
     static ValMap nonNullMap(ValMap m) {
-        return (m != null) ? m : new ValMap();
+        return (m != null) ? m : vmap();
     }
 
 	public UserContext(ValMap map, EvaluationTask evaluationTask) {
@@ -221,7 +221,7 @@ public class UserContext extends CustomContext implements Serializable
     		this.progressHandler = progressHandler;
     		this.progressJob = progressJob;
 			this.userContext = new UserContext(refMap, this);
-			for (Object authority : contentAuthorities(activity, providerPackage)) {
+			for (Object authority : contentAuthorities(providerPackages)) {
 				String auth = String.valueOf(authority);
 				String key = split(auth, "\\.").get(-1) + "Uri";
 				userContext.put(key, contentUri(auth, null).toString());

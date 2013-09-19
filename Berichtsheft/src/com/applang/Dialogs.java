@@ -203,7 +203,7 @@ public class Dialogs extends Activity
                 .create();
         case DIALOG_SINGLE_CHOICE:
         	if (defaultValues != null && defaultValues.size() > 0) {
-        		checkedItem = list(values).indexOf(defaultValues.get(0));
+        		checkedItem = asList(values).indexOf(defaultValues.get(0));
         	}
             return new AlertDialog.Builder(Dialogs.this)
 	    		.setCancelable(false)
@@ -244,7 +244,7 @@ public class Dialogs extends Activity
                         })
                 .setPositiveButton(R.string.button_ok, new DialogInterface.OnClickListener() {
 					public void onClick(DialogInterface dialog, int whichButton) {
-						ValList list = new ValList();
+						ValList list = vlist();
                     	Boolean[] checked = checkedItems.toArray(new Boolean[values.length]);
 						for (int i = 0; i < checked.length; i++) {
 							if (checked[i])
@@ -266,7 +266,7 @@ public class Dialogs extends Activity
 					if (cursor.moveToFirst())
 						do {
 							checkedItem++;
-							if (defaultValues.containsAll(getRecord(cursor)))
+							if (defaultValues.containsAll(getStrings(cursor)))
 								break;
 						} while (cursor.moveToNext());
 				}
@@ -289,7 +289,7 @@ public class Dialogs extends Activity
 								for (int i = 1; i < checkedItem; i++)
 									cursor.moveToNext();
 								if (values.length > 1)
-									value = getRecord(cursor);
+									value = getStrings(cursor);
 								else
 									value = cursor.getString(0);
 							}
@@ -428,7 +428,7 @@ public class Dialogs extends Activity
         	else
         		array = info.getStringArray(BaseDirective.DEFAULTS);
         	if (array != null)
-        		defaultValues = list(array);
+        		defaultValues = asList(array);
         	
         	if (info.containsKey(BaseDirective.VALUES))
         		values = info.getStringArray(BaseDirective.VALUES);
