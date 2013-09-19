@@ -3,8 +3,11 @@ void doSomethingUseful()
     void run()
     {
         view = jEdit.getLastView();
+        
+        view.getDockableWindowManager().showDockableWindow("console");
+        com.applang.berichtsheft.plugin.BerichtsheftPlugin.checkAvailabilityOfTools();
 
-        view.getDockableWindowManager().showDockableWindow("berichtsheft");
+        view.getDockableWindowManager().showDockableWindow("datadock");
     }
 
     if(jEdit.getLastView() == null)

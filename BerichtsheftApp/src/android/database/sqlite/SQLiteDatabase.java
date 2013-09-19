@@ -149,8 +149,9 @@ public class SQLiteDatabase {
 				
 				@Override
 				public void close() {
-			    	if (stm != null)
+			    	if (stm != null) {
 			    		stm.dispose();
+			    	}
 				}
 				
 				@Override
@@ -304,7 +305,7 @@ public class SQLiteDatabase {
 				
 				@Override
 				public int getColumnIndex(String columnName) {
-					return list(getColumnNames()).indexOf(columnName);
+					return asList(getColumnNames()).indexOf(columnName);
 				}
 				
 				@Override

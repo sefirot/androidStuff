@@ -37,8 +37,6 @@ import static com.applang.ZipUtil.*;
 
 public class BerichtsheftApp
 {
-	public static Logger logger = Logger.getLogger(BerichtsheftApp.class.getName());
-
 	/**
 	 * @param args
 	 */
@@ -57,14 +55,24 @@ public class BerichtsheftApp
 				"-nosplash" );
 		jEdit.main(args);
 	}
+
+	public static Logger logger = Logger.getLogger(BerichtsheftApp.class.getName());
 	
 	public static final String NAME = "berichtsheft";
 	public static final String packageName = "com.applang.berichtsheft";
+	
+	private static Activity activity = null;
 
 	public static Activity getActivity() {
-		Activity activity = new Activity();
-		activity.setPackageInfo(packageName, "../Berichtsheft");
+		if (activity == null) {
+			activity = new Activity();
+			activity.setPackageInfo(packageName, "../Berichtsheft");
+		}
 		return activity;
+	}
+	
+	public static org.gjt.sp.jedit.View getJEditView() {
+		return (org.gjt.sp.jedit.View)Activity.frame;
 	}
 	
 	public static String prompt(int type, String title, String message, String[] values, String...defaults) {

@@ -1,5 +1,7 @@
 commandoANDROID_FILE_ENTRY(view,pane,ns,label,var,options)
 {
+	import com.applang.berichtsheft.plugin.*;
+	
 	entry = new JTextField(20);
 	value = ns.getVariable(var);
 	if(value != null)
@@ -18,13 +20,12 @@ commandoANDROID_FILE_ENTRY(view,pane,ns,label,var,options)
 	box.add(entry);
 	box.add(Box.createHorizontalStrut(12));
 
-	btn = new RolloverButton(GUIUtilities.loadIcon("Open.png"));
+	btn = new RolloverButton(BerichtsheftPlugin.loadIcon("/images/android_21x22.png"));
 	btn.setToolTipText("Choose a file");
 	listener = new ActionListener()
 	{
 		actionPerformed(evt)
 		{
-			import com.applang.berichtsheft.plugin.*;
 			file = BerichtsheftPlugin.chooseFileFromSdcard(view, false, entry.getText());
 			if(file != null)
 				entry.setText(file);

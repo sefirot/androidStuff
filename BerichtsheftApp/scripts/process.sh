@@ -98,4 +98,30 @@ EOF
 	echo "\'weathers\' integrated into $db"
 	;;
 	
+berufsschule_notes)
+	db=berichtsheft.db
+	db2=berichtsheft_2012.db
+	cat > "$sql" << EOF
+attach '$db2' as old;
+insert into notes (title,note,created,modified)
+	select title,note,created,modified from old.notes where title like 'beruf%';
+select date(created/1000, 'unixepoch','localtime') from notes where title like 'beruf%';
+EOF
+	exec_sql
+	echo "$db"
+	;;
+	
+copy_weathers)
+#	echo `pwd`
+	db=berichtsheft_2013.db
+	cat > "$sql" << EOF
+attach '$wi' as winfo;
+INSERT INTO weathers (description,location,precipitation,maxtemp,mintemp,created,modified)
+SELECT description,location,precipitation,maxtemp,mintemp,created,modified
+FROM winfo.weathers;
+EOF
+	exec_sql
+	echo "\'weathers\' copied into $db"
+	;;
+	
 esac

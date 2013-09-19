@@ -109,7 +109,7 @@ public class ZipUtil
 	}
 	
 	public static int unzipArchive(File archive, Util.Job<ZipEntry> extract, boolean exclude, String... names) {
-		List<String> filter = list(names);
+		List<String> filter = asList(names);
 		
 		int cnt = 0;
 		

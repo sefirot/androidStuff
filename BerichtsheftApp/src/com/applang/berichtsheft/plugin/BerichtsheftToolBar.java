@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Set;
 
+import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JToolBar;
 
@@ -21,9 +22,11 @@ import org.gjt.sp.jedit.msg.DynamicMenuChanged;
 import org.gjt.sp.util.Log;
 
 import com.applang.berichtsheft.components.ActionPanel;
+import com.applang.berichtsheft.components.NotePicker;
 
 import static com.applang.Util.*;
 
+import console.ConsolePlugin;
 import console.commando.CommandoButton;
 import console.commando.CommandoCommand;
 import console.commando.CommandoDialog;
@@ -41,7 +44,7 @@ public class BerichtsheftToolBar extends JToolBar
 
 	public static BerichtsheftToolBar create(View view) {
 		BerichtsheftToolBar tb = null;
-		if (jEdit.getBooleanProperty(BerichtsheftPlugin.OPTION_PREFIX + "show-toolbar")) {
+		if ("true".equals(BerichtsheftPlugin.getOptionProperty("show-toolbar"))) {
 			tb = new BerichtsheftToolBar(view);
 			view.addToolBar(tb);
 			smToolBarMap.put(view, tb);
@@ -133,7 +136,7 @@ public class BerichtsheftToolBar extends JToolBar
 		setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
 		setFloatable(true);
 		
-		scanCommandoActions();
+//		scanCommandoActions();
 		
 		updateButtons(false);
 	}
@@ -154,15 +157,6 @@ public class BerichtsheftToolBar extends JToolBar
 		if (BerichtsheftPlugin.MENU.equals(msg.getMenuName()))
 			updateButtons(false);
 	}
-
-	ActionListener actionHandler = new ActionListener()
-	{
-		public void actionPerformed(ActionEvent evt)
-		{
-			String cmd = evt.getActionCommand();
-			new CommandoDialog(view, cmd);
-		}
-	};
 	
 	private void updateButtons(boolean remove)
 	{
@@ -174,22 +168,42 @@ public class BerichtsheftToolBar extends JToolBar
 		}
 		removeAll();
 		if (!remove) {
-			Set<String> names = sorted(com.applang.Util.list(commands.getActionNames()));
-			for (String name : names) {
-				CommandoCommand command = (CommandoCommand) commands.getAction(name);
-				CommandoButton button = new CommandoButton(command);
-				button.setActionCommand(command.getName());
-				button.addActionListener(actionHandler);
-				button.setRequestFocusEnabled(false);
-				button.setMargin(new Insets(1, 2, 1, 2));
-				add(button);
-			}
+//			addCommandoButtons();
 
-//			WeatherManager actionPanel = new WeatherManager(BerichtsheftPlugin.getTextEditor());
-//			actionPanel.addToContainer(this, null);
+//			add(BerichtsheftPlugin.makeCustomButton("berichtsheft.export-document", new ActionListener() {
+//				public void actionPerformed(ActionEvent evt) {
+//				}
+//			}, false));
+			
+//			NotePicker actionPanel = new NotePicker(BerichtsheftPlugin.getTextEditor());
+//			actionPanel.joinContainer(this);
 //			add(Box.createGlue());
 		}
 	}
+
+	public void addCommandoButtons() {
+		ActionSet allCommands = ConsolePlugin.getAllCommands();
+		Set<String> names = sortedSet(asList(commands.getActionNames()));
+		for (String name : names) {
+			CommandoCommand command = (CommandoCommand) commands.getAction(name);
+			CommandoButton button = new CommandoButton(command);
+			button.setActionCommand(command.getName());
+			button.addActionListener(actionHandler);
+			button.setRequestFocusEnabled(false);
+			button.setMargin(new Insets(1, 2, 1, 2));
+			add(button);
+			allCommands.addAction(command);
+		}
+	}
+
+	ActionListener actionHandler = new ActionListener()
+	{
+		public void actionPerformed(ActionEvent evt)
+		{
+			String cmd = evt.getActionCommand();
+			new CommandoDialog(view, cmd);
+		}
+	};
 
 	private View view;
 

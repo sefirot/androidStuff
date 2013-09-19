@@ -2,6 +2,8 @@ declare db=/tmp/berichtsheft.db
 declare sql=/tmp/berichtsheft.sql
 declare cnt
 
+sqlite3=~/android-sdk-linux/tools/sqlite3
+
 function insert_count() {
 	while read line ; do    
 		case "$line" in
@@ -13,7 +15,7 @@ function insert_count() {
 }
 
 function note_count() {
-	cnt=$( sqlite3 "$1" "select count(*) from notes" )
+	cnt=$( $sqlite3 "$1" "select count(*) from notes" )
 	echo "$cnt records in $1"
 }
 
@@ -25,14 +27,14 @@ function echo_results() {
 function newNotepad() {
 	if [ $# -gt 0 ] ; then
 		rm -f "$1"
-		sqlite3 "$1" \
+		$sqlite3 "$1" \
 			"CREATE TABLE notes (_id INTEGER PRIMARY KEY AUTOINCREMENT,title TEXT,note TEXT,created INTEGER,modified INTEGER)"
 	fi
 	cnt=0
 }
 
 function exec_sql() {
-	sqlite3 "$db" < "$sql"
+	$sqlite3 "$db" < "$sql"
 }
 
 function eliminate_id() {

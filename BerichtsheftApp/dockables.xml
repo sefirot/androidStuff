@@ -6,10 +6,14 @@
 
 <!DOCTYPE DOCKABLES SYSTEM "dockables.dtd">
 
-<!-- Berichtsheft dockable windows -->
+<!-- Berichtsheft dockable windows
+	<DOCKABLE NAME="textdock">
+		new com.applang.berichtsheft.plugin.TextDockable(view, position);
+	</DOCKABLE>
+ -->
 
 <DOCKABLES>
-	<DOCKABLE NAME="berichtsheft">
-		new com.applang.berichtsheft.plugin.BerichtsheftDockable(view, position);
+	<DOCKABLE NAME="datadock">
+		new com.applang.berichtsheft.plugin.DataDockable(view, position);
 	</DOCKABLE>
 </DOCKABLES>

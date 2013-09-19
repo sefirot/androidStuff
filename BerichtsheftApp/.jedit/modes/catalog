@@ -9,4 +9,12 @@
 <MODE NAME="text"		FILE="text.xml"
 				FILE_NAME_GLOB="*.txt" />
 
+<!-- Now that BeanShell 2.0 supports class declarations, its syntax is
+     almost identical to Java. -->
+<MODE NAME="beanshell"		FILE="java.xml"
+				FILE_NAME_GLOB="*.bsh" />
+
+<MODE NAME="velocity"		FILE="velocity_pure.xml"
+				FILE_NAME_GLOB="*.vm" />
+
 </MODES>

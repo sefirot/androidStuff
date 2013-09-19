@@ -1,35 +1,43 @@
 <!-- Action definition file for Berichtsheft plugin -->
 <!-- $Id$
+			Macros.message(view, "Hello world!");
 -->
 
 <!DOCTYPE ACTIONS SYSTEM "actions.dtd">
 
 <ACTIONS>
-	<ACTION NAME="berichtsheft.choose-uri">
+	<ACTION NAME="datadock.choose-uri">
 		<CODE>
-			wm.addDockableWindow("berichtsheft");
-			wm.getDockableWindow("berichtsheft").chooseUri();
+			wm.addDockableWindow("datadock");
+			wm.getDockableWindow("datadock").chooseUri();
 		</CODE>
 	</ACTION>
 
-	<ACTION NAME="berichtsheft.update-uri">
+	<ACTION NAME="datadock.update-uri">
 		<CODE>
-			wm.addDockableWindow("berichtsheft");
-			wm.getDockableWindow("berichtsheft").updateUri();
+			wm.addDockableWindow("datadock");
+			wm.getDockableWindow("datadock").updateUri();
 		</CODE>
 	</ACTION>
 
-	<ACTION NAME="berichtsheft.transport-to-buffer">
+	<ACTION NAME="datadock.transport-to-buffer">
 		<CODE>
-			wm.addDockableWindow("berichtsheft");
-			wm.getDockableWindow("berichtsheft").transportToBuffer();
+			wm.addDockableWindow("datadock");
+			wm.getDockableWindow("datadock").transportToBuffer();
 		</CODE>
 	</ACTION>
 
-	<ACTION NAME="berichtsheft.transport-from-buffer">
+	<ACTION NAME="datadock.transport-from-buffer">
 		<CODE>
-			wm.addDockableWindow("berichtsheft");
-			wm.getDockableWindow("berichtsheft").transportFromBuffer();
+			wm.addDockableWindow("datadock");
+			wm.getDockableWindow("datadock").transportFromBuffer();
+		</CODE>
+	</ACTION>
+
+	<ACTION NAME="berichtsheft.spellcheck-selection">
+		<CODE>
+			import com.applang.berichtsheft.plugin.*;
+			BerichtsheftPlugin.spellcheckSelection(view);
 		</CODE>
 	</ACTION>
 </ACTIONS>

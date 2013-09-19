@@ -323,7 +323,7 @@ public class FormEditor extends JSplitPane
 	
 	@SuppressWarnings("unused")
 	private ValMap allMappings() {
-		ValMap map = new ValMap();
+		ValMap map = vmap();
 		for (int p = 0; p < pages.length; p++) {
 			getPageData(p);
 			for (String key : mappings[p].keySet())
@@ -337,7 +337,7 @@ public class FormEditor extends JSplitPane
 			getPageData(page);
 			
 			if (notNullOrEmpty(data)) {
-				ValMap map = new ValMap();
+				ValMap map = vmap();
 				String[] parts = data.split("&|=");
 				for (int i = 0; i < parts.length - 1; i+=2) {
 					String key = URLDecoder.decode(parts[i], "UTF-8");
@@ -427,7 +427,7 @@ public class FormEditor extends JSplitPane
 	}
 	
     private void getPageData(int page) {
-    	mappings[page] = new ValMap();
+    	mappings[page] = vmap();
     	map2page(mappings[page], page, true);
    }
 	
@@ -611,7 +611,7 @@ public class FormEditor extends JSplitPane
 														ActionEvent e) {
 													String name = field
 															.getName();
-													int i = com.applang.Util.list(
+													int i = asList(
 															factors).indexOf(
 															name) % 2;
 													String text = field

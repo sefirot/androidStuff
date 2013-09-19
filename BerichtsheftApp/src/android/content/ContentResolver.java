@@ -3,12 +3,17 @@ package android.content;
 import static com.applang.Util1.*;
 
 import java.io.File;
+import java.util.Observable;
 
+import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.Uri;
+import android.util.Log;
 
-public class ContentResolver
+public class ContentResolver extends Observable
 {
+    private static final String TAG = ContentResolver.class.getSimpleName();
+
 	public static final String CURSOR_DIR_BASE_TYPE = "vnd.android.cursor.dir";
     public static final String CURSOR_ITEM_BASE_TYPE = "vnd.android.cursor.item";
 
@@ -33,6 +38,7 @@ public class ContentResolver
 						Class<?> c = Class.forName(authority + "Provider");
 						contentProvider = (ContentProvider) c.newInstance();
 					} catch (Exception e) {
+						Log.e(TAG, "acquireProvider", e);
 					}
 				}
 			} else if (SCHEME_FILE.equals(uri.getScheme())) {
@@ -84,9 +90,15 @@ public class ContentResolver
 		return acquireProvider(uri).getType(uri);
 	}
 
-	public void notifyChange(Uri uri, Object object) {
-		// TODO Auto-generated method stub
-		
+	public void notifyChange(Uri uri, ContentObserver observer) {
+		notifyObservers(uri);
 	}
 
+    public final void registerContentObserver(Uri uri, boolean notifyForDescendents, ContentObserver observer) {
+    	addObserver(observer);
+    }
+    
+	public final void unregisterContentObserver(ContentObserver observer) {
+		deleteObserver(observer);
+	}
 }

@@ -12,7 +12,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.ParseException;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
@@ -58,8 +57,8 @@ import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.components.DatePicker;
 import com.applang.berichtsheft.components.FormEditor;
 import com.applang.berichtsheft.components.NotePicker;
-import com.applang.berichtsheft.components.TextArea;
 import com.applang.berichtsheft.components.NotePicker.NoteFinder;
+import com.applang.berichtsheft.components.TextEditor;
 
 //import com.sdicons.json.model.JSONValue;
 //import com.sdicons.json.parser.JSONParser;
@@ -143,8 +142,8 @@ public class MiscTests extends XMLTestCase
 		} while (true);
 	}
 
-	TextArea textArea = new TextArea();
-	NotePicker np = new NotePicker(textArea);
+	TextEditor textEditor = new TextEditor();
+	NotePicker np = new NotePicker(textEditor);
 	long[] interval;
 
 	void setupNotes(String db, Object... params) throws ParseException {
@@ -285,7 +284,7 @@ public class MiscTests extends XMLTestCase
 		
 		NoteFinder finder = np.finder;
 		String[] keys = finder.keyLine(NotePicker.allCategories);
-		assertEquals(list(keys).toString(), dates.length, keys.length);
+		assertEquals(asList(keys).toString(), dates.length, keys.length);
 		
 		np.setPattern(categories[1]);
 		long epoch = timeInMillis(dates[1][0], dates[1][1], dates[1][2]);
@@ -376,7 +375,7 @@ public class MiscTests extends XMLTestCase
 		setupKeinFehler();
 		
 		String[] keys = np.finder.keyLine(NotePicker.allCategories);
-		assertEquals(list(keys).toString(), 36, keys.length);
+		assertEquals(asList(keys).toString(), 36, keys.length);
 		np.setPattern(NotePicker.allCategories);
 		
 		np.pickNote("1/13", np.getPattern());
@@ -933,16 +932,17 @@ public class MiscTests extends XMLTestCase
 	
 	@SuppressWarnings("rawtypes")
 	public void testClasses() throws Exception {
-		Class[] cls = getLocalClasses(providerPackage);
-		for (Class cl : filter(list(cls), false, new Predicate<Class>() {
-			@Override
-			public boolean apply(Class c) {
-				String name = c.getName();
-				return !name.contains("$") && !name.endsWith("Provider");
-			}
-		}))
-			println(cl);
-		
-		println(contentAuthorities(null, providerPackage));
+		for (String pkg : providerPackages) {
+			Class[] cls = getLocalClasses(pkg);
+			for (Class cl : filter(asList(cls), false, new Predicate<Class>() {
+				@Override
+				public boolean apply(Class c) {
+					String name = c.getName();
+					return !name.contains("$") && !name.endsWith("Provider");
+				}
+			}))
+				println(cl);
+		}
+		println(contentAuthorities(providerPackages));
 	}
 }

@@ -7,59 +7,66 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-import java.awt.event.WindowEvent;
 import java.io.File;
 import java.sql.Connection;
 import java.sql.Statement;
 
-import javax.swing.JButton;
-import javax.swing.JComponent;
+import javax.swing.AbstractButton;
+import javax.swing.BoxLayout;
 import javax.swing.JFrame;
-import javax.swing.JScrollPane;
 import javax.swing.JToolBar;
 
-import static com.applang.SwingUtil.*;
+import org.w3c.dom.Element;
+
+import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
+
+import static com.applang.Util.*;
 import static com.applang.Util2.*;
+import static com.applang.SwingUtil.*;
 
-public class ActionPanel extends JComponent
+public class ActionPanel extends ManagerBase
 {
-	public static void createAndShowGUI(String title, Dimension preferred, 
-			final ActionPanel actionPanel, Component target, final Object... params)
+	public static void createAndShowGUI(String title, 
+			final Dimension preferred, 
+			final ActionPanel actionPanel, 
+			final Component target, 
+			final Object... params)
 	{
-		try {
-			JToolBar top = new JToolBar();
-			top.setName("top");
-			JToolBar bottom = new JToolBar();
-			bottom.setName("bottom");
-			bottom.setFloatable(false);
-			messageBox(bottom);
-			
-			JFrame frame = new JFrame(title) {
-				protected void processWindowEvent(WindowEvent we) {
-					if (we.getID() == WindowEvent.WINDOW_CLOSING)
+		showFrame(null, title, 
+				new UIFunction() {
+					public Component[] apply(Component comp, Object[] parms) {
+						JToolBar top = new JToolBar();
+						top.setName("top");
+						JToolBar bottom = new JToolBar();
+						bottom.setName("bottom");
+						bottom.setFloatable(false);
+						messageBox(bottom);
+						
+						JFrame frame = (JFrame) comp;
+						Container contentPane = frame.getContentPane();
+						if (preferred != null)
+							contentPane.setPreferredSize(preferred);
+						
+						actionPanel.joinContainer(top);
+						contentPane.add(top, BorderLayout.PAGE_START);
+						contentPane.add(bottom, BorderLayout.PAGE_END);
+						
+						contentPane.add(target, BorderLayout.CENTER);
+						return null;
+					}
+				}, 
+				new UIFunction() {
+					public Component[] apply(Component comp, Object[] parms) {
+						return null;
+					}
+				}, 
+				new UIFunction() {
+					public Component[] apply(Component comp, Object[] parms) {
 						actionPanel.finish(params);
-					
-					super.processWindowEvent(we);
-				}
-			};
-			frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-			
-			Container contentPane = frame.getContentPane();
-			contentPane.setPreferredSize(preferred);
-			
-			actionPanel.addToContainer(top, BorderLayout.PAGE_START);
-			contentPane.add(top, BorderLayout.PAGE_START);
-			contentPane.add(bottom, BorderLayout.PAGE_END);
-
-			JScrollPane scroll = new JScrollPane(target);
-			contentPane.add(scroll, BorderLayout.CENTER);
-			
-			frame.pack();
-			frame.setLocationRelativeTo(null);
-			frame.setVisible(true);
-		} catch (Exception e) {
-			handleException(e);
-		}
+						return null;
+					}
+				}, 
+				false);
 	}
 	
 	protected void start(Object... params) {
@@ -70,79 +77,99 @@ public class ActionPanel extends JComponent
 		Settings.save();
 	}
 	
-	public enum ActionType implements IActionType
+	public enum ActionType implements CustomActionType
 	{
-		CALENDAR	(0, "calendar_16x16.png", "pick date from calendar"), 
-		PREVIOUS	(1, "Arrow Left_16x16.png", "previous note(s)"), 
-		NEXT		(2, "Arrow Right_16x16.png", "next note(s)"), 
-		DATABASE	(3, "book_open_16x16.png", "choose database"), 
-		DOCUMENT	(4, "export_16x16.png", "export document"), 
-		ADD			(5, "plus_16x16.png", "enter 'update' mode"), 
-		UPDATE		(6, "update_16x16.png", "update note(s)"), 
-		DELETE		(7, "minus_16x16.png", "delete note(s)"), 
-		SPELLCHECK	(8, "abc_16x16.png", "spell check"), 
-		PICK		(9, "pick_16x16.png", "pick note(s)"), 
-		DATE		(10, "", "date or week of year"), 
-		CATEGORY	(11, "", "category"), 
-		IMPORT		(12, "import_16x16.png", "import data"), 
-		TEXT		(13, "export_16x16.png", "export text"), 
-		ANDROID		(14, "android_15x16.png", "synchronize with exported data on device"), 
-		ACTIONS		(15, "", "Actions"); 		//	needs to stay last !
+		CALENDAR	(0, "berichtsheft.action-CALENDAR"), 
+		PREVIOUS	(1, "berichtsheft.action-PREVIOUS"), 
+		NEXT		(2, "berichtsheft.action-NEXT"), 
+		DATABASE	(3, "berichtsheft.action-DATABASE"), 
+		DOCUMENT	(4, "berichtsheft.action-DOCUMENT"), 
+		ADD			(5, "berichtsheft.action-ADD"), 
+		UPDATE		(6, "berichtsheft.action-UPDATE"), 
+		DELETE		(7, "berichtsheft.action-DELETE"), 
+		SPELLCHECK	(8, "berichtsheft.action-SPELLCHECK"), 
+		PICK		(9, "berichtsheft.action-PICK"), 
+		DATE		(10, "berichtsheft.action-DATE"), 
+		CATEGORY	(11, "berichtsheft.action-CATEGORY"), 
+		IMPORT		(12, "berichtsheft.action-IMPORT"), 
+		TEXT		(13, "berichtsheft.action-TEXT"), 
+		ANDROID		(14, "berichtsheft.action-ANDROID"), 
+		ACTIONS		(15, "Actions"); 		//	needs to stay last !
 		
-	    private final String iconName;
-	    private final String toolTip;
-	    private final int index;   
+		private final int index;   
+	    private final String resourceName;
 	    
-	    ActionType(int index, String iconName, String toolTip) {
+	    ActionType(int index, String resourceName) {
 	    	this.index = index;
-	        this.iconName = iconName;
-	        this.toolTip = toolTip;
+	        this.resourceName = resourceName;
 	    }
 
+		@Override
+	    public String resourceName()   { return resourceName; }
+		@Override
 	    public int index() { return index; }
-	    public String iconName()   { return iconName; }
-	    public String description() { return toolTip; }
+		@Override
+		public String iconName() {
+			return BerichtsheftPlugin.getProperty(resourceName + ".icon");
+		}
+		@Override
+		public String description() {
+			return BerichtsheftPlugin.getProperty(resourceName.concat(".label"));
+		}
 	}
 
     protected String dbName;
 	protected String caption;
 
-	public ActionPanel(TextComponent textArea, Object... params) {
-		this.textArea = textArea;
-		setupTextArea();
-		
-		dbName = com.applang.Util.paramString("databases/*", 0, params);
+	public ActionPanel(DataComponent dataComponent, Object... params) {
+		this.dataComponent = dataComponent;
+		if (dataComponent instanceof TextComponent) {
+			this.textArea = (TextComponent) dataComponent;
+			setupTextArea();
+		}
+		dbName = com.applang.Util.paramString("", 0, params);
 		caption = com.applang.Util.paramString("Database", 1, params);
 		
-		setLayout(new FlowLayout(FlowLayout.LEADING));
+		setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
 		
 		start(params);
 	}
 	
-	public void addToContainer(Container container, Object constraints) {
-		container.add(this, constraints);
+	public void joinContainer(Container container, Object...params) {
+		Object param0 = param(null, 0, params);
+		if (param0 instanceof String)
+			for (int i = 0; i < buttons.length; i++) {
+				AbstractButton btn = buttons[i];
+				if (btn != null) {
+					Object name = btn.getAction().getValue(CustomAction.NAME);
+					if (asList(params).indexOf(name) > -1)
+						container.add(btn);
+				}
+			}
+		else
+			container.add(this, param0);
 	}
 
-	protected JButton[] buttons = new JButton[1 + ActionType.ACTIONS.index()];
+	protected AbstractButton[] buttons = new AbstractButton[1 + ActionType.ACTIONS.index()];
 	
-	public void addButton(int index, Action action) {
+	public void addButton(Container container, int index, CustomAction customAction) {
 		if (index > -1 && index < buttons.length)
-			add(buttons[index] = new JButton(action));
+			container.add(buttons[index] = BerichtsheftPlugin.makeCustomButton(customAction, false));
 	}
 	
-	public Action getAction(int index) {
+	public CustomAction getAction(int index) {
 		if (index > -1 && index < buttons.length)
-			return (Action) buttons[index].getAction();
+			return (CustomAction) buttons[index].getAction();
 		else
 			return null;
 	}
 	
-	public void setAction(int index, Action action) {
+	public void setAction(int index, CustomAction customAction) {
 		if (index > -1 && index < buttons.length)
-			buttons[index].setAction(action);
+			buttons[index].setAction(customAction);
 	}
 	
-	public void doAction(int index) {
+	public void clickAction(int index) {
 		if (index > -1 && index < buttons.length)
 			buttons[index].doClick();
 	}
@@ -151,6 +178,7 @@ public class ActionPanel extends JComponent
 		buttons[index].getAction().setEnabled(enabled);
 	}
 
+	protected DataComponent dataComponent = null;
 	protected TextComponent textArea = null;
 
 	protected boolean hasTextArea() {
@@ -165,14 +193,17 @@ public class ActionPanel extends JComponent
 	public String getText() {
 		return hasTextArea() ? this.textArea.getText() : null;
 	}
+    
+	boolean dirty = false;
 	
 	public boolean isDirty() {
-		return hasTextArea() && textArea.isDirty();
+		return dirty;
+//		return hasTextArea() && textArea.isDirty();
 	}
 
 	public void setDirty(boolean dirty) {
-		if (hasTextArea()) 
-			textArea.setDirty(dirty);
+		this.dirty = dirty;
+//		if (hasTextArea()) textArea.setDirty(dirty);
 	}
 	
 	protected void setupTextArea() {
@@ -192,7 +223,6 @@ public class ActionPanel extends JComponent
 			if (file != null) 
 				dbName = file.getPath();
 		}
-
 		return dbName;
 	}
 	
@@ -232,7 +262,30 @@ public class ActionPanel extends JComponent
 	}
 	
 	protected void updateOnRequest(boolean ask) {
+	}
+
+	@Override
+	protected Element select(String... params) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	protected void updateItem(boolean update, Object... params) {
+		// TODO Auto-generated method stub
 		
+	}
+
+	@Override
+	protected boolean addItem(boolean refresh, String item) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	protected boolean removeItem(String item) {
+		// TODO Auto-generated method stub
+		return false;
 	}
 
 }

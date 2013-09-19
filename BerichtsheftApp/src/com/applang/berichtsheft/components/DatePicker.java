@@ -6,6 +6,8 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.MatchResult;
+import java.util.regex.Pattern;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -28,6 +30,7 @@ import javax.swing.JPanel;
 import android.util.Log;
 
 import static com.applang.Util.*;
+import static com.applang.Util2.*;
 import static com.applang.SwingUtil.*;
 
 public class DatePicker
@@ -140,7 +143,7 @@ public class DatePicker
 		p2.add(move[3]);
 		
 		JPanel p3 = new JPanel(new GridLayout(1, 2));
-		p3.add(new JLabel("number of days"));
+		p3.add(new JLabel("number of days (into the past)"));
 		final JFormattedTextField tf = new JFormattedTextField("" + ndays);
 		tf.setFont(monoSpaced(Font.BOLD));
 		tf.setForeground(Color.BLUE);
@@ -169,7 +172,7 @@ public class DatePicker
 		@Override
 		public void actionPerformed(ActionEvent e) {
 			getCalendar().set(year, monthOfYear, 1);
-			switch (list(moves).indexOf(e.getActionCommand())) {
+			switch (asList(moves).indexOf(e.getActionCommand())) {
 			case 0:
 				getCalendar().add(Calendar.YEAR, -1);
 				break;
@@ -294,7 +297,7 @@ public class DatePicker
 		if (calendarFormat.equals(format) && kind == 1)
 			return date;
 		
-		if (!notNullOrEmpty(format))
+		if (nullOrEmpty(format))
 			if (kind > 0 || date.length() < 1)
 				return date;
 			else 
@@ -307,7 +310,7 @@ public class DatePicker
 
 	public static void main(String[] args) {
 		long time = now();
-		System.out.println(pickADate(time, "", "", timeLine(time)));
+		System.out.println(pickADate(time, "", "", timeLine(time, 1)));
 	}
 
 	public static String pickADate(long time, String format, String title, Long...timeLine) {
@@ -321,8 +324,13 @@ public class DatePicker
 		return "";
 	}
 	
-	public static Long[] timeLine(long time) {
-		return new Long[]{time - getMillis(1) + 1, time};
+	public static Long[] timeLine(long time, int days) {
+		ValList list = vlist();
+		for (int i = days; i > 0; i--) {
+			list.add(time - getMillis(i) + 1);
+		}
+		list.add(time);
+		return list.toArray(new Long[0]);
 	}
 
 	public static int[] pickAPeriod(int[] period, String title) {
@@ -330,7 +338,7 @@ public class DatePicker
 			long time = dateInMillis(period[0], period[1] - 1, period[2]);
 			ndays = Math.max(1, period[3]);
 			String dateString = formatDate(time, calendarFormat, Locale.getDefault());
-			dateString = new DatePicker(null, dateString, timeLine(time), title, true)
+			dateString = new DatePicker(null, dateString, timeLine(time, ndays), title, true)
 					.getDateString("");
 			if (dateString.length() > 0)
 				return parsePeriod(dateString);
@@ -376,6 +384,8 @@ public class DatePicker
 
 	public static int[] parseWeekDate(String dateString) {
 		int slash = dateString.indexOf("/");
+		if (slash < 0)
+			return null;
 		int[] parts = new int[2];
 		parts[0] = Integer.parseInt(dateString.substring(0, slash));
 		parts[1] = Integer.parseInt(dateString.substring(1 + slash));
@@ -454,6 +464,15 @@ public class DatePicker
 		return toIntArray(list);
 	}
 	
+	public static int[] extendPeriod(int days, int...period) {
+		dateInMillis(period[0], period[1] - 1, period[2], days);
+		period[0] = getCalendar().get(Calendar.YEAR);
+		period[1] = getCalendar().get(Calendar.MONTH) + 1;
+		period[2] = getCalendar().get(Calendar.DAY_OF_MONTH);
+		period[3] += days;
+		return period;
+	}
+	
 	public static long[] dayInterval(String dateString, int days) {
 		Long date = toTime(dateString, calendarFormat);
 		return com.applang.Util.dayInterval(date, days);
@@ -505,5 +524,129 @@ public class DatePicker
 	public static long[] previousWeekInterval(String dateString) {
 		return weekInterval(dateString, -1);
 	}
+	
+	public static class Period
+	{
+		public static final int MONTH = -1;
+		
+		public static int year, month, day, length;
+		
+		public static int[] getParts() {
+			return new int[]{year, month, day, length};
+		}
+		
+		public static void setParts(int...parts) {
+			if (parts != null) {
+				for (int i = 0; i < Math.min(4, parts.length); i++) 
+					switch (i) {
+					case 0:	year = parts[i];	break;
+					case 1:	month = parts[i];	break;
+					case 2:	day = parts[i];	break;
+					case 3:	length = parts[i];	break;
+					}
+				datesInMillis.removeAll();
+				for (int i = 0; i < length; i++) {
+					long time = dateInMillis(year, month - 1, Period.day, -i);
+	    			int d = getCalendar().get(Calendar.DAY_OF_MONTH);
+					datesInMillis.add(d, time);
+				}
+			}
+		}
+		
+		private static BidiMultiMap datesInMillis = new BidiMultiMap();
+		private static String[] keys = strings("weather.period","berichtsheft.period");
+		
+		public static void save(int no) {
+			putSetting(keys[no], Arrays.toString(getParts()));
+			Settings.save();
+		}
+    	
+	    public static int[] loadParts() {
+	    	load(0);
+	    	return getParts();
+		}
+    	
+	    public static void load(int no) {
+			MatchResult[] matches = findAllIn(getSetting(keys[no], ""), Pattern.compile("\\d+"));
+			if (matches.length > 0) {
+				int[] parts = new int[matches.length];
+				for (int i = 0; i < parts.length; i++) {
+					parts[i] = toInt(-1, matches[i].group());
+				}
+				setParts(parts);
+			}
+			else {
+				Calendar cal = getCalendar();
+				cal.setTimeInMillis(now());
+				setParts(cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1, cal.get(Calendar.DAY_OF_MONTH));
+			}
+		}
+		
+		public static String weekDate() {
+			if (!isAvailable(0, datesInMillis.getKeys()))
+				return "";
+			Long time = (Long) datesInMillis.getValues().get(-1);
+			long[] interval = weekInterval(new Date(time), 1);
+			return DatePicker.weekDate(interval);
+		}
+	    
+		// NOTE used in scripts
+	    public static Long getMillis(int day) {
+	    	if (length < 1)
+	    		return dateInMillis(year, month - 1, day);
+	    	else
+	    		return (Long) datesInMillis.getValue(day);
+	    }
+		
+		public static long getMillisByHour(int day, int hour) {
+			long epoch = dateInMillis(year, month - 1, day);
+			return hoursFromDate(epoch, hour);
+	    }
+		
+		public static long[] getInterval() {
+			if (isAvailable(0, datesInMillis.getKeys())) 
+				return new long[] {
+					(long)datesInMillis.getValues().get(-1),
+					(long)datesInMillis.getValues().get(0)
+				};
+			return null;
+		}
+	 	
+		// NOTE used in scripts
+	    public static String description() {
+	    	switch (length) {
+			case MONTH:
+				return formatDate(getMillis(day), monthFormat);
+			default:
+				if (isAvailable(0, datesInMillis.getKeys())) {
+					Long time = (Long) datesInMillis.getValues().get(-1);
+					return String.format("%d day(s) starting %s", length,
+							formatDate(time, calendarFormat));
+				}
+				else
+					return formatDate(getMillis(day), calendarFormat);
+			}
+		}
+	 	
+		// NOTE used in scripts
+	    public static String getDescription() {
+			Period.load(0);
+			return description();
+		}
+	 	
+		// NOTE used in scripts
+	    public static boolean pick() {
+			Period.load(0);
+	
+			int[] period = pickAPeriod(Period.getParts(), "Pick day, week or month");
+			if (period == null)
+				return false;
+			
+			Period.setParts(period);
+			Period.save(0);
+			return true;
+		}
+	}
+
 }
 

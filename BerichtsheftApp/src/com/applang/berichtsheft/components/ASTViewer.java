@@ -6,7 +6,9 @@ import static com.applang.VelocityUtil.*;
 
 import com.applang.UserContext;
 import com.applang.Util;
+import com.applang.SwingUtil.Modality;
 import com.applang.Util.Function;
+import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 
 import java.awt.Dimension;
 import java.awt.Point;
@@ -49,45 +51,52 @@ public class ASTViewer extends ActionPanel
     private static final String TAG = ASTViewer.class.getSimpleName();
     
 	public static void main(String[] args) {
-		TextArea textArea = new TextArea();
+		TextEditor textEditor = new TextEditor();
 		
         String title = "Velocity AST tool";
-		final ASTViewer viewer = new ASTViewer(textArea, 
+		final ASTViewer viewer = new ASTViewer(textEditor, 
 				null,
 				title);
 		
-		ActionPanel.createAndShowGUI(title, new Dimension(700, 200), viewer, textArea.textArea);
+		ActionPanel.createAndShowGUI(title, new Dimension(700, 200), viewer, textEditor.getUIComponent());
 	}
 
-	enum ActionType implements IActionType
+	enum ActionType implements CustomActionType
 	{
-		DELETE		(0, "minus_16x16.png", "delete"), 
-		INSERT		(1, "plus_16x16.png", "insert"), 
-		MODIFY		(2, "bausteine_16x16.png", "modify"), 
-		SET			(3, "", "set"), 
-		FOREACH		(4, "", "foreach"), 
-		STRUCT		(7, "structure_16x16.png", "show structure"), 
-		VMFILE		(8, "book_open_16x16.png", "choose .vm-file"), 
-		ACTIONS		(9, "", "Actions"); 		//	needs to stay last !
+		DELETE		(0, "berichtsheft.action-DELETE"), 
+		INSERT		(1, "berichtsheft.action-INSERT"), 
+		MODIFY		(2, "berichtsheft.action-MODIFY"), 
+		SET			(3, "set"), 
+		FOREACH		(4, "foreach"), 
+		STRUCT		(7, "berichtsheft.action-STRUCT"), 
+		VMFILE		(8, "berichtsheft.action-VMFILE"), 
+		ACTIONS		(9, "Actions"); 		//	needs to stay last !
 		
-	    private final String iconName;
-	    private final String toolTip;
-	    private final int index;   
+		private final int index;   
+	    private final String resourceName;
 	    
-	    ActionType(int index, String iconName, String toolTip) {
+	    ActionType(int index, String resourceName) {
 	    	this.index = index;
-	        this.iconName = iconName;
-	        this.toolTip = toolTip;
+	        this.resourceName = resourceName;
 	    }
 
+		@Override
+	    public String resourceName()   { return resourceName; }
+		@Override
 	    public int index() { return index; }
-	    public String iconName()   { return iconName; }
-	    public String description() { return toolTip; }
+		@Override
+		public String iconName() {
+			return BerichtsheftPlugin.getProperty(resourceName + ".icon");
+		}
+		@Override
+		public String description() {
+			return BerichtsheftPlugin.getProperty(resourceName.concat(".label"));
+		}
 	}
 
 	public File vmFile;
     
-    class ManipAction extends Action
+    class ManipAction extends CustomAction
     {
 		public ManipAction(ActionType type) {
 			super(type);
@@ -261,7 +270,7 @@ public class ASTViewer extends ActionPanel
 		
 		public void setColumnWidths(JTable table) {
 			int cols = getColumnIdentifiers().size();
-			setWidthAsPercentages(table, cols > 2 ? 
+			setColumnWidthsAsPercentages(table, cols > 2 ? 
 					new double[]{0.10, 0.20, 0.10, 0.10, 0.50} : 
 					new double[]{0.80, 0.20});
 		}
@@ -369,7 +378,7 @@ public class ASTViewer extends ActionPanel
 			int option = showOptionDialog(ASTViewer.this, 
 					new JScrollPane(table), 
 					title, 
-					4 + JOptionPane.DEFAULT_OPTION, 
+					Modality.MODAL + JOptionPane.DEFAULT_OPTION, 
 					JOptionPane.PLAIN_MESSAGE, 
 					null, 
 					options, null, 
@@ -436,9 +445,9 @@ public class ASTViewer extends ActionPanel
 			for (String key : UserContext.directives().keySet()) {
 				menu.add(new JMenuItem()).setAction(new ManipAction(key));
 			}
-			menu.setIcon(iconFrom("/images/" + type.iconName()));
+			menu.setIcon(iconFrom(type.iconName()));
 		}
-		return new Object[] {type.description(), action, 
+		return objects(type.description(), action, 
 			name, "", null, null, null, null, 
 	        new PopupMenuAdapter() {
 	        	@Override
@@ -466,7 +475,7 @@ public class ASTViewer extends ActionPanel
 					}
 	    		}
 	        }
-		};
+		);
 	}
 	
 	public static File getVm() {
@@ -474,11 +483,13 @@ public class ASTViewer extends ActionPanel
 		File vm = getFileFromStore(1, 
 			"Velocity template", 
 			new FileNameExtensionFilter("vm files", "vm"),
-			null, new Function<String[]>() {
+			null, 
+			new Function<String[]>() {
 				public String[] apply(Object... params) {
 					return contentsFromFile(store).split(Util.NEWLINE_REGEX);
 				}
-			}, new Job<String[]>() {
+			}, 
+			new Job<String[]>() {
 				public void perform(String[] fileNames, Object[] params) throws Exception {
 					contentsToFile(store, join(NEWLINE, fileNames));
 				}
@@ -495,8 +506,8 @@ public class ASTViewer extends ActionPanel
 	public ASTViewer(TextComponent textArea, Object...params) {
 		super(textArea, params);
 		
-		addButton(ActionType.VMFILE.index(), new ManipAction(ActionType.VMFILE));
-		addButton(ActionType.STRUCT.index(), new ManipAction(ActionType.STRUCT));
+		addButton(this, ActionType.VMFILE.index(), new ManipAction(ActionType.VMFILE));
+		addButton(this, ActionType.STRUCT.index(), new ManipAction(ActionType.STRUCT));
 		
 		// TODO Auto-generated constructor stub
 	}

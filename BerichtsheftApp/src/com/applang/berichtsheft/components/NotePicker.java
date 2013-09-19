@@ -1,5 +1,6 @@
 package com.applang.berichtsheft.components;
 
+import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyAdapter;
@@ -27,18 +28,25 @@ import static com.applang.Util.*;
 import static com.applang.Util2.*;
 
 import com.applang.berichtsheft.BerichtsheftApp;
+import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 
 public class NotePicker extends ActionPanel
 {
 	public static void main(String[] args) {
-		TextArea textArea = new TextArea();
+		BerichtsheftPlugin.setupSpellChecker(".jedit/plugins/berichtsheft");
+		
+		TextEditor textEditor = new TextEditor();
+//		textEditor.createTextArea("text", "/modes/text.xml");
 		
         String title = "Berichtsheft database";
-		final NotePicker notePicker = new NotePicker(textArea, 
+		final NotePicker notePicker = new NotePicker(textEditor, 
 				null,
-				title);
+				title, 1);
 		
-		ActionPanel.createAndShowGUI(title, new Dimension(1000, 200), notePicker, textArea.textArea);
+		ActionPanel.createAndShowGUI(title, 
+				new Dimension(1000, 200), 
+				notePicker, 
+				textEditor.getUIComponent());
 	}
 	
 	static boolean memoryDb = false;
@@ -46,13 +54,7 @@ public class NotePicker extends ActionPanel
 	@Override
 	protected void start(Object... params) {
 		super.start(params);
-		if (memoryDb)
-			handleMemoryDb(true);
-		else {
-			dbName = getSetting("database", "databases/*");
-			if (fileExists(new File(dbName)))
-				initialize(dbName);
-		}
+		dbName = getSetting("database", "databases/*");
 	}
 	
 	@Override
@@ -70,16 +72,27 @@ public class NotePicker extends ActionPanel
 	private JTextField date = new JTextField(20);
 	@SuppressWarnings("rawtypes")
 	private JComboBox category = new JComboBox();
-	private JTextField categoryEdit = comboEdit(category);
+	private JTextField categoryEdit = com.applang.SwingUtil.comboEdit(category);
 	
 	public NotePicker(TextComponent textArea, Object... params) {
 		super(textArea, params);
 		
-		addButton(ActionType.DATABASE.index(), new NoteAction(ActionType.DATABASE));
+		installNotePicking(this);
+		
+		if (memoryDb)
+			handleMemoryDb(true);
+		else {
+			if (fileExists(new File(dbName)))
+				initialize(dbName);
+		}
+	}
+
+	public void installNotePicking(Container container) {
+		addButton(container, ActionType.DATABASE.index(), new NoteAction(ActionType.DATABASE));
 		
 		date.setHorizontalAlignment(JTextField.CENTER);
 		addFocusObserver(date);
-		add(date);
+		container.add(date);
 		date.addKeyListener(new KeyAdapter() {
 			@Override
 			public void keyTyped(KeyEvent e) {
@@ -89,43 +102,43 @@ public class NotePicker extends ActionPanel
 			@Override
 			public void keyPressed(KeyEvent e) {
 				if (e.getKeyCode() == KeyEvent.VK_ENTER)
-					doAction(8);
+					clickAction(8);
 				else
 					super.keyPressed(e);
 			}
 		});
 		
-		addButton(ActionType.CALENDAR.index(), new NoteAction(ActionType.CALENDAR));
+		addButton(container, ActionType.CALENDAR.index(), new NoteAction(ActionType.CALENDAR));
 		
 		category.setEditable(true);
 		addFocusObserver(categoryEdit);
-		add(category);
+		container.add(category);
 		categoryEdit.addKeyListener(new KeyAdapter() {
 			@Override
 			public void keyPressed(KeyEvent e) {
 				if (e.getKeyCode() == KeyEvent.VK_ENTER)
-					doAction(8);
+					clickAction(8);
 			}
 		});
 		
-		addButton(ActionType.PICK.index(), new NoteAction(ActionType.PICK));
+		addButton(container, ActionType.PICK.index(), new NoteAction(ActionType.PICK));
 		
-		addButton(ActionType.PREVIOUS.index(), new NoteAction(ActionType.PREVIOUS));
-		addButton(ActionType.NEXT.index(), new NoteAction(ActionType.NEXT));
-		addButton(ActionType.SPELLCHECK.index(), new NoteAction(ActionType.SPELLCHECK));
-		addButton(ActionType.ADD.index(), new NoteAction(ActionType.ADD));
-		addButton(ActionType.DELETE.index(), new NoteAction(ActionType.DELETE));
-		addButton(ActionType.ACTIONS.index(), new NoteAction(ActionType.ACTIONS.description()));
+		addButton(container, ActionType.PREVIOUS.index(), new NoteAction(ActionType.PREVIOUS));
+		addButton(container, ActionType.NEXT.index(), new NoteAction(ActionType.NEXT));
+		addButton(container, ActionType.SPELLCHECK.index(), new NoteAction(ActionType.SPELLCHECK));
+		addButton(container, ActionType.ADD.index(), new NoteAction(ActionType.ADD));
+		addButton(container, ActionType.DELETE.index(), new NoteAction(ActionType.DELETE));
+		addButton(container, ActionType.ACTIONS.index(), new NoteAction(ActionType.ACTIONS.resourceName()));
 		
 		attachDropdownMenu(buttons[ActionType.ACTIONS.index()], newPopupMenu(
-		    	new Object[] {ActionType.DOCUMENT.description(), documentActions[0]}, 
-		    	new Object[] {ActionType.DOCUMENT.description(), documentActions[1]} 
+		    	objects(ActionType.DOCUMENT.description(), documentActions[0]), 
+		    	objects(ActionType.DOCUMENT.description(), documentActions[1]) 
 	    ));
 		
 		clear();
 	}
 	
-	class NoteAction extends Action
+	class NoteAction extends CustomAction
     {
 		public NoteAction(ActionType type) {
 			super(type);
@@ -143,7 +156,9 @@ public class NotePicker extends ActionPanel
         	switch ((ActionType)getType()) {
 			case DATABASE:
 				updateOnRequest(true);
-				dbName = chooseDatabase(dbName);
+				File dbFile = DataView.chooseDb(null, false, dbName);
+				if (dbFile != null)
+					dbName = dbFile.getPath();
 				break;
 			case CALENDAR:
 				dateString = pickDate(dateString);
@@ -173,7 +188,6 @@ public class NotePicker extends ActionPanel
 				deleteOnRequest(dateString, pattern);
 				break;
 			case SPELLCHECK:
-				NotePicker.this.textArea.spellcheck();
 				break;
 			case DATE:
 				date.requestFocusInWindow();
@@ -215,14 +229,15 @@ public class NotePicker extends ActionPanel
 	private void initialize(String dbName) {
 		if (openConnection(dbName)) {
 			retrieveCategories();
-			searchPattern = allCategories;
-			finder.keyLine(searchPattern);
-			setDate(
-					formatDate(0, 
-							finder.keys.length > 0 ? 
-							finder.epochFromKey(finder.keys[0]) : 
-							now()));
-			pickNote(getDate(), searchPattern);
+			if (finder != null) {
+				searchPattern = allCategories;
+				finder.keyLine(searchPattern);
+				setDate(formatDate(
+						0,
+						finder.keys.length > 0 ? finder
+								.epochFromKey(finder.keys[0]) : now()));
+				pickNote(getDate(), searchPattern);
+			}
 		}
 	}
 
@@ -349,7 +364,7 @@ public class NotePicker extends ActionPanel
 	
 	public void setDate(final String text) {
 		try {
-			Action.blocked(new Job<Void>() {
+			CustomAction.blocked(new Job<Void>() {
 				public void perform(Void v, Object[] params) throws Exception {
 					date.setText(text);
 				}
@@ -378,7 +393,7 @@ public class NotePicker extends ActionPanel
 	
 	public void setCategory(final String t) {
 		try {
-			Action.blocked(new Job<Void>() {
+			CustomAction.blocked(new Job<Void>() {
 				public void perform(Void v, Object[] params) throws Exception {
 					categoryEdit.setText(t);
 				}
@@ -428,7 +443,7 @@ public class NotePicker extends ActionPanel
 		
 		while (rs.next()) {
 			if (cols > 1) {
-				ValList list = new ValList();
+				ValList list = vlist();
 				for (int i = 1; i <= cols; i++)
 					list.add(rs.getObject(i));
 				reclist.add(list.toArray());
@@ -463,11 +478,11 @@ public class NotePicker extends ActionPanel
 	
 	public class NoteFinder
     {
-		public BidiMap specialPatterns = new BidiMap();
+		public BidiMultiMap specialPatterns = new BidiMultiMap();
 		
 		public NoteFinder() {
-			specialPatterns.put(itemAll, allCategories);
-			specialPatterns.put(itemBAndB, bAndB);
+			specialPatterns.add(itemAll, allCategories);
+			specialPatterns.add(itemBAndB, bAndB);
 		}
 		
 		String pattern = "";
@@ -530,7 +545,7 @@ public class NotePicker extends ActionPanel
 		
 		private int criterion(long epoch, String pattern) {
 			String value = keyValue(epoch, pattern);
-			if (com.applang.Util.list(specialPatterns.getValues()).contains(pattern)) {
+			if (specialPatterns.getValues().contains(pattern)) {
 				ArrayList<Integer> a = new ArrayList<Integer>();
 				ArrayList<Integer> b = new ArrayList<Integer>();
 				ArrayList<Integer> c = new ArrayList<Integer>();
