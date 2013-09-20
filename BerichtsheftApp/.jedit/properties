@@ -151,3 +151,4 @@ vfs.browser.type.width=100
 options.textarea.lineSpacing=0
 console.shell=Berichtsheft
 log-viewer.height=491
+keymap.current=imported
