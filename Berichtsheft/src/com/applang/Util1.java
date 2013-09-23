@@ -434,18 +434,6 @@ public class Util1
 		return values;
 	}
 
-	public static String uriWithQuery(Context context, Uri uri, String tableName, Object[] projection) {
-		ValMap info = table_info(context, uri, tableName);
-		ValList fields = info.getList("name");
-		Uri.Builder builder = dbTable(uri, tableName).buildUpon().query("");
-		for (Object field : projection) {
-			int index = fields.indexOf(field);
-			Object type = info.getListValue("type", index);
-			builder.appendQueryParameter(field.toString(), type.toString());
-		}
-		return builder.toString();
-	}
-
 	@SuppressWarnings("unchecked")
 	public static Object walkJSON(Object[] path, Object json, Function<Object> filter, Object...params) {
 		Object object = json;
