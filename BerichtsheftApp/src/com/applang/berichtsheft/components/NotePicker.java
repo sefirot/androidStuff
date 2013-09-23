@@ -33,20 +33,23 @@ import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 public class NotePicker extends ActionPanel
 {
 	public static void main(String[] args) {
+    	underTest = param("true", 0, args).equals("true");
+		int behavior = Behavior.NONE;
+		if (underTest)
+			behavior |= Behavior.EXIT_ON_CLOSE;
 		BerichtsheftPlugin.setupSpellChecker(".jedit/plugins/berichtsheft");
-		
 		TextEditor textEditor = new TextEditor();
+		textEditor.installSpellChecker();
 //		textEditor.createTextArea("text", "/modes/text.xml");
-		
         String title = "Berichtsheft database";
 		final NotePicker notePicker = new NotePicker(textEditor, 
 				null,
 				title, 1);
-		
-		ActionPanel.createAndShowGUI(title, 
-				new Dimension(1000, 200), 
+		createAndShowGUI(title, 
+				new Dimension(800, 200), 
 				notePicker, 
-				textEditor.getUIComponent());
+				textEditor.getUIComponent(), 
+				behavior);
 	}
 	
 	static boolean memoryDb = false;
@@ -59,6 +62,7 @@ public class NotePicker extends ActionPanel
 	
 	@Override
 	public void finish(Object... params) {
+		((TextEditor) dataComponent).uninstallSpellChecker();
 		try {
 			if (getCon() != null)
 				getCon().close();
@@ -70,15 +74,10 @@ public class NotePicker extends ActionPanel
 	}
 	
 	private JTextField date = new JTextField(20);
-	@SuppressWarnings("rawtypes")
-	private JComboBox category = new JComboBox();
-	private JTextField categoryEdit = com.applang.SwingUtil.comboEdit(category);
 	
 	public NotePicker(TextComponent textArea, Object... params) {
 		super(textArea, params);
-		
 		installNotePicking(this);
-		
 		if (memoryDb)
 			handleMemoryDb(true);
 		else {
@@ -87,9 +86,9 @@ public class NotePicker extends ActionPanel
 		}
 	}
 
+	@SuppressWarnings("rawtypes")
 	public void installNotePicking(Container container) {
 		addButton(container, ActionType.DATABASE.index(), new NoteAction(ActionType.DATABASE));
-		
 		date.setHorizontalAlignment(JTextField.CENTER);
 		addFocusObserver(date);
 		container.add(date);
@@ -107,34 +106,32 @@ public class NotePicker extends ActionPanel
 					super.keyPressed(e);
 			}
 		});
-		
 		addButton(container, ActionType.CALENDAR.index(), new NoteAction(ActionType.CALENDAR));
-		
-		category.setEditable(true);
-		addFocusObserver(categoryEdit);
-		container.add(category);
-		categoryEdit.addKeyListener(new KeyAdapter() {
+		comboBoxes = new JComboBox[] {new JComboBox()};
+		comboBoxes[0].setEditable(true);
+		addFocusObserver(comboEdit(0));
+		container.add(comboBoxes[0]);
+		comboEdit(0).addKeyListener(new KeyAdapter() {
 			@Override
 			public void keyPressed(KeyEvent e) {
 				if (e.getKeyCode() == KeyEvent.VK_ENTER)
 					clickAction(8);
 			}
 		});
-		
 		addButton(container, ActionType.PICK.index(), new NoteAction(ActionType.PICK));
-		
 		addButton(container, ActionType.PREVIOUS.index(), new NoteAction(ActionType.PREVIOUS));
 		addButton(container, ActionType.NEXT.index(), new NoteAction(ActionType.NEXT));
-		addButton(container, ActionType.SPELLCHECK.index(), new NoteAction(ActionType.SPELLCHECK));
-		addButton(container, ActionType.ADD.index(), new NoteAction(ActionType.ADD));
-		addButton(container, ActionType.DELETE.index(), new NoteAction(ActionType.DELETE));
-		addButton(container, ActionType.ACTIONS.index(), new NoteAction(ActionType.ACTIONS.resourceName()));
-		
-		attachDropdownMenu(buttons[ActionType.ACTIONS.index()], newPopupMenu(
-		    	objects(ActionType.DOCUMENT.description(), documentActions[0]), 
-		    	objects(ActionType.DOCUMENT.description(), documentActions[1]) 
-	    ));
-		
+//		addButton(container, ActionType.SPELLCHECK.index(), new NoteAction(ActionType.SPELLCHECK));
+//		addButton(container, ActionType.ADD.index(), new NoteAction(ActionType.ADD));
+//		addButton(container, ActionType.DELETE.index(), new NoteAction(ActionType.DELETE));
+//		addButton(container, ActionType.ACTIONS.index(), new NoteAction(ActionType.ACTIONS.resourceName()));
+//		
+//		attachDropdownMenu(buttons[ActionType.ACTIONS.index()], newPopupMenu(
+//		    	objects(ActionType.DOCUMENT.description(), documentActions[0]), 
+//		    	objects(ActionType.DOCUMENT.description(), documentActions[1]) 
+//	    ));
+		installAddRemove(container, "note");
+		installUpdate(container);
 		clear();
 	}
 	
@@ -193,7 +190,7 @@ public class NotePicker extends ActionPanel
 				date.requestFocusInWindow();
 				break;
 			case CATEGORY:
-				category.requestFocusInWindow();
+				comboBoxes[0].requestFocusInWindow();
 				break;
 			case PICK:
 				searchPattern = getPattern();
@@ -220,10 +217,10 @@ public class NotePicker extends ActionPanel
 		refreshWith(null);
 		enableAction(ActionType.PREVIOUS.index(), false);
 		enableAction(ActionType.NEXT.index(), false);
-		enableAction(ActionType.ADD.index(), hasTextArea());
-		enableAction(ActionType.DELETE.index(), false);
-		enableAction(ActionType.ACTIONS.index(), true);
-		enableAction(ActionType.SPELLCHECK.index(), hasTextArea());
+//		enableAction(ActionType.ADD.index(), hasTextArea());
+//		enableAction(ActionType.DELETE.index(), false);
+//		enableAction(ActionType.ACTIONS.index(), true);
+//		enableAction(ActionType.SPELLCHECK.index(), hasTextArea());
 	}
 
 	private void initialize(String dbName) {
@@ -278,10 +275,6 @@ public class NotePicker extends ActionPanel
 		NotePicker.this.requestFocus();
 		setDate(dateString);
 		return dateString;
-	}
-
-	private boolean updateMode() {
-		return getAction(5).getType() == ActionType.UPDATE;
 	}
 
 	@Override
@@ -376,15 +369,15 @@ public class NotePicker extends ActionPanel
 	private void retrieveCategories() {
 		try {
 			String categ = getCategory();
-			category.removeAllItems();
+			comboBoxes[0].removeAllItems();
 			
 			PreparedStatement ps = getCon().prepareStatement("select distinct title from notes order by title");
 			ResultSet rs = ps.executeQuery();
 			while (rs.next())
-				category.addItem(rs.getString(1));
+				comboBoxes[0].addItem(rs.getString(1));
 			
-			category.addItem(itemAll);
-			category.addItem(itemBAndB);
+			comboBoxes[0].addItem(itemAll);
+			comboBoxes[0].addItem(itemBAndB);
 			setCategory(categ);
 		} catch (Exception e) {
 			handleException(e);
@@ -395,14 +388,14 @@ public class NotePicker extends ActionPanel
 		try {
 			CustomAction.blocked(new Job<Void>() {
 				public void perform(Void v, Object[] params) throws Exception {
-					categoryEdit.setText(t);
+					comboEdit(0).setText(t);
 				}
 			}, null);
 		} catch (Exception e) {}
 	}
 
 	public String getCategory() {
-		return categoryEdit.getText();
+		return comboEdit(0).getText();
 	}
 	
 	public static final String allDates = "";
@@ -652,28 +645,50 @@ public class NotePicker extends ActionPanel
 	public NoteFinder finder = new NoteFinder();
 	
 	public void pickNote(String dateString, String pattern) {
-		if (updateMode())
-			return;
-			
 		clear();
 		setDate(dateString);
-		
 		try {
 			checkDocumentPossible();
-			
 			finder.pattern = pattern;
 			finder.epoch = getTime(dateString);
 			if (nullOrEmpty(finder.epoch)) {
 				message(String.format("value for '%s' doesn't make sense", ActionType.DATE.description()));
 				date.requestFocus();
-				return;
 			}
-			
 			setText(move(Direction.HERE));			
 		} catch (Exception e) {
 			handleException(e);
 			setText("");
 		}
+	}
+
+	@Override
+	protected Object select(Object... args) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	protected Object getItem() {
+		return asList(objects(getDate(), getPattern()));
+	}
+
+	@Override
+	protected void updateItem(boolean update, Object... args) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	protected boolean addItem(boolean refresh, Object item) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	protected boolean removeItem(Object item) {
+		// TODO Auto-generated method stub
+		return false;
 	}
 	
 	private static final String orderClause = " order by created, title";
@@ -882,7 +897,7 @@ public class NotePicker extends ActionPanel
 		}
 		finally {
 			setDirty(false);
-			enableAction(ActionType.DELETE.index(), hasTextArea() && note != null);
+//			enableAction(ActionType.DELETE.index(), hasTextArea() && note != null);
 		}
 	}
 

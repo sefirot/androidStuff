@@ -6,7 +6,6 @@ import java.io.OutputStream;
 import java.io.Reader;
 import java.io.StringReader;
 import java.util.Properties;
-import java.util.logging.Logger;
 
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.sax.SAXResult;
@@ -26,6 +25,7 @@ import org.xml.sax.helpers.XMLReaderFactory;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
+import android.util.Log;
 
 import com.applang.BaseDirective;
 import com.applang.Dialogs;
@@ -37,29 +37,40 @@ import static com.applang.ZipUtil.*;
 
 public class BerichtsheftApp
 {
+	public static void loadSettings() {
+		System.setProperty("settings.dir", ".jedit/plugins/berichtsheft");
+		Settings.load();
+	}
 	/**
 	 * @param args
 	 */
 	public static void main(String...args) {
-/*		args = strings(
-				"-settings=/home/lotharla/work/.jedit/jars/Fest/jedit_settings", 
-				"-newview", 
-				"-noserver", 
-				"-nosplash" );
-*/
+		loadSettings();
+    	File defaultFile = new File(pathCombine(System.getProperty("settings.dir"), "jedit.properties"));
+    	try {
+	    	File file = new File(".jedit/properties");
+	    	if (!fileExists(file)) {
+				copyFile(defaultFile, file);
+			}
+		} catch (Exception e) {
+			message(String.format("'%s' could not be copied", defaultFile.getPath()));
+			return;
+		}
 		if (nullOrEmpty(args))
 			args = strings(
 				"-settings=.jedit", 
+				"-run=.jedit/macros/startBerichtsheft.bsh", 
 				"-newview", 
 				"-noserver", 
 				"-nosplash" );
 		jEdit.main(args);
 	}
 
-	public static Logger logger = Logger.getLogger(BerichtsheftApp.class.getName());
+	private static final String TAG = BerichtsheftApp.class.getSimpleName();
 	
 	public static final String NAME = "berichtsheft";
 	public static final String packageName = "com.applang.berichtsheft";
+
 	
 	private static Activity activity = null;
 
@@ -146,7 +157,7 @@ public class BerichtsheftApp
 									"Dokument '%s' has more ingredients than before manipulation",
 									dokument));
 				else
-					logger.info(String.format("'%s' generated", dokument));
+					Log.i(TAG, String.format("'%s' generated", dokument));
 			}
 			return true;
 		} catch (Exception e) {

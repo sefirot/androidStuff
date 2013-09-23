@@ -46,6 +46,7 @@ import javax.swing.SwingWorker;
 
 import org.apache.commons.lang.StringEscapeUtils;
 import org.gjt.sp.jedit.BeanShell;
+import org.gjt.sp.jedit.jEdit;
 import org.gjt.sp.jedit.bsh.NameSpace;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -72,7 +73,7 @@ import android.widget.TextView;
 
 import com.applang.BaseDirective;
 import com.applang.Dialogs;
-import com.applang.SwingUtil.Modality;
+import com.applang.SwingUtil.Behavior;
 import com.applang.UserContext.EvaluationTask;
 import com.applang.Util.BidiMultiMap;
 import com.applang.Util.Function;
@@ -108,15 +109,13 @@ public class HelperTests extends TestCase {
 
 	protected void setUp() throws Exception {
 		super.setUp();
-		Settings.load("");
+		BerichtsheftApp.loadSettings();
 	}
 
 	protected void tearDown() throws Exception {
 		super.tearDown();
 	}
 	
-	String settingsDir = ".jedit/plugins/berichtsheft";
-
     public static String[] getStateStrings() {
     	try {
 			String res = resourceFrom("/res/raw/states.json", "UTF-8");
@@ -146,7 +145,7 @@ public class HelperTests extends TestCase {
 					}
 				}, 
 				null, null, 
-				true);
+				Behavior.TIMEOUT);
 	}
 	
 	public static void main(String...args) {
@@ -209,19 +208,21 @@ public class HelperTests extends TestCase {
 				"ErrorList.jar",
 				"CommonControls.jar",
 				"kappalayout.jar");
-		File settingsDir = tempDir(false, BerichtsheftPlugin.NAME, "settings", "plugins");
+		File settingsDir = tempDir(false, BerichtsheftPlugin.NAME, "settings");
+		symbolicLinks(settingsDir, ".jedit", "keymaps");
+		settingsDir = tempDir(false, BerichtsheftPlugin.NAME, "settings", "plugins");
 		symbolicLinks(settingsDir, ".jedit/plugins", "berichtsheft");
 		File commandoDir = tempDir(false, BerichtsheftPlugin.NAME, "settings", "console");
 		symbolicLinks(commandoDir, ".jedit/console", "commando");
 		copyFile(
 				new File(tempDir(false, BerichtsheftPlugin.NAME, "settings", "plugins", "berichtsheft"), "jedit.properties"), 
 				new File(tempDir(false, BerichtsheftPlugin.NAME, "settings"), "properties"));
-		BerichtsheftApp.main(
+		jEdit.main(strings(
 				"-nosplash",
 				"-noserver",
 				String.format("-settings=%s", jarsDir.getParent()), 
 				String.format("-run=%s", tempFile.getPath()), 
-				join(" ", params));
+				join(" ", params)));
 	}
 
 	private void performScriptTest(final String title, final String script, final Object...params) {
@@ -241,7 +242,7 @@ public class HelperTests extends TestCase {
 	public void testCommando() {
 		String contents = 
 				"import com.applang.berichtsheft.plugin.*;\n" +
-				"BerichtsheftPlugin.invokeAction(view, \"commando.Wetter\");\n";
+				"BerichtsheftPlugin.invokeAction(view, \"commando.Spezial\");\n";
 		performScriptTest("testCommando", contents);
 	}
 
@@ -260,35 +261,9 @@ public class HelperTests extends TestCase {
 		String script = "import com.applang.berichtsheft.plugin.*;\n" +
 				"jEdit.openFile(view.getEditPane(), \"/home/lotharla/work/Workshop/Examples/poem.txt\");\n" + 
 				"view.getEditPane().getTextArea().selectAll();\n" + 
-				"BerichtsheftPlugin.spellcheckSelection(view);";
+				"BerichtsheftPlugin.invokeAction(view, String actionName);";
 		performScriptTest("testSpellchecking", script);
    }
-
-	public void testScriptManager() throws Exception {
-		System.setProperty("settings.dir", settingsDir);
-    	underTest = true;
-//		String selector = "/SCHEMA[@name='com.applang.provider.NotePad']";
-//    	String profile = "tagesberichte";
-//		String contents = 
-//				"new com.applang.berichtsheft.components.FunctionManager(view, null, new Object[]{selector});\n";
-//		performBshTest("testFunctionManager", contents);
-//		println(new FunctionManager(null, null, selector, profile).getFunction());
-		println(new ScriptManager(null, null).getFunction());
-	}
-
-	public void testProfileManager() throws Exception {
-		System.setProperty("settings.dir", settingsDir);
-		Settings.load();
-    	underTest = true;
-		ProfileManager tm = new ProfileManager(null);
-//		printContainer("ProfileManager", tm);
-		showOptionDialog(null, 
-				tm, 
-				"", 
-				JOptionPane.DEFAULT_OPTION + Modality.MODAL, 
-				JOptionPane.PLAIN_MESSAGE, 
-				null, null, null);
-	}
 
 	public void _testCommands() throws Exception {
 		String path = ".jedit/console/commando/transport.xml";
@@ -375,7 +350,6 @@ public class HelperTests extends TestCase {
 	}
 
 	public void testTransports() throws Exception {
-		assertTrue(ProfileManager.transportsLoaded(settingsDir));
 		printNodeInfo(ProfileManager.transports.getDocumentElement());
     	String dbPath = createNotePad();
     	String schema = "com.applang.provider.NotePad";
@@ -389,17 +363,17 @@ public class HelperTests extends TestCase {
 		String template = builder.makeTemplate(projection);
     	printMatchResults(template, TransportBuilder.TEMPLATE_PATTERN);
 		assertTrue(ProfileManager.setTemplate(template, profile, oper, schema));
-		ValMap map = builder.getProfile();
+		ValMap map = ProfileManager.getProfileAsMap();
 		println("profileMap", map);
 		String template2 = template.replace("created", "created|unixepoch");
 		assertTrue(ProfileManager.setTemplate(template2));
-		map = builder.getProfile();
+		map = ProfileManager.getProfileAsMap();
 		assertEquals(template2, map.get("template"));
 		assertEquals(oper, map.get("oper"));
 		println("profileMap", map);
 		println();
 		printNodeInfo(ProfileManager.transports.getDocumentElement());
-//		ProfileManager.saveTransports(settingsDir);
+//		ProfileManager.saveTransports(System.getProperty("settings.dir");
 	}
 
 	private void printNodeInfo(Object item) {
@@ -427,7 +401,6 @@ public class HelperTests extends TestCase {
 	}
 
 	public void testConversion() {
-		System.setProperty("settings.dir", settingsDir);
 		Object time = now();
 		println(time = ScriptManager.doConversion(time, "unixepoch", "push"));
 		println(time = ScriptManager.doConversion(time, "unixepoch", "pull"));
@@ -458,8 +431,6 @@ public class HelperTests extends TestCase {
 	Uri uri = getConstantByName("CONTENT_URI", "com.applang.provider.WeatherInfo", "Weathers");
 	
     private String createNotePad() throws Exception {
-    	System.setProperty("settings.dir", settingsDir);
-    	
     	BerichtsheftApp.getActivity().deleteDatabase(NotePadProvider.DATABASE_NAME);
 		
 		long now = now();
@@ -486,8 +457,6 @@ public class HelperTests extends TestCase {
     }
 	
     private String createWeatherInfo() throws Exception {
-    	System.setProperty("settings.dir", settingsDir);
-    	
     	BerichtsheftApp.getActivity().deleteDatabase(WeatherInfoProvider.DATABASE_NAME);
 		
 		long now = now();
@@ -525,28 +494,9 @@ public class HelperTests extends TestCase {
     	WeatherManager wm = new WeatherManager();
 		if (wm.openConnection(dbPath)) {
 			wm.parseSite("10519", DatePicker.Period.loadParts());
-			wm.evaluate(false);
+			wm.evaluate(true);
 			wm.closeConnection();
 		}
-    }
-
-    public void testDataView() throws Exception {
-    	System.setProperty("settings.dir", settingsDir);
-    	underTest = true;
-    	Settings.load();
-    	final DataView dv = new DataView();
-//    	uri = getConstantByName("CONTENT_URI", "com.applang.provider.NotePad", "NoteColumns");
-//    	uri = uri.buildUpon().path("bausteine").build();
-		assertTrue(dv.askUri(null, dbInfo(uri)));
-		uri = dv.getUri();
-		dv.setUri(uri);
-    	Deadline.wait = 5000;
-    	showFrame(null, uri.toString(), new UIFunction() {
-    		public Component[] apply(final Component comp, Object[] parms) {
-    			dv.updateUri(dv.getUriString());
-    			return components(dv);
-    		}
-    	}, null, null, true);
     }
 
     public void testUpdateOrInsert() throws Exception {
@@ -559,14 +509,14 @@ public class HelperTests extends TestCase {
 		projection.removeKey(pk);
 		Object[] items = objects();
        	ContentValues values = contentValues(provider.info, projection.getKeys(), items);
-		ValMap profile = builder.getProfile("weather", "download");
+		ValMap profile = ProfileManager.getProfileAsMap("weather", "download");
    	
     	dbPath = createNotePad();
     	uriString = fileUri(dbPath, "notes").toString();
 		provider = new ProviderModel(uriString);
 		projection = builder.elaborateProjection(objects("title", "note", "created"), null, "");
        	values = contentValues(provider.info, projection.getKeys(), "title", "note", now());
-		profile = builder.getProfile("tagesberichte", "pull");
+		profile = ProfileManager.getProfileAsMap("tagesberichte", "pull");
        	
 		pk = BaseColumns._ID;
 		Object result = provider.updateOrInsert(uriString, profile, projection, pk, values);
@@ -593,7 +543,6 @@ public class HelperTests extends TestCase {
 	}
 
 	private String generateTagesberichteTemplate(String oper) {
-		System.setProperty("settings.dir", settingsDir);
 		underTest = true;
 		BerichtsheftPlugin.setOptionProperty("record-decoration", "fold");
 		BerichtsheftPlugin.setOptionProperty("record-separator", "whitespace");
@@ -625,7 +574,7 @@ public class HelperTests extends TestCase {
 				String.format("%d record(s)", model.getRowCount()),
 				table, 
 				JOptionPane.DEFAULT_OPTION,
-				Modality.MODAL,
+				Behavior.MODAL,
 				null, -2);
 	}
 	
@@ -636,7 +585,7 @@ public class HelperTests extends TestCase {
     	String uriString = fileUri(dbPath, "notes").toString();
     	ProviderModel provider = new ProviderModel(uriString);
 		String name = "tagesberichte";
-		ValMap profile = builder.getProfile(name, "push");
+		ValMap profile = ProfileManager.getProfileAsMap(name, "push");
 		Object schema = profile.get("schema");
 		String[] full = toStrings(fullProjection(schema));
 		println(com.applang.Util2.toString(provider.query(uriString, full)));
@@ -652,11 +601,11 @@ public class HelperTests extends TestCase {
 				String.format("%d record(s)", model.getRowCount()),
 				table, 
 				JOptionPane.DEFAULT_OPTION, 
-	    		Modality.MODAL, 
+	    		Behavior.MODAL, 
 	    		null, -1);
 		String text = builder.wrapRecords(table);
 		println(text);
-		profile = builder.getProfile(name, "pull");
+		profile = ProfileManager.getProfileAsMap(name, "pull");
 		template = stringValueOf(profile.get("template"));
     	list = builder.evaluateTemplate(template, profile);
 		projection = builder.elaborateProjection(list.toArray(), provider.info.getList("name"), provider.tableName);
@@ -667,7 +616,7 @@ public class HelperTests extends TestCase {
 				String.format("%d record(s)", model.getRowCount()),
 				table, 
 				JOptionPane.DEFAULT_OPTION,
-				Modality.MODAL,
+				Behavior.MODAL,
 				null, -1);
 //    	profile.put("name", "tagesbirichte");
     	int[] results = provider.pickRecords(null, table, uriString, profile);
@@ -690,7 +639,7 @@ public class HelperTests extends TestCase {
     	Object[] fields = fullProjection(schema);
     	ValList list = builder.evaluateTemplate(builder.makeTemplate(fields), null);
     	assertTrue(Arrays.equals(fields, list.toArray()));
-    	ValMap map = builder.getProfile("tagesberichte", "push");
+    	ValMap map = ProfileManager.getProfileAsMap("tagesberichte", "push");
     	println(map);
     	assertTrue(map.containsKey("template"));
     	list = builder.evaluateTemplate(map.get("template").toString(), map);
@@ -703,7 +652,7 @@ public class HelperTests extends TestCase {
 				String.format("%d record(s)", model.getRowCount()),
 				table, 
 				JOptionPane.OK_CANCEL_OPTION, 
-	    		Modality.MODAL, 
+	    		Behavior.MODAL, 
 	    		new Job<Void>() {
 					public void perform(Void t, Object[] params) throws Exception {
 						String text = builder.wrapRecords(table);
@@ -859,7 +808,7 @@ public class HelperTests extends TestCase {
 						return null;
 					}
 	    		},
-	    		true);
+	    		Behavior.TIMEOUT);
 	}
 	
 	public void testOptionDialogModeless() {
@@ -872,7 +821,7 @@ public class HelperTests extends TestCase {
 						public void actionPerformed(ActionEvent e) {
 							showOptionDialog(frame, "modeless", 
 									"test",
-									Modality.ALWAYS_ON_TOP + JOptionPane.DEFAULT_OPTION, 
+									Behavior.ALWAYS_ON_TOP + JOptionPane.DEFAULT_OPTION, 
 									JOptionPane.PLAIN_MESSAGE,
 									null, 
 									objects("opt1","opt2"), null, 
@@ -891,7 +840,7 @@ public class HelperTests extends TestCase {
 			}, 
 			null, 
 			null, 
-			true);
+			Behavior.TIMEOUT);
 	}
 	
 	public void testInputDialog() throws Exception {
@@ -988,11 +937,11 @@ public class HelperTests extends TestCase {
 										}, 
 										null, 
 										null, 
-										Modality.NONE);
+										Behavior.NONE);
 							}
 						}));
 					}
-				}, null, null, true);
+				}, null, null, Behavior.TIMEOUT);
 	}
 	
 	public void testDialogFeed() throws Exception {
@@ -1092,6 +1041,6 @@ public class HelperTests extends TestCase {
 				}, 
 				null, 
 				null, 
-				true);
+				Behavior.TIMEOUT);
 	}
 }

@@ -3,7 +3,7 @@ package com.applang.berichtsheft.components;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
-import java.io.IOException;
+import java.io.StringWriter;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -18,17 +18,23 @@ import java.util.regex.Pattern;
 
 import javax.swing.Box;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPopupMenu;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
 
+import org.gjt.sp.jedit.View;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
+import com.applang.SwingUtil.Behavior;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.R;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 import com.applang.berichtsheft.plugin.BerichtsheftShell;
+import com.applang.berichtsheft.plugin.JEditOptionDialog;
 import com.applang.provider.WeatherInfo.Weathers;
 
 import android.app.AlertDialog;
@@ -62,7 +68,7 @@ public class WeatherManager extends ActionPanel
 		ActionPanel.createAndShowGUI(title, 
 				new Dimension(1000, 200), 
 				weatherManager, 
-				dataView.getUIComponent());
+				dataView.getUIComponent(), 0);
 	}
 
 	private JLabel uriLabel;
@@ -262,27 +268,10 @@ public class WeatherManager extends ActionPanel
 
 	public ValMap summary(boolean popup, String title) {
 		final ValMap summary = vmap();
-		AlertDialog dialog = null;
+		View view = BerichtsheftApp.getJEditView();
 		try {
-			if (popup) {
-				TextView tv = new TextView(null, true);
-				tv.getTextArea().setFont(monoSpaced());
-				tv.setId(1);
-				dialog = new AlertDialog.Builder(BerichtsheftApp.getActivity(),	false)
-						.setTitle(title)
-						.setView(tv)
-						.setNeutralButton(R.string.button_close,
-								new OnClickListener() {
-									public void onClick(DialogInterface dialog,
-											int which) {
-										dialog.cancel();
-									}
-								}).create();
-				dialog.setModalExclusionType(AlertDialog.ModalExclusionType.APPLICATION_EXCLUDE);
-				dialog.open(new Dimension(800, 400));
-			}
-			final Object out = dialog != null ? dialog.feed(1) : "";
-			waiting(null, new ComponentFunction<Void>() {
+			final Object out = popup ? new StringWriter() : "";	
+			waiting(view, new ComponentFunction<Void>() {
 				public Void apply(Component comp, Object[] parms) {
 					Elements elements = doc.select("pre:contains(D | h |)");
 					if (elements.size() > 0) {
@@ -315,12 +304,49 @@ public class WeatherManager extends ActionPanel
 					return null;
 				}
 			});
-		} catch (IOException e) {
+			if (popup) {
+				JTextArea textArea = new JTextArea();
+				textArea.setFont(monoSpaced());
+				textArea.setText(((StringWriter)out).toString());
+				Component component = new JScrollPane(textArea);
+				component.setPreferredSize(new Dimension(800,400));
+				int result = new JEditOptionDialog(view, 
+						BerichtsheftPlugin.getProperty("datadock.weather.title"), 
+						title, 
+						component, 
+						JOptionPane.OK_CANCEL_OPTION,
+						Behavior.MODAL, 
+						BerichtsheftPlugin.getProperty("datadock.weather.icon"), 
+						null).getResult();
+				if (result != JOptionPane.OK_OPTION)
+					return null;
+			}
+		} catch (Exception e) {
 			Log.e(TAG, "summary", e);
 		}
-//		if (!popup)
-//			println(com.applang.Util2.toString(summary));
+//		println(com.applang.Util2.toString(summary));
 		return summary;
+	}
+
+	public AlertDialog feedableDialog(String title) {
+		AlertDialog dialog;
+		TextView tv = new TextView(null, true);
+		tv.getTextArea().setFont(monoSpaced());
+		tv.setId(1);
+		dialog = new AlertDialog.Builder(BerichtsheftApp.getActivity(),	false)
+				.setTitle(title)
+				.setView(tv)
+				.setNeutralButton(R.string.button_close,
+						new OnClickListener() {
+							public void onClick(DialogInterface dialog,
+									int which) {
+								dialog.cancel();
+							}
+						}).create();
+		dialog.setModalExclusionType(AlertDialog.ModalExclusionType.APPLICATION_EXCLUDE);
+		dialog.open(new Dimension(800, 400));
+		return dialog;	
+		//	feedableDialog(title).feed(1);
 	}
 /*
 	SKY COVER									weight
@@ -382,6 +408,8 @@ public class WeatherManager extends ActionPanel
 	public static Pattern PRECIPITATION_PATTERN = clippingPattern("\\(", "\\)");
 	
 	public void evaluateSummary(ValMap summary) {
+		if (summary == null)
+			return;
 		ValMap vormittag = vmap(), nachmittag = vmap();
 		BidiMultiMap precip = bmap(3);
 		ArrayList<Double> temps = new ArrayList<Double>();

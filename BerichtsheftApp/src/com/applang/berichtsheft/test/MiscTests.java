@@ -70,7 +70,8 @@ public class MiscTests extends XMLTestCase
 		super.setUp();
 		underTest = true;
 		Settings.load();
-		
+		textEditor = new TextEditor();
+		np = new NotePicker(textEditor);
 		if (tempfile.exists())
 			tempfile.delete();
 	}
@@ -86,6 +87,9 @@ public class MiscTests extends XMLTestCase
 		underTest = false;
 	}
 
+	TextEditor textEditor;
+	NotePicker np;
+	
 	public void testDateTime() throws Exception {
 		int year = 2012;
 		int weekInYear = 53;
@@ -142,8 +146,6 @@ public class MiscTests extends XMLTestCase
 		} while (true);
 	}
 
-	TextEditor textEditor = new TextEditor();
-	NotePicker np = new NotePicker(textEditor);
 	long[] interval;
 
 	void setupNotes(String db, Object... params) throws ParseException {
@@ -249,7 +251,7 @@ public class MiscTests extends XMLTestCase
 		assertEquals(36, np.finder.keyLine(NotePicker.allCategories).length);
 	}
 	
-	public void testMySql() throws Exception {
+	public void _testMySql() throws Exception {
 		setupNotes("//localhost/note_pad?user=lotharla&password=gnalppA", 
 				"mysql", 
 				"com.mysql.jdbc.Driver", 

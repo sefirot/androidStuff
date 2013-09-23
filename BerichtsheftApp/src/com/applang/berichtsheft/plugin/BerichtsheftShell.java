@@ -24,7 +24,7 @@ public class BerichtsheftShell extends Shell
 		if (view != null) {
 			Console console = ConsolePlugin.getConsole(view);
 			if (console != null) {
-				String name = BerichtsheftPlugin.getProperty("berichtsheft.shell.name");
+				String name = BerichtsheftPlugin.getProperty("berichtsheft.shell.title");
 				if (!name.equals(console.getShell().getName())) {
 					console.setShell(name);
 				}

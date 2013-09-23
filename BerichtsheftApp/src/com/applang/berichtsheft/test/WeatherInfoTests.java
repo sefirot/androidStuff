@@ -40,6 +40,7 @@ import junit.framework.TestCase;
 public class WeatherInfoTests extends TestCase
 {
 	public void setUp() throws Exception {
+    	System.setProperty("settings.dir", ".jedit/plugins/berichtsheft");
 		messRedirection = new Function<String>() {
 			public String apply(Object... params) {
 				String message = param("", 0, params);
@@ -54,10 +55,7 @@ public class WeatherInfoTests extends TestCase
 		super.tearDown();
 	}
 	
-	String settingsDir = ".jedit/plugins/berichtsheft";
-
 	public void testPeriod() throws Exception {
-		System.setProperty("settings.dir", settingsDir);
 		Settings.load();
 		assertTrue(DatePicker.Period.pick());
 		println(getSetting("weather.period", ""));

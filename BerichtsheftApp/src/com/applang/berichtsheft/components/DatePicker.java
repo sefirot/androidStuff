@@ -81,7 +81,7 @@ public class DatePicker
 						return null;
 					}
 	    		},
-	    		Modality.MODAL);
+	    		Behavior.MODAL);
 	}
 	
 	public JPanel[] panels(final JDialog dialog) {

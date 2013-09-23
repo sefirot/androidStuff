@@ -45,11 +45,13 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+import com.applang.SwingUtil.Behavior;
 import com.applang.Util.ValMap;
+import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 
 @SuppressWarnings("rawtypes")
-public class ScriptManager extends ManagerBase
+public class ScriptManager extends ManagerBase<Element>
 {
 	public static String schemaSelector(Object name) {
 		return String.format("/SCHEMA[@name='%s']", name);
@@ -151,6 +153,7 @@ public class ScriptManager extends ManagerBase
 		
 		String title = com.applang.Util.paramString("Script editor", 2, params);
 		final String function = param(null, 3, params);
+		int behavior = paramInteger(Behavior.MODAL, 4, params);
 		showDialog(view, relative, 
 	    		title, 
 	    		new UIFunction() {
@@ -176,14 +179,14 @@ public class ScriptManager extends ManagerBase
 						return null;
 					}
 	    		},
-	    		Modality.MODAL);
+	    		behavior);
 	}
 	
 	private String selector = ProfileManager.transportsSelector;
 	private String profile = null;
 
 	@Override
-	protected Element select(String...function) {
+	protected Element select(Object...function) {
 		if (ProfileManager.transportsLoaded()) {
 			String xpath = selector;
 			if (isAvailable(0, function)) {
@@ -198,12 +201,12 @@ public class ScriptManager extends ManagerBase
 	}
 	
 	@Override
-	protected boolean addItem(boolean refresh, String function) {
+	protected boolean addItem(boolean refresh, Object function) {
 		if (ProfileManager.transportsLoaded()) {
 			String body = textArea.getText();
 			if (notNullOrEmpty(body)) {
 				Element element = ProfileManager.transports.createElement("FUNCTION");
-				element.setAttribute("name", function);
+				element.setAttribute("name", stringValueOf(function));
 				if (notNullOrEmpty(profile))
 					element.setAttribute("profile", profile);
 				Element el = ProfileManager.transports.createElement("BODY");
@@ -219,15 +222,12 @@ public class ScriptManager extends ManagerBase
 	}
 	
 	@Override
-	protected boolean removeItem(String function) {
-		boolean retval = false;
-		if (deleteThis(function)) {
-			Element element = select(function);
-			retval = element != null;
-			if (retval) {
-				element.getParentNode().removeChild(element);
-				updateModel(true, true, false);
-			}
+	protected boolean removeItem(Object function) {
+		Element element = select(function);
+		boolean retval = element != null;
+		if (retval) {
+			element.getParentNode().removeChild(element);
+			updateModel(true, true, false);
 		}
 		return retval;
 	}
@@ -302,7 +302,7 @@ public class ScriptManager extends ManagerBase
 	}
 	
 	private void createUI(final View view, final Container container) {
-		comboBoxes = new JComboBox[1];
+		comboBoxes = new JComboBox[] {new JComboBox()};
 		textArea = new TextEditor().createBufferTextArea("beanshell", "/modes/java.xml");
 		
 		JToolBar bar = new JToolBar();
@@ -310,7 +310,6 @@ public class ScriptManager extends ManagerBase
 		btn.setName(DEFAULT_BUTTON_KEY);
 		btn.setText(DEFAULT_BUTTON_KEY);
 		bar.add(btn);
-		comboBoxes[0] = new JComboBox();
 		comboBoxes[0].addItemListener(new ItemListener() {
 			public void itemStateChanged(ItemEvent ev) {
 				if (ev.getStateChange() == ItemEvent.SELECTED) {
@@ -322,23 +321,22 @@ public class ScriptManager extends ManagerBase
 				}
 				else if (ev.getStateChange() == ItemEvent.DESELECTED) {
 					String item = stringValueOf(ev.getItem());
-					saveChanges(item);
+					save(item, false);
 				}
 			}
 		});
 		comboBoxes[0].setEditable(true);
 		comboEdit(0).setHorizontalAlignment(JTextField.CENTER);
 		bar.add(comboBoxes[0]);
-		final JTextField edit = comboEdit(0);
 		btn.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				saveChanges(edit.getText());
+				save(getItem(), false);
 				Window window = SwingUtilities.getWindowAncestor(container);
 				if (window != null)
 					window.dispose();
 			}
 		});
-		edit.addKeyListener(new KeyAdapter() {
+		comboEdit(0).addKeyListener(new KeyAdapter() {
 			@Override
 			public void keyPressed(KeyEvent e) {
 				if (e.getKeyCode() == KeyEvent.VK_ENTER) {
@@ -451,7 +449,7 @@ public class ScriptManager extends ManagerBase
 		Object message = new Object[] {table};
 		showOptionDialog(relative, message, 
 				String.format("Testing '%s'", name), 
-	    		JOptionPane.DEFAULT_OPTION + Modality.MODAL,
+	    		JOptionPane.DEFAULT_OPTION + Behavior.MODAL,
 	    		JOptionPane.PLAIN_MESSAGE,
 	    		null,
 	    		objects("Perform"),
@@ -475,4 +473,12 @@ public class ScriptManager extends ManagerBase
 				});
 	}
 
+	public static void main(String...args) {
+		BerichtsheftApp.loadSettings();
+    	underTest = param("true", 0, args).equals("true");
+		int behavior = Behavior.MODAL;
+		if (underTest)
+			behavior |= Behavior.EXIT_ON_CLOSE;
+		new ScriptManager(null, null, null, null, null, null, behavior);
+	}
 }

@@ -6,7 +6,6 @@ void doSomethingUseful()
         
         view.getDockableWindowManager().showDockableWindow("console");
         com.applang.berichtsheft.plugin.BerichtsheftPlugin.checkAvailabilityOfTools();
-
         view.getDockableWindowManager().showDockableWindow("datadock");
     }
 

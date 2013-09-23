@@ -6,6 +6,8 @@ import java.awt.Dimension;
 import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
@@ -55,10 +57,14 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
+import com.applang.SwingUtil.Behavior;
+import com.applang.SwingUtil.UIFunction;
+import com.applang.Util.BidiMultiMap;
+import com.applang.Util.ValList;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.R;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
-import com.applang.berichtsheft.plugin.JEditDialog;
+import com.applang.berichtsheft.plugin.JEditOptionDialog;
 
 import static com.applang.Util.*;
 import static com.applang.Util1.*;
@@ -81,10 +87,11 @@ public class DataView extends JPanel implements DataComponent
 		public String renderCellValue(int row, int column) {
 			Object value = getValueAt(row, column);
 			int col = convertColumnIndexToModel(column);
-			if (isAvailable(col, projection.getValues()))
-				value = ScriptManager.doConversion(value, 
-						projection.getValues().get(col).toString(), 
-						"push");
+			if (projection != null) {
+				ValList conversions = projection.getValues();
+				if (isAvailable(col, conversions))
+					value = ScriptManager.doConversion(value, stringValueOf(conversions.get(col)), "push");
+			}
 			return stringValueOf(value);
 		}
 		
@@ -113,32 +120,22 @@ public class DataView extends JPanel implements DataComponent
 	public void createUI() {
 		setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
 		sqlBox = new JComboBox();
+		Memory.update(sqlBox, true, "DataView");
         final JTextField tf = comboEdit(sqlBox);
 		sqlBox.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
+				projection = null;
 				String sql = tf.getText();
 				reload(sql);
 			}
 		});
-		sqlBox.setEditable(true);
-		sqlBox.setName("DataView");
-		Memory.update(sqlBox, false);
-		tf.addMouseListener(newPopupAdapter(
-			objects("+", 
-        		newMenu("Memory", 
-        			objects("add", new ActionListener() {
-        	        	public void actionPerformed(ActionEvent ae) {
-        	        		Memory.update(sqlBox, tf.getText());
-        	        	}
-        	        }), 
-        	        objects("remove", new ActionListener() {
-        	        	public void actionPerformed(ActionEvent ae) {
-        	        		Memory.update(sqlBox, null, tf.getText());
-        	        	}
-        	        })
-        		)
-	        )
-        ));
+		tf.addKeyListener(new KeyAdapter() {
+			@Override
+			public void keyTyped(KeyEvent e) {
+				super.keyTyped(e);
+				projection = null;
+			}
+		});
 		table = new DataTable();
 		table.addMouseListener(new PopupAdapter(newPopupMenu(
 				objects()
@@ -169,11 +166,17 @@ public class DataView extends JPanel implements DataComponent
 		setMaximumDimension(sqlBox, 100);
 		add(new JScrollPane(table), BorderLayout.CENTER);
 		mess = new JLabel();
+		mess.setHorizontalAlignment(JTextField.CENTER);
 		add(mess, BorderLayout.SOUTH);
 	}
 	
 	public JTable getTable() {
 		return table;
+	}
+
+	@Override
+	public Component getUIComponent() {
+		return this;
 	}
 
 	private String schema = null;
@@ -200,15 +203,57 @@ public class DataView extends JPanel implements DataComponent
 		return com.applang.Util1.getDatabaseFile(context, uri).getPath();
 	}
 
-	public String uriWithQuery(ValList columns) {
-		String tableName = dbTableName(uri);
-		return com.applang.Util1.uriWithQuery(context, uri, tableName, columns.toArray());
+	public String uriWithQuery(Uri uri, String tableName, String schema, BidiMultiMap projection) {
+		Uri.Builder builder = dbTable(uri, tableName).buildUpon().query("");
+		builder.appendQueryParameter("_", stringValueOf(schema));
+		ValList names = projection.getKeys();
+		ValList convs = projection.getValues(1);
+		ValList types = projection.getValues(2);
+		for (int i = 0; i < names.size(); i++) {
+			String value = stringValueOf(types.get(i)) + "|" + stringValueOf(convs.get(i));
+			builder.appendQueryParameter(stringValueOf(names.get(i)), value);
+		}
+		return builder.toString();
 	}
 
 	public void updateUri(String uriString) {
 		this.uri = Uri.parse(valueOrElse("", uriString));
-		askProjection();
+		boolean refresh = projection == null;
+		if (askProjection() || refresh) {
+			uriString = uriWithQuery(uri, dbTableName(uri), schema, projection);
+			putSetting("uri", uriString);
+			Settings.save();
+		}
 		load(uri);
+	}
+
+	public DataView load() {
+		String uriString = getSetting("uri", "");
+		if (notNullOrEmpty(uriString)) {
+			uri = Uri.parse(uriString);
+			String query = uri.getQuery();
+			if (query != null) {
+				ValList names = vlist();
+				ValList convs = vlist();
+				ValList types = vlist();
+				ValList list = split(query, "&");
+				for (int i = 0; i < list.size(); i++) {
+					String[] parts = list.get(i).toString().split("=", 2);
+					if ("_".equals(parts[0]))
+						this.schema = parts[1];
+					else {
+						names.add(parts[0]);
+						parts = parts[1].split("\\|", 2);
+						types.add(parts[0]);
+						convs.add(parts[1]);
+					}
+				}
+				this.projection = new BidiMultiMap(names, convs, types);
+				uri = uri.buildUpon().query(null).build();
+			}
+			load(uri);
+		}
+		return this;
 	}
 
 	public boolean load(Uri uri) {
@@ -223,10 +268,12 @@ public class DataView extends JPanel implements DataComponent
 	public boolean reload(String...sql) {
 		boolean retval = true;
 		wire(true);
-		
+//		sqlBox.setEnabled(!hasAuthority(uri));
 		ContentResolver contentResolver = context.getContentResolver();
 		String msg = "";
 		try {
+			if (!isAvailable(0, sql) && sqlBox.isEnabled())
+				sql = strings(comboEdit(sqlBox).getText());
 			Cursor cursor = contentResolver.rawQuery(uri, sql);
 			if (cursor != null) {
 				ConsumerModel model = new ConsumerModel().traverse(cursor);
@@ -243,7 +290,6 @@ public class DataView extends JPanel implements DataComponent
 			retval = false;
 		}
 		mess.setText(msg);
-//		sqlBox.setEnabled(!hasAuthority(uri));
 		if (sqlBox.isEnabled())
 			comboEdit(sqlBox).setText(contentResolver.contentProvider.sql);
 		else
@@ -715,6 +761,12 @@ public class DataView extends JPanel implements DataComponent
 				})
 				.create();
 		dialog.open(0.5, 0.5);
+		JTable table = findComponent(projectionComponent, "table");
+		if (table != null) {
+			AbstractCellEditor ce = (AbstractCellEditor) table.getCellEditor();
+			if (ce != null)
+				ce.stopCellEditing();
+		}
 		boolean convUnchanged = conversions.equals(projection.getValues());
 		ValMap map = vmap();
 		conversions = projection.getValues();
@@ -984,12 +1036,12 @@ public class DataView extends JPanel implements DataComponent
 						JTable table = model.makeTable();
 						table.setPreferredScrollableViewportSize(new Dimension(800,200));
 						table.getSelectionModel().setSelectionInterval(1, 1);
-						return decision = new JEditDialog(view, 
+						return decision = new JEditOptionDialog(view, 
 								BerichtsheftPlugin.getProperty("berichtsheft.transport-from-buffer.label"), 
 								BerichtsheftPlugin.getProperty("berichtsheft.prompt-update.message"), 
 								new JScrollPane(table), 
 								5, 
-								Modality.MODAL, 
+								Behavior.MODAL, 
 								null, null).getResult();
 					}
 				}
@@ -1038,7 +1090,7 @@ public class DataView extends JPanel implements DataComponent
 					retval = contentResolver.insert(uri, values);
 				return retval;
 			} catch (Exception e) {
-				BerichtsheftPlugin.consoleMessage("berichtsheft.updateOrInsert.message.1", uriString, values);
+				BerichtsheftPlugin.consoleMessage("dataview.updateOrInsert.message.1", uriString, values);
 				return null;
 			}
 		}
@@ -1074,23 +1126,40 @@ public class DataView extends JPanel implements DataComponent
 				if (result instanceof Uri) {
 					long id = ContentUris.parseId((Uri) result);
 					if (id < 0)
-						BerichtsheftPlugin.consoleMessage("berichtsheft.updateOrInsert.message.3", recno);
+						BerichtsheftPlugin.consoleMessage("dataview.updateOrInsert.message.3", recno);
 				}
 				else if (result instanceof Integer) {
 					if ((int)result < 1)
-						BerichtsheftPlugin.consoleMessage("berichtsheft.updateOrInsert.message.4", recno);
+						BerichtsheftPlugin.consoleMessage("dataview.updateOrInsert.message.4", recno);
 				}
 			}
 			else if (decision == 4) {
-				BerichtsheftPlugin.consoleMessage("berichtsheft.updateOrInsert.message.2", recno);
+				BerichtsheftPlugin.consoleMessage("dataview.updateOrInsert.message.2", recno);
 				return false;
 			}
 			return true;
 		}
 	}
-
-	@Override
-	public Component getUIComponent() {
-		return this;
+	
+	public static void main(String...args) {
+		BerichtsheftApp.loadSettings();
+    	underTest = param("true", 0, args).equals("true");
+		int modality = Behavior.NONE;
+		if (underTest)
+			modality |= Behavior.EXIT_ON_CLOSE;
+    	final DataView dv = new DataView();
+		if (!dv.askUri(null, dv.getInfo())) {
+			dv.load();
+		}
+		showFrame(null, dv.getUriString(), 
+			new UIFunction() {
+				public Component[] apply(final Component comp, Object[] parms) {
+					dv.updateUri(dv.getUriString());
+					dv.getTable().setPreferredScrollableViewportSize(new Dimension(800,400));
+					return components(dv);
+				}
+			}, 
+			null, null, 
+			modality);
 	}
 }

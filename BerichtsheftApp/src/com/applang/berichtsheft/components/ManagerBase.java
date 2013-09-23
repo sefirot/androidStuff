@@ -15,12 +15,10 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JTextField;
 
-import org.w3c.dom.Element;
-
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 
 @SuppressWarnings("rawtypes")
-public abstract class ManagerBase extends JComponent
+public abstract class ManagerBase<T extends Object> extends JComponent
 {
 	protected JComboBox[] comboBoxes;
 	
@@ -30,6 +28,7 @@ public abstract class ManagerBase extends JComponent
 	
 	public JLabel labelFor(Component c, String text, float alignmentX) {
 		JLabel label = new JLabel(text);
+		label.setName(text + "_Label");
 		label.setAlignmentX(alignmentX);
 		label.setLabelFor(c);
 		return label;
@@ -37,47 +36,67 @@ public abstract class ManagerBase extends JComponent
 	
 	private AbstractButton[] abuttons = new AbstractButton[2];
 	
-	protected boolean saveThis(String item) {
-		if (isDirty() && notNullOrEmpty(item)) {
+	protected boolean saveThis(boolean exists, Object item) {
+		if (!exists || isDirty()) {
 			setDirty(false);
-			return question(String.format("Save changes to '%s'", item), null, JOptionPane.YES_NO_OPTION);
+			if (notNullOrEmpty(item)) {
+				String string = exists ? "Save changes to '%s'" : "Save '%s'";
+				return question(String.format(string, item), null,
+						JOptionPane.YES_NO_OPTION);
+			}
 		}
 		return false;
 	}
+
+	protected Boolean save(Object item, boolean refresh) {
+		boolean exists = select(item) != null;
+		if (saveThis(exists, item)) {
+			if (exists) {
+				updateItem(true, item);
+				BerichtsheftPlugin.consoleMessage("berichtsheft.add.message.1", item);
+			}
+			else
+				if (!addItem(refresh, item))
+					BerichtsheftPlugin.consoleMessage("berichtsheft.add.message.2", item);
+				else
+					BerichtsheftPlugin.consoleMessage("berichtsheft.add.message.3", item);
+			return exists;
+		}
+		return null;
+	}
 	
-	protected boolean deleteThis(String item) {
-		if (notNullOrEmpty(item) && question(String.format("Delete '%s'", item), null, JOptionPane.YES_NO_OPTION)) {
+	protected boolean deleteThis(Object item) {
+		String string = String.format("Delete '%s'", item);
+		if (notNullOrEmpty(item) && question(string, null, JOptionPane.YES_NO_OPTION)) {
 			setDirty(false);
 			return true;
 		}
 		return false;
 	}
+
+	protected Object getItem() {
+		return comboEdit(0).getText();
+	}
 	
 	protected void installAddRemove(Container container, final String itemName) {
 		container.add(BerichtsheftPlugin.makeCustomButton("berichtsheft.add", new ActionListener() {
 			public void actionPerformed(ActionEvent evt) {
-				String item = comboEdit(0).getText();
-				if (select(item) != null) {
-					BerichtsheftPlugin.consoleMessage("berichtsheft.add-" + itemName + ".message.1");
-					return;
-				}
-				if (!addItem(true, item))
-					BerichtsheftPlugin.consoleMessage("berichtsheft.add-" + itemName + ".message.2");
-				else
-					BerichtsheftPlugin.consoleMessage("berichtsheft.add-" + itemName + ".message.3", item);
+				Object item = getItem();
+				save(item, true);
 			}
 		}, false));
 		container.add(BerichtsheftPlugin.makeCustomButton("berichtsheft.remove", new ActionListener() {
 			public void actionPerformed(ActionEvent evt) {
-				String item = comboEdit(0).getText();
+				Object item = getItem();
 				if (select(item) == null) {
-					BerichtsheftPlugin.consoleMessage("berichtsheft.remove-" + itemName + ".message.1");
+					BerichtsheftPlugin.consoleMessage("berichtsheft.remove.message.1", itemName);
 					return;
 				}
-				if (!removeItem(item))
-					BerichtsheftPlugin.consoleMessage("berichtsheft.remove-" + itemName + ".message.2");
-				else
-					BerichtsheftPlugin.consoleMessage("berichtsheft.remove-" + itemName + ".message.3", item);
+				if (deleteThis(item))
+					if (!removeItem(item))
+						BerichtsheftPlugin.consoleMessage("berichtsheft.remove.message.2", itemName);
+					else
+						BerichtsheftPlugin.consoleMessage("berichtsheft.remove.message.3", itemName, item);
 			}
 		}, false));
 	}
@@ -104,37 +123,28 @@ public abstract class ManagerBase extends JComponent
 	}
 
 	protected void setDirty(boolean dirty) {
-		if (updateAllowed) 
+		if (changeAllowed) 
 			for (AbstractButton button : abuttons) 
 				button.setEnabled(dirty);
 	}
 	
-	protected boolean updateAllowed = true;
+	protected boolean changeAllowed = false;
 
 	protected void updateText(TextComponent textComponent, String text) {
 		try {
-			updateAllowed = false;
+			changeAllowed = false;
 			textComponent.setText(text);
 		} finally {
-			updateAllowed = true;
+			changeAllowed = true;
 		}
 		setDirty(false);
 	}
 
-	protected void saveChanges(String item) {
-		if (saveThis(item)) {
-			if (select(item) != null)
-				updateItem(true, item);
-			else
-				addItem(false, item);
-		}
-	}
-
-	protected abstract Element select(String...params);
+	protected abstract T select(Object...args);
 	
-	protected abstract void updateItem(boolean update, Object...params);
+	protected abstract void updateItem(boolean update, Object...args);
 	
-	protected abstract boolean addItem(boolean refresh, String item);
+	protected abstract boolean addItem(boolean refresh, Object item);
 	
-	protected abstract boolean removeItem(String item);
+	protected abstract boolean removeItem(Object item);
 }

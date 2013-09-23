@@ -26,15 +26,15 @@ import org.gjt.sp.util.Log;
 import static com.applang.Util.*;
 import static com.applang.SwingUtil.*;
 
-public class JEditDialog extends EnhancedDialog	
+public class JEditOptionDialog extends EnhancedDialog	
 {
-	public JEditDialog(View view, 
+	public JEditOptionDialog(View view, 
 			String title, String caption, Object message, 
-			int optionType, int modality, 
+			int optionType, int behavior, 
 			String iconPath, 
 			Job<Void> followUp, Object...params)
 	{
-		super((Frame)view, title, modality == Modality.MODAL);
+		super((Frame)view, title, behavior == Behavior.MODAL);
 		this.optionType = optionType;
 		this.options = defaultOptions(optionType);
 		this.followUp = followUp;
@@ -117,7 +117,7 @@ public class JEditDialog extends EnhancedDialog
 			try {
 				followUp.perform(null, params);
 			} catch (Exception e) {
-				Log.log(Log.ERROR, JEditDialog.class, e.getMessage());
+				Log.log(Log.ERROR, JEditOptionDialog.class, e.getMessage());
 			}
 		cancel();
 	}

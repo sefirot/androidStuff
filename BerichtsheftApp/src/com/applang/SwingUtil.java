@@ -55,6 +55,7 @@ import java.util.regex.Pattern;
 
 import javax.swing.AbstractAction;
 import javax.swing.AbstractButton;
+import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
@@ -88,6 +89,7 @@ import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.WindowConstants;
+import javax.swing.border.TitledBorder;
 import javax.swing.event.AncestorListener;
 import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
@@ -436,7 +438,7 @@ public class SwingUtil
 			UIFunction assembleUI,
 			UIFunction arrangeUI,
     		final UIFunction completeUI,
-    		boolean deadline, 
+    		int behavior, 
     		Integer... keyEvents)
 	{
 		try {
@@ -460,7 +462,8 @@ public class SwingUtil
 				frame.setLocation((Point)relative);
 			else if (relative instanceof Rectangle)
 				frame.setBounds((Rectangle)relative);
-			frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+			boolean exitOnClose = Behavior.hasFlags(behavior, Behavior.EXIT_ON_CLOSE);
+			frame.setDefaultCloseOperation(exitOnClose ? JFrame.EXIT_ON_CLOSE : JFrame.DISPOSE_ON_CLOSE);
 			frame.setVisible(true);
 			
 			if (arrangeUI != null)
@@ -470,11 +473,11 @@ public class SwingUtil
 				public void windowClosing(WindowEvent event) {
 					if (completeUI != null)
 						completeUI.apply(frame, null);
-					
 					finished = true;
 				}
 			});
 			
+			boolean deadline = Behavior.hasFlags(behavior, Behavior.TIMEOUT);
 			if (deadline || keyEvents.length > 0) {
 				Deadline.start(
 						deadline ? frame : null, 
@@ -491,22 +494,22 @@ public class SwingUtil
 		}
 	}
 	
-	public static int dialogResult = Modality.CLOSED_OPTION;
+	public static int dialogResult = Behavior.CLOSED_OPTION;
 	
     public static int showDialog(Component parent, Component relative, 
     		String title, 
     		UIFunction assembleUI,
     		UIFunction arrangeUI,
     		final UIFunction completeUI,
-    		int modality, 
+    		final int behavior, 
     		Integer... keyEvents)
     {
-    	dialogResult = Modality.CLOSED_OPTION;
+    	dialogResult = Behavior.CLOSED_OPTION;
     	
-    	boolean modal = Modality.hasFlags(modality, Modality.MODAL);
+    	boolean modal = Behavior.hasFlags(behavior, Behavior.MODAL);
 		Frame frame = JOptionPane.getFrameForComponent(parent);
 		final JDialog dlg = new JDialog(frame, title, modal);
-		boolean alwaysOnTop = Modality.hasFlags(modality, Modality.ALWAYS_ON_TOP);
+		boolean alwaysOnTop = Behavior.hasFlags(behavior, Behavior.ALWAYS_ON_TOP);
 		dlg.setAlwaysOnTop(alwaysOnTop);
 		
 		if (assembleUI != null) {
@@ -519,7 +522,7 @@ public class SwingUtil
 						dlg.getContentPane().add(widget);
 		}
 		
-		boolean deadline = Modality.hasFlags(modality, Modality.TIMEOUT);
+		boolean deadline = Behavior.hasFlags(behavior, Behavior.TIMEOUT);
 		if (deadline)
 			Deadline.start(dlg);
 		
@@ -537,6 +540,8 @@ public class SwingUtil
 			public void windowClosing(WindowEvent event) {
 				if (completeUI != null)
 					completeUI.apply(dlg, null);
+				if (Behavior.hasFlags(behavior, Behavior.EXIT_ON_CLOSE))
+					System.exit(0);
 			}
 		});
 		
@@ -550,12 +555,13 @@ public class SwingUtil
 		return dialogResult;
 	}
 	
-    public static class Modality
+    public static class Behavior
     {
     	public static final int NONE = 4;
     	public static final int MODAL = 8;
     	public static final int TIMEOUT = 16;
     	public static final int ALWAYS_ON_TOP = 32;
+    	public static final int EXIT_ON_CLOSE = 64;
         
         public static int getOptionType(int index) {
         	return (index + 1) % 4 - 1;
@@ -609,13 +615,13 @@ public class SwingUtil
             Object...params) 
     {
 		Integer[] keyEvents = param(new Integer[0], 0, params);
-    	if (optionType > Modality.OK_CANCEL_OPTION) {
+    	if (optionType > Behavior.OK_CANCEL_OPTION) {
     		final Function<Boolean> optionHandler = param(null, 1, params);
     		UIFunction assembleUI = new UIFunction() {
     			public Component[] apply(final Component dialog, Object[] parms) {
     				final JOptionPane optionPane = new JOptionPane(message, 
     						messageType,
-    						Modality.getOptionType(optionType),
+    						Behavior.getOptionType(optionType),
     						null,
     						options, 
     						initialOption);
@@ -629,7 +635,7 @@ public class SwingUtil
     						{
     							Object value = optionPane.getValue();
     							if (value == JOptionPane.UNINITIALIZED_VALUE) {
-    								dialogResult = Modality.CLOSED_OPTION;
+    								dialogResult = Behavior.CLOSED_OPTION;
     								return;
     							}
     							else {
@@ -921,6 +927,23 @@ public class SwingUtil
 		return file;
 	}
 
+	public static String[] chooseFileNames(boolean toOpen, Container parent, 
+			String title, 
+			String fileName, 
+			FileFilter...fileFilters)
+	{
+		File f = chooseFile(toOpen, parent, title, new File(fileName), fileFilters);
+		return strings(f == null ? "" : f.getPath());
+	}
+
+	public static String[] chooseDirectoryNames(Container parent, 
+			String title, 
+			String dirName)
+	{
+		File f = chooseDirectory(parent, title, new File(dirName));
+		return strings(f == null ? "" : f.getPath());
+	}
+	
 	/**
 	 * @param parent
 	 * @param title
@@ -1553,17 +1576,36 @@ public class SwingUtil
 	public static class Memory extends DefaultComboBoxModel
 	{
 		@SuppressWarnings({ "unchecked" })
-		public static void update(JComboBox cb, Object...params)
+		public static void update(final JComboBox cb, Object...params)
 		{
 			Object value = param(null, 0, params);
 			Object value2 = param(null, 1, params);
 			
 			if (value instanceof Boolean) {
-				cb.setModel(new Memory(cb.getName()));
-				if ((Boolean)value && cb.getModel().getSize() > 0) {
-					Object el = cb.getModel().getElementAt(0);
-					cb.getModel().setSelectedItem(el);
+				Memory model = new Memory(stringValueOf(value2));
+				cb.setModel(model);
+				if ((Boolean)value && model.getSize() > 0) {
+					Object el = model.getElementAt(0);
+					model.setSelectedItem(el);
 				}
+		        final JTextField tf = comboEdit(cb);
+				tf.addMouseListener(newPopupAdapter(
+					objects("+", 
+		        		newMenu("Memory", 
+		        			objects("add", new ActionListener() {
+		        	        	public void actionPerformed(ActionEvent ae) {
+		        	        		Memory.update(cb, tf.getText());
+		        	        	}
+		        	        }), 
+		        	        objects("remove", new ActionListener() {
+		        	        	public void actionPerformed(ActionEvent ae) {
+		        	        		Memory.update(cb, null, tf.getText());
+		        	        	}
+		        	        })
+		        		)
+			        )
+		        ));
+				cb.setEditable(true);
 			}
 			else {
 				boolean add = value != null;
@@ -1746,5 +1788,23 @@ public class SwingUtil
 			component.setPreferredSize(size);
 		else
 			component.setSize(size);
+	}
+
+	public static JPanel surroundingBox(JComponent contents, String title, Object...params) {
+		JPanel box = new JPanel();
+		int titleJustification = paramInteger(TitledBorder.DEFAULT_JUSTIFICATION, 0, params);
+		int titlePosition = paramInteger(TitledBorder.DEFAULT_POSITION, 1, params) ;
+		box.setBorder(
+			BorderFactory.createTitledBorder(
+				BorderFactory.createEtchedBorder(),
+				title,
+				titleJustification,
+				titlePosition
+			)
+		);
+		box.setLayout(new BoxLayout(box, BoxLayout.Y_AXIS) );
+		box.add( contents );
+		box.add( Box.createVerticalStrut(10) );
+		return box;
 	}
 }

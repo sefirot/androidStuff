@@ -56,7 +56,7 @@ import org.gjt.sp.jedit.msg.ViewUpdate;
 import org.gjt.sp.util.IOUtilities;
 import org.gjt.sp.util.Log;
 
-import com.applang.SwingUtil.Modality;
+import com.applang.SwingUtil.Behavior;
 import com.applang.Util.Job;
 import com.applang.berichtsheft.components.TextEditor;
 import com.inet.jortho.FileUserDictionary;
@@ -86,7 +86,7 @@ public class BerichtsheftPlugin extends EditPlugin {
 		
 		EditBus.addToBus(this);
 		
-		checkAvailabilityOfTools();
+//		checkAvailabilityOfTools();
 	}
 
 	@Override
@@ -142,8 +142,6 @@ public class BerichtsheftPlugin extends EditPlugin {
 		return props;
 	}
 
-	public static String userCommandDirectory;
-
 	public static void loadSettings() {
 		String settingsDir = jEdit.getSettingsDirectory();
 		if (settingsDir == null) 
@@ -151,11 +149,12 @@ public class BerichtsheftPlugin extends EditPlugin {
 		File dir = fileOf(settingsDir, "plugins", NAME);
 		dir.mkdirs();
 		
-		userCommandDirectory = MiscUtilities.constructPath(settingsDir, "console");
-		userCommandDirectory = MiscUtilities.constructPath(userCommandDirectory, "commando");
-		File file = new File(userCommandDirectory);
+		String commandDir = MiscUtilities.constructPath(settingsDir, "console");
+		commandDir = MiscUtilities.constructPath(commandDir, "commando");
+		File file = new File(commandDir);
 		if (!file.exists())
 			file.mkdirs();
+		BerichtsheftToolBar.userCommandDirectory = commandDir;
 		
 		String path = dir.getPath();
 		System.setProperty("settings.dir", path);
@@ -174,9 +173,10 @@ public class BerichtsheftPlugin extends EditPlugin {
 	}
 	
 	public static void spellcheckSelection(View view) {
-		String text = BerichtsheftPlugin.getTextEditor().getSelectedText();
+		final TextEditor jEditor = getJEditor();
+		String text = jEditor.getSelectedText();
 		if (nullOrEmpty(text)) {
-			BerichtsheftPlugin.consoleMessage("berichtsheft.no-text-selection.message");
+			consoleMessage("berichtsheft.no-text-selection.message");
 			return; 
 		}
 		final TextEditor textEditor = new TextEditor();
@@ -184,21 +184,27 @@ public class BerichtsheftPlugin extends EditPlugin {
 		Job<Void> takeThis = new Job<Void>() {
 			public void perform(Void t, Object[] params) throws Exception {
 				String text = textEditor.getText();
-				BerichtsheftPlugin.getTextEditor().setSelectedText(text);
+				jEditor.setSelectedText(text);
 			}
 		};
 		textEditor.installSpellChecker();
 		Component component = textEditor.getUIComponent();
 		component.setPreferredSize(new Dimension(400,300));
-		new JEditDialog(view, 
-				BerichtsheftPlugin.getProperty("berichtsheft.spellcheck-selection.title"), 
+		new JEditOptionDialog(view, 
+				getProperty("berichtsheft.spellcheck-selection.title"), 
 				"", 
 				component, 
 				JOptionPane.OK_CANCEL_OPTION,
-				Modality.MODAL, 
-				BerichtsheftPlugin.getProperty("berichtsheft.spellcheck-selection.icon"), 
+				Behavior.MODAL, 
+				getProperty("berichtsheft.spellcheck-selection.icon"), 
 				takeThis);
 		textEditor.uninstallSpellChecker();
+	}
+	
+	public static void logDebug() {
+		Log.init(true,Log.DEBUG);
+		org.gjt.sp.jedit.Debug.TOKEN_MARKER_DEBUG = true;
+		org.gjt.sp.jedit.Debug.CHUNK_CACHE_DEBUG = true;
 	}
 	
 	public static String getSettingsDirectory() {
@@ -254,6 +260,11 @@ public class BerichtsheftPlugin extends EditPlugin {
 			jEdit.setProperty(name, value);
 	}
     
+	public static void saveSettings() {
+		if (props == null)
+			jEdit.saveSettings();
+	}
+    
 	public static void setStatusMessage(String msg) {
 		View view = jEdit.getActiveView();
 		if (view != null)
@@ -270,8 +281,26 @@ public class BerichtsheftPlugin extends EditPlugin {
 		BerichtsheftShell.print(msg, NEWLINE);
 	}
 	
-	public static TextEditor getTextEditor() {
+	public static TextEditor getJEditor() {
 		return new TextEditor(jEdit.getActiveView());
+	}
+	
+	// NOTE used in scripts
+	public static void invokeAction(View view, String actionName) {
+		EditAction action = jEdit.getAction(actionName);
+		if (action != null)
+			action.invoke(view);
+	}
+	
+	// NOTE used in scripts
+	public static void checkAvailabilityOfTools() {
+		BerichtsheftShell.print("Welcome...", NEWLINE);
+		String[] tools = {"AWK_COMMAND", "ADB_COMMAND", "SQLITE_COMMAND"};
+		for (int i = 0; i < tools.length; i++) {
+			String cmd = getProperty(tools[i]);
+			if (!fileExists(new File(cmd)))
+				consoleMessage("berichtsheft.tool-missing.message", cmd);
+		}
 	}
 
 	public static Function<File> fileChooser(final View view) {
@@ -290,13 +319,6 @@ public class BerichtsheftPlugin extends EditPlugin {
 			}
 		};
 	}
-	
-	// NOTE used in scripts
-	public static void invokeAction(View view, String actionName) {
-		EditAction action = jEdit.getAction(actionName);
-		if (action != null)
-			action.invoke(view);
-	}
 
 	public static File getTempFile(String name) {
 		return tempFile(name, NAME);
@@ -304,16 +326,6 @@ public class BerichtsheftPlugin extends EditPlugin {
 
 	public static String repeat(String string, int times) {
 		return StringUtils.repeat(string, times);
-	}
-	
-	public static void checkAvailabilityOfTools() {
-		BerichtsheftShell.print("Welcome...", NEWLINE);
-		String[] tools = {"AWK_COMMAND", "ADB_COMMAND", "SQLITE_COMMAND"};
-		for (int i = 0; i < tools.length; i++) {
-			String cmd = getProperty(tools[i]);
-			if (!fileExists(new File(cmd)))
-				consoleMessage("berichtsheft.tool-missing.message", cmd);
-		}
 	}
 
 	public static String awkCommand(String part) {
@@ -590,7 +602,7 @@ public class BerichtsheftPlugin extends EditPlugin {
 			public Integer apply(Object...params) {
 				JScrollPane scrollPane = new JScrollPane((Component) params[0]);
 				return showOptionDialog(view, scrollPane, title, 
-						JOptionPane.OK_CANCEL_OPTION + Modality.MODAL, 
+						JOptionPane.OK_CANCEL_OPTION + Behavior.MODAL, 
 						JOptionPane.PLAIN_MESSAGE, 
 						null, 
 						null, null);

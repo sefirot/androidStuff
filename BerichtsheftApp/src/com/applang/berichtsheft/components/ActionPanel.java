@@ -4,7 +4,6 @@ import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
-import java.awt.FlowLayout;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.io.File;
@@ -16,20 +15,19 @@ import javax.swing.BoxLayout;
 import javax.swing.JFrame;
 import javax.swing.JToolBar;
 
-import org.w3c.dom.Element;
-
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
 import static com.applang.SwingUtil.*;
 
-public class ActionPanel extends ManagerBase
+public class ActionPanel extends ManagerBase<Object>
 {
 	public static void createAndShowGUI(String title, 
 			final Dimension preferred, 
 			final ActionPanel actionPanel, 
 			final Component target, 
+			int modality, 
 			final Object... params)
 	{
 		showFrame(null, title, 
@@ -66,7 +64,7 @@ public class ActionPanel extends ManagerBase
 						return null;
 					}
 				}, 
-				false);
+				modality);
 	}
 	
 	protected void start(Object... params) {
@@ -79,21 +77,21 @@ public class ActionPanel extends ManagerBase
 	
 	public enum ActionType implements CustomActionType
 	{
-		CALENDAR	(0, "berichtsheft.action-CALENDAR"), 
-		PREVIOUS	(1, "berichtsheft.action-PREVIOUS"), 
-		NEXT		(2, "berichtsheft.action-NEXT"), 
-		DATABASE	(3, "berichtsheft.action-DATABASE"), 
-		DOCUMENT	(4, "berichtsheft.action-DOCUMENT"), 
-		ADD			(5, "berichtsheft.action-ADD"), 
-		UPDATE		(6, "berichtsheft.action-UPDATE"), 
-		DELETE		(7, "berichtsheft.action-DELETE"), 
-		SPELLCHECK	(8, "berichtsheft.action-SPELLCHECK"), 
-		PICK		(9, "berichtsheft.action-PICK"), 
-		DATE		(10, "berichtsheft.action-DATE"), 
-		CATEGORY	(11, "berichtsheft.action-CATEGORY"), 
-		IMPORT		(12, "berichtsheft.action-IMPORT"), 
-		TEXT		(13, "berichtsheft.action-TEXT"), 
-		ANDROID		(14, "berichtsheft.action-ANDROID"), 
+		CALENDAR	(0, "manager.action-CALENDAR"), 
+		PREVIOUS	(1, "manager.action-PREVIOUS"), 
+		NEXT		(2, "manager.action-NEXT"), 
+		DATABASE	(3, "manager.action-DATABASE"), 
+		DOCUMENT	(4, "manager.action-DOCUMENT"), 
+		ADD			(5, "manager.action-ADD"), 
+		UPDATE		(6, "manager.action-UPDATE"), 
+		DELETE		(7, "manager.action-DELETE"), 
+		SPELLCHECK	(8, "manager.action-SPELLCHECK"), 
+		PICK		(9, "manager.action-PICK"), 
+		DATE		(10, "manager.action-DATE"), 
+		CATEGORY	(11, "manager.action-CATEGORY"), 
+		IMPORT		(12, "manager.action-IMPORT"), 
+		TEXT		(13, "manager.action-TEXT"), 
+		ANDROID		(14, "manager.action-ANDROID"), 
 		ACTIONS		(15, "Actions"); 		//	needs to stay last !
 		
 		private final int index;   
@@ -193,18 +191,6 @@ public class ActionPanel extends ManagerBase
 	public String getText() {
 		return hasTextArea() ? this.textArea.getText() : null;
 	}
-    
-	boolean dirty = false;
-	
-	public boolean isDirty() {
-		return dirty;
-//		return hasTextArea() && textArea.isDirty();
-	}
-
-	public void setDirty(boolean dirty) {
-		this.dirty = dirty;
-//		if (hasTextArea()) textArea.setDirty(dirty);
-	}
 	
 	protected void setupTextArea() {
 		if (hasTextArea()) {
@@ -265,25 +251,25 @@ public class ActionPanel extends ManagerBase
 	}
 
 	@Override
-	protected Element select(String... params) {
+	protected Object select(Object... args) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	protected void updateItem(boolean update, Object... params) {
+	protected void updateItem(boolean update, Object... args) {
 		// TODO Auto-generated method stub
 		
 	}
 
 	@Override
-	protected boolean addItem(boolean refresh, String item) {
+	protected boolean addItem(boolean refresh, Object item) {
 		// TODO Auto-generated method stub
 		return false;
 	}
 
 	@Override
-	protected boolean removeItem(String item) {
+	protected boolean removeItem(Object item) {
 		// TODO Auto-generated method stub
 		return false;
 	}

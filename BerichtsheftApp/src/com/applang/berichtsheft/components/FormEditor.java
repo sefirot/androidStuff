@@ -63,6 +63,8 @@ import javax.swing.text.html.Option;
 import static com.applang.SwingUtil.*;
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
+
+import com.applang.SwingUtil.Behavior;
 import com.applang.berichtsheft.BerichtsheftApp;
 
 public class FormEditor extends JSplitPane
@@ -154,7 +156,7 @@ public class FormEditor extends JSplitPane
 											return null;
 										}
 									}, 
-									deadline);
+									deadline ? Behavior.TIMEOUT : 0);
 							
 							if (deadline) {
 								if (isAvailable(1, params)) {
@@ -597,8 +599,7 @@ public class FormEditor extends JSplitPane
 											field.setName(factors[i]);
 											field.setPreferredSize(fieldSize);
 											field.setHorizontalAlignment(JTextField.CENTER);
-											JLabel label = new JLabel(
-													factors[i]);
+											JLabel label = new JLabel(factors[i]);
 											label.setLabelFor(field);
 											label.setPreferredSize(fieldSize);
 											label.setHorizontalAlignment(SwingConstants.CENTER);
@@ -655,7 +656,7 @@ public class FormEditor extends JSplitPane
 									return null;
 								}
 		        			}, 
-		        			Modality.NONE);
+		        			Behavior.NONE);
 		        	}
 		        }, "scale", "change scale factors of the mask"}
         ));

@@ -6,7 +6,7 @@ import static com.applang.VelocityUtil.*;
 
 import com.applang.UserContext;
 import com.applang.Util;
-import com.applang.SwingUtil.Modality;
+import com.applang.SwingUtil.Behavior;
 import com.applang.Util.Function;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 
@@ -58,18 +58,22 @@ public class ASTViewer extends ActionPanel
 				null,
 				title);
 		
-		ActionPanel.createAndShowGUI(title, new Dimension(700, 200), viewer, textEditor.getUIComponent());
+		ActionPanel.createAndShowGUI(title, 
+				new Dimension(700, 200), 
+				viewer, 
+				textEditor.getUIComponent(), 
+				0);
 	}
 
 	enum ActionType implements CustomActionType
 	{
-		DELETE		(0, "berichtsheft.action-DELETE"), 
-		INSERT		(1, "berichtsheft.action-INSERT"), 
-		MODIFY		(2, "berichtsheft.action-MODIFY"), 
+		DELETE		(0, "manager.action-DELETE"), 
+		INSERT		(1, "manager.action-INSERT"), 
+		MODIFY		(2, "manager.action-MODIFY"), 
 		SET			(3, "set"), 
 		FOREACH		(4, "foreach"), 
-		STRUCT		(7, "berichtsheft.action-STRUCT"), 
-		VMFILE		(8, "berichtsheft.action-VMFILE"), 
+		STRUCT		(7, "manager.action-STRUCT"), 
+		VMFILE		(8, "manager.action-VMFILE"), 
 		ACTIONS		(9, "Actions"); 		//	needs to stay last !
 		
 		private final int index;   
@@ -378,7 +382,7 @@ public class ASTViewer extends ActionPanel
 			int option = showOptionDialog(ASTViewer.this, 
 					new JScrollPane(table), 
 					title, 
-					Modality.MODAL + JOptionPane.DEFAULT_OPTION, 
+					Behavior.MODAL + JOptionPane.DEFAULT_OPTION, 
 					JOptionPane.PLAIN_MESSAGE, 
 					null, 
 					options, null, 

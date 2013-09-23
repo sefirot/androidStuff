@@ -8,7 +8,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Set;
 
-import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JToolBar;
 
@@ -22,7 +21,6 @@ import org.gjt.sp.jedit.msg.DynamicMenuChanged;
 import org.gjt.sp.util.Log;
 
 import com.applang.berichtsheft.components.ActionPanel;
-import com.applang.berichtsheft.components.NotePicker;
 
 import static com.applang.Util.*;
 
@@ -123,8 +121,10 @@ public class BerichtsheftToolBar extends JToolBar
 		}
 	}
 
+	public static String userCommandDirectory;
+
 	public static void scanCommandoActions() {
-		scanDirectory(BerichtsheftPlugin.userCommandDirectory);
+		scanDirectory(userCommandDirectory);
 		redoKeyboardBindings(commands);
 		jEdit.addActionSet(commands);
 		Log.log(Log.DEBUG, BerichtsheftToolBar.class, "Loaded " + commands.size() + " actions");

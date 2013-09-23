@@ -43,13 +43,15 @@ import org.gjt.sp.util.Log;
 
 import android.app.Activity;
 
-import com.applang.Util.Function;
+import com.applang.SwingUtil.PopupAdapter;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 import com.inet.jortho.PopupListener;
 import com.inet.jortho.SpellChecker;
 
 import static com.applang.SwingUtil.messRedirection;
+import static com.applang.SwingUtil.newPopupMenu;
 import static com.applang.Util.*;
+import static com.applang.Util2.*;
 
 public class TextEditor extends JTextArea implements TextComponent
 {
@@ -109,8 +111,7 @@ public class TextEditor extends JTextArea implements TextComponent
     protected RedoAction redoAction = new RedoAction();
     protected UndoManager undo = new UndoManager();
 
-    public void installSpellChecker() {
-        SpellChecker.register(this);
+	public void installUndoRedo() {
 		getDocument().addUndoableEditListener(new UndoableEditListener() {
 			public void undoableEditHappened(UndoableEditEvent e) {
 	            undo.addEdit(e.getEdit());
@@ -118,6 +119,7 @@ public class TextEditor extends JTextArea implements TextComponent
 	            redoAction.updateRedoState();
 			}
 		});
+		boolean menuInstalled = false;
         for(MouseListener listener : getMouseListeners()){
             if (listener instanceof PopupListener) {
 				try {
@@ -127,11 +129,23 @@ public class TextEditor extends JTextArea implements TextComponent
 			        menu.insert(undoAction, 0);
 			        menu.insert(redoAction, 1);
 			        menu.insert(new JPopupMenu.Separator(), 2);
+			        menuInstalled = true;
 				} catch (Exception e) {
 					Log.log(Log.ERROR, TextEditor.class, e);
 				}
             }
         }
+        if (!menuInstalled) {
+			JPopupMenu menu = (JPopupMenu) new JPopupMenu();
+	        menu.insert(undoAction, 0);
+	        menu.insert(redoAction, 1);
+        	addMouseListener(new PopupAdapter(menu));
+        }
+	}
+
+    public void installSpellChecker() {
+        SpellChecker.register(this);
+		installUndoRedo();
     }
 
     public void uninstallSpellChecker() {
@@ -195,13 +209,12 @@ public class TextEditor extends JTextArea implements TextComponent
 	}
 
 	public TextEditor createBufferTextArea(String modeName, String modeFileName) {
-//		Log.init(true,Log.DEBUG);
-//		org.gjt.sp.jedit.Debug.TOKEN_MARKER_DEBUG = true;
-//		org.gjt.sp.jedit.Debug.CHUNK_CACHE_DEBUG = true;
 		final Properties props = new Properties();
-		props.putAll(
-				BerichtsheftPlugin.loadProperties(
-						BerichtsheftPlugin.getSettingsDirectory() + "/keymaps/imported_keys.props"));
+		String keymapDirName = pathCombine(BerichtsheftPlugin.getSettingsDirectory(), "keymaps");
+		String keymapFileName = pathCombine(keymapDirName, "imported_keys.props");
+		if (!fileExists(keymapFileName))
+			keymapFileName = pathCombine(keymapDirName, "jedit_keys.props");
+		props.putAll(BerichtsheftPlugin.loadProperties(keymapFileName));
 		props.putAll(BerichtsheftPlugin.loadProperties("/org/gjt/sp/jedit/jedit.props"));
 		props.setProperty("buffer.folding", "explicit");
 		props.setProperty("buffer.tabSize", "4");

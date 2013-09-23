@@ -30,7 +30,6 @@ import org.gjt.sp.jedit.gui.DefaultFocusComponent;
 import org.gjt.sp.jedit.gui.DockableWindowManager;
 import org.gjt.sp.jedit.msg.PropertiesChanged;
 import org.gjt.sp.util.Log;
-import org.w3c.dom.Element;
 
 import static com.applang.Util.*;
 import static com.applang.Util1.*;
@@ -164,7 +163,10 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 			table.setFont(newFont);
 		}
 		
-		dataView.reload();
+		if (dataView.getUri() == null)
+			dataView.load();
+		else
+			dataView.reload();
 		
 		toolPanel.propertiesChanged();
 	}
@@ -182,7 +184,6 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 	public void removeNotify() {
 		super.removeNotify();
 		EditBus.removeFromBus(this);
-		ProfileManager.saveTransports();
 	}
     
 	// Actions implementation
@@ -214,7 +215,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 	public void transportToBuffer() {
 		JTable table = dataView.getTable();
 		if (hasNoSelection(table)) {
-			BerichtsheftPlugin.consoleMessage("berichtsheft.transport-to-buffer.message");
+			BerichtsheftPlugin.consoleMessage("datadock.transport-to-buffer.message");
 			return; 
 		}
 		ValList columns = DataView.getSelectedColumnNames(table);
@@ -224,42 +225,20 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 		if (!isAvailable(0, columns))
 			return;
 		final String text = builder.wrapRecords(table);
-		showItems(view, "berichtsheft.transport-to-buffer.label", "", 
+		showItems(view, "datadock.transport-to-buffer.label", 
+				BerichtsheftPlugin.getProperty("datadock.transport-to-buffer.message.1"), 
 				text, 
 				JOptionPane.OK_CANCEL_OPTION, 
-	    		Modality.NONE, 
+	    		Behavior.NONE, 
 	    		new Job<Void>() {
 					public void perform(Void t, Object[] params) throws Exception {
-						BerichtsheftPlugin.getTextEditor().setSelectedText(text);
+						BerichtsheftPlugin.getJEditor().setSelectedText(text);
 					}
 				});
 	}
 	
 	public static class TransportBuilder
 	{
-		public ValMap getProfile(Object...params) {
-			ValMap map = vmap();
-			String profile = BerichtsheftPlugin.getProperty("TRANSPORT_PROFILE");
-			profile = com.applang.Util.paramString(profile, 0, params);
-			String oper = BerichtsheftPlugin.getProperty("TRANSPORT_OPER");
-			oper = com.applang.Util.paramString(oper, 1, params);
-			if (notNullOrEmpty(profile) && ProfileManager.transportsLoaded()) {
-				String xpath = "/TRANSPORTS/PROFILE[@name='" + profile + "' and @oper='" + oper + "']";
-				Element element = selectElement(ProfileManager.transports, xpath);
-				if (element != null) {
-					map.put("name", profile);
-					map.put("oper", oper);
-					map.put("schema", element.getAttribute("schema"));
-					map.put("recordSeparator", element.getAttribute("recordSeparator"));
-					map.put("recordDecoration", element.getAttribute("recordDecoration"));
-					Element el = selectElement(element, "./TEMPLATE");
-					if (el != null)
-						map.put("template", el.getTextContent());
-				}
-			}
-			return map;
-		}
-		
 		static String CLIPPER = "`";
 		public static Pattern TEMPLATE_PATTERN = clippingPattern(CLIPPER, CLIPPER);
 		
@@ -267,7 +246,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 			MatchResult[] mr = notNullOrEmpty(template) ? 
 					findAllIn(template, TEMPLATE_PATTERN) : null;
 			if (nullOrEmpty(mr)) {
-				BerichtsheftPlugin.consoleMessage("berichtsheft.template-evaluation.message.1");
+				BerichtsheftPlugin.consoleMessage("datadock.template-evaluation.message.1");
 				return null;
 			}
 			getTemplateOptions(profile, 0);
@@ -277,7 +256,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 			for (int i = 0; i < mr.length; i++) {
 				MatchResult m = mr[i];
 				if (pos != m.start()) {
-					BerichtsheftPlugin.consoleMessage("berichtsheft.template-evaluation.message.2");
+					BerichtsheftPlugin.consoleMessage("datadock.template-evaluation.message.2");
 					return null;
 				}
 				String s = m.group(1);
@@ -291,7 +270,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 				pos = m.end();
 			}
 			if (pos != template.length()) {
-				BerichtsheftPlugin.consoleMessage("berichtsheft.template-evaluation.message.2");
+				BerichtsheftPlugin.consoleMessage("datadock.template-evaluation.message.2");
 				return null;
 			}
 			fieldSeparators = list.toArray(strings());
@@ -338,7 +317,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 					continue;
 				}
 				if (names != null && !names.contains(field)) {
-					BerichtsheftPlugin.consoleMessage("berichtsheft.transport-check.message", field, tableName);
+					BerichtsheftPlugin.consoleMessage("datadock.transport-check.message", field, tableName);
 					return null;
 				}
 				projection.add(field, func);
@@ -423,7 +402,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 					if (!scanner.hasNext()) {
 						MatchResult mr = findFirstIn(record, Pattern.compile(Pattern.quote(recordDecoration[1])));
 						if (mr == null) {
-							BerichtsheftPlugin.consoleMessage("berichtsheft.scan.message.1");
+							BerichtsheftPlugin.consoleMessage("datadock.scan.message.1");
 							return null;
 						}
 						record = record.substring(0, mr.start());
@@ -437,7 +416,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 			} 
 			catch (NoSuchElementException e) {
 				String msg = delimiter == null ? 
-						"berichtsheft.scan.message.2" : "berichtsheft.scan.message.3";
+						"datadock.scan.message.2" : "datadock.scan.message.3";
 				BerichtsheftPlugin.consoleMessage(msg);
 				return null;
 			}
@@ -450,7 +429,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 		private ValList splitRecord(String record, Object[] fieldNames, int no) {
 			MatchResult mr = findFirstIn(record, fieldSeparatorPatterns[0]);
 			if (mr == null) {
-				BerichtsheftPlugin.consoleMessage("berichtsheft.split.message.1", no);
+				BerichtsheftPlugin.consoleMessage("datadock.split.message.1", no);
 				return null;
 			}
 			ValList values = vlist();
@@ -459,7 +438,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 				Pattern pattern = fieldSeparatorPatterns[i + 1];
 				mr = findFirstIn(record, pattern);
 				if (mr == null) {
-					BerichtsheftPlugin.consoleMessage("berichtsheft.split.message.2", no, fieldNames[i]);
+					BerichtsheftPlugin.consoleMessage("datadock.split.message.2", no, fieldNames[i]);
 					return null;
 				}
 				String field = record.substring(0, mr.start());
@@ -498,7 +477,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 			}
 			message = new JScrollPane(table);
 		}
-		return new JEditDialog(view, 
+		return new JEditOptionDialog(view, 
 				BerichtsheftPlugin.getProperty(titleProperty), 
 				caption, 
 				message, 
@@ -513,12 +492,12 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 		DataDockable dockable = 
 				(DataDockable) view.getDockableWindowManager().getDockableWindow("datadock");
 		if (dockable == null) {
-			BerichtsheftPlugin.consoleMessage("berichtsheft.dockable-required.message");
+			BerichtsheftPlugin.consoleMessage("datadock.dockable-required.message");
 			return false;
 		}
 		final String uriString = BerichtsheftPlugin.getProperty("TRANSPORT_URI");
 		if (nullOrEmpty(uriString)) {
-			BerichtsheftPlugin.consoleMessage("berichtsheft.transport-uri.message");
+			BerichtsheftPlugin.consoleMessage("datadock.transport-uri.message");
 			return false;
 		}
 		final DataView.ProviderModel provider = new DataView.ProviderModel(uriString);
@@ -528,7 +507,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 				dockable.dataView.wire(true);
 			final TransportBuilder builder = new TransportBuilder();
 			if ("push".equals(oper)) {
-				ValMap profile = builder.getProfile();
+				ValMap profile = ProfileManager.getProfileAsMap();
 				String template = stringValueOf(profile.get("template"));
 				ValList list = builder.evaluateTemplate(template, profile);
 				retval = isAvailable(0, list);
@@ -545,34 +524,29 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 					Job<Void> pushThis = new Job<Void>() {
 						public void perform(Void t, Object[] params) throws Exception {
 							String text = builder.wrapRecords(table);
-							BerichtsheftPlugin.getTextEditor().setSelectedText(text);
+							BerichtsheftPlugin.getJEditor().setSelectedText(text);
 						}
 					};
 					if (showData) {
-						showItems(view, "berichtsheft.transport-to-buffer.label", 
+						showItems(view, "datadock.transport-to-buffer.label", 
 								String.format("%d record(s)", model.getRowCount()),
 								table, 
 								JOptionPane.OK_CANCEL_OPTION, 
-					    		Modality.NONE, 
+					    		Behavior.NONE, 
 					    		pushThis, -1);
 					} 
 					else
-						try {
-							pushThis.perform(null, null);
-						} 
-						catch (Exception e) {
-							Log.log(Log.ERROR, DataDockable.class, e.getMessage());
-						}
+						pushThis.perform(null, null);
 				}
 				dockable = null;
 			}
 			else if ("pull".equals(oper)) {
-				String text = BerichtsheftPlugin.getTextEditor().getSelectedText();
+				String text = BerichtsheftPlugin.getJEditor().getSelectedText();
 				if (nullOrEmpty(text)) {
 					BerichtsheftPlugin.consoleMessage("berichtsheft.no-text-selection.message");
 					return false; 
 				}
-				ValMap profile = builder.getProfile();
+				ValMap profile = ProfileManager.getProfileAsMap();
 				String template = stringValueOf(profile.get("template"));
 				ValList list = builder.evaluateTemplate(template, profile);
 				retval = isAvailable(0, list);
@@ -584,35 +558,55 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 						return false;
 					DataView.ConsumerModel model = builder.scan(new StringReader(text), projection);
 					if (null == model) {
-						BerichtsheftPlugin.consoleMessage("berichtsheft.transport-fail.message", oper, "no data");
+						BerichtsheftPlugin.consoleMessage("datadock.transport-fail.message", oper, "no data");
 						return false;
 					}
 					JTable table = model.makeTable();
 					if (showData) {
 						retval = JOptionPane.OK_OPTION == showItems(view,
-								"berichtsheft.transport-from-buffer.label",
+								"datadock.transport-from-buffer.label",
 								String.format("%d record(s)", model.getRowCount()),
 								table, 
 								JOptionPane.OK_CANCEL_OPTION,
-								Modality.MODAL,
+								Behavior.MODAL,
 								null, -1);
 					}
 					if (retval) {
 						int[] results = provider.pickRecords(view, table, uriString, profile);
 						retval = results != null;
 						if (retval)
-							BerichtsheftPlugin.consoleMessage("berichtsheft.updateOrInsert.message", 
+							BerichtsheftPlugin.consoleMessage("dataview.updateOrInsert.message", 
 									results[0], results[1]);
 					} 
 				}
 			}
+			else if ("download".equals(oper)) {
+				ValMap profile = ProfileManager.getProfileAsMap();
+				String url = stringValueOf(profile.get("url"));
+				final String text = readFromUrl(url, "UTF-8");
+				Job<Void> pushThis = new Job<Void>() {
+					public void perform(Void t, Object[] params) throws Exception {
+						BerichtsheftPlugin.getJEditor().setSelectedText(text);
+					}
+				};
+		   	    if (showData) {
+					showItems(view, "datadock.download-to-buffer.label", 
+							BerichtsheftPlugin.getProperty("datadock.transport-to-buffer.message.1"), 
+							text, 
+							JOptionPane.OK_CANCEL_OPTION, 
+				    		Behavior.NONE, 
+				    		pushThis);
+				}
+				else
+					pushThis.perform(null, null);
+		   	}
 			else if ("weather".equals(oper)) {
 				final int[] results = new int[]{0,0,0};
 				WeatherManager wm = new WeatherManager() {
 					@Override
 					public Object updateOrInsert(String location, long time, ValMap values) {
 						Object[] names = provider.info.getList("name").toArray();
-						ValMap profile = builder.getProfile("weather", "download");
+						ValMap profile = ProfileManager.getProfileAsMap("_weather", "download");
 						ValList conversions = vlist();
 						ValMap map = ScriptManager.getDefaultConversions(profile.get("schema"), provider.tableName);
 						for (int i = 0; i < names.length; i++) {
@@ -651,9 +645,9 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 					}
 				};
 				wm.parseSite(wm.location, DatePicker.Period.loadParts());
-				wm.evaluate(paramBoolean(false, 0, params));
+				wm.evaluate(showData);
 				if (results[0] > 0 || results[1] > 0)
-					BerichtsheftPlugin.consoleMessage("berichtsheft.updateOrInsert.message", 
+					BerichtsheftPlugin.consoleMessage("dataview.updateOrInsert.message", 
 							results[0], results[1]);
 			}
 			else if ("odt".equals(oper)) {
@@ -672,6 +666,8 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 				else
 					BerichtsheftPlugin.consoleMessage("berichtsheft.export-document.message", "");
 			}
+		} catch (Exception e) {
+			Log.log(Log.ERROR, DataDockable.class, e);
 		}
 		finally {
 			if (dockable != null)

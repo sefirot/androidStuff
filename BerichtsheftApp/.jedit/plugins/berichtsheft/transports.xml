@@ -30,7 +30,7 @@ String.format("created between %d and %d and title = '%s'", new Object[]{interva
 		</FUNCTION>
 	<CONVERSIONS><![CDATA[{"bausteine":{"created":"unixepoch","modified":"unixepoch"}}]]></CONVERSIONS></SCHEMA>
 	<SCHEMA name="com.applang.provider.WeatherInfo">
-		<FUNCTION name="updateOrInsert-clause" profile="weather">
+		<FUNCTION name="updateOrInsert-clause" profile="_weather">
 <BODY><![CDATA[import com.applang.*;
 long created = values.getAsLong("created");
 long[] interval = Util.dayInterval(created, 1);
@@ -61,11 +61,12 @@ String.format("created between %d and %d and location = '%s'", new Object[]{inte
 `description`	`precipitation`
 `maxtemp`	`mintemp`
 `created|unixepoch`	`modified`]]></TEMPLATE></PROFILE>
-	<PROFILE name="weather" oper="download" schema="com.applang.provider.WeatherInfo">
+	<PROFILE name="_weather" oper="download" schema="com.applang.provider.WeatherInfo">
 		
-	</PROFILE>
+	<URL><![CDATA[
+]]></URL></PROFILE>
 	<FUNCTION name="test"><BODY><![CDATA[import com.applang.*;
 push = "push".equals(oper);
 if (value == void)
 	return push ? "" : null;
-]]></BODY></FUNCTION></TRANSPORTS>
+]]></BODY></FUNCTION><PROFILE name="wetter" oper="download" recordDecoration="none" recordSeparator="newline" schema="com.applang.provider.WeatherInfo"><URL><![CDATA[http://openweathermap.org/city/2931361]]></URL></PROFILE><PROFILE name="wetter 4885" oper="download" recordDecoration="none" recordSeparator="newline" schema="com.applang.provider.WeatherInfo"><URL><![CDATA[http://openweathermap.org/station/4886]]></URL></PROFILE></TRANSPORTS>
