@@ -87,7 +87,8 @@ public class BerichtsheftOptionPane extends AbstractOptionPane implements Action
 						String dirName = sdk.getText();
 						String[] paths = underTest ? 
 								chooseDirectoryNames(null, "", dirName) : 
-								GUIUtilities.showVFSFileDialog(null, dirName, JFileChooser.DIRECTORIES_ONLY, false);
+								GUIUtilities.showVFSFileDialog(null, dirName, 
+										org.gjt.sp.jedit.browser.VFSBrowser.CHOOSE_DIRECTORY_DIALOG, false);
 						if (isAvailable(0, paths)) {
 							sdk.setText(paths[0]);
 							Properties prps = new Properties();
