@@ -32,6 +32,7 @@ import com.applang.Util.ValList;
 import com.applang.Util.ValMap;
 import com.applang.Util2.Settings;
 import com.applang.Util1;
+import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.components.DatePicker;
 import com.applang.berichtsheft.components.WeatherManager;
 
@@ -56,7 +57,7 @@ public class WeatherInfoTests extends TestCase
 	}
 	
 	public void testPeriod() throws Exception {
-		Settings.load();
+		BerichtsheftApp.loadSettings();
 		assertTrue(DatePicker.Period.pick());
 		println(getSetting("weather.period", ""));
 		println(DatePicker.Period.getDescription());

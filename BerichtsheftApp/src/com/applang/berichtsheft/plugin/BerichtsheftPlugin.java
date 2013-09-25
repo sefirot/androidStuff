@@ -56,8 +56,6 @@ import org.gjt.sp.jedit.msg.ViewUpdate;
 import org.gjt.sp.util.IOUtilities;
 import org.gjt.sp.util.Log;
 
-import com.applang.SwingUtil.Behavior;
-import com.applang.Util.Job;
 import com.applang.berichtsheft.components.TextEditor;
 import com.inet.jortho.FileUserDictionary;
 import com.inet.jortho.SpellChecker;
@@ -196,7 +194,7 @@ public class BerichtsheftPlugin extends EditPlugin {
 				component, 
 				JOptionPane.OK_CANCEL_OPTION,
 				Behavior.MODAL, 
-				getProperty("berichtsheft.spellcheck-selection.icon"), 
+				getProperty("manager.action-SPELLCHECK.icon"), 
 				takeThis);
 		textEditor.uninstallSpellChecker();
 	}
@@ -619,14 +617,21 @@ public class BerichtsheftPlugin extends EditPlugin {
 
 	// NOTE used in scripts
 	public static ImageIcon loadIcon(String path) {
-		if (path.startsWith("/"))
-			return iconFrom(path);
-		else if (underTest) {
-			path = pathCombine(System.getProperty("user.home"), "work/jEdit/jEdit/org/gjt/sp/jedit/icons/themes/tango", path);
-			return new ImageIcon(path);
+		try {
+			if (path.startsWith("/"))
+				return iconFrom(path);
+			else if (underTest) {
+				path = pathCombine(System.getProperty("user.home"), 
+						"work/jEdit/jEdit/org/gjt/sp/jedit/icons/themes/tango", path);
+				return new ImageIcon(path);
+			}
+			else
+				return (ImageIcon) GUIUtilities.loadIcon(path);
+		} catch (Exception e) {
+			path = "/org/gjt/sp/jedit/icons/themes/tango/22x22/emblems/emblem-unreadable.png";
+			URL url = BerichtsheftPlugin.class.getResource(path);
+			return  new ImageIcon(url);
 		}
-		else
-			return (ImageIcon) GUIUtilities.loadIcon(path);
 	}
 
 	public static AbstractButton makeCustomButton(CustomAction customAction, boolean flip) {

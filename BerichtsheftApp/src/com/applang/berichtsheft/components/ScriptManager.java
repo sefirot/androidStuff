@@ -46,6 +46,7 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import com.applang.SwingUtil.Behavior;
+import com.applang.Util.Job;
 import com.applang.Util.ValMap;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
@@ -158,8 +159,12 @@ public class ScriptManager extends ManagerBase<Element>
 	    		title, 
 	    		new UIFunction() {
 					public Component[] apply(Component comp, Object[] parms) {
-						JDialog wnd = (JDialog) comp;
-						createUI(view, wnd.getContentPane());
+						final JDialog wnd = (JDialog) comp;
+						blockChange(new Job<Void>() {
+							public void perform(Void t, Object[] params) throws Exception {
+								createUI(view, wnd.getContentPane());
+							}
+						});
 						return null;
 					}
 	    		},
@@ -260,15 +265,19 @@ public class ScriptManager extends ManagerBase<Element>
 		String function = param(getFunction(), 0, params);
 		if (ProfileManager.transportsLoaded()) {
 			if (refresh) {
-				DefaultComboBoxModel model = (DefaultComboBoxModel) comboBoxes[0].getModel();
-				model.removeAllElements();
-				NodeList nodes = evaluateXPath(
-						ProfileManager.transports, selector + "/FUNCTION");
-				for (int i = 0; i < nodes.getLength(); i++) {
-					Element element = (Element) nodes.item(i);
-					model.addElement(element.getAttribute("name"));
-				}
-				comboBoxes[0].setModel(model);
+				blockChange(new Job<Void>() {
+					public void perform(Void t, Object[] params) throws Exception {
+						DefaultComboBoxModel model = (DefaultComboBoxModel) comboBoxes[0].getModel();
+						model.removeAllElements();
+						NodeList nodes = evaluateXPath(
+								ProfileManager.transports, selector + "/FUNCTION");
+						for (int i = 0; i < nodes.getLength(); i++) {
+							Element element = (Element) nodes.item(i);
+							model.addElement(element.getAttribute("name"));
+						}
+						comboBoxes[0].setModel(model);
+					}
+				});
 			}
 			if (save)
 				ProfileManager.saveTransports();
@@ -287,18 +296,23 @@ public class ScriptManager extends ManagerBase<Element>
 	}
 
 	// NOTE used in scripts
-	public void setFunction(String function) {
-		comboBoxes[0].getModel().setSelectedItem(function);
-		String body = "";
-		Element element = select(function);
-		if (element != null) {
-			NodeList nodes = evaluateXPath(element, "./BODY/text()");
-			if (nodes != null && nodes.getLength() > 0) {
-				Node node = nodes.item(0);
-				body = node.getTextContent();
+	public void setFunction(final String function) {
+		blockChange(new Job<Void>() {
+			public void perform(Void t, Object[] params) throws Exception {
+				comboBoxes[0].getModel().setSelectedItem(function);
+				String body = "";
+				Element element = select(function);
+				if (element != null) {
+					NodeList nodes = evaluateXPath(element, "./BODY/text()");
+					if (nodes != null && nodes.getLength() > 0) {
+						Node node = nodes.item(0);
+						body = node.getTextContent();
+					}
+				}
+				textArea.setText(body);
 			}
-		}
-		updateText(textArea, body);
+		});
+		setDirty(false);
 	}
 	
 	private void createUI(final View view, final Container container) {

@@ -115,7 +115,6 @@ public class DataView extends JPanel implements DataComponent
 	
 	private DataTable table;
 	private JComboBox sqlBox;
-	private JLabel mess;
 
 	public void createUI() {
 		setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
@@ -165,9 +164,7 @@ public class DataView extends JPanel implements DataComponent
 		add(sqlBox, BorderLayout.NORTH);
 		setMaximumDimension(sqlBox, 100);
 		add(new JScrollPane(table), BorderLayout.CENTER);
-		mess = new JLabel();
-		mess.setHorizontalAlignment(JTextField.CENTER);
-		add(mess, BorderLayout.SOUTH);
+		southStatusBar(this);
 	}
 	
 	public JTable getTable() {
@@ -289,7 +286,7 @@ public class DataView extends JPanel implements DataComponent
 			msg = e.getMessage();
 			retval = false;
 		}
-		mess.setText(msg);
+		message(msg);
 		if (sqlBox.isEnabled())
 			comboEdit(sqlBox).setText(contentResolver.contentProvider.sql);
 		else

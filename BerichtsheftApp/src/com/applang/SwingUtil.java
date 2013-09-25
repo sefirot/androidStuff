@@ -1,6 +1,7 @@
 package com.applang;
 
 import java.awt.AWTEvent;
+import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Cursor;
@@ -84,6 +85,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.JToolBar;
 import javax.swing.KeyStroke;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
@@ -648,6 +650,8 @@ public class SwingUtil
 	    							if (optionHandler != null)
 	    								visibility = optionHandler.apply(ev, options, message);
 	    							dialog.setVisible(visibility);
+	    							if (!visibility && Behavior.hasFlags(optionType, Behavior.EXIT_ON_CLOSE))
+	    								System.exit(0);
     							}
     						};
     					}
@@ -1052,6 +1056,14 @@ public class SwingUtil
 	public static Container container = null;
 	public static boolean underTest = false;
 	public static Function<String> messRedirection = null;
+	
+	public static void southStatusBar(Container container) {
+		JToolBar bottom = new JToolBar();
+		bottom.setName("bottom");
+		bottom.setFloatable(false);
+		messageBox(bottom);
+		container.add(bottom, BorderLayout.SOUTH);
+	}
 
 	public static JLabel messageBox(Container container) {
 		JLabel label = new JLabel("");
@@ -1093,8 +1105,12 @@ public class SwingUtil
 	}
 
 	public static void handleException(Exception e) {
-		if (e != null) 
-        	message(e.getMessage());
+		if (e != null) {
+			String message = e.getMessage();
+			if (nullOrEmpty(message))
+				message = String.valueOf(e);
+			message(message);
+		}
 	}
 	
 	public interface CustomActionType 
@@ -1137,9 +1153,7 @@ public class SwingUtil
     	
     	public static void blocked(Job<Void> job, Object[] params) throws Exception {
     		actionBlocked = true;
-    		
     		job.perform(null, params);
-    		
     		actionBlocked = false;
     	}
     	

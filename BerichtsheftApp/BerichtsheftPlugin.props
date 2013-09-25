@@ -28,6 +28,7 @@ plugin.com.applang.berichtsheft.plugin.BerichtsheftPlugin.description=This plugi
 
 # plugin menu
 plugin.com.applang.berichtsheft.plugin.BerichtsheftPlugin.menu=datadock \
+	notedock \
 	- \
 	datadock.choose-uri \
 	datadock.update-uri \
@@ -37,6 +38,7 @@ plugin.com.applang.berichtsheft.plugin.BerichtsheftPlugin.menu=datadock \
 
 # action labels for actions supplied by dockables.xml
 datadock.label=Data
+notedock.label=Notes
 
 # action messages for actions supplied by dockables.xml and commando commands
 berichtsheft.no-text-selection.message=No selected text in current buffer available
@@ -51,9 +53,9 @@ datadock.transport-uri.message=No URI available
 berichtsheft.add.message.1='%s' updated
 berichtsheft.add.message.2='%s' NOT added
 berichtsheft.add.message.3='%s' added
-berichtsheft.remove.message.1=%s is unknown
-berichtsheft.remove.message.2=%s not found
-berichtsheft.remove.message.3=%s '%s' removed
+berichtsheft.remove.message.1='%s' is unknown
+berichtsheft.remove.message.2='%s' not found
+berichtsheft.remove.message.3='%s' removed
 berichtsheft.connect.message=connecting '%s'\n...
 berichtsheft.query.message=query on '%s' failed with projection '%s'
 dataview.updateOrInsert.message=%d record(s) inserted, %d updated
@@ -100,6 +102,7 @@ options.berichtsheft.record-decoration.title=Record decoration :
 
 # window title
 datadock.title=Data
+notedock.title=Note Picker
 datadock.weather.title=Wetter
 berichtsheft.shell.title=Berichtsheft
 berichtsheft.spellcheck-selection.title=Spellchecking text selection
@@ -117,17 +120,24 @@ berichtsheft.insert-enter.icon=/images/enter_22x22.png
 berichtsheft.insert-field.icon=/images/insert_22x22.png
 berichtsheft.insert-function.icon=/images/function_22x22.png
 berichtsheft.edit-function.icon=/images/function_22x22.png
-berichtsheft.update-text.icon=/images/update_22x22.png
-berichtsheft.erase-text.icon=/images/erase_22x22.png
 berichtsheft.export-document.icon=/images/export_22x22.png
 
-manager.action-CALENDAR.icon=/images/calendar_16x16.png
-manager.action-CALENDAR.label=pick date from calendar
-manager.action-PREVIOUS.icon=/images/Arrow Left_16x16.png
+berichtsheft.update-change.icon=/images/update_22x22.png
+berichtsheft.update-change.label=confirm changes
+berichtsheft.erase-change.icon=/images/erase_22x22.png
+berichtsheft.erase-change.label=dismiss changes
+
+manager.action-PREVIOUS.icon=/org/gjt/sp/jedit/icons/themes/tango/22x22/actions/go-previous.png
 manager.action-PREVIOUS.label=previous note(s)
-manager.action-NEXT.icon=/images/Arrow Right_16x16.png
+manager.action-NEXT.icon=/org/gjt/sp/jedit/icons/themes/tango/22x22/actions/go-next.png
 manager.action-NEXT.label=next note(s)
-manager.action-DATABASE.icon=/images/book_open_16x16.png
+manager.action-FIRST.icon=/org/gjt/sp/jedit/icons/themes/tango/22x22/actions/go-first.png
+manager.action-FIRST.label=frst note(s)
+manager.action-LAST.icon=/org/gjt/sp/jedit/icons/themes/tango/22x22/actions/go-last.png
+manager.action-LAST.label=last note(s)
+manager.action-CALENDAR.icon=/images/calendar_22x22.png
+manager.action-CALENDAR.label=pick date from calendar
+manager.action-DATABASE.icon=/images/book_open_22x22.png
 manager.action-DATABASE.label=choose database
 manager.action-DOCUMENT.icon=/images/export_16x16.png
 manager.action-DOCUMENT.label=export document
@@ -171,8 +181,6 @@ berichtsheft.insert-enter.label=insert 'new line' character into template at cur
 berichtsheft.insert-field.label=insert name of column into template at current position
 berichtsheft.insert-function.label=insert name of a conversion function at current position
 berichtsheft.edit-function.label=edit functions connected to the schema
-berichtsheft.update-text.label=confirm changes of the text
-berichtsheft.erase-text.label=dismiss changes of the text
 berichtsheft.export-document.label=export to ODT document
 berichtsheft.transport-push.label=push (db to buffer)
 berichtsheft.transport-pull.label=pull (buffer to db)

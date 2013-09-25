@@ -75,10 +75,6 @@ import com.applang.BaseDirective;
 import com.applang.Dialogs;
 import com.applang.SwingUtil.Behavior;
 import com.applang.UserContext.EvaluationTask;
-import com.applang.Util.BidiMultiMap;
-import com.applang.Util.Function;
-import com.applang.Util.ValList;
-import com.applang.Util.ValMap;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.R;
 import com.applang.berichtsheft.components.DataView;
@@ -89,6 +85,7 @@ import com.applang.berichtsheft.components.TextEditor;
 import com.applang.berichtsheft.components.ProfileManager;
 import com.applang.berichtsheft.components.WeatherManager;
 import com.applang.berichtsheft.plugin.DataDockable;
+import com.applang.berichtsheft.plugin.JEditOptionDialog;
 import com.applang.berichtsheft.plugin.DataDockable.TransportBuilder;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 import com.applang.provider.NotePadProvider;
@@ -1018,6 +1015,17 @@ public class HelperTests extends TestCase {
 		result = BerichtsheftApp.prompt(type, result, prompt, toStrings(values));
 		println(String.valueOf(result));
 		testPrompts();
+	}
+	
+	public void testJEditOptionDialog() {
+		new JEditOptionDialog(null, 
+				BerichtsheftPlugin.getProperty("berichtsheft.spellcheck-selection.title"), 
+				"", 
+				"Hello", 
+				JOptionPane.OK_CANCEL_OPTION,
+				Behavior.MODAL, 
+				BerichtsheftPlugin.getProperty("manager.action-SPELLCHECK.icon"), 
+				null);
 	}
 	
 	public void testJOrtho() {

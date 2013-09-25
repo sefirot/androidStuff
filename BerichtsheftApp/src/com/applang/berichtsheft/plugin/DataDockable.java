@@ -517,7 +517,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 							provider.tableName);
 					if (projection == null)
 						return false;
-					DataView.ConsumerModel model = provider.query(uriString, projection);
+					DataView.ConsumerModel model = provider.query(uriString, projection, profile.get("filter"));
 					if (model == null)
 						return false;
 					final JTable table = model.makeTable();

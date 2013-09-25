@@ -15,6 +15,7 @@ import javax.swing.BoxLayout;
 import javax.swing.JFrame;
 import javax.swing.JToolBar;
 
+import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 
 import static com.applang.Util.*;
@@ -33,22 +34,15 @@ public class ActionPanel extends ManagerBase<Object>
 		showFrame(null, title, 
 				new UIFunction() {
 					public Component[] apply(Component comp, Object[] parms) {
-						JToolBar top = new JToolBar();
-						top.setName("top");
-						JToolBar bottom = new JToolBar();
-						bottom.setName("bottom");
-						bottom.setFloatable(false);
-						messageBox(bottom);
-						
 						JFrame frame = (JFrame) comp;
 						Container contentPane = frame.getContentPane();
 						if (preferred != null)
 							contentPane.setPreferredSize(preferred);
-						
+						JToolBar top = new JToolBar();
+						top.setName("top");
+						southStatusBar(contentPane);
 						actionPanel.joinContainer(top);
-						contentPane.add(top, BorderLayout.PAGE_START);
-						contentPane.add(bottom, BorderLayout.PAGE_END);
-						
+						contentPane.add(top, BorderLayout.NORTH);
 						contentPane.add(target, BorderLayout.CENTER);
 						return null;
 					}
@@ -68,7 +62,7 @@ public class ActionPanel extends ManagerBase<Object>
 	}
 	
 	protected void start(Object... params) {
-		Settings.load();
+		BerichtsheftApp.loadSettings();
 	}
 	
 	public void finish(Object... params) {
@@ -82,9 +76,9 @@ public class ActionPanel extends ManagerBase<Object>
 		NEXT		(2, "manager.action-NEXT"), 
 		DATABASE	(3, "manager.action-DATABASE"), 
 		DOCUMENT	(4, "manager.action-DOCUMENT"), 
-		ADD			(5, "manager.action-ADD"), 
+		FIRST		(5, "manager.action-FIRST"), 
 		UPDATE		(6, "manager.action-UPDATE"), 
-		DELETE		(7, "manager.action-DELETE"), 
+		LAST		(7, "manager.action-LAST"), 
 		SPELLCHECK	(8, "manager.action-SPELLCHECK"), 
 		PICK		(9, "manager.action-PICK"), 
 		DATE		(10, "manager.action-DATE"), 

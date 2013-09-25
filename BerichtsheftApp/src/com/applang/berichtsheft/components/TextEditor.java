@@ -48,10 +48,9 @@ import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 import com.inet.jortho.PopupListener;
 import com.inet.jortho.SpellChecker;
 
-import static com.applang.SwingUtil.messRedirection;
-import static com.applang.SwingUtil.newPopupMenu;
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
+import static com.applang.SwingUtil.*;
 
 public class TextEditor extends JTextArea implements TextComponent
 {
@@ -109,7 +108,7 @@ public class TextEditor extends JTextArea implements TextComponent
 	
     protected UndoAction undoAction = new UndoAction();
     protected RedoAction redoAction = new RedoAction();
-    protected UndoManager undo = new UndoManager();
+    public UndoManager undo = new UndoManager();
 
 	public void installUndoRedo() {
 		getDocument().addUndoableEditListener(new UndoableEditListener() {

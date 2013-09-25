@@ -42,7 +42,7 @@ public class NotePicker extends ActionPanel
 		textEditor.installSpellChecker();
 //		textEditor.createTextArea("text", "/modes/text.xml");
         String title = "Berichtsheft database";
-		final NotePicker notePicker = new NotePicker(textEditor, 
+		NotePicker notePicker = new NotePicker(textEditor, 
 				null,
 				title, 1);
 		createAndShowGUI(title, 
@@ -57,7 +57,7 @@ public class NotePicker extends ActionPanel
 	@Override
 	protected void start(Object... params) {
 		super.start(params);
-		dbName = getSetting("database", "databases/*");
+		dbName = getSetting("database", "");
 	}
 	
 	@Override
@@ -119,12 +119,11 @@ public class NotePicker extends ActionPanel
 			}
 		});
 		addButton(container, ActionType.PICK.index(), new NoteAction(ActionType.PICK));
+		addButton(container, ActionType.FIRST.index(), new NoteAction(ActionType.FIRST));
 		addButton(container, ActionType.PREVIOUS.index(), new NoteAction(ActionType.PREVIOUS));
 		addButton(container, ActionType.NEXT.index(), new NoteAction(ActionType.NEXT));
+		addButton(container, ActionType.LAST.index(), new NoteAction(ActionType.LAST));
 //		addButton(container, ActionType.SPELLCHECK.index(), new NoteAction(ActionType.SPELLCHECK));
-//		addButton(container, ActionType.ADD.index(), new NoteAction(ActionType.ADD));
-//		addButton(container, ActionType.DELETE.index(), new NoteAction(ActionType.DELETE));
-//		addButton(container, ActionType.ACTIONS.index(), new NoteAction(ActionType.ACTIONS.resourceName()));
 //		
 //		attachDropdownMenu(buttons[ActionType.ACTIONS.index()], newPopupMenu(
 //		    	objects(ActionType.DOCUMENT.description(), documentActions[0]), 
@@ -148,14 +147,11 @@ public class NotePicker extends ActionPanel
 		@Override
         protected void action_Performed(ActionEvent ae) {
         	String dateString = getDate();
-        	String pattern = getPattern();
         	
         	switch ((ActionType)getType()) {
 			case DATABASE:
 				updateOnRequest(true);
-				File dbFile = DataView.chooseDb(null, false, dbName);
-				if (dbFile != null)
-					dbName = dbFile.getPath();
+				dbName = chooseDatabase(dbName);
 				break;
 			case CALENDAR:
 				dateString = pickDate(dateString);
@@ -174,15 +170,13 @@ public class NotePicker extends ActionPanel
 				updateOnRequest(true);
 				fillDocument(dateString);
 				break;
-			case ADD:
-				setAction(5, new NoteAction(ActionType.UPDATE));
+			case FIRST:
+				updateOnRequest(true);
+				setText(move(Direction.FIRST));
 				break;
-			case UPDATE:
-				updateOnRequest(false);
-				setAction(5, new NoteAction(ActionType.ADD));
-				break;
-			case DELETE:
-				deleteOnRequest(dateString, pattern);
+			case LAST:
+				updateOnRequest(true);
+				setText(move(Direction.LAST));
 				break;
 			case SPELLCHECK:
 				break;
@@ -215,8 +209,10 @@ public class NotePicker extends ActionPanel
 	
 	private void clear() {
 		refreshWith(null);
+		enableAction(ActionType.FIRST.index(), false);
 		enableAction(ActionType.PREVIOUS.index(), false);
 		enableAction(ActionType.NEXT.index(), false);
+		enableAction(ActionType.LAST.index(), false);
 //		enableAction(ActionType.ADD.index(), hasTextArea());
 //		enableAction(ActionType.DELETE.index(), false);
 //		enableAction(ActionType.ACTIONS.index(), true);
@@ -242,10 +238,10 @@ public class NotePicker extends ActionPanel
 	protected String chooseDatabase(String dbName) {
 		if (memoryDb)
 			handleMemoryDb(false);
-		
-		dbName = super.chooseDatabase(dbName);
+		File dbFile = DataView.chooseDb(null, false, dbName);
+		if (dbFile != null)
+			dbName = dbFile.getPath();
 		initialize(dbName);
-		
 		return dbName;
 	}
 	
@@ -254,7 +250,7 @@ public class NotePicker extends ActionPanel
 	private void handleMemoryDb(boolean restore) {
 		try {
 			if (restore) {
-				memoryDbName = "/tmp/memory.db";
+				memoryDbName = tempPath(BerichtsheftPlugin.NAME, "memory.db");
 				initialize(memoryDbName);
 			}
 			else if ("sqlite".equals(getScheme()) && memoryDbName.length() > 0) {
@@ -279,26 +275,9 @@ public class NotePicker extends ActionPanel
 
 	@Override
 	protected void updateOnRequest(boolean ask) {
-		String dateString = getDate();
-		if (!ask || isDirty() && JOptionPane.YES_OPTION == JOptionPane.showConfirmDialog(
-				NotePicker.this, String.format("update '%s' on '%s'", getCategory(), dateString), 
-				caption, 
-				JOptionPane.YES_NO_OPTION))
-		{
-			updateOrInsert(getPattern(), dateString);
-			
-			finder.keyLine(searchPattern);
-			pickNote(dateString, finder.pattern);
-			retrieveCategories();
-		}
-	}
-
-	private void deleteOnRequest(String dateString, String pattern) {
-		if (remove(true, pattern, dateString)) {
-			finder.keyLine(searchPattern);
-			pickNote(dateString, pattern);
-			retrieveCategories();
-		}
+		Boolean done = save(getItem(), false);
+		if (done != null) 
+			refresh();
 	}
 
 	@Override
@@ -370,12 +349,10 @@ public class NotePicker extends ActionPanel
 		try {
 			String categ = getCategory();
 			comboBoxes[0].removeAllItems();
-			
 			PreparedStatement ps = getCon().prepareStatement("select distinct title from notes order by title");
 			ResultSet rs = ps.executeQuery();
 			while (rs.next())
 				comboBoxes[0].addItem(rs.getString(1));
-			
 			comboBoxes[0].addItem(itemAll);
 			comboBoxes[0].addItem(itemBAndB);
 			setCategory(categ);
@@ -409,7 +386,7 @@ public class NotePicker extends ActionPanel
 		
 		for (Object value : finder.specialPatterns.getValues())
 			if (p.equals(value)) 
-				p = finder.specialPatterns.getKey(value).toString();
+				p = stringValueOf(finder.specialPatterns.getKey(value));
 		
 		setCategory(p);
 	}
@@ -419,7 +396,7 @@ public class NotePicker extends ActionPanel
 		
 		for (Object key : finder.specialPatterns.getKeys())
 			if (c.equals(key)) 
-				c = finder.specialPatterns.getValue(key).toString();
+				c = stringValueOf(finder.specialPatterns.getValue(key));
 		
 		return c;
 	}
@@ -663,34 +640,88 @@ public class NotePicker extends ActionPanel
 	}
 
 	@Override
-	protected Object select(Object... args) {
-		// TODO Auto-generated method stub
+	public Object select(Object... args) {
+		args = reduceDepth(args);
+		String dateString = param(null, 0, args);
+		String pattern = param(null, 1, args);
+		try {
+			long time = toTime(dateString, DatePicker.calendarFormat);
+			PreparedStatement ps = preparePicking(true, 
+					pattern,
+					dayInterval(time, 1));
+			if (registerNotes(ps.executeQuery()) > 0)
+				return records[0];
+		} catch (Exception e) {
+			handleException(e);
+		}
 		return null;
+	}
+	
+	public static String shortFormat = "%s %s";
+	
+	@Override
+	protected String toString(Object item) {
+		Object[] items = (Object[]) item;
+		return String.format(shortFormat, items[1], items[0]);
+	}
+
+	@Override
+	public boolean isItemValid(Object item) {
+		Object[] items = (Object[]) item;
+		Date date = parseDate(stringValueOf(items[0]));
+		return date != null && notNullOrEmpty(items[1]);
 	}
 
 	@Override
 	protected Object getItem() {
-		return asList(objects(getDate(), getPattern()));
+		return objects(getDate(), getCategory());
 	}
 
 	@Override
 	protected void updateItem(boolean update, Object... args) {
-		// TODO Auto-generated method stub
-		
+		Object[] items = reduceDepth(args);
+		if (isAvailable(0, items))
+			updateOrInsert(items[1].toString(), items[0].toString(), getText(), false);
+		else if (update) 
+			updateOrInsert(getCategory(), getDate(), getText(), false);
+		else {
+			items = (Object[]) select(getItem());
+			if (isAvailable(2, items))
+				setText(items[2].toString());
+		}
 	}
 
 	@Override
 	protected boolean addItem(boolean refresh, Object item) {
-		// TODO Auto-generated method stub
-		return false;
+		Object[] items = (Object[]) item;
+		long id = updateOrInsert(items[1].toString(), items[0].toString(), getText(), true);
+		if (refresh)
+			refresh();
+		return id > -1;
 	}
 
 	@Override
 	protected boolean removeItem(Object item) {
-		// TODO Auto-generated method stub
-		return false;
+		Object[] items = (Object[]) item;
+		boolean done = remove(false, items[1].toString(), items[0].toString());
+		if (done)
+			refresh();
+		return done;
 	}
 	
+	@Override
+	public void setText(String text) {
+		TextEditor editor = (TextEditor) textArea;
+		updateText(editor, text);
+		editor.undo.discardAllEdits();
+	}
+
+	private void refresh() {
+		finder.keyLine(searchPattern);
+		pickNote(getDate(), finder.pattern);
+		retrieveCategories();
+	}
+
 	private static final String orderClause = " order by created, title";
 	
 	public PreparedStatement preparePicking(boolean record, String pattern, long... time) throws Exception {
@@ -804,18 +835,18 @@ public class NotePicker extends ActionPanel
 		return 1 + id;
 	}
 
-	public long updateOrInsert(String pattern, String dateString, String note) {
+	public long updateOrInsert(String pattern, String dateString, String note, boolean insert) {
 		try {
-			long time = parseDate(dateString).getTime();
+			long time = toTime(dateString, DatePicker.calendarFormat);
 			PreparedStatement ps = preparePicking(false, pattern, dayInterval(time, 1));
 			ResultSet rs = ps.executeQuery();
 			
-			long id;
+			long id = -1;
 			if (rs.next()) {
 				id = rs.getLong(1);
 				update(id, note);
 			}
-			else {
+			else if (insert) {
 				id = newId();
 				insert(id, note, getCategory(), time);
 			}
@@ -828,13 +859,14 @@ public class NotePicker extends ActionPanel
 		}
 	}
 
+	@SuppressWarnings("unused")
 	private void updateOrInsert(String pattern, String dateString) {
 		if (finder.epoch.length == 2) {
 			for (String[] record : getRecords(getText())) 
-				updateOrInsert(record[1], record[0], record[2]);
+				updateOrInsert(record[1], record[0], record[2], true);
 		}
 		else 
-			updateOrInsert(pattern, dateString, getText());
+			updateOrInsert(pattern, dateString, getText(), true);
 	}
 	
 	private ResultSet query(long... time) {
@@ -849,7 +881,7 @@ public class NotePicker extends ActionPanel
 		return rs;
 	}
 	
-	public enum Direction { PREV, HERE, NEXT }
+	public enum Direction { FIRST, PREV, HERE, NEXT, LAST }
 	
 	public String move(Direction direct) {
 		ResultSet rs = null;
@@ -932,7 +964,7 @@ public class NotePicker extends ActionPanel
 
 	public Date parseDate(String dateString) {
 		try {
-			return toDate(dateString, DatePicker.calendarFormat);
+			return new Date(toTime(dateString, DatePicker.calendarFormat));
 		} catch (Exception e) {
 			return null;
 		}

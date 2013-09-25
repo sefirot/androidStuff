@@ -50,9 +50,8 @@ import static com.applang.SwingUtil.*;
 import static com.applang.Util.*;
 import static com.applang.Util1.*;
 import static com.applang.Util2.*;
+import static com.applang.ZipUtil.*;
 
-import com.applang.Util;
-import com.applang.ZipUtil;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.components.DatePicker;
 import com.applang.berichtsheft.components.FormEditor;
@@ -69,7 +68,7 @@ public class MiscTests extends XMLTestCase
 	public void setUp() throws Exception {
 		super.setUp();
 		underTest = true;
-		Settings.load();
+		BerichtsheftApp.loadSettings();
 		textEditor = new TextEditor();
 		np = new NotePicker(textEditor);
 		if (tempfile.exists())
@@ -204,7 +203,7 @@ public class MiscTests extends XMLTestCase
 						is(greaterThan(-1)));
 			else
 				assertThat(
-						np.updateOrInsert(np.getPattern(), dateString, note), 
+						np.updateOrInsert(np.getPattern(), dateString, note, true), 
 						is(greaterThan(-1L)));
 			cnt++;
 			if (j >= length - 1)
@@ -408,7 +407,7 @@ public class MiscTests extends XMLTestCase
 			long id = getId(categ, time);
 			long modified = getModified(id);
 			Thread.sleep(1);
-			assertEquals(id, np.updateOrInsert(categ, np.formatDate(1, time), categ));
+			assertEquals(id, np.updateOrInsert(categ, np.formatDate(1, time), categ, true));
 			assertThat(getModified(id), is(greaterThan(modified)));
 			ids[i] = id;
 			i++;
@@ -519,7 +518,7 @@ public class MiscTests extends XMLTestCase
 				"dbfile", dbfile
 		);
 		
-		Document doc = Util.xmlDocument(tempfile);
+		Document doc = xmlDocument(tempfile);
 		NodeList tables = doc.getElementsByTagName("table");
 		assertEquals(3, tables.getLength());
 		for (int i = 0; i < tables.getLength(); i++) {
@@ -644,8 +643,8 @@ public class MiscTests extends XMLTestCase
 		assertTrue(String.format("'%s' doesn't exist", outputFilename), new File(outputFilename).exists());
 		Diff diff = compareXML(new FileReader(inputFilename), new FileReader(outputFilename));
 		if (!diff.similar()) {
-			Document input = Util.xmlDocument(new File(inputFilename));
-			Document test = Util.xmlDocument(new File(outputFilename));
+			Document input = xmlDocument(new File(inputFilename));
+			Document test = xmlDocument(new File(outputFilename));
 			
 			String t = "", desc = "", id = "";
 	        DetailedDiff detailedDiff = new DetailedDiff(diff);
@@ -737,8 +736,8 @@ public class MiscTests extends XMLTestCase
 			File archive = new File(tempDir, "Vorlage.zip");
 			copyFile(source, archive);
 			assertTrue(archive.exists());
-	    	int unzipped = ZipUtil.unzipArchive(archive, 
-	    			new ZipUtil.UnzipJob(tempDir.getPath()), 
+	    	int unzipped = unzipArchive(archive, 
+	    			new UnzipJob(tempDir.getPath()), 
 	    			false);
 	    	assertTrue(archive.delete());
 	
@@ -761,7 +760,7 @@ public class MiscTests extends XMLTestCase
 					assertTrue(new File(content).delete());
 					xmlTransform(paramsFilename, styleSheet1, "/tmp/control.xml"); 
 					
-					control = Util.xmlDocument(new File("/tmp/control.xml"));
+					control = xmlDocument(new File("/tmp/control.xml"));
 					String url = xpathEngine.evaluate("/control/DBINFO/dburl", control);
 					con = DriverManager.getConnection(url);
 					
@@ -784,13 +783,13 @@ public class MiscTests extends XMLTestCase
 			File destination = new File("Dokumente/Tagesberichte.odt");
 			if (destination.exists())
 				destination.delete();
-			int zipped = ZipUtil.zipArchive(destination, 
+			int zipped = zipArchive(destination, 
 					tempDir.getPath(), 
 					tempDir.getPath());
 			assertTrue(destination.exists());
 			assertEquals(unzipped, zipped);
 			
-			int updated = ZipUtil.updateArchive(destination, 
+			int updated = updateArchive(destination, 
 	    			tempDir.getPath(), 
 	    			1, 
 	    			content, content);
@@ -802,7 +801,7 @@ public class MiscTests extends XMLTestCase
 	}
 
 	public void testExport() throws Exception {
-		Document doc = Util.xmlDocument(new File(paramsFilename));
+		Document doc = xmlDocument(new File(paramsFilename));
 		String dbName = xpathEngine.evaluate("/params/dbfile", doc);
 		int year = toInt(2013, xpathEngine.evaluate("/params/year", doc));
 		int weekInYear = toInt(5, xpathEngine.evaluate("/params/weekInYear", doc));
@@ -830,7 +829,7 @@ public class MiscTests extends XMLTestCase
 	}
 
 	public void testXPath() throws Exception {
-		Document doc = Util.xmlDocument(new File(getSetting("content.xml", "scripts/content.xml")));
+		Document doc = xmlDocument(new File(getSetting("content.xml", "scripts/content.xml")));
 //		Document doc = xmlDocument(new File("Vorlagen/Tagesberichte_2012/styles.xml"));
 		
 /*		String path = 

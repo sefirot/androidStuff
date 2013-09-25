@@ -7,6 +7,8 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
@@ -33,6 +35,8 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 
+import com.applang.SwingUtil.Memory;
+import com.applang.Util.Job;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.R;
 import com.applang.berichtsheft.plugin.DataDockable.TransportBuilder;
@@ -51,7 +55,11 @@ public class ProfileManager extends ManagerBase<Element>
 	
 	// NOTE used in scripts
 	public ProfileManager(final View view) {
-		createUI(view, this);
+		blockChange(new Job<Void>() {
+			public void perform(Void t, Object[] params) throws Exception {
+				createUI(view, ProfileManager.this);
+			}
+		});
 	}
 
 	protected TextEditor textArea;
@@ -59,7 +67,7 @@ public class ProfileManager extends ManagerBase<Element>
 	
 	@SuppressWarnings("unchecked")
 	protected void createUI(final View view, final Container container) {
-		comboBoxes = new JComboBox[4];
+		comboBoxes = new JComboBox[5];
 		textArea = new TextEditor(4,20);
 		textArea.installUndoRedo();
 		radioButtons = new JRadioButton[] {new JRadioButton(),new JRadioButton(),new JRadioButton()};
@@ -171,6 +179,18 @@ public class ProfileManager extends ManagerBase<Element>
 		}, false));
 		container.add(box);
 		container.add( Box.createVerticalStrut(10) );
+		comboBoxes[2] = new JComboBox();
+		comboBoxes[2].setEditable(true);
+		comboEdit(2).addKeyListener(new KeyAdapter() {
+			@Override
+			public void keyTyped(KeyEvent e) {
+				setDirty(true);
+			}
+		});
+		Memory.update(comboBoxes[2], true, "Filter.expressions");
+		container.add(labelFor(comboBoxes[2], "Filter", CENTER_ALIGNMENT));
+		container.add(comboBoxes[2]);
+		container.add( Box.createVerticalStrut(10) );
 		box = new Box(BoxLayout.LINE_AXIS);
 		container.add(labelFor(box, "Template", CENTER_ALIGNMENT));
 		textArea.setOnTextChanged(new Job<TextComponent>() {
@@ -200,16 +220,16 @@ public class ProfileManager extends ManagerBase<Element>
 		container.add(box);
 		container.add( Box.createVerticalStrut(10) );
 		box = new Box(BoxLayout.LINE_AXIS);
-		comboBoxes[2] = new JComboBox(BerichtsheftOptionPane.separators.keySet().toArray());
+		comboBoxes[3] = new JComboBox(BerichtsheftOptionPane.separators.keySet().toArray());
 		box.add(Box.createHorizontalGlue());
 		String labelText = BerichtsheftPlugin.getOptionProperty("record-separator.title");
 		box.add(new JLabel( strip(false, labelText, ":") ));
-		box.add(comboBoxes[2]);
+		box.add(comboBoxes[3]);
 		box.add(Box.createHorizontalGlue());
-		comboBoxes[3] = new JComboBox(BerichtsheftOptionPane.decorations.keySet().toArray());
+		comboBoxes[4] = new JComboBox(BerichtsheftOptionPane.decorations.keySet().toArray());
 		labelText = BerichtsheftPlugin.getOptionProperty("record-decoration.title");
 		box.add(new JLabel( strip(false, labelText, ":") ));
-		box.add(comboBoxes[3]);
+		box.add(comboBoxes[4]);
 		box.add(Box.createHorizontalGlue());
 		container.add(box);
 		container.add( Box.createVerticalStrut(10) );
@@ -217,6 +237,9 @@ public class ProfileManager extends ManagerBase<Element>
 			radioButtons[0].setSelected(true);
 		else
 			radioButtons[1].setSelected(true);
+		for (int i = 1; i < comboBoxes.length; i++) {
+			comboChangeListener(i);
+		}
 		Window window = SwingUtilities.getWindowAncestor(container);
 		if (window != null) {
 			window.addWindowListener(new WindowAdapter() {
@@ -232,8 +255,8 @@ public class ProfileManager extends ManagerBase<Element>
 	public void setOper(String oper, Container container) {
 		this.oper = oper;
 		boolean download = "download".equals(oper);
-		comboBoxes[2].setEnabled(!download);
 		comboBoxes[3].setEnabled(!download);
+		comboBoxes[4].setEnabled(!download);
 		JLabel label = findComponent(container, "Template_Label");
 		label.setText(download ? "URL" : "Template");
 		BerichtsheftPlugin.setProperty("TRANSPORT_OPER", oper);
@@ -272,9 +295,10 @@ public class ProfileManager extends ManagerBase<Element>
 	
 	private void setTemplate(boolean refresh, String template, Object profile) {
 		Object schema = comboBoxes[1].getSelectedItem();
-		Object recordSeparator = comboBoxes[2].getSelectedItem();
-		Object recordDecoration = comboBoxes[3].getSelectedItem();
-		ProfileManager.setTemplate(template, profile, oper, schema, recordSeparator, recordDecoration);
+		Object filter = comboEdit(2).getText();
+		Object recordSeparator = comboBoxes[3].getSelectedItem();
+		Object recordDecoration = comboBoxes[4].getSelectedItem();
+		ProfileManager.setTemplate(template, profile, oper, schema, filter, recordSeparator, recordDecoration);
 		updateModels(refresh, true, true, profile);
 	}
 	
@@ -303,26 +327,30 @@ public class ProfileManager extends ManagerBase<Element>
 		String profile = param(getProfile(), 0, params);
 		if (ProfileManager.transportsLoaded()) {
 			if (refresh) {
-				DefaultComboBoxModel model = (DefaultComboBoxModel) comboBoxes[0].getModel();
-				model.removeAllElements();
-				NodeList nodes = 
-						evaluateXPath(ProfileManager.transports,
-								transportsSelector + "/PROFILE[@oper='" + oper + "']");
-				for (int i = 0; i < nodes.getLength(); i++) {
-					Element element = (Element) nodes.item(i);
-					final String name = element.getAttribute("name");
-					if (!name.startsWith("_"))
-						model.addElement(name);
-				}
-				comboBoxes[0].setModel(model);
-				model = (DefaultComboBoxModel) comboBoxes[1].getModel();
-				model.removeAllElements();
-				model.addElement("");
-				ValList schemas = contentAuthorities(providerPackages);
-				for (Object schema : schemas) {
-					model.addElement(schema);
-				}
-				comboBoxes[1].setModel(model);
+				blockChange(new Job<Void>() {
+					public void perform(Void t, Object[] params) throws Exception {
+						DefaultComboBoxModel model = (DefaultComboBoxModel) comboBoxes[0].getModel();
+						model.removeAllElements();
+						NodeList nodes = 
+								evaluateXPath(ProfileManager.transports,
+										transportsSelector + "/PROFILE[@oper='" + oper + "']");
+						for (int i = 0; i < nodes.getLength(); i++) {
+							Element element = (Element) nodes.item(i);
+							final String name = element.getAttribute("name");
+							if (!name.startsWith("_"))
+								model.addElement(name);
+						}
+						comboBoxes[0].setModel(model);
+						model = (DefaultComboBoxModel) comboBoxes[1].getModel();
+						model.removeAllElements();
+						model.addElement("");
+						ValList schemas = contentAuthorities(providerPackages);
+						for (Object schema : schemas) {
+							model.addElement(schema);
+						}
+						comboBoxes[1].setModel(model);
+					}
+				});
 			}
 			if (save)
 				ProfileManager.saveTransports();
@@ -335,24 +363,33 @@ public class ProfileManager extends ManagerBase<Element>
 	}
 
 	// NOTE used in scripts
-	public void setProfile(String profile) {
-		comboBoxes[0].getModel().setSelectedItem(profile);
-		String template = "", schema = "", recordSeparator = "newline", recordDecoration = "none";
-		Element element = select(profile);
-		if (element != null) {
-			boolean download = "download".equals(oper);
-			String name = download ? "URL" : "TEMPLATE";
-			Element el = selectElement(element, "./" + name);
-			if (el != null)
-				template = el.getTextContent();
-			schema = element.getAttribute("schema");
-			recordSeparator = element.getAttribute("recordSeparator");
-			recordDecoration = element.getAttribute("recordDecoration");
-		}
-		comboBoxes[1].getModel().setSelectedItem(schema);
-		comboBoxes[2].getModel().setSelectedItem(recordSeparator);
-		comboBoxes[3].getModel().setSelectedItem(recordDecoration);
-		updateText(textArea, template);
+	public void setProfile(final String profile) {
+		blockChange(new Job<Void>() {
+			public void perform(Void t, Object[] params) throws Exception {
+				comboBoxes[0].getModel().setSelectedItem(profile);
+				String template = "", schema = "", filter = "", recordSeparator = "newline", recordDecoration = "none";
+				Element element = select(profile);
+				if (element != null) {
+					schema = element.getAttribute("schema");
+					Element el = selectElement(element, "./FILTER");
+					if (el != null)
+						filter = el.getTextContent();
+					boolean download = "download".equals(oper);
+					String name = download ? "URL" : "TEMPLATE";
+					el = selectElement(element, "./" + name);
+					if (el != null)
+						template = el.getTextContent();
+					recordSeparator = element.getAttribute("recordSeparator");
+					recordDecoration = element.getAttribute("recordDecoration");
+				}
+				comboBoxes[1].getModel().setSelectedItem(schema);
+				comboEdit(2).setText(filter);
+				comboBoxes[3].getModel().setSelectedItem(recordSeparator);
+				comboBoxes[4].getModel().setSelectedItem(recordDecoration);
+				textArea.setText(template);
+			}
+		});
+		setDirty(false);
 	}
 
 	// NOTE used in scripts
@@ -400,25 +437,31 @@ public class ProfileManager extends ManagerBase<Element>
 				}
 				ProfileManager.transports.getDocumentElement().appendChild(element);
 			}
-			String attr = param(null, 2, params);
-			if (attr != null)
-				element.setAttribute("schema", attr);
-			attr = param(null, 3, params);
-			if (notNullOrEmpty(attr))
-				element.setAttribute("recordSeparator", attr);
-			attr = param(null, 4, params);
-			if (notNullOrEmpty(attr))
-				element.setAttribute("recordDecoration", attr);
-			String name = download ? "URL" : "TEMPLATE";
-			NodeList nodes;
-			while ((nodes = evaluateXPath(element, "./*[name()='" + name + "']")).getLength() > 0)
-				element.removeChild(nodes.item(0));
-			element = (Element) element.appendChild(ProfileManager.transports.createElement(name));
-			CDATASection cdata = ProfileManager.transports.createCDATASection(template);
-			element.appendChild(cdata);
+			String value = param(null, 2, params);
+			if (value != null)
+				element.setAttribute("schema", value);
+			value = param(null, 3, params);
+			if (notNullOrEmpty(value))
+				setCDATASection(element, "FILTER", value);
+			value = param(null, 4, params);
+			if (notNullOrEmpty(value))
+				element.setAttribute("recordSeparator", value);
+			value = param(null, 5, params);
+			if (notNullOrEmpty(value))
+				element.setAttribute("recordDecoration", value);
+			setCDATASection(element, download ? "URL" : "TEMPLATE", template);
 			return true;
 		}
 		return false;
+	}
+
+	private static void setCDATASection(Element element, String name, String data) {
+		NodeList nodes;
+		while ((nodes = evaluateXPath(element, "./*[name()='" + name + "']")).getLength() > 0)
+			element.removeChild(nodes.item(0));
+		element = (Element) element.appendChild(ProfileManager.transports.createElement(name));
+		CDATASection cdata = ProfileManager.transports.createCDATASection(data);
+		element.appendChild(cdata);
 	}
 
 	public static ValMap getProfileAsMap(Object...params) {
@@ -435,12 +478,15 @@ public class ProfileManager extends ManagerBase<Element>
 				map.put("oper", oper);
 				if (element.hasAttribute("schema"))
 					map.put("schema", element.getAttribute("schema"));
+				Element el = selectElement(element, "./FILTER");
+				if (el != null)
+					map.put("filter", el.getTextContent());
 				if (element.hasAttribute("recordSeparator"))
 					map.put("recordSeparator", element.getAttribute("recordSeparator"));
 				if (element.hasAttribute("recordDecoration"))
 					map.put("recordDecoration", element.getAttribute("recordDecoration"));
 				String name = "download".equals(oper) ? "URL" : "TEMPLATE";
-				Element el = selectElement(element, "./" + name);
+				el = selectElement(element, "./" + name);
 				if (el != null)
 					map.put(name.toLowerCase(), el.getTextContent());
 			}

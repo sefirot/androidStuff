@@ -82,7 +82,7 @@ public class FormEditor extends JSplitPane
 
 	public static boolean perform(final String inputPath, final String outputPath, final boolean deadline, Object... params) {
 		try {
-			Settings.load();
+			BerichtsheftApp.loadSettings();
 			
 			final Job<File> finish = new Job<File>() {
 				public void perform(File _content, Object[] params) throws Exception {
@@ -110,18 +110,12 @@ public class FormEditor extends JSplitPane
 									"Layout manipulation", 
 									new UIFunction() {
 										public Component[] apply(Component comp, Object[] parms) {
-											JToolBar top = new JToolBar();
-											top.setName("top");
-											JToolBar bottom = new JToolBar();
-											bottom.setName("bottom");
-											bottom.setFloatable(false);
-											messageBox(bottom);
-											
 											JFrame frame = (JFrame)comp;
 											Container contentPane = frame.getContentPane();
-											
-											contentPane.add(top, BorderLayout.PAGE_START);
-											contentPane.add(bottom, BorderLayout.PAGE_END);
+											JToolBar top = new JToolBar();
+											top.setName("top");
+											contentPane.add(top, BorderLayout.NORTH);
+											southStatusBar(contentPane);
 											contentPane.add(formEditor, BorderLayout.CENTER);
 											return null;
 										}
@@ -163,7 +157,6 @@ public class FormEditor extends JSplitPane
 									Job<Void> job = param(null, 1, params);
 									job.perform(null, new Object[] {_content.getPath(), content.getPath()});
 								}
-								
 								try {
 									finish.perform(_content, null);
 								} catch (Exception e) {
