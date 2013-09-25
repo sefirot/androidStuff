@@ -247,14 +247,14 @@ public class Util
 			if (notNullOrEmpty(dateString) && isAvailable(0, params)) {
 				Locale locale = param(Locale.US, 1, params);
 				if (Locale.US.equals(locale))
-					date = toDate(dateString, params[0], Locale.getDefault());
-				else
-					date = toDate(dateString, params[0], Locale.US);
+					locale = Locale.getDefault();
+				else 
+					locale = Locale.US;
+				date = toDate(dateString, params[0], locale);
 			}
 			if (date == null)
 				return null;
 		}
-		
 		return date.getTime();
 	}
 
