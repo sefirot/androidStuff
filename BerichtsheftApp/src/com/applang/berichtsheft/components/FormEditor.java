@@ -87,9 +87,7 @@ public class FormEditor extends JSplitPane
 			final Job<File> finish = new Job<File>() {
 				public void perform(File _content, Object[] params) throws Exception {
 					_content.delete();
-					
 					BerichtsheftApp.manipContent(-1, inputPath, outputPath, null);
-					
 					Settings.save();
 				}
 			};
@@ -100,12 +98,9 @@ public class FormEditor extends JSplitPane
 							inputDir = content.getParentFile();
 							final File _content = new File(inputDir, "_content.xml");
 							content.renameTo(_content);
-							
 							if (!generateMask(_content.getCanonicalPath()))
 								return;
-							
 							final FormEditor formEditor = new FormEditor();
-							
 							showFrame(null, 
 									"Layout manipulation", 
 									new UIFunction() {
@@ -165,7 +160,6 @@ public class FormEditor extends JSplitPane
 							}
 						}
 					}, params);
-			
 			return ok;
 		} catch (Exception e) {
 			handleException(e);

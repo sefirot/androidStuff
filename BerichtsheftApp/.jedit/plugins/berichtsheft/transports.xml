@@ -41,7 +41,7 @@ String.format("created between %d and %d and location = '%s'", new Object[]{inte
 
 	<PROFILE name="plantinfo" oper="pull" recordDecoration="none" recordSeparator="whitespace" schema="com.applang.provider.PlantInfo">
 		
-	<TEMPLATE><![CDATA[`botfamily`	`family`
+	<FILTER><![CDATA[group='xxx']]></FILTER><TEMPLATE><![CDATA[`botfamily`	`family`
 `botname`	`name`]]></TEMPLATE></PROFILE>
 	<PROFILE name="tagesberichte" oper="pull" recordDecoration="fold" recordSeparator="whitespace" schema="com.applang.provider.NotePad">
 

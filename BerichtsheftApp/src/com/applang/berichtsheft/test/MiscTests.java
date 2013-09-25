@@ -43,9 +43,6 @@ import org.xml.sax.XMLFilter;
 import org.xml.sax.XMLReader;
 import org.xml.sax.helpers.XMLReaderFactory;
 
-//import antlr.RecognitionException;
-//import antlr.TokenStreamException;
-
 import static com.applang.SwingUtil.*;
 import static com.applang.Util.*;
 import static com.applang.Util1.*;
@@ -58,9 +55,6 @@ import com.applang.berichtsheft.components.FormEditor;
 import com.applang.berichtsheft.components.NotePicker;
 import com.applang.berichtsheft.components.NotePicker.NoteFinder;
 import com.applang.berichtsheft.components.TextEditor;
-
-//import com.sdicons.json.model.JSONValue;
-//import com.sdicons.json.parser.JSONParser;
 
 public class MiscTests extends XMLTestCase
 {
