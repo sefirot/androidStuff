@@ -195,11 +195,12 @@ public class Util1
 	}
 
 	public static Uri contentUri(String authority, String path) {
-    	return new Uri.Builder()
+    	Uri uri = new Uri.Builder()
     		.scheme(ContentResolver.SCHEME_CONTENT)
     		.authority(authority)
     		.path(path)
     		.build();
+    	return toStringUri(uri);
     }
 
 	public static Uri fileUri(String path, String fragment) {
@@ -208,6 +209,10 @@ public class Util1
     		.fragment(fragment)
     		.build();
     }
+	
+	public static Uri toStringUri(Uri uri) {
+		return Uri.parse(uri.toString());
+	}
 
 	public static String encodeUri(String uriString, boolean decode) {
 		return decode ? Uri.decode(uriString) : Uri.encode(uriString);

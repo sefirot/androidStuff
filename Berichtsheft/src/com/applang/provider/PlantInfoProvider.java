@@ -141,6 +141,10 @@ public class PlantInfoProvider extends ContentProvider
         return c;
     }
 
+	private void notifyChange(Uri uri) {
+		getContext().getContentResolver().notifyChange(uri, null);
+	}
+
     @Override
     public String getType(Uri uri) {
         switch (sUriMatcher.match(uri)) {
@@ -178,7 +182,7 @@ public class PlantInfoProvider extends ContentProvider
         long rowId = db.insert(PLANTS_TABLE_NAME, Plants.NAME, values);
         if (rowId > 0) {
             Uri plantUri = ContentUris.withAppendedId(Plants.CONTENT_URI, rowId);
-            getContext().getContentResolver().notifyChange(plantUri, null);
+            notifyChange(plantUri);
             return plantUri;
         }
 
@@ -204,7 +208,7 @@ public class PlantInfoProvider extends ContentProvider
             throw new IllegalArgumentException("Unknown URI " + uri);
         }
 
-        getContext().getContentResolver().notifyChange(uri, null);
+        notifyChange(uri);
         return count;
     }
 
@@ -227,7 +231,7 @@ public class PlantInfoProvider extends ContentProvider
             throw new IllegalArgumentException("Unknown URI " + uri);
         }
 
-        getContext().getContentResolver().notifyChange(uri, null);
+        notifyChange(uri);
         return count;
     }
 

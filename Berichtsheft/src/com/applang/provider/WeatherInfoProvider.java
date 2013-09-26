@@ -164,6 +164,10 @@ public class WeatherInfoProvider extends ContentProvider {
         return c;
     }
 
+	private void notifyChange(Uri uri) {
+		getContext().getContentResolver().notifyChange(uri, null);
+	}
+
     @Override
     public String getType(Uri uri) {
         switch (sUriMatcher.match(uri)) {
@@ -228,7 +232,7 @@ public class WeatherInfoProvider extends ContentProvider {
         long rowId = db.insert(WEATHERS_TABLE_NAME, Weathers.DESCRIPTION, values);
         if (rowId > 0) {
             Uri noteUri = ContentUris.withAppendedId(Weathers.CONTENT_URI, rowId);
-            getContext().getContentResolver().notifyChange(noteUri, null);
+            notifyChange(noteUri);
             return noteUri;
         }
 
@@ -254,7 +258,7 @@ public class WeatherInfoProvider extends ContentProvider {
             throw new IllegalArgumentException("Unknown URI " + uri);
         }
 
-        getContext().getContentResolver().notifyChange(uri, null);
+        notifyChange(uri);
         return count;
     }
 
@@ -277,7 +281,7 @@ public class WeatherInfoProvider extends ContentProvider {
             throw new IllegalArgumentException("Unknown URI " + uri);
         }
 
-        getContext().getContentResolver().notifyChange(uri, null);
+        notifyChange(uri);
         return count;
     }
 

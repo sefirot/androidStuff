@@ -15,8 +15,11 @@ import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Handler;
+import android.os.Message;
 import android.util.Log;
 
 import static com.applang.Util.*;
@@ -67,7 +70,26 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
     protected void tearDown() throws Exception {
         super.tearDown();
 	}
-    
+	
+	private Handler notifyHandler = new Handler() {
+		@Override
+		public void handleMessage(Message msg) {
+			System.out.println(msg);
+			super.handleMessage(msg);
+		}
+	};
+	
+	int contentObservations = 0;
+
+	private void setContentObserver(ContentResolver contentResolver, final Uri notificationUri) {
+		ContentObserver contentObserver = new ContentObserver(notifyHandler) {
+			public void onChange(boolean selfChange) {
+				contentObservations++;
+			}
+		};
+		contentResolver.registerContentObserver(notificationUri, true, contentObserver);
+	}
+
     void keepTestData(final String[] fileNames) {
     	if (getKeepData(mActivity, false)) {
 			ImpexTask.doImpex(mActivity, fileNames, true);
@@ -266,6 +288,9 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
     public void testNotePadProvider() throws InterruptedException {
 		mActivity.deleteDatabase(NotePadProvider.DATABASE_NAME);
 		
+		ContentResolver contentResolver = mActivity.getContentResolver();
+        setContentObserver(contentResolver, NoteColumns.CONTENT_URI);
+		
 		long now = now();
 		generateNotePadData(mActivity, true, new Object[][] {
 			{ 1L, "kein", "Kein", null, now }, 
@@ -287,8 +312,6 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
 		
 		com.applang.UserContext.setupVelocity(mActivity, true, "com.applang.berichtsheft");
 
-		ContentResolver contentResolver = mActivity.getContentResolver();
-		
 		Cursor cursor = notesCursor(0, "title like ?", "Velocity%");
 		assertTrue(cursor.moveToFirst());
 		long id = 0;
@@ -321,12 +344,16 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
 			assertEquals(
 					new int[]{2,6,1}[i], 
 					NotePadProvider.countNotes(contentResolver, i, "", null)[0].intValue());
+        
+        assertEquals(5, contentObservations);
     }
 
     public void testWeatherInfoProvider() throws IOException {
 		mActivity.deleteDatabase(WeatherInfoProvider.DATABASE_NAME);
 		
         ContentResolver contentResolver = mActivity.getContentResolver();
+        setContentObserver(contentResolver, Weathers.CONTENT_URI);
+        
 		generateData(contentResolver, Weathers.CONTENT_URI, true, new Object[][] {
 			{ 1L, "here", "overcast", 11.1f, 1f, -1f, 0l,  }, 	
 		});
@@ -348,12 +375,16 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
         assertEquals("overcast", cursor.getString(1));
         assertEquals(11.1f, cursor.getFloat(3));
         cursor.close();
+        
+        assertEquals(3, contentObservations);
     };
 
     public void testPlantInfoProvider() throws IOException {
 		mActivity.deleteDatabase(PlantInfoProvider.DATABASE_NAME);
 		
         ContentResolver contentResolver = mActivity.getContentResolver();
+        setContentObserver(contentResolver, Plants.CONTENT_URI);
+        
 		generateData(contentResolver, Plants.CONTENT_URI, true, new Object[][] {
 			{ 1L, "Paradeiser", "Nachtschattengewächse", "Solanum lycopersicum", "Solanaceae", "" }, 	
 		});
@@ -375,6 +406,8 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
         assertEquals("Solanum lycopersicum", cursor.getString(3));
         assertEquals("xitomatl", cursor.getString(5));
         cursor.close();
+        
+        assertEquals(3, contentObservations);
     };
 
     private String[] PROJECTION_ID = new String[] {
@@ -449,7 +482,8 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
     public void testMisc() {
     	ContentResolver contentResolver = mActivity.getContentResolver();
     	ValList tables = new ValList();
-		Cursor cursor = contentResolver.query(NotePadProvider.contentUri("raw"), 
+		Uri uri = NotePadProvider.contentUri(null);
+		Cursor cursor = contentResolver.query(uri, 
 				null, 
 				"select name from sqlite_master where type = 'table'", 
 				null, 

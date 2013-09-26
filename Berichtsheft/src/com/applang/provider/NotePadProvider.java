@@ -324,6 +324,10 @@ public class NotePadProvider extends ContentProvider
         return c;
     }
 
+	private void notifyChange(Uri uri) {
+		getContext().getContentResolver().notifyChange(uri, null);
+	}
+
     @Override
     public Uri insert(Uri uri, ContentValues initialValues) {
         if (sUriMatcher.match(uri) != NOTES) {
@@ -359,7 +363,7 @@ public class NotePadProvider extends ContentProvider
         long rowId = db.insert(tableName, NoteColumns.NOTE, values);
         if (rowId > 0) {
             Uri noteUri = ContentUris.withAppendedId(contentUri(tableName), rowId);
-            getContext().getContentResolver().notifyChange(contentUri(tableName), null);
+            notifyChange(noteUri);
             return noteUri;
         }
 
@@ -388,7 +392,7 @@ public class NotePadProvider extends ContentProvider
             throw new IllegalArgumentException("Unknown URI " + uri);
         }
 
-        getContext().getContentResolver().notifyChange(contentUri(tableName), null);
+        notifyChange(uri);
         return count;
     }
 
@@ -415,7 +419,7 @@ public class NotePadProvider extends ContentProvider
             throw new IllegalArgumentException("Unknown URI " + uri);
         }
 
-        getContext().getContentResolver().notifyChange(contentUri(tableName), null);
+        notifyChange(uri);
         return count;
     }
 
