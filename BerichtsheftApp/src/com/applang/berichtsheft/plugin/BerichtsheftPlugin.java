@@ -226,17 +226,14 @@ public class BerichtsheftPlugin extends EditPlugin {
 	}
 	
 	public static String getProperty(String name, String defaultValue) {
-		if (props != null) {
-			if ("AWK_COMMAND".equals(name))
-				return getSetting(name, "awk");
-			else if ("SQLITE_COMMAND".equals(name))
-				return getSetting(name, System.getProperty("user.home") + "/android-sdk-linux/tools/sqlite3");
-			else if ("ADB_COMMAND".equals(name))
-				return getSetting(name, System.getProperty("user.home") + "/android-sdk-linux/platform-tools/adb");
-			else
-				return props.getProperty(name, defaultValue);
-		}
-		return jEdit.getProperty(name, defaultValue);
+		String prop;
+		if (props != null) 
+			prop = props.getProperty(name, defaultValue);
+		else
+			prop = jEdit.getProperty(name, defaultValue);
+		if (nullOrEmpty(prop) && (name.endsWith("_COMMAND") || name.endsWith("_SDK"))) 
+			prop = getSetting(name, "");
+		return prop;
 	}
 	
 	private static Properties props = null;
@@ -298,6 +295,15 @@ public class BerichtsheftPlugin extends EditPlugin {
 			String cmd = getProperty(tools[i]);
 			if (!fileExists(new File(cmd)))
 				consoleMessage("berichtsheft.tool-missing.message", cmd);
+			else if (tools[i].startsWith("ADB")) {
+				String[] commands = strings(
+						adbScript(null, "kill-server"), 
+						adbScript(null, "start-server"), 
+						adbScript(null, "version") 
+				);
+				cmd = runShellScript("cmd", join(NEWLINE, commands));
+				BerichtsheftShell.print(cmd, NEWLINE);
+			}
 		}
 	}
 

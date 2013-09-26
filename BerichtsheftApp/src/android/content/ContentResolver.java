@@ -91,6 +91,7 @@ public class ContentResolver extends Observable
 	}
 
 	public void notifyChange(Uri uri, ContentObserver observer) {
+		setChanged();
 		notifyObservers(uri);
 	}
 

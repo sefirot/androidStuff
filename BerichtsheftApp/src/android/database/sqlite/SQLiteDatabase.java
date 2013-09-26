@@ -625,9 +625,15 @@ public class SQLiteDatabase {
     private boolean mLockingEnabled = false;
     
     void lock() {
+    	if (mLockingEnabled) {
+    		
+    	}
     }
     
     void unlock() {
+    	if (mLockingEnabled) {
+    		
+    	}
     }
 
     /**

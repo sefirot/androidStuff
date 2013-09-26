@@ -91,17 +91,10 @@ public class BerichtsheftOptionPane extends AbstractOptionPane implements Action
 										org.gjt.sp.jedit.browser.VFSBrowser.CHOOSE_DIRECTORY_DIALOG, false);
 						if (isAvailable(0, paths)) {
 							sdk.setText(paths[0]);
-							Properties prps = new Properties();
-							try {
-								prps.load(new FileReader("BerichtsheftPlugin.props"));
-							} catch (Exception e1) {
-								return;
-							}
 							for (String cmd : strings("ADB", "SQLITE")) {
 								JTextField tf = findComponent(BerichtsheftOptionPane.this, cmd);
 								if (tf != null) {
-									String t = pathCombine(paths[0],
-											prps.getProperty(cmd + "_COMMAND"));
+									String t = pathCombine(paths[0], getSetting(cmd + "_COMMAND", ""));
 									tf.setText(t);
 								}
 							}

@@ -197,11 +197,6 @@ options.berichtsheft.field-decoration=none
 options.berichtsheft.record-separator=newline
 options.berichtsheft.record-decoration=none
 
-ANDROID_SDK=android-sdk-linux
-ADB_COMMAND=platform-tools/adb
-SQLITE_COMMAND=tools/sqlite3
-AWK_COMMAND=awk
-
 commando.visible.Android=true
 commando.visible.Transport=true
 commando.visible.Dokumente=true

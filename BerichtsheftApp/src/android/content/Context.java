@@ -154,8 +154,10 @@ public class Context
 		return names;
 	}
 	
+	ContentResolver contentResolver = new ContentResolver(this);
+	
 	public ContentResolver getContentResolver() {
-		return new ContentResolver(this);
+		return contentResolver;
 	}
 
 	public Cursor managedQuery(Uri uri, 

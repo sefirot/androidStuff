@@ -295,14 +295,13 @@ public class DataView extends JPanel implements DataComponent
 		return retval;
     }
 	
-	private ContentObserver contentObserver = new ContentObserver(
-		new Job<Uri>() {
-			public void perform(Uri u, Object[] params) throws Exception {
-				String info = dbInfo(u);
-				if (info.startsWith(getInfo()))
-					reload();
-			}
-		});
+	private ContentObserver contentObserver = new ContentObserver() {
+		public void onChange(Object arg) {
+			String info = dbInfo((Uri)arg);
+			if (info.startsWith(getInfo()))
+				reload();
+		}
+	};
 
 	public void wire(boolean unwire) {
 		if (unwire) {
