@@ -12,6 +12,47 @@ raw=/home/lotharla/work/Niklas/Bemerkungen*
 
 case "$1" in
 
+confluence_notes)
+	db="$3"
+	cat > "$sql" << EOF
+CREATE TABLE if not exists notes (
+_id INTEGER PRIMARY KEY,
+title TEXT,
+note TEXT,
+created INTEGER,
+modified INTEGER,
+UNIQUE(created,title));
+attach '$2' as tributary;
+INSERT INTO notes (_id,title,note,created,modified)
+SELECT null,title,note,created,modified
+FROM tributary.notes;
+EOF
+	exec_sql
+	echo "'notes' copied into $db"
+	;;
+	
+confluence_weathers)
+	db="$3"
+	cat > "$sql" << EOF
+CREATE TABLE if not exists weathers (
+_id INTEGER PRIMARY KEY,
+description TEXT,
+location TEXT,
+precipitation FLOAT,
+maxtemp FLOAT,
+mintemp FLOAT,
+created INTEGER,
+modified INTEGER);
+attach '$2' as tributary;
+INSERT INTO weathers (_id,description,location,precipitation,maxtemp,mintemp,created,modified)
+SELECT null,description,location,precipitation,maxtemp,mintemp,created,modified
+FROM tributary.weathers;
+EOF
+	exec_sql
+	echo "'weathers' copied into $db"
+	;;
+
+
 desc)
 	/home/lotharla/gawk-4.0.0/gawk -f "${dir}/descriptions.awk" < "/home/lotharla/work/Niklas/www1.ncdc.noaa.gov/553356121374dat.txt"
 	;;
@@ -95,7 +136,7 @@ SELECT description,location,precipitation,maxtemp,mintemp,created,modified
 FROM winfo.weathers;
 EOF
 	exec_sql
-	echo "\'weathers\' integrated into $db"
+	echo "'weathers' integrated into $db"
 	;;
 	
 berufsschule_notes)
@@ -121,7 +162,7 @@ SELECT description,location,precipitation,maxtemp,mintemp,created,modified
 FROM winfo.weathers;
 EOF
 	exec_sql
-	echo "\'weathers\' copied into $db"
+	echo "'weathers' copied into $db"
 	;;
 	
 esac

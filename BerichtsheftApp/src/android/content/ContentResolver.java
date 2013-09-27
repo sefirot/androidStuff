@@ -28,39 +28,36 @@ public class ContentResolver extends Observable
 
     public ContentProvider acquireProvider(final Uri uri)
     {
-    	if (contentProvider == null) {
-    		contentProvider = new ContentProvider();
-			authority = null;
-			if (SCHEME_CONTENT.equals(uri.getScheme())) {
-				authority = uri.getAuthority();
-				if (authority != null) {
-					try {
-						Class<?> c = Class.forName(authority + "Provider");
-						contentProvider = (ContentProvider) c.newInstance();
-					} catch (Exception e) {
-						Log.e(TAG, "acquireProvider", e);
-					}
-				}
-			} else if (SCHEME_FILE.equals(uri.getScheme())) {
-				final File file = new File(uri.getPath());
-				mContext = new Context() {
-					{
-						mPackageInfo = new PackageInfo("", file.getParent());
-					}
-
-					@Override
-					public ContentResolver getContentResolver() {
-						return ContentResolver.this;
-					}
-				};
-			}
-			contentProvider.setContext(mContext);
-			contentProvider.onCreate();
-		}
+    	contentProvider = new ContentProvider();
+    	String authority = null;
+    	if (SCHEME_CONTENT.equals(uri.getScheme())) {
+    		authority = uri.getAuthority();
+    		if (authority != null) {
+    			try {
+    				Class<?> c = Class.forName(authority + "Provider");
+    				contentProvider = (ContentProvider) c.newInstance();
+    			} catch (Exception e) {
+    				Log.e(TAG, "acquireProvider", e);
+    			}
+    		}
+    	} else if (SCHEME_FILE.equals(uri.getScheme())) {
+    		final File file = new File(uri.getPath());
+    		mContext = new Context() {
+    			{
+    				mPackageInfo = new PackageInfo("", file.getParent());
+    			}
+    			
+    			@Override
+    			public ContentResolver getContentResolver() {
+    				return ContentResolver.this;
+    			}
+    		};
+    	}
+    	contentProvider.setContext(mContext);
+    	contentProvider.onCreate();
 		return contentProvider;
     }
 
-    public String authority = null;
     public ContentProvider contentProvider = null;
     
 	public Cursor rawQuery(Uri uri, String...sql) {

@@ -2,6 +2,9 @@
 	<UI>
 		<MEMORY LABEL="Task" VARNAME="task"
 			EVAL="&quot;Tasks&quot;" />
+		
+		<FILE_ENTRY LABEL="Source" VARNAME="source" />
+		<FILE_ENTRY LABEL="Target" VARNAME="target" />
 			
 		<ENTRY LABEL="Parameters" VARNAME="params" />
 	</UI>
@@ -10,7 +13,7 @@
 		<COMMAND SHELL="System">
 			buf = new StringBuffer();
 			script = System.getProperty("user.dir") + "/scripts/process.sh";
-			buf.append("\"" + script + "\" \"" + task + "\"");
+			buf.append("\"" + script + "\" \"" + task + "\" \"" + source + "\" \"" + target + "\"");
 			if (params.length() > 0)
 				buf.append(" "+params);
 			// return value
