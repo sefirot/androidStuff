@@ -42,10 +42,25 @@ public final class PlantInfo {
         public static final String DEFAULT_SORT_ORDER = "name ASC";
         
         /**
-         * The default sort order for this table
+         * The rowId sort order for this table
          */
         public static final String ROWID_SORT_ORDER = "_id ASC";
+        
+        /**
+         * The family sort order for this table
+         */
+        public static final String FAMILY_SORT_ORDER = "family ASC";
 
+        /**
+         * The botanical name sort order for this table
+         */
+        public static final String BOTNAME_SORT_ORDER = "botname ASC";
+        
+        /**
+         * The botanical family sort order for this table
+         */
+        public static final String BOTFAMILY_SORT_ORDER = "botfamily ASC";
+        
         /**
          * The local name of the plant
          * <P>Type: TEXT</P>
@@ -59,13 +74,13 @@ public final class PlantInfo {
         public static final String FAMILY = "family";
 
         /**
-         * The botanic name of the plant
+         * The botanical name of the plant
          * <P>Type: TEXT</P>
          */
         public static final String BOTNAME = "botname";
 
         /**
-         * The botanic family name of the plant
+         * The botanical family name of the plant
          * <P>Type: TEXT</P>
          */
         public static final String BOTFAMILY = "botfamily";

@@ -98,8 +98,10 @@ public class PlantsList extends ListActivity {
        
     private void setListView() {
     	
-    	String UpperString = null, LowerString = null;	
-    	int UpperViewId = -1, LowerViewId = -1;
+    	String UpperString = null, LowerString = null, rowOrder = null;	
+    	int UpperViewId = -1, LowerViewId = -1, rorder = 0;
+    	
+    	
     	
     	switch (language){
     	case 0:
@@ -109,6 +111,7 @@ public class PlantsList extends ListActivity {
     	case 1:
     		UpperString = Plants.BOTNAME; 
     		LowerString = Plants.BOTFAMILY;
+    		rorder = 2;
     	}
     
     	switch (order){
@@ -121,7 +124,20 @@ public class PlantsList extends ListActivity {
     		LowerViewId = R.id.upper_text;
     	}
     	
-    	
+    	switch (rorder + order){
+    	case 0:
+    		rowOrder = Plants.DEFAULT_SORT_ORDER; 
+    	break;
+    	case 1:
+    		rowOrder = Plants.FAMILY_SORT_ORDER; 
+    	break;
+    	case 2:
+    		rowOrder = Plants.BOTNAME_SORT_ORDER;
+    	break;
+    	case 3:
+    		rowOrder = Plants.BOTFAMILY_SORT_ORDER; 
+    	break;
+    	}
     	
     	// Inform the list we provide context menus for items
         getListView().setOnCreateContextMenuListener(this);
@@ -129,7 +145,7 @@ public class PlantsList extends ListActivity {
         // Perform a managed query. The Activity will handle closing and requerying the cursor
         // when needed.
         Cursor cursor = managedQuery(getIntent().getData(), PROJECTION, null, null,
-                Plants.DEFAULT_SORT_ORDER);
+                rowOrder);
 
         // Used to map notes entries from the database to views
         SimpleCursorAdapter adapter = new SimpleCursorAdapter(this, R.layout.plantslist_item, cursor,
@@ -240,6 +256,7 @@ public class PlantsList extends ListActivity {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			} **/
+        	return true;
         case MENU_ITEM_QUERY:
             // Launch activity to insert a new item
             // startActivity(new Intent(this, PlantsQuery.class));
