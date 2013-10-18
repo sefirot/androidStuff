@@ -20,7 +20,7 @@ import org.gjt.sp.jedit.EditBus.EBHandler;
 import org.gjt.sp.jedit.msg.DynamicMenuChanged;
 import org.gjt.sp.util.Log;
 
-import com.applang.berichtsheft.components.ActionPanel;
+import com.applang.components.ActionPanel;
 
 import static com.applang.Util.*;
 

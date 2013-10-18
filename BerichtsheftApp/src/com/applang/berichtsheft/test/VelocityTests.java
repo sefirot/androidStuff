@@ -62,8 +62,8 @@ import com.applang.Util.ValMap;
 import com.applang.Util1;
 import com.applang.VelocityUtil.CustomDirective;
 import com.applang.VelocityUtil.Visitor;
-import com.applang.berichtsheft.components.ASTViewer;
-import com.applang.berichtsheft.components.DatePicker;
+import com.applang.components.ASTViewer;
+import com.applang.components.DatePicker;
 
 import junit.framework.TestCase;
 

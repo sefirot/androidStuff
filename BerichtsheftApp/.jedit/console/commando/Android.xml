@@ -24,7 +24,6 @@
 	<COMMANDS>
 		<COMMAND SHELL="System">
 			import com.applang.*;
-			import com.applang.berichtsheft.plugin.*;
 			
 			jEdit.setProperty("ADB_OPERATION", oper);
 			jEdit.setProperty("ANDROID_FILE", androidFile);
@@ -32,7 +31,7 @@
 			
 			buf = new StringBuffer();
 			if (androidFile.length() &gt; 0 &amp;&amp; pcFile.length() &gt; 0) {
-				cmd = BerichtsheftPlugin.buildAdbCommand(oper, androidFile, pcFile);
+				cmd = com.applang.components.AndroidBridge.buildAdbCommand(oper, androidFile, pcFile);
 				if (params.length() &gt; 0)
 					cmd += " "+params;
 				buf.append(cmd);

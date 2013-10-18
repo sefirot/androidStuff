@@ -496,7 +496,7 @@ public class SwingUtil
 		}
 	}
 	
-	public static int dialogResult = Behavior.CLOSED_OPTION;
+	public static int dialogResult = JOptionPane.CLOSED_OPTION;
 	
     public static int showDialog(Component parent, Component relative, 
     		String title, 
@@ -506,7 +506,7 @@ public class SwingUtil
     		final int behavior, 
     		Integer... keyEvents)
     {
-    	dialogResult = Behavior.CLOSED_OPTION;
+    	dialogResult = JOptionPane.CLOSED_OPTION;
     	
     	boolean modal = Behavior.hasFlags(behavior, Behavior.MODAL);
 		Frame frame = JOptionPane.getFrameForComponent(parent);
@@ -576,37 +576,6 @@ public class SwingUtil
         public static boolean hasFlags(int index, int flags) { 
 			return (getFlags(index) & flags) > 0; 
         }
-
-        //
-        // Option types
-        //
-        /*
-         * Type meaning Look and Feel should not supply any options -- only
-         * use the options from the <code>JOptionPane</code>.
-         */
-        public static final int         DEFAULT_OPTION = -1;
-        /* Type used for <code>showConfirmDialog</code>. */
-        public static final int         YES_NO_OPTION = 0;
-        /* Type used for <code>showConfirmDialog</code>. */
-        public static final int         YES_NO_CANCEL_OPTION = 1;
-        /* Type used for <code>showConfirmDialog</code>. */
-        public static final int         OK_CANCEL_OPTION = 2;
-
-        //
-        // Return values.
-        //
-        /* Return value from class method if YES is chosen. */
-        public static final int         YES_OPTION = 0;
-        /* Return value from class method if NO is chosen. */
-        public static final int         NO_OPTION = 1;
-        /* Return value from class method if CANCEL is chosen. */
-        public static final int         CANCEL_OPTION = 2;
-        /* Return value form class method if OK is chosen. */
-        public static final int         OK_OPTION = 0;
-        /* Return value from class method if user closes window without selecting
-         * anything, more than likely this should be treated as either a
-         * <code>CANCEL_OPTION</code> or <code>NO_OPTION</code>. */
-        public static final int         CLOSED_OPTION = -1;
     }
 	
     public static int showOptionDialog(Component parent, 
@@ -617,7 +586,7 @@ public class SwingUtil
             Object...params) 
     {
 		Integer[] keyEvents = param(new Integer[0], 0, params);
-    	if (optionType > Behavior.OK_CANCEL_OPTION) {
+    	if (optionType > JOptionPane.OK_CANCEL_OPTION) {
     		final Function<Boolean> optionHandler = param(null, 1, params);
     		UIFunction assembleUI = new UIFunction() {
     			public Component[] apply(final Component dialog, Object[] parms) {
@@ -637,7 +606,7 @@ public class SwingUtil
     						{
     							Object value = optionPane.getValue();
     							if (value == JOptionPane.UNINITIALIZED_VALUE) {
-    								dialogResult = Behavior.CLOSED_OPTION;
+    								dialogResult = JOptionPane.CLOSED_OPTION;
     								return;
     							}
     							else {
@@ -789,15 +758,35 @@ public class SwingUtil
 				Window window = SwingUtilities.getWindowAncestor(component);
 				if (window instanceof Dialog) {
 					Dialog dialog = (Dialog) window;
-					if (!dialog.isResizable()) {
+					if (!dialog.isResizable()) 
 						dialog.setResizable(true);
-				}
 				}
 			}
 		});
 		if (ancestorListener != null)
 			component.addAncestorListener(ancestorListener);
 		return show.apply(arrayappend(objects(component), params));
+    }
+    
+    public static String getWindowTitle(Component component) {
+		Window window = SwingUtilities.windowForComponent(component);
+		if (window instanceof Frame) 
+			return ((Frame)window).getTitle();
+		else if (window instanceof Dialog) 
+			return ((Dialog)window).getTitle();
+		return null;
+    }
+    
+    public static boolean setWindowTitle(Component component, String title) {
+    	boolean retval = true;
+		Window window = SwingUtilities.windowForComponent(component);
+		if (window instanceof Frame) 
+			((Frame)window).setTitle(title);
+		else if (window instanceof Dialog) 
+			((Dialog)window).setTitle(title);
+		else
+			retval = false;
+		return retval;
     }
 
 	@SuppressWarnings("unchecked")
@@ -909,6 +898,10 @@ public class SwingUtil
 			file = chooser == null ? 
 					chooseFile(true, null, title, file, filter) : 
 					chooser.apply(true, null, title, file, filter);
+			if (fileNames == null)
+				return file;
+			if (file == null)
+				return getFileFromStore(type, title, filter, chooser, loader, saver, params);
 		}
 		if (file != null) {
 			fileName = file.getPath();
@@ -936,7 +929,8 @@ public class SwingUtil
 			String fileName, 
 			FileFilter...fileFilters)
 	{
-		File f = chooseFile(toOpen, parent, title, new File(fileName), fileFilters);
+		File f = new File(stringValueOf(fileName));
+		f = chooseFile(toOpen, parent, title, f, fileFilters);
 		return strings(f == null ? "" : f.getPath());
 	}
 
@@ -944,7 +938,8 @@ public class SwingUtil
 			String title, 
 			String dirName)
 	{
-		File f = chooseDirectory(parent, title, new File(dirName));
+		File f = new File(stringValueOf(dirName));
+		f = chooseDirectory(parent, title, f);
 		return strings(f == null ? "" : f.getPath());
 	}
 	

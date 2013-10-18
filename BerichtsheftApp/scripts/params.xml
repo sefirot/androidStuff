@@ -1,1 +1,1 @@
-<params><dbfile>databases/berichtsheft.db</dbfile><year>2013</year><weekInYear>1</weekInYear><dayInWeek>\d</dayInWeek></params>
+<params><dbfile>databases/berichtsheft.db</dbfile><year>2012</year><weekInYear>1</weekInYear><dayInWeek>\d</dayInWeek></params>

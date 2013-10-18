@@ -1,4 +1,4 @@
-package com.applang.berichtsheft.components;
+package com.applang.components;
 
 import static com.applang.SwingUtil.*;
 import static com.applang.Util.*;
@@ -23,7 +23,7 @@ import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 @SuppressWarnings("rawtypes")
 public abstract class ManagerBase<T extends Object> extends JComponent
 {
-	protected JComboBox[] comboBoxes;
+	public JComboBox[] comboBoxes;
 	
 	public JTextField comboEdit(int index) {
 		return com.applang.SwingUtil.comboEdit(comboBoxes[index]);
@@ -61,7 +61,10 @@ public abstract class ManagerBase<T extends Object> extends JComponent
 		if (!exists || isDirty()) {
 			setDirty(false);
 			if (isItemValid(item)) {
-				String string = exists ? "Save changes to '%s'" : "Save '%s'";
+				String string = exists ? 
+						"manager.save.message.1" : 
+						"manager.save.message.2";
+				string = BerichtsheftPlugin.getProperty(string);
 				return question(String.format(string, toString(item)), 
 						null,
 						JOptionPane.YES_NO_OPTION);
@@ -70,25 +73,25 @@ public abstract class ManagerBase<T extends Object> extends JComponent
 		return false;
 	}
 
-	protected Boolean save(Object item, boolean refresh) {
+	public Boolean save(Object item, boolean refresh) {
 		boolean exists = select(item) != null;
 		if (saveThis(exists, item)) {
 			if (exists) {
 				updateItem(true, item);
-				BerichtsheftPlugin.consoleMessage("berichtsheft.add.message.1", toString(item));
+				BerichtsheftPlugin.consoleMessage("manager.update.message.1", toString(item));
 			}
 			else
 				if (!addItem(refresh, item))
-					BerichtsheftPlugin.consoleMessage("berichtsheft.add.message.2", toString(item));
+					BerichtsheftPlugin.consoleMessage("manager.add.message.1", toString(item));
 				else
-					BerichtsheftPlugin.consoleMessage("berichtsheft.add.message.3", toString(item));
+					BerichtsheftPlugin.consoleMessage("manager.add.message.2", toString(item));
 			return exists;
 		}
 		return null;
 	}
 	
 	protected boolean deleteThis(Object item) {
-		String string = String.format("Delete '%s'", toString(item));
+		String string = String.format(BerichtsheftPlugin.getProperty("manager.delete.message"), toString(item));
 		if (isItemValid(item) && question(string, null, JOptionPane.YES_NO_OPTION)) {
 			setDirty(false);
 			return true;
@@ -96,15 +99,14 @@ public abstract class ManagerBase<T extends Object> extends JComponent
 		return false;
 	}
 
-	protected Boolean delete(Object item) {
+	public Boolean delete(Object item) {
 		if (deleteThis(item)) {
 			boolean done = removeItem(item);
-			if (!done)
-				BerichtsheftPlugin.consoleMessage("berichtsheft.remove.message.2", 
-						ManagerBase.this.toString(item));
-			else
-				BerichtsheftPlugin.consoleMessage("berichtsheft.remove.message.3", 
-						ManagerBase.this.toString(item));
+			BerichtsheftPlugin.consoleMessage(
+					done ? 
+							"manager.remove.message.2" : 
+							"manager.remove.message.1", 
+					ManagerBase.this.toString(item));
 			return done;
 		}
 		return null;
@@ -115,12 +117,12 @@ public abstract class ManagerBase<T extends Object> extends JComponent
 	}
 	
 	protected void installAddRemove(Container container, final String itemName) {
-		container.add(BerichtsheftPlugin.makeCustomButton("berichtsheft.add", new ActionListener() {
+		container.add(BerichtsheftPlugin.makeCustomButton("manager.add", new ActionListener() {
 			public void actionPerformed(ActionEvent evt) {
 				save(getItem(), true);
 			}
 		}, false));
-		container.add(BerichtsheftPlugin.makeCustomButton("berichtsheft.remove", new ActionListener() {
+		container.add(BerichtsheftPlugin.makeCustomButton("manager.remove", new ActionListener() {
 			public void actionPerformed(ActionEvent evt) {
 				delete(getItem());
 			}
@@ -130,59 +132,60 @@ public abstract class ManagerBase<T extends Object> extends JComponent
 	private AbstractButton[] abuttons = new AbstractButton[2];
 	
 	protected void installUpdate(Container container) {
-		container.add(abuttons[0] = BerichtsheftPlugin.makeCustomButton("berichtsheft.update-change", 
+		container.add(abuttons[0] = BerichtsheftPlugin.makeCustomButton("manager.update-change", 
 				new ActionListener() {
 					public void actionPerformed(ActionEvent evt) {
 						updateChange(true);
 					}
 				}, 
 				false));
-		container.add(abuttons[1] = BerichtsheftPlugin.makeCustomButton("berichtsheft.erase-change", 
+		container.add(abuttons[1] = BerichtsheftPlugin.makeCustomButton("manager.erase-change", 
 				new ActionListener() {
 					public void actionPerformed(ActionEvent evt) {
 						updateChange(false);
 					}
 				}, 
 				false));
-		changeAllowed.push(true);
+		changePossible.push(true);
 		setDirty(false);
-		changeAllowed.pop();
+		changePossible.pop();
 	}
 
 	public void updateChange(boolean update) {
 		updateItem(update);
+		BerichtsheftPlugin.consoleMessage("manager.update.message.1", toString(getItem()));
 		setDirty(false);
 	}
 
-	private Stack<Boolean> changeAllowed;
+	private Stack<Boolean> changePossible;
 	
 	{
-		changeAllowed = new Stack<Boolean>();
-		changeAllowed.push(true);
+		changePossible = new Stack<Boolean>();
+		changePossible.push(true);
 	}
 	
-	protected boolean isDirty() {
-		if (changeAllowed.peek()) 
+	public boolean isDirty() {
+		if (changePossible.peek()) 
 			return abuttons[0].isEnabled();
 		else
 			return false;
 	}
 	
-	protected void setDirty(boolean dirty) {
-		if (changeAllowed.peek()) 
+	public void setDirty(boolean dirty) {
+		if (changePossible.peek()) 
 			for (AbstractButton button : abuttons) 
 				button.setEnabled(dirty);
 	}
 	
 	protected void blockChange(Job<Void> job, Object...params) {
 		try {
-			changeAllowed.push(false);
+			changePossible.push(false);
 			job.perform(null, params);
 		} catch (Exception e) {
 			handleException(e);
 		}
 		finally {
-			changeAllowed.pop();
+			changePossible.pop();
 		}
 	}
 

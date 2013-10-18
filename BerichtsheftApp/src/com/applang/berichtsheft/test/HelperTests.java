@@ -77,17 +77,18 @@ import com.applang.SwingUtil.Behavior;
 import com.applang.UserContext.EvaluationTask;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.R;
-import com.applang.berichtsheft.components.DataView;
-import com.applang.berichtsheft.components.DataView.ProviderModel;
-import com.applang.berichtsheft.components.DatePicker;
-import com.applang.berichtsheft.components.ScriptManager;
-import com.applang.berichtsheft.components.TextEditor;
-import com.applang.berichtsheft.components.ProfileManager;
-import com.applang.berichtsheft.components.WeatherManager;
 import com.applang.berichtsheft.plugin.DataDockable;
 import com.applang.berichtsheft.plugin.JEditOptionDialog;
 import com.applang.berichtsheft.plugin.DataDockable.TransportBuilder;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
+import com.applang.components.AndroidBridge;
+import com.applang.components.DataView;
+import com.applang.components.DatePicker;
+import com.applang.components.ProfileManager;
+import com.applang.components.ScriptManager;
+import com.applang.components.TextEditor;
+import com.applang.components.WeatherManager;
+import com.applang.components.DataView.ProviderModel;
 import com.applang.provider.NotePadProvider;
 import com.applang.provider.WeatherInfoProvider;
 import com.applang.provider.WeatherInfo.Weathers;
@@ -181,7 +182,7 @@ public class HelperTests extends TestCase {
 	    return attributes.size();
 	}
 	
-	private void doSomethingUseful(String contents, Object...params) throws Exception {
+	private void setupJEdit(String contents, Object...params) throws Exception {
 		File tempFile = BerichtsheftPlugin.getTempFile("test.bsh");
 		contentsToFile(tempFile, 
 				String.format(
@@ -196,7 +197,8 @@ public class HelperTests extends TestCase {
 						"        run();\n" +
 						"}\n" +
 						"doSomethingUseful();", contents));
-		File jarsDir = tempDir(true, BerichtsheftPlugin.NAME, "settings", "jars");
+		String subDirName = BerichtsheftPlugin.NAME;
+		File jarsDir = tempDir(true, subDirName, "settings", "jars");
 		symbolicLinks(jarsDir, ".jedit/jars", 
 				"BerichtsheftPlugin.jar",
 				"Console.jar",
@@ -205,15 +207,16 @@ public class HelperTests extends TestCase {
 				"ErrorList.jar",
 				"CommonControls.jar",
 				"kappalayout.jar");
-		File settingsDir = tempDir(false, BerichtsheftPlugin.NAME, "settings");
+		File settingsDir = tempDir(false, subDirName, "settings");
 		symbolicLinks(settingsDir, ".jedit", "keymaps");
-		settingsDir = tempDir(false, BerichtsheftPlugin.NAME, "settings", "plugins");
+		settingsDir = tempDir(false, subDirName, "settings", "plugins");
 		symbolicLinks(settingsDir, ".jedit/plugins", "berichtsheft");
-		File commandoDir = tempDir(false, BerichtsheftPlugin.NAME, "settings", "console");
+		File commandoDir = tempDir(false, subDirName, "settings", "console");
 		symbolicLinks(commandoDir, ".jedit/console", "commando");
 		copyFile(
-				new File(tempDir(false, BerichtsheftPlugin.NAME, "settings", "plugins", "berichtsheft"), "jedit.properties"), 
-				new File(tempDir(false, BerichtsheftPlugin.NAME, "settings"), "properties"));
+				new File(tempDir(false, subDirName, "settings", "plugins", "berichtsheft"), "jedit.properties"), 
+				new File(tempDir(false, subDirName, "settings"), "properties"));
+		BerichtsheftPlugin.props = null;
 		jEdit.main(strings(
 				"-nosplash",
 				"-noserver",
@@ -222,12 +225,12 @@ public class HelperTests extends TestCase {
 				join(" ", params)));
 	}
 
-	private void performScriptTest(final String title, final String script, final Object...params) {
+	private void scriptTest(final String title, final String script, final Object...params) {
 		show_Frame(null, "",
 			new AbstractAction(title) {
 				public void actionPerformed(ActionEvent ev) {
 					try {
-						doSomethingUseful(script, params);
+						setupJEdit(script, params);
 					} catch (Exception e) {
 						Log.e(TAG, title, e);
 					}
@@ -237,21 +240,21 @@ public class HelperTests extends TestCase {
 	}
 
 	public void testCommando() {
-		String contents = 
-				"import com.applang.berichtsheft.plugin.*;\n" +
-				"BerichtsheftPlugin.invokeAction(view, \"commando.Spezial\");\n";
-		performScriptTest("testCommando", contents);
+		String script = String.format(
+				"com.applang.berichtsheft.plugin.BerichtsheftPlugin.invokeAction(view, \"%s\");\n", 
+				"commando.Dokumente");
+		scriptTest("testCommando", script);
 	}
 
 	public void testAndroidFileChooser() throws Exception {
-		String script = "import com.applang.berichtsheft.plugin.*;\n" +
+		String script = "import com.applang.components.*;\n" +
 				"androidFileName = \"\";\n" +
 				"do {\n" +
-				"	androidFileName = BerichtsheftPlugin.chooseFileFromSdcard(view,false,androidFileName);\n" +
+				"	androidFileName = AndroidBridge.chooseFileFromSdcard(view,false,androidFileName);\n" +
 				"} while (androidFileName != null);";
-		performScriptTest("testAndroidFileChooser", script);
+		scriptTest("testAndroidFileChooser", script);
 //		underTest = true;
-//		println(BerichtsheftPlugin.chooseFileFromSdcard(null, false, ""));
+//		println(AndroidBridge.chooseFileFromSdcard(null, false, ""));
 	}
 	
 	public void testSpellchecking() {
@@ -259,7 +262,7 @@ public class HelperTests extends TestCase {
 				"jEdit.openFile(view.getEditPane(), \"/home/lotharla/work/Workshop/Examples/poem.txt\");\n" + 
 				"view.getEditPane().getTextArea().selectAll();\n" + 
 				"BerichtsheftPlugin.invokeAction(view, String actionName);";
-		performScriptTest("testSpellchecking", script);
+		scriptTest("testSpellchecking", script);
    }
 
 	public void _testCommands() throws Exception {
@@ -280,7 +283,7 @@ public class HelperTests extends TestCase {
 					JOptionPane.OK_CANCEL_OPTION, 
 					JOptionPane.PLAIN_MESSAGE, 
 					null, null, null))
-				performScriptTest("COMMAND", script);
+				scriptTest("COMMAND", script);
 		}
 	}
 
@@ -319,20 +322,20 @@ public class HelperTests extends TestCase {
 	
 	public void testShellRun() throws Exception {
 		underTest = true;
-		shellRunTest(BerichtsheftPlugin.buildAdbCommand("-r", "/sdcard/xxx", ""), "rm");
+		shellRunTest(AndroidBridge.buildAdbCommand("-r", "/sdcard/xxx", ""), "rm");
 		existTest(false, "xxx/", "");
 		
-		shellRunTest(BerichtsheftPlugin.buildAdbCommand("mkdir", "/sdcard/xxx/", ""), "mkdir");
+		shellRunTest(AndroidBridge.buildAdbCommand("mkdir", "/sdcard/xxx/", ""), "mkdir");
 		existTest(true, "xxx/", "");
 		
 		runShellScript("dev", adb + " devices");
-		shellRunTest(BerichtsheftPlugin.buildAdbCommand("push", "/sdcard/xxx/", "/tmp/dev"), "push");
+		shellRunTest(AndroidBridge.buildAdbCommand("push", "/sdcard/xxx/", "/tmp/dev"), "push");
 		existTest(true, "dev", "xxx/");
 		
-		shellRunTest(BerichtsheftPlugin.buildAdbCommand("rm", "/sdcard/xxx/dev", ""), "rm");
+		shellRunTest(AndroidBridge.buildAdbCommand("rm", "/sdcard/xxx/dev", ""), "rm");
 		existTest(false, "dev", "xxx/");
 		
-		shellRunTest(BerichtsheftPlugin.buildAdbCommand("rmdir", "/sdcard/xxx/", ""), "rmdir");
+		shellRunTest(AndroidBridge.buildAdbCommand("rmdir", "/sdcard/xxx/", ""), "rmdir");
 		existTest(false, "xxx/", "");
 	}
 
@@ -490,7 +493,7 @@ public class HelperTests extends TestCase {
     	String dbPath = createWeatherInfo();
     	WeatherManager wm = new WeatherManager();
 		if (wm.openConnection(dbPath)) {
-			wm.parseSite("10519", DatePicker.Period.loadParts());
+			wm.parseSite("10519", DatePicker.Period.loadParts(0));
 			wm.evaluate(true);
 			wm.closeConnection();
 		}

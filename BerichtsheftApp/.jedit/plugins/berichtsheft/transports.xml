@@ -1,7 +1,7 @@
 <TRANSPORTS>
 	<FUNCTION name="now">
 <BODY><![CDATA[import com.applang.*;
-pattern = com.applang.berichtsheft.components.DatePicker.calendarFormat;
+pattern = com.applang.components.DatePicker.calendarFormat;
 if ("pull".equals(oper))
 	result = Util.now();
 else if ("push".equals(oper))
@@ -13,7 +13,7 @@ result]]></BODY>
 push = "push".equals(oper);
 if (value == void)
 	return push ? "" : null;
-pattern = com.applang.berichtsheft.components.DatePicker.calendarFormat;
+pattern = com.applang.components.DatePicker.calendarFormat;
 if (push)
 	result = Util.formatDate(value, new Object[]{pattern});
 else 

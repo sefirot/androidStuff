@@ -1,4 +1,4 @@
-package com.applang.berichtsheft.components;
+package com.applang.components;
 
 import static com.applang.Util.*;
 import static com.applang.SwingUtil.*;

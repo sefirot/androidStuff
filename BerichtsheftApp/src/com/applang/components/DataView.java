@@ -1,4 +1,4 @@
-package com.applang.berichtsheft.components;
+package com.applang.components;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
@@ -37,6 +37,7 @@ import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
+import javax.swing.table.TableModel;
 
 import org.gjt.sp.jedit.BeanShell;
 import org.gjt.sp.jedit.bsh.NameSpace;
@@ -57,10 +58,6 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
-import com.applang.SwingUtil.Behavior;
-import com.applang.SwingUtil.UIFunction;
-import com.applang.Util.BidiMultiMap;
-import com.applang.Util.ValList;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.R;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
@@ -76,7 +73,8 @@ public class DataView extends JPanel implements DataComponent
 {
 	private static final String TAG = DataView.class.getSimpleName();
 	
-	private Context context = BerichtsheftApp.getActivity();
+	Context context = BerichtsheftApp.getActivity();
+	public ContentResolver contentResolver = context.getContentResolver();
 	
 	public DataView() {
 		createUI();
@@ -84,6 +82,10 @@ public class DataView extends JPanel implements DataComponent
 	
 	private class DataTable extends JTable
 	{
+		public DataTable(TableModel dm) {
+			super(dm);
+		}
+
 		public String renderCellValue(int row, int column) {
 			Object value = getValueAt(row, column);
 			int col = convertColumnIndexToModel(column);
@@ -135,7 +137,8 @@ public class DataView extends JPanel implements DataComponent
 				projection = null;
 			}
 		});
-		table = new DataTable();
+		tf.setText("");
+		table = new DataTable(new ConsumerModel());
 		table.addMouseListener(new PopupAdapter(newPopupMenu(
 				objects()
 		)));
@@ -200,31 +203,34 @@ public class DataView extends JPanel implements DataComponent
 		return com.applang.Util1.getDatabaseFile(context, uri).getPath();
 	}
 
-	public String uriWithQuery(Uri uri, String tableName, String schema, BidiMultiMap projection) {
-		Uri.Builder builder = dbTable(uri, tableName).buildUpon().query("");
-		builder.appendQueryParameter("_", stringValueOf(schema));
-		ValList names = projection.getKeys();
-		ValList convs = projection.getValues(1);
-		ValList types = projection.getValues(2);
-		for (int i = 0; i < names.size(); i++) {
-			String value = stringValueOf(types.get(i)) + "|" + stringValueOf(convs.get(i));
-			builder.appendQueryParameter(stringValueOf(names.get(i)), value);
-		}
-		return builder.toString();
-	}
-
 	public void updateUri(String uriString) {
 		this.uri = Uri.parse(valueOrElse("", uriString));
 		boolean refresh = projection == null;
 		if (askProjection() || refresh) {
-			uriString = uriWithQuery(uri, dbTableName(uri), schema, projection);
-			putSetting("uri", uriString);
-			Settings.save();
+			saveUri();
 		}
 		load(uri);
 	}
 
-	public DataView load() {
+	public void saveUri() {
+		String tableName = dbTableName(uri);
+		Uri.Builder builder = dbTable(uri, tableName).buildUpon().query("");
+		builder.appendQueryParameter("_", stringValueOf(schema));
+		if (projection != null) {
+			ValList names = projection.getKeys();
+			ValList convs = projection.getValues(1);
+			ValList types = projection.getValues(2);
+			for (int i = 0; i < names.size(); i++) {
+				String value = stringValueOf(types.get(i)) + "|"
+						+ stringValueOf(convs.get(i));
+				builder.appendQueryParameter(stringValueOf(names.get(i)), value);
+			}
+		}
+		putSetting("uri", builder.toString());
+		Settings.save();
+	}
+
+	public void loadUri() {
 		String uriString = getSetting("uri", "");
 		if (notNullOrEmpty(uriString)) {
 			uri = Uri.parse(uriString);
@@ -250,7 +256,6 @@ public class DataView extends JPanel implements DataComponent
 			}
 			load(uri);
 		}
-		return this;
 	}
 
 	public boolean load(Uri uri) {
@@ -266,7 +271,6 @@ public class DataView extends JPanel implements DataComponent
 		boolean retval = true;
 		wire(true);
 //		sqlBox.setEnabled(!hasAuthority(uri));
-		ContentResolver contentResolver = context.getContentResolver();
 		String msg = "";
 		try {
 			if (!isAvailable(0, sql) && sqlBox.isEnabled())
@@ -305,16 +309,15 @@ public class DataView extends JPanel implements DataComponent
 
 	public void wire(boolean unwire) {
 		if (unwire) {
-			context.getContentResolver().unregisterContentObserver(contentObserver);
+			contentResolver.unregisterContentObserver(contentObserver);
 		}
 		else {
-			context.getContentResolver().registerContentObserver(getUri(), false, contentObserver);
+			contentResolver.registerContentObserver(getUri(), false, contentObserver);
 		}
 		table.setAutoCreateRowSorter(!unwire);
 	}
 	
-	public ValMap tableInfo(String...name) {
-		String tableName = param(null, 0, name);
+	public ValMap tableInfo(String tableName) {
 		if (tableName != null) 
 			return table_info(context, uri, tableName);
 		else
@@ -387,7 +390,7 @@ public class DataView extends JPanel implements DataComponent
 		return new JScrollPane(table);
 	}
 	
-	public static File chooseDb(Function<File> chooser, final boolean urisIncluded, Object...params) {
+	public static File chooseDb(Function<File> chooser, final boolean providerIncluded, Object...params) {
 		final String key = "Database.memory";
 		File file = getFileFromStore(0, 
 			"SQLite database", 
@@ -395,8 +398,10 @@ public class DataView extends JPanel implements DataComponent
 			chooser, 
 			new Function<String[]>() {
 				public String[] apply(Object... params) {
+					if (paramBoolean(false, 1, params))
+						return null;
 					ValList list = (ValList) getListSetting(key, vlist());
-					if (urisIncluded) {
+					if (providerIncluded) {
 						for (Object pkg : providerPackages) {
 							list.add(String.valueOf(pkg));
 						}
@@ -527,8 +532,8 @@ public class DataView extends JPanel implements DataComponent
 		return params[0].toString();
 	}
 	
-	public boolean askUri(Function<File> chooser, String info) {
-		File dbFile = chooseDb(chooser, true, info);
+	public boolean askUri(org.gjt.sp.jedit.View view, String info) {
+		File dbFile = chooseDb(BerichtsheftPlugin.fileChooser(view), true, info, true);
     	if (dbFile != null) {
     		Context context = BerichtsheftApp.getActivity();
     		String dbPath = dbFile.getPath();
@@ -786,7 +791,8 @@ public class DataView extends JPanel implements DataComponent
 	{
 		@Override
 		public String toString() {
-			return String.valueOf(data).replaceAll("(\\],) (\\[)", "$1\n\n$2");
+			return String.valueOf(columns) + "\n\n" + 
+				String.valueOf(data).replaceAll("(\\],) (\\[)", "$1\n\n$2");
 		}
 	
 		public Vector<Vector<Object>> data = new Vector<Vector<Object>>();
@@ -812,8 +818,8 @@ public class DataView extends JPanel implements DataComponent
 			return this;
 		}
 		
-		private ValList columns = vlist();
-	    private String[] functions = strings();
+		public ValList columns = vlist();
+		public String[] functions = strings();
 		
 		public BidiMultiMap getProjection() {
 			return new BidiMultiMap(columns, new ValList(asList(functions)));
@@ -903,7 +909,12 @@ public class DataView extends JPanel implements DataComponent
 
 	public static class ProviderModel
 	{
-		private Context context = BerichtsheftApp.getActivity();
+		Context context = BerichtsheftApp.getActivity();
+		public ContentResolver contentResolver = context.getContentResolver();
+		
+		public ProviderModel(DataView dv) {
+			this(dv.getUriString());
+		}
 		
 		public ProviderModel(String uriString) {
 			tableName = dbTableName(uriString);
@@ -915,8 +926,10 @@ public class DataView extends JPanel implements DataComponent
 		
 		public String tableName;
 		public ValMap info;
-		
-		ContentResolver contentResolver = context.getContentResolver();
+
+		public Uri makeUri(String uriString) {
+			return Uri.parse(uriString);
+		}
 		
 		public Object[][] query(String uriString, String[] columns, Object...params) {
 			String selection = param(null, 0, params);
@@ -924,7 +937,7 @@ public class DataView extends JPanel implements DataComponent
 			String sortOrder = param(null, 2, params);
 			try {
 				final ArrayList<Object[]> rows = new ArrayList<Object[]>();
-				Cursor cursor = contentResolver.query(Uri.parse(uriString), 
+				Cursor cursor = contentResolver.query(makeUri(uriString), 
 						columns, 
 						selection, selectionArgs, 
 						sortOrder);
@@ -945,7 +958,7 @@ public class DataView extends JPanel implements DataComponent
 			String[] selectionArgs = param(null, 1, params);
 			String sortOrder = param(null, 2, params);
 			try {
-				Cursor cursor = contentResolver.query(Uri.parse(uriString), 
+				Cursor cursor = contentResolver.query(makeUri(uriString), 
 						projection.getKeys().toArray(strings()), 
 						selection, selectionArgs, 
 						sortOrder);
@@ -1052,7 +1065,7 @@ public class DataView extends JPanel implements DataComponent
 				Object...params) 
 		{
 			try {
-				Uri uri = Uri.parse(uriString);
+				Uri uri = makeUri(uriString);
 				boolean primaryKey = notNullOrEmpty(primaryKeyColumnName);
 				boolean primaryKeyExtraColumn = primaryKey && 
 						!projection.getKeys().contains(primaryKeyColumnName.toString());
@@ -1144,8 +1157,9 @@ public class DataView extends JPanel implements DataComponent
 		if (underTest)
 			modality |= Behavior.EXIT_ON_CLOSE;
     	final DataView dv = new DataView();
-		if (!dv.askUri(null, dv.getInfo())) {
-			dv.load();
+		dv.loadUri();
+		if (dv.askUri(null, dv.getInfo())) {
+			dv.load(dv.getUri());
 		}
 		showFrame(null, dv.getUriString(), 
 			new UIFunction() {

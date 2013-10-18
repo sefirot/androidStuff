@@ -42,11 +42,11 @@ import android.net.Uri;
 import com.applang.Util.ValList;
 import com.applang.Util.ValMap;
 import com.applang.berichtsheft.BerichtsheftApp;
-import com.applang.berichtsheft.components.DataView;
-import com.applang.berichtsheft.components.DatePicker;
-import com.applang.berichtsheft.components.ScriptManager;
-import com.applang.berichtsheft.components.ProfileManager;
-import com.applang.berichtsheft.components.WeatherManager;
+import com.applang.components.DataView;
+import com.applang.components.DatePicker;
+import com.applang.components.ProfileManager;
+import com.applang.components.ScriptManager;
+import com.applang.components.WeatherManager;
 import com.applang.provider.WeatherInfo.Weathers;
 
 /**
@@ -58,12 +58,9 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 {
 	private static final long serialVersionUID = 6415522692894321789L;
 
-	private View view;
-
 	private boolean floating;
-
-	private DataView dataView;
-
+	private View view;
+	
 	public class DataToolPanel extends JPanel
 	{
 		private JLabel label = new JLabel();
@@ -106,7 +103,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 		}
 	
 		void propertiesChanged() {
-			String dbName = getUriString();
+			String dbName = dataView.getUriString();
 			label.setText(dbName);
 			boolean show = "true".equals(BerichtsheftPlugin.getOptionProperty("show-uri"));
 			label.setVisible(show);
@@ -139,12 +136,10 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 		propertiesChanged();
 	}
 	
+	public DataView dataView;
+
 	public void focusOnDefaultComponent() {
 		dataView.requestFocus();
-	}
-
-	public String getUriString() {
-		return dataView.getUriString();
 	}
 
 	// EBComponent implementation
@@ -155,7 +150,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 		}
 	}
     
-	private void propertiesChanged() {
+	void propertiesChanged() {
 		Font newFont = BerichtsheftOptionPane.makeFont();
 		JTable table = dataView.getTable();
 		Font oldFont = table.getFont();
@@ -164,7 +159,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 		}
 		
 		if (dataView.getUri() == null)
-			dataView.load();
+			dataView.loadUri();
 		else
 			dataView.reload();
 		
@@ -189,8 +184,8 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 	// Actions implementation
 	
 	public void chooseUri() {
-    	if (dataView.askUri(BerichtsheftPlugin.fileChooser(view), dataView.getInfo())) {
-    		BerichtsheftPlugin.setProperty("TRANSPORT_URI", getUriString());
+    	if (dataView.askUri(view, dataView.getInfo())) {
+    		BerichtsheftPlugin.setProperty("TRANSPORT_URI", dataView.getUriString());
     		updateUri();
 		}
     	else
@@ -198,8 +193,10 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 	};
 	
 	public void updateUri() {
-		String uriString = BerichtsheftPlugin.getProperty("TRANSPORT_URI");
-		dataView.updateUri(uriString);
+		dataView.updateUri(dataView.getUriString());
+		NoteDockable dockable = (NoteDockable) BerichtsheftPlugin.getDockable(view, "notedock", false);
+		if (dockable != null)
+			dockable.propertiesChanged();
 		toolPanel.propertiesChanged();
 	}
 
@@ -489,8 +486,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 	// NOTE used in scripts
 	public static boolean doTransport(final View view, String oper, Object...params) {
 		boolean showData = paramBoolean(true, 0, params);
-		DataDockable dockable = 
-				(DataDockable) view.getDockableWindowManager().getDockableWindow("datadock");
+		DataDockable dockable = (DataDockable) BerichtsheftPlugin.getDockable(view, "datadock", false);
 		if (dockable == null) {
 			BerichtsheftPlugin.consoleMessage("datadock.dockable-required.message");
 			return false;
@@ -644,7 +640,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 						return result;
 					}
 				};
-				wm.parseSite(wm.location, DatePicker.Period.loadParts());
+				wm.parseSite(wm.location, DatePicker.Period.loadParts(0));
 				wm.evaluate(showData);
 				if (results[0] > 0 || results[1] > 0)
 					BerichtsheftPlugin.consoleMessage("dataview.updateOrInsert.message", 
@@ -675,7 +671,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 		}
 		return retval;
 	}
-	   
+
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public static boolean generateAwkScript(String awkFileName, Object...params) {
 		String uriString = BerichtsheftPlugin.getProperty("TRANSPORT_URI");

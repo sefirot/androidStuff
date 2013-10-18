@@ -95,8 +95,8 @@ public class ContentProvider {
 	public Cursor rawQuery(Uri uri, String...sql) {
 		Cursor cursor = null;
 		if (open(uri, SQLiteDatabase.OPEN_READONLY)) {
-			String[] args = null;
-			if (sql.length > 0) {
+			String[] args = strings();
+			if (isAvailable(0, sql) && sql[0].length() > 0) {
 				this.sql = sql[0];
 				args = arrayreduce(sql, 1, sql.length - 1);
 			}

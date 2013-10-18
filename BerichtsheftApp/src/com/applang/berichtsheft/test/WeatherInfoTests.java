@@ -33,8 +33,8 @@ import com.applang.Util.ValMap;
 import com.applang.Util2.Settings;
 import com.applang.Util1;
 import com.applang.berichtsheft.BerichtsheftApp;
-import com.applang.berichtsheft.components.DatePicker;
-import com.applang.berichtsheft.components.WeatherManager;
+import com.applang.components.DatePicker;
+import com.applang.components.WeatherManager;
 
 import junit.framework.TestCase;
 
@@ -72,7 +72,7 @@ public class WeatherInfoTests extends TestCase
 //		DatePicker.Period.setParts(dateParts);
 		
 		WeatherManager wm = new WeatherManager();
-		wm.parseSite("10519", DatePicker.Period.loadParts());
+		wm.parseSite("10519", DatePicker.Period.loadParts(0));
 		wm.evaluate(false);
     }
 	

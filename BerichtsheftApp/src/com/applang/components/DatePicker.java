@@ -1,4 +1,4 @@
-package com.applang.berichtsheft.components;
+package com.applang.components;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -27,6 +27,8 @@ import javax.swing.JFormattedTextField;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
+import com.applang.SwingUtil.Behavior;
+
 import android.util.Log;
 
 import static com.applang.Util.*;
@@ -36,6 +38,13 @@ import static com.applang.SwingUtil.*;
 public class DatePicker
 {
 	private static final String TAG = DatePicker.class.getSimpleName();
+	private static int modality = Behavior.MODAL;
+
+	public static void main(String[] args) {
+		modality |= Behavior.EXIT_ON_CLOSE;
+		long time = now();
+		println(pickADate(time, "", "", timeLine(time, 1)));
+	}
 
 	int monthOfYear, year;
 	int rows = 7, cols = 8;
@@ -43,17 +52,15 @@ public class DatePicker
 	JButton month = new JButton("");
 	JButton[] weeks, days;
 	SimpleDateFormat sdf = new SimpleDateFormat();
-	
 	Long[] timeLine = null;
+	Font font = monoSpaced(Font.BOLD);
 
 	public DatePicker(Component relative, Object... params) {
 		date = paramString("", 0, params);
 		timeLine = param(null, 1, params);
 		String title = paramString("Date Picker", 2, params);
 		final boolean cancelable = paramBoolean(false, 3, params);
-		
 		sdf.setCalendar(getCalendar());
-		
 		showDialog(null, relative, 
 	    		title, 
 	    		new UIFunction() {
@@ -81,7 +88,7 @@ public class DatePicker
 						return null;
 					}
 	    		},
-	    		Behavior.MODAL);
+	    		modality);
 	}
 	
 	public JPanel[] panels(final JDialog dialog) {
@@ -145,7 +152,7 @@ public class DatePicker
 		JPanel p3 = new JPanel(new GridLayout(1, 2));
 		p3.add(new JLabel("number of days (into the past)"));
 		final JFormattedTextField tf = new JFormattedTextField("" + ndays);
-		tf.setFont(monoSpaced(Font.BOLD));
+		tf.setFont(font);
 		tf.setForeground(Color.BLUE);
 		tf.setHorizontalAlignment(JFormattedTextField.CENTER);
 		tf.addPropertyChangeListener("value", new PropertyChangeListener() {
@@ -308,11 +315,6 @@ public class DatePicker
 		return sdf.format(getCalendar().getTime());
 	}
 
-	public static void main(String[] args) {
-		long time = now();
-		System.out.println(pickADate(time, "", "", timeLine(time, 1)));
-	}
-
 	public static String pickADate(long time, String format, String title, Long...timeLine) {
 		try {
 			String dateString = formatDate(time, calendarFormat, Locale.getDefault());
@@ -343,7 +345,7 @@ public class DatePicker
 			if (dateString.length() > 0)
 				return parsePeriod(dateString);
 		} catch (Exception e) {
-			Log.e(TAG, "pickDateParts", e);
+			Log.e(TAG, "pickAPeriod", e);
 		}
 		return null;
 	}
@@ -390,7 +392,7 @@ public class DatePicker
 		parts[0] = Integer.parseInt(dateString.substring(0, slash));
 		parts[1] = Integer.parseInt(dateString.substring(1 + slash));
 		if (parts[1] < 100) {
-			int year = getCalendar().get(Calendar.YEAR) % 100;
+			int year = getCalendarDate(now())[2] % 100;
 			parts[1] = parts[1] > year ? parts[1] + 1900 : parts[1] + 2000;
 		}
 		return parts;
@@ -527,9 +529,9 @@ public class DatePicker
 	
 	public static class Period
 	{
-		public static final int MONTH = -1;
-		
+		public static String[] periods = strings("weather.period","berichtsheft.period");
 		public static int year, month, day, length;
+		public static final int MONTH = -1;
 		
 		public static int[] getParts() {
 			return new int[]{year, month, day, length};
@@ -554,20 +556,15 @@ public class DatePicker
 		}
 		
 		private static BidiMultiMap datesInMillis = new BidiMultiMap();
-		private static String[] keys = strings("weather.period","berichtsheft.period");
 		
 		public static void save(int no) {
-			putSetting(keys[no], Arrays.toString(getParts()));
+			putSetting(periods[no], Arrays.toString(getParts()));
 			Settings.save();
 		}
     	
-	    public static int[] loadParts() {
-	    	load(0);
-	    	return getParts();
-		}
-    	
 	    public static void load(int no) {
-			MatchResult[] matches = findAllIn(getSetting(keys[no], ""), Pattern.compile("\\d+"));
+			String string = getSetting(periods[no], "");
+			MatchResult[] matches = findAllIn(string, Pattern.compile("\\d+"));
 			if (matches.length > 0) {
 				int[] parts = new int[matches.length];
 				for (int i = 0; i < parts.length; i++) {
@@ -580,6 +577,11 @@ public class DatePicker
 				cal.setTimeInMillis(now());
 				setParts(cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1, cal.get(Calendar.DAY_OF_MONTH));
 			}
+		}
+    	
+	    public static int[] loadParts(int no) {
+	    	load(no);
+	    	return getParts();
 		}
 		
 		public static String weekDate() {

@@ -1,4 +1,4 @@
-package com.applang.berichtsheft.components;
+package com.applang.components;
 
 import java.awt.Component;
 import java.awt.Dimension;
@@ -104,7 +104,7 @@ public class WeatherManager extends ActionPanel
 	public void finish(Object... params) {
 		if (getCon() != null)
 			try {
-				updateOnRequest(true);
+				updateOnRequest();
 				getCon().close();
 			} catch (Exception e) {
 				handleException(e);
@@ -629,7 +629,7 @@ public class WeatherManager extends ActionPanel
     public int[] period;
 	
 	public void retrieveWeatherData() {
-		period = DatePicker.Period.loadParts();
+		period = DatePicker.Period.loadParts(0);
 		new Task<Void>(null, 
 			new Job<Void>() {
 				public void perform(Void t, Object[] params) throws Exception {

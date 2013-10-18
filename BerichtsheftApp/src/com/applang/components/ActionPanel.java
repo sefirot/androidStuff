@@ -1,4 +1,4 @@
-package com.applang.berichtsheft.components;
+package com.applang.components;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
@@ -110,6 +110,12 @@ public class ActionPanel extends ManagerBase<Object>
 		}
 	}
 
+	private Container view;
+	
+	public Container getView() {
+		return view;
+	}
+	
     protected String dbName;
 	protected String caption;
 
@@ -119,11 +125,9 @@ public class ActionPanel extends ManagerBase<Object>
 			this.textArea = (TextComponent) dataComponent;
 			setupTextArea();
 		}
-		dbName = com.applang.Util.paramString("", 0, params);
-		caption = com.applang.Util.paramString("Database", 1, params);
-		
+		this.view = param(null, 0, params);
+		this.caption = com.applang.Util.paramString("Database", 1, params);
 		setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
-		
 		start(params);
 	}
 	
@@ -169,6 +173,10 @@ public class ActionPanel extends ManagerBase<Object>
 	public void enableAction(int index, boolean enabled) {
 		buttons[index].getAction().setEnabled(enabled);
 	}
+	
+	public boolean isActionEnabled(int index) {
+		return buttons[index].getAction().isEnabled();
+	}
 
 	protected DataComponent dataComponent = null;
 	protected TextComponent textArea = null;
@@ -198,6 +206,8 @@ public class ActionPanel extends ManagerBase<Object>
 	}
 
 	protected String chooseDatabase(String dbName) {
+		if (memoryDb)
+			handleMemoryDb(false);
 		if (dbName != null) {
 			File file = chooseFile(true, this, caption, new File(dbName));
 			if (file != null) 
@@ -238,10 +248,32 @@ public class ActionPanel extends ManagerBase<Object>
 			throw new Exception(String.format("'%s' is not a legal database name", path));
 	}
 	
+	
 	protected void afterConnecting() throws Exception {
+		if (memoryDb && fileExists(memoryDbName))
+			getStmt().executeUpdate("restore from " + memoryDbName);
 	}
 	
-	protected void updateOnRequest(boolean ask) {
+	protected boolean memoryDb = false;
+	private String memoryDbName = "";
+
+	private void handleMemoryDb(boolean restore) {
+		try {
+			if (restore) {
+				memoryDbName = tempPath(BerichtsheftPlugin.NAME, "memory.db");
+				openConnection(memoryDbName);
+			}
+			else if ("sqlite".equals(getScheme()) && memoryDbName.length() > 0) {
+				getStmt().executeUpdate("backup to " + memoryDbName);
+				memoryDbName = "";
+			}
+		} catch (Exception e) {
+			handleException(e);
+		}
+		
+	}
+	
+	protected void updateOnRequest() {
 	}
 
 	@Override

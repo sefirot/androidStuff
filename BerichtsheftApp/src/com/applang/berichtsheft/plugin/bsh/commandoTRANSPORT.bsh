@@ -1,9 +1,6 @@
 commandoTRANSPORT(view,pane,ns,label,var,options)
 {
-	import com.applang.*;
-	import com.applang.berichtsheft.components.*;
-	
-	entry = new ProfileManager(view);
+	entry = new com.applang.components.ProfileManager(view);
 	value = ns.getVariable(var);
 	if(value != null)
 		entry.setProfile(value.toString());
@@ -11,10 +8,7 @@ commandoTRANSPORT(view,pane,ns,label,var,options)
 	valueChanged()
 	{
 		text = entry.getProfile();
-		if(text.length() == 0)
-			ns.unsetVariable(var);
-		else
-			ns.setVariable(var, text);
+		ns.setVariable(var, text);
 	}
 
 	pane.addComponent(entry);

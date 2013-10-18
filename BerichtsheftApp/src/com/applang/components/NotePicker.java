@@ -1,4 +1,4 @@
-package com.applang.berichtsheft.components;
+package com.applang.components;
 
 import java.awt.Container;
 import java.awt.Dimension;
@@ -22,13 +22,23 @@ import java.util.regex.Pattern;
 import javax.swing.JComboBox;
 import javax.swing.JOptionPane;
 import javax.swing.JTextField;
+import javax.swing.event.AncestorEvent;
+import javax.swing.event.AncestorListener;
 
 import static com.applang.SwingUtil.*;
 import static com.applang.Util.*;
+import static com.applang.Util1.*;
 import static com.applang.Util2.*;
+
+import android.content.ContentUris;
+import android.content.ContentValues;
+import android.net.Uri;
 
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
+import com.applang.berichtsheft.plugin.BerichtsheftShell;
+import com.applang.components.DataView.ConsumerModel;
+import com.applang.components.DataView.ProviderModel;
 
 public class NotePicker extends ActionPanel
 {
@@ -37,12 +47,14 @@ public class NotePicker extends ActionPanel
 		int behavior = Behavior.NONE;
 		if (underTest)
 			behavior |= Behavior.EXIT_ON_CLOSE;
+		DataView dataView = new DataView();
+		
 		BerichtsheftPlugin.setupSpellChecker(".jedit/plugins/berichtsheft");
 		TextEditor textEditor = new TextEditor();
 		textEditor.installSpellChecker();
 //		textEditor.createTextArea("text", "/modes/text.xml");
         String title = "Berichtsheft database";
-		NotePicker notePicker = new NotePicker(textEditor, 
+		NotePicker notePicker = new NotePicker(dataView, textEditor, 
 				null,
 				title, 1);
 		createAndShowGUI(title, 
@@ -51,8 +63,6 @@ public class NotePicker extends ActionPanel
 				textEditor.getUIComponent(), 
 				behavior);
 	}
-	
-	static boolean memoryDb = false;
 	
 	@Override
 	protected void start(Object... params) {
@@ -73,22 +83,46 @@ public class NotePicker extends ActionPanel
 		super.finish(params);
 	}
 	
-	private JTextField date = new JTextField(20);
+	private DataView dataView;
+
+	public void setDataView(DataView dataView) {
+		this.dataView = dataView;
+		initialize(dataView.getUriString());
+	}
+
+	public boolean use_jdbc() {
+		return dataView == null;
+	}
 	
-	public NotePicker(TextComponent textArea, Object... params) {
+	private JTextField date;
+	
+	public NotePicker(DataView dataView, TextEditor textArea, Object... params) {
 		super(textArea, params);
+		textArea.setOnTextChanged(new Job<TextComponent>() {
+			public void perform(TextComponent t, Object[] params) throws Exception {
+				setDirty(true);
+			}
+		});
+		this.dataView = dataView;
 		installNotePicking(this);
-		if (memoryDb)
-			handleMemoryDb(true);
-		else {
-			if (fileExists(new File(dbName)))
-				initialize(dbName);
-		}
+		this.addAncestorListener(new AncestorListener() {
+			public void ancestorAdded(AncestorEvent event) {
+				if (!use_jdbc())
+					initialize(NotePicker.this.dataView.getUriString());
+				else if (fileExists(new File(dbName)))
+					initialize(dbName);
+			}
+			public void ancestorRemoved(AncestorEvent event) {
+			}
+			public void ancestorMoved(AncestorEvent event) {
+			}
+		});
 	}
 
 	@SuppressWarnings("rawtypes")
 	public void installNotePicking(Container container) {
 		addButton(container, ActionType.DATABASE.index(), new NoteAction(ActionType.DATABASE));
+		date = new JTextField(20);
 		date.setHorizontalAlignment(JTextField.CENTER);
 		addFocusObserver(date);
 		container.add(date);
@@ -147,10 +181,9 @@ public class NotePicker extends ActionPanel
 		@Override
         protected void action_Performed(ActionEvent ae) {
         	String dateString = getDate();
-        	
         	switch ((ActionType)getType()) {
 			case DATABASE:
-				updateOnRequest(true);
+				updateOnRequest();
 				dbName = chooseDatabase(dbName);
 				break;
 			case CALENDAR:
@@ -158,27 +191,30 @@ public class NotePicker extends ActionPanel
 				checkDocumentPossible();
 				date.requestFocusInWindow();
 				break;
+			case FIRST:
+				browse(BrowseDirection.FIRST);
+				break;
 			case PREVIOUS:
-				updateOnRequest(true);
-				setText(move(Direction.PREV));
+				browse(BrowseDirection.PREVIOUS);
 				break;
 			case NEXT:
-				updateOnRequest(true);
-				setText(move(Direction.NEXT));
-				break;
-			case DOCUMENT:
-				updateOnRequest(true);
-				fillDocument(dateString);
-				break;
-			case FIRST:
-				updateOnRequest(true);
-				setText(move(Direction.FIRST));
+				browse(BrowseDirection.NEXT);
 				break;
 			case LAST:
-				updateOnRequest(true);
-				setText(move(Direction.LAST));
+				browse(BrowseDirection.LAST);
 				break;
-			case SPELLCHECK:
+			case PICK:
+				if (use_jdbc()) {
+					searchPattern = getPattern();
+					finder.keyLine(searchPattern);
+					pickNote(dateString, searchPattern);
+				}
+				else if (pkColumn > -1) {
+					finder.keyLine();
+					Long time = toTime(dateString, DatePicker.calendarFormat);
+					pkRow = finder.pointer(time, getCategory());
+					browse(BrowseDirection.HERE);
+				}
 				break;
 			case DATE:
 				date.requestFocusInWindow();
@@ -186,10 +222,11 @@ public class NotePicker extends ActionPanel
 			case CATEGORY:
 				comboBoxes[0].requestFocusInWindow();
 				break;
-			case PICK:
-				searchPattern = getPattern();
-				finder.keyLine(searchPattern);
-				pickNote(dateString, searchPattern);
+			case DOCUMENT:
+				updateOnRequest();
+				fillDocument(dateString);
+				break;
+			case SPELLCHECK:
 				break;
 			default:
 				return;
@@ -198,8 +235,8 @@ public class NotePicker extends ActionPanel
 	}
 	
 	private NoteAction[] documentActions = new NoteAction[] {
-			new NoteAction(ActionType.DOCUMENT), 
-			new NoteAction(ActionType.TEXT),
+		new NoteAction(ActionType.DOCUMENT), 
+		new NoteAction(ActionType.TEXT),
 	};
 
 	private void checkDocumentPossible() {
@@ -208,59 +245,152 @@ public class NotePicker extends ActionPanel
 	}
 	
 	private void clear() {
-		refreshWith(null);
-		enableAction(ActionType.FIRST.index(), false);
-		enableAction(ActionType.PREVIOUS.index(), false);
-		enableAction(ActionType.NEXT.index(), false);
-		enableAction(ActionType.LAST.index(), false);
-//		enableAction(ActionType.ADD.index(), hasTextArea());
-//		enableAction(ActionType.DELETE.index(), false);
-//		enableAction(ActionType.ACTIONS.index(), true);
-//		enableAction(ActionType.SPELLCHECK.index(), hasTextArea());
+		if (use_jdbc())
+			refreshWith(null);
+		else {
+			setDate("");
+			setCategory("");
+			setText("");
+		}
+		enableBrowseActions();
 	}
 
-	private void initialize(String dbName) {
-		if (openConnection(dbName)) {
-			retrieveCategories();
-			if (finder != null) {
-				searchPattern = allCategories;
-				finder.keyLine(searchPattern);
-				setDate(formatDate(
-						0,
-						finder.keys.length > 0 ? finder
-								.epochFromKey(finder.keys[0]) : now()));
-				pickNote(getDate(), searchPattern);
+	public void enableBrowseActions() {
+		enableAction(ActionType.FIRST.index(), pkRow > 0);
+		enableAction(ActionType.PREVIOUS.index(), pkRow > 0);
+		enableAction(ActionType.NEXT.index(), pkRow < lastRow() && pkRow > -1);
+		enableAction(ActionType.LAST.index(), pkRow < lastRow() && pkRow > -1);
+	}
+
+	private ProviderModel provider = null;
+	
+	private ConsumerModel consumer() {
+		return use_jdbc() ? null : (ConsumerModel) dataView.getTable().getModel();
+	}
+	
+	private Object pk = null;
+	public int pkColumn = -1, pkRow = -1;
+
+	public Object pkValue() {
+		return consumer().getValueAt(pkRow, pkColumn);
+	}
+
+	public int lastRow() {
+		ConsumerModel consumer = consumer();
+		if (consumer == null)
+			return -1;
+		else
+			return consumer.getRowCount() - 1;
+	}
+	
+	public void setRow(Object pkValue) {
+		ConsumerModel consumer = consumer();
+		for (int i = 0; i < consumer.getRowCount(); i++) 
+			if (consumer.getValueAt(i, pkColumn).equals(pkValue))
+				pkRow = i;
+	}
+	
+	private void initialize(String dbString) {
+		if (use_jdbc()) {
+			if (openConnection(dbString)) {
+				retrieveCategories();
+				if (finder != null) {
+					searchPattern = allCategories;
+					finder.keyLine(searchPattern);
+					setDate(formatDate(
+							0,
+							finder.keys.length > 0 ? finder
+									.epochFromKey(finder.keys[0]) : now()));
+					pickNote(getDate(), searchPattern);
+				}
 			}
+		}
+		else {
+			if (notNullOrEmpty(dbString)) {
+				dataView.setUri(Uri.parse(dbString));
+				String tableName = dbTableName(dataView.getUriString());
+				String[] sql = generateSqlQuery(tableName);
+				dataView.reload(sql);
+			}
+			else {
+				dataView.loadUri();
+				dbString = dataView.getUriString();
+			}
+			provider = new ProviderModel(dataView);
+			retrieveCategories();
+			pk = provider.info.get("PRIMARY_KEY");
+			pkColumn = consumer().columns.indexOf(pk);
+			if (pkColumn < 0) {
+				BerichtsheftShell.print("primary key column is indeterminate", NEWLINE);
+			}
+			browse(BrowseDirection.FIRST);
+		}
+		setWindowTitle(this, String.format("Berichtsheft database : %s", dbString));
+	}
+
+    public static final String DEFAULT_SORT_ORDER = "created,title";
+    
+	private String[] generateSqlQuery(String tableName) {
+		Object[] projection = fullProjection("com.applang.provider.NotePad");
+		return strings("select " + join(",", projection) + " from " + tableName + " order by " + DEFAULT_SORT_ORDER);
+	}
+
+	public void refresh(boolean complete) {
+		if (use_jdbc()) {
+			finder.keyLine(searchPattern);
+			pickNote(getDate(), finder.pattern);
+			retrieveCategories();
+		}
+		else {
+			if (complete)
+				dataView.reload();
+			retrieveCategories();
+			browse(BrowseDirection.HERE);
+		}
+	}
+	
+	@Override
+	public boolean openConnection(String dbPath, Object... params) {
+		try {
+			if (super.openConnection(dbPath, arrayextend(params, true, "notes")))
+				return true;
+			
+			if ("sqlite".equals(getScheme()))
+				getStmt().execute("CREATE TABLE notes (" +
+						"_id INTEGER PRIMARY KEY," +
+						"title TEXT," +
+						"note TEXT," +
+						"created INTEGER," +
+						"modified INTEGER, " +
+						"UNIQUE (created, title))");
+			else if ("mysql".equals(getScheme())) 
+				getStmt().execute("CREATE TABLE notes (" +
+						"_id BIGINT PRIMARY KEY," +
+						"title VARCHAR(40)," +
+						"note TEXT," +
+						"created BIGINT," +
+						"modified BIGINT, " +
+						"UNIQUE (created, title))");
+			
+			return true;
+		} catch (Exception e) {
+			handleException(e);
+			return false;
 		}
 	}
 
 	@Override
 	protected String chooseDatabase(String dbName) {
-		if (memoryDb)
-			handleMemoryDb(false);
-		File dbFile = DataView.chooseDb(null, false, dbName);
-		if (dbFile != null)
-			dbName = dbFile.getPath();
+		if (use_jdbc()) {
+			File dbFile = DataView.chooseDb(null, false, dbName, true);
+			if (dbFile != null)
+				dbName = dbFile.getPath();
+		}
+		else if (dataView.askUri(null, dbName)) {
+			dbName = dataView.getUriString();
+		}
 		initialize(dbName);
 		return dbName;
-	}
-	
-	private String memoryDbName = "";
-
-	private void handleMemoryDb(boolean restore) {
-		try {
-			if (restore) {
-				memoryDbName = tempPath(BerichtsheftPlugin.NAME, "memory.db");
-				initialize(memoryDbName);
-			}
-			else if ("sqlite".equals(getScheme()) && memoryDbName.length() > 0) {
-				getStmt().executeUpdate("backup to " + memoryDbName);
-				memoryDbName = "";
-			}
-		} catch (Exception e) {
-			handleException(e);
-		}
-		
 	}
 
 	private String pickDate(String dateString) {
@@ -274,46 +404,11 @@ public class NotePicker extends ActionPanel
 	}
 
 	@Override
-	protected void updateOnRequest(boolean ask) {
-		Boolean done = save(getItem(), false);
-		if (done != null) 
-			refresh();
-	}
-
-	@Override
-	public boolean openConnection(String dbPath, Object... params) {
-		try {
-			if (super.openConnection(dbPath, arrayextend(params, true, "notes")))
-				return true;
-		    
-			if ("sqlite".equals(getScheme()))
-				getStmt().execute("CREATE TABLE notes (" +
-			    		"_id INTEGER PRIMARY KEY," +
-			    		"title TEXT," +
-			    		"note TEXT," +
-			    		"created INTEGER," +
-			    		"modified INTEGER, " +
-			    		"UNIQUE (created, title))");
-			else if ("mysql".equals(getScheme())) 
-				getStmt().execute("CREATE TABLE notes (" +
-			    		"_id BIGINT PRIMARY KEY," +
-			    		"title VARCHAR(40)," +
-			    		"note TEXT," +
-			    		"created BIGINT," +
-			    		"modified BIGINT, " +
-			    		"UNIQUE (created, title))");
-		    
-		    return true;
-		} catch (Exception e) {
-			handleException(e);
-			return false;
+	protected void updateOnRequest() {
+		Object item = getItem();
+		if (isItemValid(item)) {
+			save(item, false);
 		}
-	}
-	
-	@Override
-	protected void afterConnecting() throws Exception {
-		if (memoryDb && fileExists(new File(memoryDbName)))
-			getStmt().executeUpdate("restore from " + memoryDbName);
 	}
 
 	private long[] getTime(String dateString) {
@@ -349,12 +444,23 @@ public class NotePicker extends ActionPanel
 		try {
 			String categ = getCategory();
 			comboBoxes[0].removeAllItems();
-			PreparedStatement ps = getCon().prepareStatement("select distinct title from notes order by title");
-			ResultSet rs = ps.executeQuery();
-			while (rs.next())
-				comboBoxes[0].addItem(rs.getString(1));
-			comboBoxes[0].addItem(itemAll);
-			comboBoxes[0].addItem(itemBAndB);
+			if (use_jdbc()) {
+				PreparedStatement ps = getCon().prepareStatement(
+						"select distinct title from notes order by title");
+				ResultSet rs = ps.executeQuery();
+				while (rs.next())
+					comboBoxes[0].addItem(rs.getString(1));
+				comboBoxes[0].addItem(itemAll);
+				comboBoxes[0].addItem(itemBAndB);
+			}
+			else {
+				Object[][] res = provider.query(dataView.getUriString(), 
+						(String[])null, 
+						String.format("select distinct title from %s order by title", provider.tableName));
+				for (Object[] row : res) {
+					comboBoxes[0].addItem(row[0]);
+				}
+			}
 			setCategory(categ);
 		} catch (Exception e) {
 			handleException(e);
@@ -401,34 +507,6 @@ public class NotePicker extends ActionPanel
 		return c;
 	}
 	
-	public Long[] ids = null;
-	public Object[][] records = null;
-	
-	public int registerNotes(ResultSet rs) throws SQLException {
-		ArrayList<Long> idlist = new ArrayList<Long>();
-		ArrayList<Object[]> reclist = new ArrayList<Object[]>();
-		
-		ResultSetMetaData rsmd = rs.getMetaData();
-		int cols = rsmd.getColumnCount();
-		
-		while (rs.next()) {
-			if (cols > 1) {
-				ValList list = vlist();
-				for (int i = 1; i <= cols; i++)
-					list.add(rs.getObject(i));
-				reclist.add(list.toArray());
-			}
-			else
-				idlist.add(rs.getLong(1));
-		}
-		rs.close();
-		
-		records = reclist.toArray(new Object[0][]);
-		ids = idlist.toArray(new Long[0]);
-		
-		return cols > 1 ? records.length : ids.length;
-	}
-	
 	public Long[] timeLine(Object... params) {
 		ArrayList<Long> timelist = new ArrayList<Long>();
 		try {
@@ -456,19 +534,44 @@ public class NotePicker extends ActionPanel
 		}
 		
 		String pattern = "";
-		String[] keys = null;
 		long[] epoch = new long[0];
+		String[] keys = null;
 		
-		public String[] keyLine(String pattern) {
-			ArrayList<String> keylist = new ArrayList<String>();
+		public String[] keyLine(String...pattern) {
+			ValList keylist = vlist();
 			try {
-				PreparedStatement ps = getCon().prepareStatement("select created,title FROM notes where title regexp ? order by created,title");
-				ps.setString(1, pattern);
-				ResultSet rs = ps.executeQuery();
-				while (rs.next()) {
-					keylist.add(keyValue(rs.getLong(1), rs.getString(2)));
+				if (use_jdbc()) {
+					PreparedStatement ps = getCon()
+							.prepareStatement(
+									"select created,title FROM notes where title regexp ? order by " + DEFAULT_SORT_ORDER);
+					ps.setString(1, pattern[0]);
+					ResultSet rs = ps.executeQuery();
+					while (rs.next()) {
+						keylist.add(keyValue(rs.getLong(1), rs.getString(2)));
+					}
+					rs.close();
 				}
-				rs.close();
+				else if (isAvailable(0, pattern)){
+					Object[][] result = provider.query(dataView.getUriString(), 
+							strings("created", "title"), 
+							"title like ?", 
+							strings(pattern[0]),
+							DEFAULT_SORT_ORDER);
+					for (Object[] res : result) {
+						keylist.add(keyValue((Long)res[0], (String)res[1]));
+					}
+				}
+				else {
+					ConsumerModel model = consumer();
+					int[] index = {
+							model.columns.indexOf("created"), 
+							model.columns.indexOf("title")
+					};
+					for (int i = 0; i < model.getRowCount(); i++) {
+						Object[] values = model.getValues(false, i);
+						keylist.add(keyValue((Long)values[index[0]], (String)values[index[1]]));
+					}
+				}
 			} catch (Exception e) {}
 			return this.keys = keylist.toArray(new String[0]);
 		}
@@ -548,7 +651,7 @@ public class NotePicker extends ActionPanel
 			return crit;
 		}
 		
-		private int pointer(long time, String category) {
+		public int pointer(long time, String category) {
 			return pointer(criterion(time, category));
 		}
 		
@@ -577,26 +680,26 @@ public class NotePicker extends ActionPanel
 			return pointer > 0;
 		}
 	
-		public String find(Direction direct, long... epoch) {
+		public String find(BrowseDirection direct, long... epoch) {
 			boolean available = bunchAvailable(epoch);
 			
 			int index = pointer(this.index[0]);
-			if (direct == Direction.HERE) 
+			if (direct == BrowseDirection.HERE) 
 				if (!available) {
 					message(String.format("'%s' on %s not available", pattern, formatDate(epoch.length, epoch[0])));
 					if (index >= keys.length) {
-						direct = Direction.PREV;
+						direct = BrowseDirection.PREVIOUS;
 						available = true;
 					}
 					else
-						direct = Direction.NEXT;
+						direct = BrowseDirection.NEXT;
 				}
 			
-			boolean next = direct == Direction.NEXT;
+			boolean next = direct == BrowseDirection.NEXT;
 			if (next && epoch.length > 1) 
 				index = pointer(this.index[1]);
 			else {
-				if (available && direct != Direction.HERE)
+				if (available && direct != BrowseDirection.HERE)
 					index += next ? 1 : -1;
 			}
 			if (index < 0 || index >= keys.length)
@@ -632,44 +735,108 @@ public class NotePicker extends ActionPanel
 				message(String.format("value for '%s' doesn't make sense", ActionType.DATE.description()));
 				date.requestFocus();
 			}
-			setText(move(Direction.HERE));			
+			browse(BrowseDirection.HERE);			
 		} catch (Exception e) {
 			handleException(e);
 			setText("");
 		}
 	}
+	
+	public enum BrowseDirection { FIRST, PREVIOUS, HERE, NEXT, LAST }
+	
+	public void browse(BrowseDirection direct) {
+		updateOnRequest();
+		String text = "";
+		if (use_jdbc()) {
+			ResultSet rs = null;
+			if (finder.find(direct, finder.epoch) != null)
+				rs = query(finder.epoch);
+			enableAction(ActionType.PREVIOUS.index(),
+					finder.previousBunchAvailable(finder.epoch));
+			enableAction(ActionType.NEXT.index(),
+					finder.nextBunchAvailable(finder.epoch));
+			text = refreshWith(rs);
+		}
+		else if (pkColumn > -1) {
+			switch (direct) {
+			case FIRST:
+				pkRow = 0;
+				break;
+			case PREVIOUS:
+				pkRow--;
+				break;
+			case NEXT:
+				pkRow++;
+				break;
+			case LAST:
+				pkRow = lastRow();
+				break;
+			default:
+				pkRow = Math.min(Math.max(0, pkRow), lastRow());
+				break;
+			}
+			enableBrowseActions();
+			Object[] rec = (Object[]) select();
+			setDate(formatDate(1, (Long) rec[0]));
+			setCategory(stringValueOf(rec[1]));
+			text = stringValueOf(rec[2]);
+		}
+		setText(text);
+	}
 
 	@Override
 	public Object select(Object... args) {
 		args = reduceDepth(args);
+		boolean rowidGiven = !isAvailable(0, args);
 		String dateString = param(null, 0, args);
 		String pattern = param(null, 1, args);
-		try {
-			long time = toTime(dateString, DatePicker.calendarFormat);
-			PreparedStatement ps = preparePicking(true, 
-					pattern,
-					dayInterval(time, 1));
-			if (registerNotes(ps.executeQuery()) > 0)
-				return records[0];
-		} catch (Exception e) {
-			handleException(e);
-		}
+		if (rowidGiven || notNullOrEmpty(dateString))
+			try {
+				Long time = toTime(dateString, DatePicker.calendarFormat);
+				long[] interval = dayInterval(time, 1);
+				if (use_jdbc()) {
+					PreparedStatement ps = preparePicking(true, pattern, interval);
+					if (registerNotes(ps.executeQuery()) > 0) {
+						return records[0];
+					}
+				}
+				else {
+					Object[][] result = provider.query(dataView.getUriString(), 
+							strings("created", "title", "note", "_id"), 
+							whereClause(rowidGiven), 
+							rowidGiven ? 
+									strings("" + pkValue()) : 
+									strings("" + interval[0], "" + (interval[1] - 1), pattern));
+					if (isAvailable(0, result)) {
+						return result[0];
+					}
+				}
+			} catch (Exception e) {
+				handleException(e);
+			}
 		return null;
+	}
+	
+	private String whereClause(boolean rowidGiven) {
+		if (rowidGiven)
+			return pk + "=?";
+		else
+			return "created between ? and ? and title like ?";
 	}
 	
 	public static String shortFormat = "%s %s";
 	
 	@Override
 	protected String toString(Object item) {
-		Object[] items = (Object[]) item;
-		return String.format(shortFormat, items[1], items[0]);
+		Object[] rec = (Object[]) item;
+		return String.format(shortFormat, rec[1], rec[0]);
 	}
 
 	@Override
 	public boolean isItemValid(Object item) {
-		Object[] items = (Object[]) item;
-		Date date = parseDate(stringValueOf(items[0]));
-		return date != null && notNullOrEmpty(items[1]);
+		Object[] rec = (Object[]) item;
+		Date date = parseDate(stringValueOf(rec[0]));
+		return date != null && notNullOrEmpty(rec[1]);
 	}
 
 	@Override
@@ -679,33 +846,73 @@ public class NotePicker extends ActionPanel
 
 	@Override
 	protected void updateItem(boolean update, Object... args) {
-		Object[] items = reduceDepth(args);
-		if (isAvailable(0, items))
-			updateOrInsert(items[1].toString(), items[0].toString(), getText(), false);
+		Object[] rec = reduceDepth(args);
+		String text = getText();
+		if (isAvailable(0, rec))
+			updateOrAdd(false, text, rec);
 		else if (update) 
-			updateOrInsert(getCategory(), getDate(), getText(), false);
+			updateOrAdd(false, text, (Object[]) getItem());
 		else {
-			items = (Object[]) select(getItem());
-			if (isAvailable(2, items))
-				setText(items[2].toString());
+			rec = (Object[]) select(getItem());
+			if (isAvailable(2, rec))
+				setText(rec[2].toString());
+		}
+	}
+	
+	private long updateOrAdd(boolean add, String text, Object...rec) {
+		if (use_jdbc()) 
+			return updateOrInsert(rec[0].toString(), rec[1].toString(), text, add);
+		else {
+			long time = toTime(rec[0].toString(), DatePicker.calendarFormat);
+	       	ValMap info = provider.info;
+	       	BidiMultiMap map = new BidiMultiMap();
+	       	map.putValue("note", text);
+	       	map.putValue("modified", now());
+			ContentValues values = contentValues(info, map.getKeys(), map.getValues().toArray());
+			Uri uri = dataView.getUri();
+			if (add) {
+				values.putNull(pk.toString());
+				values.put("created", time);
+				values.put("title", rec[1].toString());
+				uri = provider.contentResolver.insert(uri, values);
+				return ContentUris.parseId(uri);
+			}
+			else {
+				rec = (Object[]) select(rec);
+				return provider.contentResolver.update(uri, values, 
+						whereClause(true), 
+						strings(rec[3].toString()));
+			}
 		}
 	}
 
 	@Override
 	protected boolean addItem(boolean refresh, Object item) {
-		Object[] items = (Object[]) item;
-		long id = updateOrInsert(items[1].toString(), items[0].toString(), getText(), true);
+		Object[] rec = (Object[]) item;
+		String text = getText();
+		long id = updateOrAdd(true, text, rec);
 		if (refresh)
-			refresh();
+			refresh(true);
 		return id > -1;
 	}
 
 	@Override
 	protected boolean removeItem(Object item) {
-		Object[] items = (Object[]) item;
-		boolean done = remove(false, items[1].toString(), items[0].toString());
-		if (done)
-			refresh();
+		boolean done = false;
+		Object[] rec = (Object[]) select(item);
+		if (rec != null) {
+			if (use_jdbc())
+				done = remove(false, rec[1].toString(), rec[0].toString());
+			else {
+				done = provider.contentResolver.delete(dataView.getUri(), 
+						whereClause(true), 
+						strings(rec[3].toString())) > 0;
+			}
+		}
+		if (done) {
+			clear();
+			refresh(true);
+		}
 		return done;
 	}
 	
@@ -716,21 +923,14 @@ public class NotePicker extends ActionPanel
 		editor.undo.discardAllEdits();
 	}
 
-	private void refresh() {
-		finder.keyLine(searchPattern);
-		pickNote(getDate(), finder.pattern);
-		retrieveCategories();
-	}
-
 	private static final String orderClause = " order by created, title";
 	
 	public PreparedStatement preparePicking(boolean record, String pattern, long... time) throws Exception {
 		String sql = "select " +
 				(record ? 
-					"created,title,note" : 
+					"created,title,note,_id" : 
 					"_id") +
 				" from notes";
-		
 		PreparedStatement ps;
 		if (time.length < 2) {
 			ps = getCon().prepareStatement(sql + " where title regexp ? and created = ?");
@@ -835,38 +1035,35 @@ public class NotePicker extends ActionPanel
 		return 1 + id;
 	}
 
-	public long updateOrInsert(String pattern, String dateString, String note, boolean insert) {
+	public long updateOrInsert(String dateString, String pattern, String note, boolean insert) {
+		long id = -1;
 		try {
 			long time = toTime(dateString, DatePicker.calendarFormat);
 			PreparedStatement ps = preparePicking(false, pattern, dayInterval(time, 1));
 			ResultSet rs = ps.executeQuery();
-			
-			long id = -1;
 			if (rs.next()) {
 				id = rs.getLong(1);
 				update(id, note);
-			}
-			else if (insert) {
+			} else if (insert) {
 				id = newId();
 				insert(id, note, getCategory(), time);
 			}
-			
 			rs.close();
-			return id;
 		} catch (Exception e) {
 			handleException(e);
 			return -1;
 		}
+		return id;
 	}
 
 	@SuppressWarnings("unused")
 	private void updateOrInsert(String pattern, String dateString) {
 		if (finder.epoch.length == 2) {
-			for (String[] record : getRecords(getText())) 
-				updateOrInsert(record[1], record[0], record[2], true);
+			for (String[] record : listRecords(getText())) 
+				updateOrInsert(record[0], record[1], record[2], true);
 		}
 		else 
-			updateOrInsert(pattern, dateString, getText(), true);
+			updateOrInsert(dateString, pattern, getText(), true);
 	}
 	
 	private ResultSet query(long... time) {
@@ -881,18 +1078,32 @@ public class NotePicker extends ActionPanel
 		return rs;
 	}
 	
-	public enum Direction { FIRST, PREV, HERE, NEXT, LAST }
+	public Long[] ids = null;
+	public Object[][] records = null;
 	
-	public String move(Direction direct) {
-		ResultSet rs = null;
+	public int registerNotes(ResultSet rs) throws SQLException {
+		ArrayList<Long> idlist = new ArrayList<Long>();
+		ArrayList<Object[]> reclist = new ArrayList<Object[]>();
 		
-		if (finder.find(direct, finder.epoch) != null) 
-			rs = query(finder.epoch);
+		ResultSetMetaData rsmd = rs.getMetaData();
+		int cols = rsmd.getColumnCount();
 		
-		enableAction(ActionType.PREVIOUS.index(), finder.previousBunchAvailable(finder.epoch));
-		enableAction(ActionType.NEXT.index(), finder.nextBunchAvailable(finder.epoch));
+		while (rs.next()) {
+			if (cols > 1) {
+				ValList list = vlist();
+				for (int i = 1; i <= cols; i++)
+					list.add(rs.getObject(i));
+				reclist.add(list.toArray());
+			}
+			else
+				idlist.add(rs.getLong(1));
+		}
+		rs.close();
 		
-		return refreshWith(rs);
+		records = reclist.toArray(new Object[0][]);
+		ids = idlist.toArray(new Long[0]);
+		
+		return cols > 1 ? records.length : ids.length;
 	}
 
 	private String refreshWith(ResultSet rs) {
@@ -998,7 +1209,7 @@ public class NotePicker extends ActionPanel
 		return text.startsWith(FOLD_MARKER[0]) && text.endsWith(FOLD_MARKER[1]);
 	}
 
-	public String[][] getRecords(String text) {
+	public String[][] listRecords(String text) {
 		ArrayList<String[]> list = new ArrayList<String[]>();
 		
 		for (MatchResult m : findAllIn(text, notePattern2)) 

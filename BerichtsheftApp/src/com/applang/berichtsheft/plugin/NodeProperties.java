@@ -5,7 +5,7 @@ import static com.applang.Util.*;
 import android.net.Uri;
 
 import com.applang.berichtsheft.BerichtsheftApp;
-import com.applang.berichtsheft.components.DataView;
+import com.applang.components.DataView;
 
 import java.awt.BorderLayout;
 import java.awt.Component;

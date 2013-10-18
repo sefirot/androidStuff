@@ -8,29 +8,17 @@
 <ACTIONS>
 	<ACTION NAME="datadock.choose-uri">
 		<CODE>
-			wm.addDockableWindow("datadock");
-			wm.getDockableWindow("datadock").chooseUri();
+			import com.applang.berichtsheft.plugin.*;
+			dockable = (DataDockable) BerichtsheftPlugin.getDockable(view, "datadock", true);
+			dockable.chooseUri();
 		</CODE>
 	</ACTION>
 
 	<ACTION NAME="datadock.update-uri">
 		<CODE>
-			wm.addDockableWindow("datadock");
-			wm.getDockableWindow("datadock").updateUri();
-		</CODE>
-	</ACTION>
-
-	<ACTION NAME="datadock.transport-to-buffer">
-		<CODE>
-			wm.addDockableWindow("datadock");
-			wm.getDockableWindow("datadock").transportToBuffer();
-		</CODE>
-	</ACTION>
-
-	<ACTION NAME="datadock.transport-from-buffer">
-		<CODE>
-			wm.addDockableWindow("datadock");
-			wm.getDockableWindow("datadock").transportFromBuffer();
+			import com.applang.berichtsheft.plugin.*;
+			dockable = (DataDockable) BerichtsheftPlugin.getDockable(view, "datadock", true);
+			dockable.updateUri();
 		</CODE>
 	</ACTION>
 

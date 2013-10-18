@@ -15,19 +15,18 @@ import org.gjt.sp.jedit.gui.DefaultFocusComponent;
 import org.gjt.sp.jedit.gui.DockableWindowManager;
 import org.gjt.sp.jedit.msg.PropertiesChanged;
 
-import com.applang.berichtsheft.components.NotePicker;
-import com.applang.berichtsheft.components.TextEditor;
+import com.applang.components.DataView;
+import com.applang.components.NotePicker;
+import com.applang.components.TextEditor;
 
 public class NoteDockable extends JPanel implements EBComponent, DefaultFocusComponent
 {
-	private View view;
 	private boolean floating;
 	private TextEditor textEditor;
 	private NotePicker notePicker;
 
 	public NoteDockable(View view, String position) {
 		super(new BorderLayout());
-		this.view = view;
 		this.floating = position.equals(DockableWindowManager.FLOATING);
 		if (floating)
 			this.setPreferredSize(new Dimension(500, 250));
@@ -35,7 +34,9 @@ public class NoteDockable extends JPanel implements EBComponent, DefaultFocusCom
 		textEditor = new TextEditor();
 		textEditor.installSpellChecker();
 		add(textEditor.getUIComponent(), BorderLayout.CENTER);
-		notePicker = new NotePicker(textEditor);
+		DataDockable dockable = (DataDockable) BerichtsheftPlugin.getDockable(view, "datadock", false);
+		DataView dataView = dockable != null ? dockable.dataView : new DataView();
+		notePicker = new NotePicker(dataView, textEditor, view);
 		add(notePicker, BorderLayout.NORTH);
 		propertiesChanged();
 	}
@@ -65,9 +66,8 @@ public class NoteDockable extends JPanel implements EBComponent, DefaultFocusCom
 		}
 	}
 
-	private void propertiesChanged() {
-		// TODO Auto-generated method stub
-		
+	void propertiesChanged() {
+		notePicker.refresh(false);
 	}
 	
 }

@@ -1,13 +1,12 @@
 <COMMANDO>
 	<UI>
-		<PERIOD LABEL="Weather period" VARNAME="period" 
-			EVAL="com.applang.berichtsheft.components.DatePicker.Period.getDescription()"/>
+		<PERIOD LABEL="Weather period" VARNAME="period" />
 			
 		<TOGGLE LABEL="show queried data" VARNAME="showData"
 			EVAL="jEdit.getBooleanProperty(&quot;SHOW_DATA&quot;, false)" />
 
 		<URI_ENTRY LABEL="Weather database" VARNAME="uri" 
-			EVAL="jEdit.getProperty(&quot;TRANSPORT_URI&quot;, &quot;&quot;)"/>
+			EVAL="jEdit.getProperty(&quot;TRANSPORT_URI&quot;, &quot;&quot;)" />
 	</UI>
 
 	<COMMANDS>
