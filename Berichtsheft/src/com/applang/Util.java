@@ -55,6 +55,10 @@ public class Util
 	
 	private static Random random = new Random();
 	
+	public static Random getRandom() {
+		return random;
+	}
+	
     private static final int millisPerHour = 1000*60*60;
     private static final int millisPerDay = millisPerHour * 24;
 	private static Calendar calendar = Calendar.getInstance(Locale.US);
@@ -158,7 +162,9 @@ public class Util
 		return days * millisPerDay;
 	}
 
-	public static long[] dayInterval(long time, int days) {
+	public static long[] dayInterval(Long time, int days) {
+		if (time == null)
+			return null;
 		long[] interval = new long[2];
 		if (days < 0) {
 			interval[0] = time - days * millisPerDay;
@@ -236,6 +242,7 @@ public class Util
 			Locale locale = param(Locale.US,1,params);
 			return new SimpleDateFormat(pattern, locale).parse(dateString);
 		} catch (Exception e) {
+//			Log.e(TAG, "toDate", e);
 			return null;
 		}
 	}
@@ -407,7 +414,9 @@ public class Util
 			try {
 				T returnValue = (T)params[index];
 				return returnValue;
-			} catch (ClassCastException e) {}
+			} catch (ClassCastException e) {
+				Log.e(TAG, "param", e);
+			}
 		return defaultParam;
 	}
 	
@@ -503,7 +512,6 @@ public class Util
 		 
 	public static Object[] iterateFiles(boolean includeDirs, File dir, Job<Object> job, Object... params) throws Exception {
 		params = reduceDepth(params);
-		
 		if (dir != null && dir.isDirectory()) {
 			for (File file : dir.listFiles())
 				if (file.isDirectory())
@@ -514,7 +522,6 @@ public class Util
 					if (n != null)
 						params[0] = n + 1;
 				}
-			
 			if (includeDirs) {
 				job.perform(dir, params);
 				Integer n = paramInteger(null, 1, params);
@@ -522,7 +529,6 @@ public class Util
 					params[1] = n + 1;
 			}
 		}
-		
 		return params;
 	} 
 	
@@ -675,21 +681,55 @@ public class Util
 		}
 	}
 	
-	public static boolean deleteDirectory(File dir) {
+	public static boolean deleteDirectory(File dir, Object...params) {
 		try {
-			iterateFiles(true, dir, new Job<Object>() {
-				public void perform(Object f, Object[] parms) {
-					((File)f).delete();
+			Job<File> deleter = new Job<File>() {
+				public void perform(File f, Object[] params) throws Exception {
+					if (f.delete()) {
+						int no = (Integer) params[0];
+						Integer n = paramInteger(null, no, (Object[]) params[1]);
+						if (n != null)
+							params[no] = n + 1;
+					}
 				}
-			});
-			
+			};
+			if (dir != null && dir.isDirectory()) {
+				for (File file : dir.listFiles())
+					if (file.isDirectory()) {
+						if (isSymlink(file))
+							deleter.perform(file, new Object[]{1, params});
+						else
+							deleteDirectory(file, params);
+					}
+					else if (file.isFile()) {
+						deleter.perform(file, new Object[]{0, params});
+					}
+				deleter.perform(dir, new Object[]{1, params});
+			}
 			return !dir.exists();
 		} catch (Exception e) {
-			e.printStackTrace();
+			Log.e(TAG, "deleteDirectory", e);
 			return false;
 		}
 	}
-
+	
+	public static boolean isSymlink(File file) throws IOException {
+		if (file == null)
+			throw new NullPointerException("File must not be null");
+		File canon;
+		if (file.getParent() == null) {
+			canon = file;
+		} 
+		else {
+			File canonDir = file.getParentFile().getCanonicalFile();
+			canon = new File(canonDir, file.getName());
+		}
+		if (canon.getCanonicalFile().equals(canon.getAbsoluteFile()))
+			return false;
+		else
+			return true;
+	}
+	
 	public static String readAll(Reader rd, Object...params) throws IOException {
 		Integer chars = paramInteger(null, 0, params);
 		StringBuilder sb = new StringBuilder();
@@ -731,13 +771,16 @@ public class Util
 			fr = new InputStreamReader(new FileInputStream(file));
 			return readAll(fr, chars);
 		} catch (Exception e) {
+			Log.e(TAG, "contentsFromFile", e);
 			return null;
 		}
 		finally {
 			if (fr != null)
 				try {
 					fr.close();
-				} catch (IOException e) {}
+				} catch (IOException e) {
+					Log.e(TAG, "contentsFromFile", e);
+				}
 		}
 	}
 	 
@@ -752,12 +795,15 @@ public class Util
 			fw = new OutputStreamWriter(new FileOutputStream(file, append));
 			fw.write(s);
 		} catch (Exception e) {
+			Log.e(TAG, "contentsToFile", e);
 		}
 		finally {
 			if (fw != null)
 				try {
 					fw.close();
-				} catch (IOException e) {}
+				} catch (IOException e) {
+					Log.e(TAG, "contentsToFile", e);
+				}
 		}
 		return file;
 	}
@@ -943,14 +989,6 @@ public class Util
 				lists[i].remove(index);
 		}
 		
-		public boolean removeKey(Object key) {
-			int index = keys.indexOf(key);
-			boolean retval = index > -1;
-			if (retval)
-				remove(index);
-			return retval;
-		}
-		
 		public void removeAll() {
 			for (int i = 0; i < lists.length; i++) 
 				lists[i].clear();
@@ -995,6 +1033,14 @@ public class Util
 				return null;
 		}
 		
+		public boolean removeKey(Object key) {
+			int index = keys.indexOf(key);
+			boolean retval = index > -1;
+			if (retval)
+				remove(index);
+			return retval;
+		}
+		
 		public Object getValue(Object key, int...listIndex) {
 			ValList list = getValues(listIndex);
 			int index = keys.indexOf(key);
@@ -1002,6 +1048,14 @@ public class Util
 				return list.get(index);
 			else
 				return null;
+		}
+		
+		public void putValue(Object key, Object value, int...listIndex) {
+			if (keys.indexOf(key) < 0)
+				add(key);
+			ValList list = getValues(listIndex);
+			int index = keys.indexOf(key);
+			list.set(index, value);
 		}
 		
 		public boolean isUnique(Object value, int listIndex) {
@@ -1178,7 +1232,9 @@ public class Util
 	        millis += System.currentTimeMillis();
 			while (System.currentTimeMillis() < millis) 
 				Thread.yield();
-	    } catch (Exception e) {}
+	    } catch (Exception e) {
+			Log.e(TAG, "delay", e);
+	    }
 	}
 	
 	public static final String TAB = "\t";
@@ -1283,7 +1339,7 @@ public class Util
 					if (name.equals(field.getName()))
 						return (T)field.get(null);
 		} catch (Exception e) {
-			Log.e(TAG, "getConstant", e);
+			Log.e(TAG, "getConstantByName", e);
 		}
 		return null;
 	}

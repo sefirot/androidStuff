@@ -271,7 +271,8 @@ public class Util1
 	}
 	
 	public static ValMap table_info(Context context, String uriString, String tableName) {
-		return table_info(context, Uri.parse(uriString), tableName);
+		Uri uri = Uri.parse(uriString);
+		return table_info(context, uri, tableName);
 	}
 	
 	public static ValMap table_info(Context context, Uri uri, String tableName) {
@@ -368,7 +369,10 @@ public class Util1
 
 	public static String[] databases(Context context, String packageName) {
 		ArrayList<String> list = new ArrayList<String>();
-		for (Object authority : contentAuthorities(providerPackages)) {
+		ValList authorities = vlist();	//	contentAuthorities(providerPackages);
+		String[] strings = strings("com.applang.provider.PlantInfo", "com.applang.provider.NotePad", "com.applang.provider.WeatherInfo");
+		authorities.addAll(asList(strings));
+		for (Object authority : authorities) {
 			String name = databaseName(authority);
 			if (notNullOrEmpty(name))
 				list.add(name);

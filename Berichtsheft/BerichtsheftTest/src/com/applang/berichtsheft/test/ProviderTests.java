@@ -336,7 +336,9 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
 					new int[]{3,6,2}[i], 
 					NotePadProvider.countNotes(contentResolver, i, "", null)[0].intValue());
 		
-    	ImpexTask.doImpex(mActivity, new String[] { "databases/" + NotePadProvider.DATABASE_NAME }, true);
+    	String[] fileNames = strings(NotePadProvider.DATABASE_NAME);
+		assertTrue(String.format("Export of %s failed", asList(fileNames)),
+    			ImpexTask.doImpex(mActivity, fileNames, true));
     	
 		assertEquals(1, contentResolver.delete(NotePadProvider.contentUri(0), NoteColumns.TITLE + "=?", new String[]{"Velocity2"}));
 		
