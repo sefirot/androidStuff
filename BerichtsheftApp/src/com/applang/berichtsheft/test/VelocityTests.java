@@ -62,8 +62,8 @@ import com.applang.Util.ValMap;
 import com.applang.Util1;
 import com.applang.VelocityUtil.CustomDirective;
 import com.applang.VelocityUtil.Visitor;
-import com.applang.berichtsheft.components.ASTViewer;
-import com.applang.berichtsheft.components.DatePicker;
+import com.applang.components.ASTViewer;
+import com.applang.components.DatePicker;
 
 import junit.framework.TestCase;
 
@@ -342,8 +342,8 @@ public class VelocityTests extends TestCase
 		
 		SimpleNode document = parse(new StringReader(string), "");
 		String[] array = VelocityTests.listReferences(document);
-		assertTrue(list(array).contains("$ref_R"));
-		assertTrue(list(array).contains("$arg_L"));
+		assertTrue(asList(array).contains("$ref_R"));
+		assertTrue(asList(array).contains("$arg_L"));
 		String arg1 = "$xxx";
 		String arg2 = "zzz";
 		println(string = VelocityTests.updateReferences(document, strings(arg1,arg2)));
@@ -769,7 +769,7 @@ public class VelocityTests extends TestCase
 	private void assembleTest(String value) {
 		String name = firstIdentifierFrom(value);
 		ValList args = argumentsFrom(value);
-		ValList list = list();
+		ValList list = vlist();
 		for (Object arg : args) {
 			String type = argumentType(arg.toString());
 			Object[] dummies = (Object[]) getDummies(type);

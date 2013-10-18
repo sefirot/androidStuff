@@ -12,6 +12,47 @@ raw=/home/lotharla/work/Niklas/Bemerkungen*
 
 case "$1" in
 
+confluence_notes)
+	db="$3"
+	cat > "$sql" << EOF
+CREATE TABLE if not exists notes (
+_id INTEGER PRIMARY KEY,
+title TEXT,
+note TEXT,
+created INTEGER,
+modified INTEGER,
+UNIQUE(created,title));
+attach '$2' as tributary;
+INSERT INTO notes (_id,title,note,created,modified)
+SELECT null,title,note,created,modified
+FROM tributary.notes;
+EOF
+	exec_sql
+	echo "'notes' copied into $db"
+	;;
+	
+confluence_weathers)
+	db="$3"
+	cat > "$sql" << EOF
+CREATE TABLE if not exists weathers (
+_id INTEGER PRIMARY KEY,
+description TEXT,
+location TEXT,
+precipitation FLOAT,
+maxtemp FLOAT,
+mintemp FLOAT,
+created INTEGER,
+modified INTEGER);
+attach '$2' as tributary;
+INSERT INTO weathers (_id,description,location,precipitation,maxtemp,mintemp,created,modified)
+SELECT null,description,location,precipitation,maxtemp,mintemp,created,modified
+FROM tributary.weathers;
+EOF
+	exec_sql
+	echo "'weathers' copied into $db"
+	;;
+
+
 desc)
 	/home/lotharla/gawk-4.0.0/gawk -f "${dir}/descriptions.awk" < "/home/lotharla/work/Niklas/www1.ncdc.noaa.gov/553356121374dat.txt"
 	;;
@@ -95,7 +136,33 @@ SELECT description,location,precipitation,maxtemp,mintemp,created,modified
 FROM winfo.weathers;
 EOF
 	exec_sql
-	echo "\'weathers\' integrated into $db"
+	echo "'weathers' integrated into $db"
+	;;
+	
+berufsschule_notes)
+	db=berichtsheft.db
+	db2=berichtsheft_2012.db
+	cat > "$sql" << EOF
+attach '$db2' as old;
+insert into notes (title,note,created,modified)
+	select title,note,created,modified from old.notes where title like 'beruf%';
+select date(created/1000, 'unixepoch','localtime') from notes where title like 'beruf%';
+EOF
+	exec_sql
+	echo "$db"
+	;;
+	
+copy_weathers)
+#	echo `pwd`
+	db=berichtsheft_2013.db
+	cat > "$sql" << EOF
+attach '$wi' as winfo;
+INSERT INTO weathers (description,location,precipitation,maxtemp,mintemp,created,modified)
+SELECT description,location,precipitation,maxtemp,mintemp,created,modified
+FROM winfo.weathers;
+EOF
+	exec_sql
+	echo "'weathers' copied into $db"
 	;;
 	
 esac

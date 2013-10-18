@@ -7,9 +7,12 @@
 <!DOCTYPE DOCKABLES SYSTEM "dockables.dtd">
 
 <!-- Berichtsheft dockable windows -->
-
 <DOCKABLES>
-	<DOCKABLE NAME="berichtsheft">
-		new com.applang.berichtsheft.plugin.BerichtsheftDockable(view, position);
+	<DOCKABLE NAME="notedock">
+		new com.applang.berichtsheft.plugin.NoteDockable(view, position);
+	</DOCKABLE>
+
+	<DOCKABLE NAME="datadock">
+		new com.applang.berichtsheft.plugin.DataDockable(view, position);
 	</DOCKABLE>
 </DOCKABLES>

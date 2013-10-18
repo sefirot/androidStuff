@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -33,7 +34,6 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.Vector;
 import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -54,7 +54,13 @@ public class Util
 	}
 	
 	private static Random random = new Random();
-    private static final int millisPerDay = 1000*60*60*24;
+	
+	public static Random getRandom() {
+		return random;
+	}
+	
+    private static final int millisPerHour = 1000*60*60;
+    private static final int millisPerDay = millisPerHour * 24;
 	private static Calendar calendar = Calendar.getInstance(Locale.US);
 
 	static void setWeekDate(int year, int weekOfYear, int dayOfWeek) {
@@ -88,9 +94,11 @@ public class Util
 
 	public static int[] getCalendarDate(long time) {
 		calendar.setTimeInMillis(time);
-		return new int[] {calendar.get(Calendar.DAY_OF_MONTH), 
-				calendar.get(Calendar.MONTH), 
-				calendar.get(Calendar.YEAR)};
+		return new int[] {
+			calendar.get(Calendar.DAY_OF_MONTH), 
+			calendar.get(Calendar.MONTH), 
+			calendar.get(Calendar.YEAR)
+		};
 	}
 	/**
 	 * calculates the milliseconds after 1970-01-01 for a given start of a day (midnight)
@@ -99,10 +107,20 @@ public class Util
 	 * @param day day of week or day of month
 	 * @return
 	 */
+	// NOTE used in xsl scripts
 	public static long timeInMillis(int year, int week, int day) {
 		if (week < 1)
 			return dateInMillis(year, -week, day);
 		setWeekDate(year, week, day);
+		return calendar.getTimeInMillis();
+	}
+
+	// NOTE used in xsl scripts
+	public static long timeInMillis(int year, int week, int day, int days) {
+		if (week < 1)
+			return dateInMillis(year, -week, day, days);
+		setWeekDate(year, week, day);
+		calendar.add(Calendar.DATE, days);
 		return calendar.getTimeInMillis();
 	}
 
@@ -135,12 +153,18 @@ public class Util
 			timeInMillis += random.nextInt(millisPerDay);
 		return timeInMillis;
 	}
+	
+	public static long hoursFromDate(long date, int hours) {
+		return date + hours * millisPerHour;
+	}
 
 	public static long getMillis(int days) {
 		return days * millisPerDay;
 	}
 
-	public static long[] dayInterval(long time, int days) {
+	public static long[] dayInterval(Long time, int days) {
+		if (time == null)
+			return null;
 		long[] interval = new long[2];
 		if (days < 0) {
 			interval[0] = time - days * millisPerDay;
@@ -187,16 +211,29 @@ public class Util
 
 	public static String timestampFormat = "yyyy-MM-dd HH:mm:ss.SSS";
 
-	//	used in xsl scripts
+	// NOTE used in xsl scripts
 	public static String formatDate(long millis, String pattern) {
 		return new SimpleDateFormat(pattern, Locale.US).format(new Date(millis));
 	}
 
-	public static String formatDate(long millis, Object...params) {
+	// NOTE used in BeanShell scripts
+	public static String formatDate(Long millis, Object...params) {
+		if (millis == null)	return null;
 //		return String.format("%1$tY-%1$tm-%1$td %1$tH:%1$tM:%1$tS.%1$tL", millis);
 		String pattern = param(timestampFormat,0,params);
 		Locale locale = param(Locale.US,1,params);
 		return new SimpleDateFormat(pattern, locale).format(new Date(millis));
+	}
+
+	public static String[] formatDates(Long[] millis, Object...params) {
+		return formatDates(toLongArray(asList(millis)), params);
+	}
+
+	public static String[] formatDates(long[] millis, Object...params) {
+		String[] dates = new String[millis.length];
+		for (int i = 0; i < dates.length; i++) 
+			dates[i] = formatDate(millis[i], params);
+		return dates;
 	}
 
 	public static Date toDate(String dateString, Object...params) {
@@ -205,19 +242,30 @@ public class Util
 			Locale locale = param(Locale.US,1,params);
 			return new SimpleDateFormat(pattern, locale).parse(dateString);
 		} catch (Exception e) {
+//			Log.e(TAG, "toDate", e);
 			return null;
 		}
 	}
 	
+	// NOTE used in scripts
 	public static Long toTime(String dateString, Object...params) {
 		Date date = toDate(dateString, params);
-		if (date == null)
-			return null;
-		else
-			return date.getTime();
+		if (date == null) {
+			if (notNullOrEmpty(dateString) && isAvailable(0, params)) {
+				Locale locale = param(Locale.US, 1, params);
+				if (Locale.US.equals(locale))
+					locale = Locale.getDefault();
+				else 
+					locale = Locale.US;
+				date = toDate(dateString, params[0], locale);
+			}
+			if (date == null)
+				return null;
+		}
+		return date.getTime();
 	}
 
-	//	used in xsl scripts
+	// NOTE used in xsl scripts
 	public static long now() {
 		return new Date().getTime();
 	}
@@ -234,11 +282,15 @@ public class Util
 	}
 	
 	public static String stringValueOf(Object value) {
-		return value != null ? String.valueOf(value) : "";
+		return value == null ? "" : String.valueOf(value);
 	}
 
 	public static boolean notNullOrEmpty(Object value) {
 		return stringValueOf(value).length() > 0;
+	}
+
+	public static boolean nullOrEmpty(Object value) {
+		return !notNullOrEmpty(value);
 	}
 
 	public static <T> boolean nullOrEmpty(T[] value) {
@@ -261,7 +313,7 @@ public class Util
 		return value == null || value.length < 1;
 	}
 
-	//	used in xsl scripts
+	// NOTE used in xsl scripts
 	public static boolean isWhiteSpace(String s) {
 		for (int i = 0; i < s.length(); i++) 
 			if (!Character.isWhitespace(s.charAt(i)))
@@ -319,16 +371,6 @@ public class Util
         
         return result;
     }
-    
-    public static String stripUnits(String s) {
-		int i = 0;
-		while (i < s.length())
-			if (Character.isDigit(s.charAt(i)) || "-+.,".contains(String.valueOf(s.charAt(i)))) 
-				i++;
-			else
-				break;
-		return s.substring(0, i);
-    }
 	
 	public static boolean isAvailable(int index, List<?> list) {
 		return list != null && index > -1 && index < list.size() && list.get(index) != null;
@@ -336,6 +378,10 @@ public class Util
 	
 	public static <T> boolean isAvailable(int index, T[] array) {
 		return array != null && index > -1 && index < array.length && array[index] != null;
+	}
+	
+	public static boolean isAvailable(int index, int[] array) {
+		return array != null && index > -1 && index < array.length;
 	}
 	
 	public static Object[] reduceDepth(Object[] params) {
@@ -353,6 +399,7 @@ public class Util
 		return elseValue;
 	}
 	/**
+	 * retrieves the indicated varargs-parameter from a parameter array
 	 * @param <P>	type of the values in the parameter array
 	 * @param <T>	genericized return type
 	 * @param defaultParam	the value returned if the indexed value doesn't exist in the array
@@ -362,18 +409,29 @@ public class Util
 	 * @throws ClassCastException
 	 */
 	@SuppressWarnings("unchecked")
-	public static <P extends Object, T extends P> T param(T defaultParam, int index, P... params) {
+	public static <P extends Object, T extends P> T param(T defaultParam, int index, P...params) {
 		if (params != null && index > -1 && params.length > index)
 			try {
 				T returnValue = (T)params[index];
 				return returnValue;
-			} catch (ClassCastException e) {}
+			} catch (ClassCastException e) {
+				Log.e(TAG, "param", e);
+			}
 		return defaultParam;
 	}
 	
-	public static int param(int defaultParam, int index, int... params) {
+	public static int param(int defaultParam, int index, int...params) {
 		if (params != null && index > -1 && params.length > index)
 			return params[index];
+		else
+			return defaultParam;
+	}
+	
+	@SuppressWarnings("unchecked")
+	public static <P extends Object, T extends P> T paramT(T defaultParam, int index, P...params) {
+		T param = param(defaultParam, index, params);
+		if (isType(defaultParam, param))
+			return param;
 		else
 			return defaultParam;
 	}
@@ -436,11 +494,11 @@ public class Util
 		return collection.toArray(strings());
 	}
 	
-	public static <T> List<T> list(T[] array) {
+	public static <T> List<T> asList(T[] array) {
 		return Arrays.asList(array);
 	}
 	
-	public static <T> Set<T> sorted(Collection<T> collection) {
+	public static <T> Set<T> sortedSet(Collection<T> collection) {
 		return new TreeSet<T>(collection);
 	}
 	
@@ -454,7 +512,6 @@ public class Util
 		 
 	public static Object[] iterateFiles(boolean includeDirs, File dir, Job<Object> job, Object... params) throws Exception {
 		params = reduceDepth(params);
-		
 		if (dir != null && dir.isDirectory()) {
 			for (File file : dir.listFiles())
 				if (file.isDirectory())
@@ -465,7 +522,6 @@ public class Util
 					if (n != null)
 						params[0] = n + 1;
 				}
-			
 			if (includeDirs) {
 				job.perform(dir, params);
 				Integer n = paramInteger(null, 1, params);
@@ -473,9 +529,16 @@ public class Util
 					params[1] = n + 1;
 			}
 		}
-		
 		return params;
 	} 
+	
+	public static Pattern clippingPattern(String clipper1, String clipper2) {
+		String clipped1 = "[^" + clipper1 + "]";
+		String clipped2 = "[^" + clipper1 + clipper2 + "]";
+		String clipped3 = "[^" + clipper2 + "]";
+		return Pattern.compile(
+				"(" + clipped1 + "*)" + clipper1 + "(" + clipped2 + "+)" + clipper2 + "(" + clipped3 + "*)");
+	}
 	
 	public static MatchResult[] findAllIn(String input, Pattern pattern) {
 		ArrayList<MatchResult> matches = new ArrayList<MatchResult>();
@@ -495,7 +558,7 @@ public class Util
 			return null;
 	}
 
-	//	used in xsl scripts
+	// NOTE used in xsl scripts
 	public static boolean matches(String s, String regex) {
 		return s.matches(regex);
 	}
@@ -503,7 +566,7 @@ public class Util
      * @param parts
      * @return	a <code>File</code> object constructed out of parts of the file path
      */
-    public static File fileOf(String... parts) {
+    public static File fileOf(String...parts) {
     	File file = null;
     	
     	for (int i = 0; i < parts.length; i++) {
@@ -521,12 +584,12 @@ public class Util
 
 	public static ValList split(String string, String regex) {
 		String[] parts = string.split(regex);
-		return new ValList(list(parts));
+		return new ValList(asList(parts));
     }
 
 	public static <T> String join(String delimiter, @SuppressWarnings("unchecked") T...params) {
 	    StringBuilder sb = new StringBuilder();
-	    Iterator<T> iter = new ArrayList<T>(list(params)).iterator();
+	    Iterator<T> iter = new ArrayList<T>(asList(params)).iterator();
 	    if (iter.hasNext())
 	        do {
 		        sb.append(String.valueOf(iter.next()))
@@ -563,6 +626,16 @@ public class Util
     	}
     	return string;
 	}
+    
+    public static String stripUnits(String s) {
+		int i = 0;
+		while (i < s.length())
+			if (Character.isDigit(s.charAt(i)) || "-+.,".contains(String.valueOf(s.charAt(i)))) 
+				i++;
+			else
+				break;
+		return s.substring(0, i);
+    }
 
 	public static String trim(boolean left, String s, String...regex) {
 		for (String rgx : regex) {
@@ -608,21 +681,55 @@ public class Util
 		}
 	}
 	
-	public static boolean deleteDirectory(File dir) {
+	public static boolean deleteDirectory(File dir, Object...params) {
 		try {
-			iterateFiles(true, dir, new Job<Object>() {
-				public void perform(Object f, Object[] parms) {
-					((File)f).delete();
+			Job<File> deleter = new Job<File>() {
+				public void perform(File f, Object[] params) throws Exception {
+					if (f.delete()) {
+						int no = (Integer) params[0];
+						Integer n = paramInteger(null, no, (Object[]) params[1]);
+						if (n != null)
+							params[no] = n + 1;
+					}
 				}
-			});
-			
+			};
+			if (dir != null && dir.isDirectory()) {
+				for (File file : dir.listFiles())
+					if (file.isDirectory()) {
+						if (isSymlink(file))
+							deleter.perform(file, new Object[]{1, params});
+						else
+							deleteDirectory(file, params);
+					}
+					else if (file.isFile()) {
+						deleter.perform(file, new Object[]{0, params});
+					}
+				deleter.perform(dir, new Object[]{1, params});
+			}
 			return !dir.exists();
 		} catch (Exception e) {
-			e.printStackTrace();
+			Log.e(TAG, "deleteDirectory", e);
 			return false;
 		}
 	}
-
+	
+	public static boolean isSymlink(File file) throws IOException {
+		if (file == null)
+			throw new NullPointerException("File must not be null");
+		File canon;
+		if (file.getParent() == null) {
+			canon = file;
+		} 
+		else {
+			File canonDir = file.getParentFile().getCanonicalFile();
+			canon = new File(canonDir, file.getName());
+		}
+		if (canon.getCanonicalFile().equals(canon.getAbsoluteFile()))
+			return false;
+		else
+			return true;
+	}
+	
 	public static String readAll(Reader rd, Object...params) throws IOException {
 		Integer chars = paramInteger(null, 0, params);
 		StringBuilder sb = new StringBuilder();
@@ -653,7 +760,7 @@ public class Util
 		return findAllIn(text, pattern);
 	}
 	
-	//	used in scripts
+	// NOTE used in scripts
 	public static String contentsFromFile(File file) {
 		return contentsFromFile(file, null);
 	}
@@ -664,17 +771,20 @@ public class Util
 			fr = new InputStreamReader(new FileInputStream(file));
 			return readAll(fr, chars);
 		} catch (Exception e) {
+			Log.e(TAG, "contentsFromFile", e);
 			return null;
 		}
 		finally {
 			if (fr != null)
 				try {
 					fr.close();
-				} catch (IOException e) {}
+				} catch (IOException e) {
+					Log.e(TAG, "contentsFromFile", e);
+				}
 		}
 	}
 	 
-	//	used in scripts
+	// NOTE used in scripts
 	public static File contentsToFile(File file, String s) {
 		return contentsToFile(file, s, false);
 	}
@@ -685,12 +795,15 @@ public class Util
 			fw = new OutputStreamWriter(new FileOutputStream(file, append));
 			fw.write(s);
 		} catch (Exception e) {
+			Log.e(TAG, "contentsToFile", e);
 		}
 		finally {
 			if (fw != null)
 				try {
 					fw.close();
-				} catch (IOException e) {}
+				} catch (IOException e) {
+					Log.e(TAG, "contentsToFile", e);
+				}
 		}
 		return file;
 	}
@@ -739,6 +852,12 @@ public class Util
 			return super.get(index);
 		}
 		@Override
+		public void add(int index, Object element) {
+			if (index < 0)
+				index = size() + index;
+			super.add(index, element);
+		}
+		@Override
 		public Object remove(int index) {
 			if (index < 0)
 				index = size() + index;
@@ -746,8 +865,8 @@ public class Util
 		}
 	}
 	
-	public static ValList list() {	return new ValList();	}
-	public static ValMap map() {	return new ValMap();	}
+	public static ValList vlist() {	return new ValList();	}
+	public static ValMap vmap() {	return new ValMap();	}
 	
 	public static class ValMap extends HashMap<String,Object>
 	{
@@ -767,7 +886,7 @@ public class Util
 		public ValList getList(String key) {
 			Object value = get(key);
 			if (value == null) {
-				ValList list = list();
+				ValList list = vlist();
 				put(key, list);
 				return list;
 			}
@@ -782,69 +901,168 @@ public class Util
 		}
 	}
 	
-	public static ValMap mappings = new ValMap();
+	public static ValMap mappings = vmap();
 	
 	public static int clearMappings() {
-		mappings = new ValMap();
+		mappings = vmap();
 		return 0;
 	}
 	
-	//	used in xsl scripts
+	// NOTE used in xsl scripts
 	public static String getMapping(String key) {
 		Object value = mappings.get(key);
-		return value == null ? "" : value.toString();
+		return stringValueOf(value);
 	}
 	
-	//	used in xsl scripts
+	// NOTE used in xsl scripts
 	public static String setMapping(String key, String value) {
 		mappings.put(key, value);
 		return "";
 	}
 	
-	@SuppressWarnings("unchecked")
-	public static class BidiMap
+	public static BidiMultiMap bmap(int count) {
+		return new BidiMultiMap(new ValList[count]);
+	}
+
+	public static class BidiMultiMap
 	{
-		@SuppressWarnings("rawtypes")
-		Vector keys = new Vector();
+		private ValList[] lists;
+		private ValList keys, values;
 
-		@SuppressWarnings("rawtypes")
-		Vector values = new Vector();
-
-		public Object[] getKeys() {
-			return keys.toArray();
+		public BidiMultiMap(ValList...lists) {
+			int size = 0;
+			for (int i = lists.length - 1; i >= 0; i--) {
+				lists[i] = paramT(vlist(), i, lists);
+				size = Math.max(size, lists[i].size());
+			}
+			while (lists.length < 2)
+				lists = arrayappend(lists, vlist());
+			for (int i = 0; i < lists.length; i++) {
+				values = lists[i];
+				while (values.size() < size)
+					values.add(null);
+			}
+			keys = lists[0];
+			values = lists[1];
+			this.lists = lists;
 		}
 		
-		public Object[] getValues() {
-			return values.toArray();
+		public boolean setValues(int listIndex) {
+			boolean retval = listIndex > 0 && listIndex < lists.length;
+			if (retval)
+				values = lists[listIndex];
+			return retval;
+		}
+		
+		@Override
+		public String toString() {
+			StringBuilder sb = new StringBuilder();
+			int size = keys.size();
+			for (int i = 0; i < size; i++) {
+				sb.append(String.format("%s", keys.get(i)));
+				for (int j = 1; j < lists.length; j++) {
+					Object val = lists[j].get(i);
+					sb.append(String.format("=%s", String.valueOf(val)));
+				}
+				if (i < size - 1)
+					sb.append(",\n");
+			}
+			return enclose("{", sb.toString(), "}");
 		}
 
-		public void put(Object key, Object value) {
-			keys.add(key);
-			values.add(value);
+		public void add(Object...values) {
+			for (int i = 0; i < lists.length; i++) {
+				Object value = param(null, i, values);
+				lists[i].add(value);
+			}
+		}
+
+		public void insert(int index, Object...values) {
+			for (int i = 0; i < lists.length; i++) {
+				Object value = param(null, i, values);
+				lists[i].add(index, value);
+			}
+		}
+		
+		public void remove(int index) {
+			for (int i = 0; i < lists.length; i++) 
+				lists[i].remove(index);
+		}
+		
+		public void removeAll() {
+			for (int i = 0; i < lists.length; i++) 
+				lists[i].clear();
+		}
+		
+		public ValList get(int index) {
+			ValList list = vlist();
+			for (int i = 0; i < lists.length; i++) 
+				list.add(lists[i].get(index));
+			return list;
+		}
+		
+		public Integer[] get(Object key) {
+			ValList list = vlist();
+			List<Object>_keys = keys;
+			int index;
+			do {
+				index = _keys.lastIndexOf(key);
+				if (index > -1) {
+					list.add(index);
+					_keys = _keys.subList(0, index);
+				}
+			}
+			while (index > -1);
+			Collections.reverse(list);
+			return list.toArray(new Integer[0]);
+		}
+
+		public ValList getKeys() {
+			return keys;
+		}
+		
+		public ValList getValues(int...listIndex) {
+			return isAvailable(0, listIndex) ? lists[listIndex[0]] : values;
 		}
 
 		public Object getKey(Object value) {
 			int index = values.indexOf(value);
-			return keys.get(index);
+			if (index > -1)
+				return keys.get(index);
+			else
+				return null;
 		}
 		
-		public Object getValue(Object key) {
+		public boolean removeKey(Object key) {
 			int index = keys.indexOf(key);
-			return values.get(index);
+			boolean retval = index > -1;
+			if (retval)
+				remove(index);
+			return retval;
 		}
-
-		public void removeKey(Object key) {
+		
+		public Object getValue(Object key, int...listIndex) {
+			ValList list = getValues(listIndex);
 			int index = keys.indexOf(key);
-			keys.remove(index);
-			values.remove(index);
+			if (index > -1)
+				return list.get(index);
+			else
+				return null;
 		}
 		
-		public void removeValue(Object value) {
-			int index = values.indexOf(value);
-			keys.remove(index);
-			values.remove(index);
+		public void putValue(Object key, Object value, int...listIndex) {
+			if (keys.indexOf(key) < 0)
+				add(key);
+			ValList list = getValues(listIndex);
+			int index = keys.indexOf(key);
+			list.set(index, value);
 		}
 		
+		public boolean isUnique(Object value, int listIndex) {
+			ValList list = lists[listIndex];
+			int index = list.indexOf(value);
+			return index > -1 && index == list.lastIndexOf(value);
+		}
 	}
 	
 	/**
@@ -880,7 +1098,7 @@ public class Util
 	 * @return	the cast array
 	 */
 	public static <T, U> U[] arraycast(T[] array, U[] a) {
-		return list(array).toArray(a);
+		return asList(array).toArray(a);
 	}
 
 	public static boolean[] toBooleanArray(List<Boolean> list) {
@@ -907,15 +1125,23 @@ public class Util
 	    return list;
 	}
 
+	public static long[] toLongArray(List<Long> list) {
+		long[] primitives = new long[list.size()];
+	    for (int i = 0; i < primitives.length; i++) {
+			primitives[i] = list.get(i).longValue();
+	    }
+	    return primitives;
+	}
+
 	@SuppressWarnings("unchecked")
 	public static <T> T[] arrayappend(T[] array, T... elements) {
-		ArrayList<T> list = new ArrayList<T>(list(array));
-		list.addAll(new ArrayList<T>(list(elements)));
+		ArrayList<T> list = new ArrayList<T>(asList(array));
+		list.addAll(new ArrayList<T>(asList(elements)));
 		return list.toArray(array);
 	}
 
 	public static <T> int arrayindexof(T element, T[] array) {
-		return list(array).indexOf(element);
+		return asList(array).indexOf(element);
 	}
 
 	public static <T> void arrayreverse(T[] array) {
@@ -1006,13 +1232,17 @@ public class Util
 	        millis += System.currentTimeMillis();
 			while (System.currentTimeMillis() < millis) 
 				Thread.yield();
-	    } catch (Exception e) {}
+	    } catch (Exception e) {
+			Log.e(TAG, "delay", e);
+	    }
 	}
 	
 	public static final String TAB = "\t";
 	public static final String NEWLINE = "\n";	//	System.getProperty("line.separator");
 	public static final String TAB_REGEX = "\\t";
 	public static final String NEWLINE_REGEX = "\\n";
+	public static final String WHITESPACE_REGEX = "\\s+";
+	public static final String WHITESPACE_OR_NOTHING_REGEX = "\\s*";
 	public static final String[] FOLD_MARKER = strings("{{{", "}}}");
 	public static final String[] FOLD_MARKER_REGEX = strings("\\{\\{\\{", "\\}\\}\\}");
 
@@ -1094,7 +1324,7 @@ public class Util
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <T extends Object> T getConstantByName(String className, String innerClassName, String fieldName) {
+	public static <T extends Object> T getConstantByName(String name, String className, String innerClassName) {
 		try {
 			Class<?> c = Class.forName(className);
 			if (notNullOrEmpty(innerClassName)) {
@@ -1106,10 +1336,10 @@ public class Util
 			}
 			if (c != null)
 				for (Field field : c.getDeclaredFields()) 
-					if (fieldName.equals(field.getName()))
+					if (name.equals(field.getName()))
 						return (T)field.get(null);
 		} catch (Exception e) {
-			Log.e(TAG, "getConstant", e);
+			Log.e(TAG, "getConstantByName", e);
 		}
 		return null;
 	}

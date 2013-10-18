@@ -1,6 +1,7 @@
 package com.applang;
 
 import java.awt.AWTEvent;
+import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Cursor;
@@ -48,15 +49,18 @@ import java.util.Collection;
 import java.util.EventListener;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.MatchResult;
 import java.util.regex.Pattern;
 
 import javax.swing.AbstractAction;
 import javax.swing.AbstractButton;
+import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
+import javax.swing.DefaultCellEditor;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.DefaultListModel;
 import javax.swing.Icon;
@@ -81,24 +85,27 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.JToolBar;
 import javax.swing.KeyStroke;
+import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.WindowConstants;
-import javax.swing.event.AncestorEvent;
+import javax.swing.border.TitledBorder;
 import javax.swing.event.AncestorListener;
 import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableColumn;
 import javax.swing.table.TableColumnModel;
 import javax.swing.text.JTextComponent;
 
-import android.util.Log;
-
 import com.applang.Util.Function;
-import com.applang.Util.ValList;
+
+import android.util.Log;
 
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
@@ -433,7 +440,7 @@ public class SwingUtil
 			UIFunction assembleUI,
 			UIFunction arrangeUI,
     		final UIFunction completeUI,
-    		boolean deadline, 
+    		int behavior, 
     		Integer... keyEvents)
 	{
 		try {
@@ -457,7 +464,8 @@ public class SwingUtil
 				frame.setLocation((Point)relative);
 			else if (relative instanceof Rectangle)
 				frame.setBounds((Rectangle)relative);
-			frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+			boolean exitOnClose = Behavior.hasFlags(behavior, Behavior.EXIT_ON_CLOSE);
+			frame.setDefaultCloseOperation(exitOnClose ? JFrame.EXIT_ON_CLOSE : JFrame.DISPOSE_ON_CLOSE);
 			frame.setVisible(true);
 			
 			if (arrangeUI != null)
@@ -467,11 +475,11 @@ public class SwingUtil
 				public void windowClosing(WindowEvent event) {
 					if (completeUI != null)
 						completeUI.apply(frame, null);
-					
 					finished = true;
 				}
 			});
 			
+			boolean deadline = Behavior.hasFlags(behavior, Behavior.TIMEOUT);
 			if (deadline || keyEvents.length > 0) {
 				Deadline.start(
 						deadline ? frame : null, 
@@ -488,22 +496,22 @@ public class SwingUtil
 		}
 	}
 	
-	public static int dialogResult = Modality.CLOSED_OPTION;
+	public static int dialogResult = JOptionPane.CLOSED_OPTION;
 	
     public static int showDialog(Component parent, Component relative, 
     		String title, 
     		UIFunction assembleUI,
     		UIFunction arrangeUI,
     		final UIFunction completeUI,
-    		int modality, 
+    		final int behavior, 
     		Integer... keyEvents)
     {
-    	dialogResult = Modality.CLOSED_OPTION;
+    	dialogResult = JOptionPane.CLOSED_OPTION;
     	
-    	boolean modal = Modality.hasFlags(modality, Modality.MODAL);
+    	boolean modal = Behavior.hasFlags(behavior, Behavior.MODAL);
 		Frame frame = JOptionPane.getFrameForComponent(parent);
 		final JDialog dlg = new JDialog(frame, title, modal);
-		boolean alwaysOnTop = Modality.hasFlags(modality, Modality.ALWAYS_ON_TOP);
+		boolean alwaysOnTop = Behavior.hasFlags(behavior, Behavior.ALWAYS_ON_TOP);
 		dlg.setAlwaysOnTop(alwaysOnTop);
 		
 		if (assembleUI != null) {
@@ -516,7 +524,7 @@ public class SwingUtil
 						dlg.getContentPane().add(widget);
 		}
 		
-		boolean deadline = Modality.hasFlags(modality, Modality.TIMEOUT);
+		boolean deadline = Behavior.hasFlags(behavior, Behavior.TIMEOUT);
 		if (deadline)
 			Deadline.start(dlg);
 		
@@ -534,6 +542,8 @@ public class SwingUtil
 			public void windowClosing(WindowEvent event) {
 				if (completeUI != null)
 					completeUI.apply(dlg, null);
+				if (Behavior.hasFlags(behavior, Behavior.EXIT_ON_CLOSE))
+					System.exit(0);
 			}
 		});
 		
@@ -547,13 +557,13 @@ public class SwingUtil
 		return dialogResult;
 	}
 	
-    public static class Modality
+    public static class Behavior
     {
-    	public static final int NONE = 0;
-    	public static final int MODAL = 4;
-    	public static final int TIMEOUT = 8;
-    	public static final int MODAL_TIMEOUT = 12;
-    	public static final int ALWAYS_ON_TOP = 16;
+    	public static final int NONE = 4;
+    	public static final int MODAL = 8;
+    	public static final int TIMEOUT = 16;
+    	public static final int ALWAYS_ON_TOP = 32;
+    	public static final int EXIT_ON_CLOSE = 64;
         
         public static int getOptionType(int index) {
         	return (index + 1) % 4 - 1;
@@ -566,37 +576,6 @@ public class SwingUtil
         public static boolean hasFlags(int index, int flags) { 
 			return (getFlags(index) & flags) > 0; 
         }
-
-        //
-        // Option types
-        //
-        /*
-         * Type meaning Look and Feel should not supply any options -- only
-         * use the options from the <code>JOptionPane</code>.
-         */
-        public static final int         DEFAULT_OPTION = -1;
-        /* Type used for <code>showConfirmDialog</code>. */
-        public static final int         YES_NO_OPTION = 0;
-        /* Type used for <code>showConfirmDialog</code>. */
-        public static final int         YES_NO_CANCEL_OPTION = 1;
-        /* Type used for <code>showConfirmDialog</code>. */
-        public static final int         OK_CANCEL_OPTION = 2;
-
-        //
-        // Return values.
-        //
-        /* Return value from class method if YES is chosen. */
-        public static final int         YES_OPTION = 0;
-        /* Return value from class method if NO is chosen. */
-        public static final int         NO_OPTION = 1;
-        /* Return value from class method if CANCEL is chosen. */
-        public static final int         CANCEL_OPTION = 2;
-        /* Return value form class method if OK is chosen. */
-        public static final int         OK_OPTION = 0;
-        /* Return value from class method if user closes window without selecting
-         * anything, more than likely this should be treated as either a
-         * <code>CANCEL_OPTION</code> or <code>NO_OPTION</code>. */
-        public static final int         CLOSED_OPTION = -1;
     }
 	
     public static int showOptionDialog(Component parent, 
@@ -607,50 +586,51 @@ public class SwingUtil
             Object...params) 
     {
 		Integer[] keyEvents = param(new Integer[0], 0, params);
-    	if (optionType > Modality.OK_CANCEL_OPTION) {
+    	if (optionType > JOptionPane.OK_CANCEL_OPTION) {
     		final Function<Boolean> optionHandler = param(null, 1, params);
+    		UIFunction assembleUI = new UIFunction() {
+    			public Component[] apply(final Component dialog, Object[] parms) {
+    				final JOptionPane optionPane = new JOptionPane(message, 
+    						messageType,
+    						Behavior.getOptionType(optionType),
+    						null,
+    						options, 
+    						initialOption);
+    				optionPane.addPropertyChangeListener(new PropertyChangeListener() {
+    					public void propertyChange(PropertyChangeEvent ev) {
+    						Object source = ev.getSource();
+    						String prop = ev.getPropertyName();
+    						if (dialog.isVisible() && 
+								optionPane.equals(source) && 
+								JOptionPane.VALUE_PROPERTY.equals(prop))
+    						{
+    							Object value = optionPane.getValue();
+    							if (value == JOptionPane.UNINITIALIZED_VALUE) {
+    								dialogResult = JOptionPane.CLOSED_OPTION;
+    								return;
+    							}
+    							else {
+	    							optionPane.setValue(JOptionPane.UNINITIALIZED_VALUE);
+	    							if (options != null)
+	    								dialogResult = asList(options).indexOf(value);
+	    							else 
+	    								dialogResult = (Integer) value;
+	    							Boolean visibility = false;
+	    							if (optionHandler != null)
+	    								visibility = optionHandler.apply(ev, options, message);
+	    							dialog.setVisible(visibility);
+	    							if (!visibility && Behavior.hasFlags(optionType, Behavior.EXIT_ON_CLOSE))
+	    								System.exit(0);
+    							}
+    						};
+    					}
+    				});
+    				return components(optionPane);
+    			}
+    		};
     		return showDialog(JOptionPane.getFrameForComponent(parent), parent, 
 					title,
-    				new UIFunction() {
-						public Component[] apply(final Component dialog, Object[] parms) {
-				    		final JOptionPane optionPane = new JOptionPane(message, 
-				    				messageType,
-				    				Modality.getOptionType(optionType),
-				    				null,
-				    				options, 
-				    				initialOption);
-				    		optionPane.addPropertyChangeListener(new PropertyChangeListener() {
-				    			public void propertyChange(PropertyChangeEvent ev) {
-				    				Object source = ev.getSource();
-				    				String prop = ev.getPropertyName();
-				    				boolean visible = dialog.isVisible();
-				    				if (visible && 
-				    						optionPane.equals(source) && 
-				    						JOptionPane.VALUE_PROPERTY.equals(prop))
-				    				{
-				    					Object value = optionPane.getValue();
-				    					if (value == JOptionPane.UNINITIALIZED_VALUE) {
-				    						dialogResult = Modality.CLOSED_OPTION;
-				    						return;
-				    					}
-				    					optionPane.setValue(JOptionPane.UNINITIALIZED_VALUE);
-				    					
-				    					if (options != null)
-				    						dialogResult = list(options).indexOf(value);
-				    					else 
-				    						dialogResult = (Integer) value;
-				    					
-				    					Boolean visibility = false;
-				    					if (optionHandler != null)
-				    						visibility = optionHandler.apply(ev, options, message);
-				    					
-				    					dialog.setVisible(visibility);
-				    				};
-				    			}
-				    		});
-							return components(optionPane);
-						}
-					},
+					assembleUI, 
 					null, null, 
 					optionType,
     				keyEvents);
@@ -667,21 +647,37 @@ public class SwingUtil
 	}
     
     public static ValList defaultOptions(int optionType) {
-    	ValList list = list();
+    	Object[] array;
+    	ValList list = vlist();
        	switch (optionType) {
     	case JOptionPane.YES_NO_OPTION:
-    		list.addAll(list(objects( "Yes", "No", null )));
+    		array = objects( "Yes", "No", null );
         	break;
     	case JOptionPane.YES_NO_CANCEL_OPTION:
-    		list.addAll(list(objects( "Yes", "No", "Cancel", "Cancel" )));
+    		array = objects( "Yes", "No", "Cancel", "Cancel" );
         	break;
     	case JOptionPane.OK_CANCEL_OPTION:
-    		list.addAll(list(objects( "OK", "Cancel", "Cancel" )));
+    		array = objects( "OK", "Cancel", "Cancel" );
     		break;
+    	case JOptionPane.DEFAULT_OPTION:
+    		array = objects( "Close", "Close" );
+    		break;
+    	case 5:
+    		array = objects( "Yes", "Yes all", "No", "No all", "Cancel", null );
+        	break;
+    	case 10:
+    		array = objects("OK","Add","Remove","Cancel","OK");
+        	break;
+    	case 11:
+    		array = objects("OK","Add","Remove","Edit","Cancel","OK");
+        	break;
+    	case 12:
+    		array = objects("OK","Save","Cancel","Save");
+        	break;
     	default:
-    		list.addAll(list(objects( "Close", "Close" )));
-    		break;
+    		return list;
        	}
+       	list.addAll(asList(array));
     	return list;
     }
 	
@@ -753,21 +749,44 @@ public class SwingUtil
     	return textComponent.getText();
 	}
 
-    public static <T> T showResizableDialog(final JComponent component, AncestorListener ancestorListener, Function<T> show, Object...params) {
-		JScrollPane scrollPane = new JScrollPane(component);
+    public static <T> T showResizableDialog(final JComponent component, 
+    		AncestorListener ancestorListener, 
+    		Function<T> show, Object...params) 
+    {
 		component.addHierarchyListener(new HierarchyListener() {
 			public void hierarchyChanged(HierarchyEvent e) {
 				Window window = SwingUtilities.getWindowAncestor(component);
 				if (window instanceof Dialog) {
 					Dialog dialog = (Dialog) window;
-					if (!dialog.isResizable()) {
+					if (!dialog.isResizable()) 
 						dialog.setResizable(true);
-					}
 				}
 			}
 		});
-		component.addAncestorListener(ancestorListener);
-		return show.apply(arrayappend(objects(scrollPane), params));
+		if (ancestorListener != null)
+			component.addAncestorListener(ancestorListener);
+		return show.apply(arrayappend(objects(component), params));
+    }
+    
+    public static String getWindowTitle(Component component) {
+		Window window = SwingUtilities.windowForComponent(component);
+		if (window instanceof Frame) 
+			return ((Frame)window).getTitle();
+		else if (window instanceof Dialog) 
+			return ((Dialog)window).getTitle();
+		return null;
+    }
+    
+    public static boolean setWindowTitle(Component component, String title) {
+    	boolean retval = true;
+		Window window = SwingUtilities.windowForComponent(component);
+		if (window instanceof Frame) 
+			((Frame)window).setTitle(title);
+		else if (window instanceof Dialog) 
+			((Dialog)window).setTitle(title);
+		else
+			retval = false;
+		return retval;
     }
 
 	@SuppressWarnings("unchecked")
@@ -777,7 +796,8 @@ public class SwingUtil
 			Function<File> chooser, 
 			Function<String[]> loader, 
 			Job<String[]> saver, 
-			Object...params) {
+			Object...params) 
+	{
 		Function<String[]> lister = new Function<String[]>() {
 			public String[] apply(Object... params) {
 				List<String> list = new ArrayList<String>();
@@ -788,7 +808,7 @@ public class SwingUtil
 				}
 				boolean sort = paramBoolean(false, 2, params);
 				if (sort) {
-					Set<String> set = sorted(list);
+					Set<String> set = sortedSet(list);
 					list = new ArrayList<String>();
 					list.addAll(set);
 				}
@@ -804,28 +824,29 @@ public class SwingUtil
 		int option = 1;
 		String[] fileNames = null;
 		try {
-			fileNames = loader.apply(params);
+			if (loader != null)
+				fileNames = loader.apply(params);
 		} catch (Exception e) {
 			Log.e(TAG, "getFileFromStore", e);
 		}
 		boolean storeEmpty = nullOrEmpty(fileNames);
 		if (!storeEmpty) {
-			if (!notNullOrEmpty(fileName))
+			if (nullOrEmpty(fileName))
 				fileName = fileNames[0];
 			fileNames = lister.apply(fileName, fileNames, true);
 			@SuppressWarnings({ "rawtypes" })
 			JComboBox combo = new JComboBox(fileNames);
-			JLabel label = new JLabel("Store");
+			JLabel label = new JLabel(title);
 			label.setLabelFor(combo);
 			Object message = objects(label, combo);
-			Object[] options = allowEdit ? 
-					objects("OK","Add","Remove","Edit","Cancel") : 
-					objects("OK","Add","Remove","Cancel");
-			option = JOptionPane.showOptionDialog(null, message, title, 
+			ValList list = defaultOptions(allowEdit ? 11 : 10);
+			Object initialOption = list.remove(-1);
+			Object[] options = list.toArray();
+			option = JOptionPane.showOptionDialog(null, message, "Store", 
 					JOptionPane.DEFAULT_OPTION, 
 					JOptionPane.PLAIN_MESSAGE, 
 					null, 
-					options, options[0]);
+					options, initialOption);
 			if (option < 0 || option == options.length - 1)
 				return null;
 			if (option == 2) {			//	Remove
@@ -844,18 +865,21 @@ public class SwingUtil
 			if (option == 3) {			//	Edit
 				JTextArea textArea = new JTextArea("");
 	    		textArea.setEditable(true);
-	    		textArea.setPreferredSize(new Dimension(500,200));
 	    		textArea.setText(contentsFromFile(file));
-				options = objects("OK","Save","Cancel");
+				list = defaultOptions(12);
+				initialOption = list.remove(-1);
+				options = list.toArray();
 				option = showResizableDialog(textArea, null, new Function<Integer>() {
-					public Integer apply(Object...params) {
-						return JOptionPane.showOptionDialog(null, params[0], title, 
+					public Integer apply(Object...parms) {
+						JScrollPane scrollPane = new JScrollPane((Component) parms[0]);
+						scrollPane.setPreferredSize(new Dimension(500,200));
+						return JOptionPane.showOptionDialog(null, scrollPane, title, 
 								JOptionPane.DEFAULT_OPTION, 
 								JOptionPane.PLAIN_MESSAGE, 
 								null, 
-								(Object[])params[1], params[2]);
+								(Object[])parms[1], parms[2]);
 					}
-				}, options, options[1]);
+				}, options, initialOption);
 				if (option < 0 || option == options.length - 1)
 					return null;
 				if (option == 0) {		//	OK
@@ -874,6 +898,10 @@ public class SwingUtil
 			file = chooser == null ? 
 					chooseFile(true, null, title, file, filter) : 
 					chooser.apply(true, null, title, file, filter);
+			if (fileNames == null)
+				return file;
+			if (file == null)
+				return getFileFromStore(type, title, filter, chooser, loader, saver, params);
 		}
 		if (file != null) {
 			fileName = file.getPath();
@@ -896,6 +924,25 @@ public class SwingUtil
 		return file;
 	}
 
+	public static String[] chooseFileNames(boolean toOpen, Container parent, 
+			String title, 
+			String fileName, 
+			FileFilter...fileFilters)
+	{
+		File f = new File(stringValueOf(fileName));
+		f = chooseFile(toOpen, parent, title, f, fileFilters);
+		return strings(f == null ? "" : f.getPath());
+	}
+
+	public static String[] chooseDirectoryNames(Container parent, 
+			String title, 
+			String dirName)
+	{
+		File f = new File(stringValueOf(dirName));
+		f = chooseDirectory(parent, title, f);
+		return strings(f == null ? "" : f.getPath());
+	}
+	
 	/**
 	 * @param parent
 	 * @param title
@@ -1004,6 +1051,14 @@ public class SwingUtil
 	public static Container container = null;
 	public static boolean underTest = false;
 	public static Function<String> messRedirection = null;
+	
+	public static void southStatusBar(Container container) {
+		JToolBar bottom = new JToolBar();
+		bottom.setName("bottom");
+		bottom.setFloatable(false);
+		messageBox(bottom);
+		container.add(bottom, BorderLayout.SOUTH);
+	}
 
 	public static JLabel messageBox(Container container) {
 		JLabel label = new JLabel("");
@@ -1028,30 +1083,35 @@ public class SwingUtil
 		}
 	}
 
-	public static void alert(String text, Object...params) {
+	public static void alert(Object...params) {
 		JOptionPane.showMessageDialog(
 				container, 
-				text, 
-				param("Alert", 0, params), 
-				JOptionPane.PLAIN_MESSAGE);
+				paramString("", 0, params), 
+				paramString("Alert", 1, params), 
+				paramInteger(JOptionPane.PLAIN_MESSAGE, 2, params));
 	}
 
-	public static boolean question(String text) {
-		return JOptionPane.YES_OPTION == JOptionPane.showConfirmDialog(
+	public static boolean question(Object...params) {
+		return JOptionPane.OK_OPTION == JOptionPane.showConfirmDialog(
 				container, 
-				text, 
-				"Question", 
-				JOptionPane.OK_CANCEL_OPTION);
+				paramString("Are you sure", 0, params), 
+				paramString("Question", 1, params), 
+				paramInteger(JOptionPane.OK_CANCEL_OPTION, 2, params));
 	}
 
 	public static void handleException(Exception e) {
-		if (e != null) 
-        	message(e.getMessage());
+		if (e != null) {
+			String message = e.getMessage();
+			if (nullOrEmpty(message))
+				message = String.valueOf(e);
+			message(message);
+		}
 	}
 	
-	public interface IActionType 
+	public interface CustomActionType 
 	{
 		public int index();
+		public String resourceName();
 	    public String iconName();
 	    public String description();
 	}
@@ -1082,43 +1142,41 @@ public class SwingUtil
 			return null;
 	}
 	
-    public static class Action extends AbstractAction
+    public static class CustomAction extends AbstractAction
     {
     	public static boolean actionBlocked = false;
     	
     	public static void blocked(Job<Void> job, Object[] params) throws Exception {
     		actionBlocked = true;
-    		
     		job.perform(null, params);
-    		
     		actionBlocked = false;
     	}
     	
-    	private IActionType type = null;
+    	private CustomActionType type = null;
     	
-        public IActionType getType() {
+        public CustomActionType getType() {
         	return type;
 		}
 
-		public void setType(IActionType type) {
+		public void setType(CustomActionType type) {
 			this.type = type;
-			putValue(SMALL_ICON, iconFrom("/images/" + this.type.iconName()));
+			putValue(SMALL_ICON, iconFrom(this.type.iconName()));
 			putValue(SHORT_DESCRIPTION, this.type.description());
 //			putValue(MNEMONIC_KEY, KeyEvent.CHAR_UNDEFINED);
 		}
 
-		public Action(IActionType type) {
+		public CustomAction(CustomActionType type) {
 			super(null);
 			setType(type);
         }
 
-		public Action(String text) {
+		public CustomAction(String text) {
 			super(text);
         }
         
         @Override
         public void actionPerformed(ActionEvent ae) {
-        	if (actionBlocked || (getType() == null && getValue(Action.NAME) == null))
+        	if (actionBlocked || (getType() == null && getValue(CustomAction.NAME) == null))
         		return;
         	
         	message("");
@@ -1234,10 +1292,10 @@ public class SwingUtil
         		if (evl instanceof ActionListener) 
         			button.addActionListener((ActionListener)evl);
         		
-        		if (evl instanceof Action) {
-        			Action act = (Action)evl;
+        		if (evl instanceof CustomAction) {
+        			CustomAction act = (CustomAction)evl;
 					button.setAction(act);
-					button.setText(act.getValue(Action.SHORT_DESCRIPTION).toString());
+					button.setText(act.getValue(CustomAction.SHORT_DESCRIPTION).toString());
 	                button.setName(name);
         		}
         		else {
@@ -1435,16 +1493,6 @@ public class SwingUtil
 		return new int[]{textwidth,textheight};
 	}
 	
-	public static void setWidthAsPercentages(JTable table, double... percentages) {
-		final double factor = 10000;
-		TableColumnModel model = table.getColumnModel();
-		for (int i = 0; i < Math.min(percentages.length, model.getColumnCount()); i++) {
-			TableColumn column = model.getColumn(i);
-			double val = percentages[i] * factor;
-			column.setPreferredWidth((int) val);
-		}
-	}
-	
 	public static Font monoSpaced(Object... params) {
 		return new Font("Monospaced", param(0, 0, params), param(12, 1, params));
 	}
@@ -1459,6 +1507,67 @@ public class SwingUtil
 					return indent + "    ";
 				}
 			});
+			println();
+		}
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	public static class MapEditorComponent extends JTable
+	{
+		private DefaultTableModel model;
+		
+		public MapEditorComponent(final Map map, Object...options) {
+			final Object[] keys = map.keySet().toArray();
+			model = new DefaultTableModel(keys.length, 2) {
+				@Override
+				public Object getValueAt(int row, int col) {
+					if (col == 0)
+						return keys[row];
+					else
+						return map.get(keys[row]);
+				}
+				@Override
+				public void setValueAt(Object value, int row, int col) {
+					if (col == 1)
+						map.put(keys[row], value);
+				}
+				@Override
+		        public Class<?> getColumnClass(int col) {
+					if (col == 1) {
+						return String.class;
+					}
+		            return super.getColumnClass(col);
+		        }
+				@Override
+				public boolean isCellEditable(int row, int col) {
+					if (col == 0)
+						return false;
+					else
+						return true;
+				}
+			};
+			setModel(model);
+			setName("table");
+			setTableHeader(null);
+			setRowSelectionAllowed(false);
+			setColumnSelectionAllowed(false);
+			editors = new TableCellEditor[keys.length];
+			for (int i = 0; i < keys.length; i++) 
+				if (isAvailable(i, options)) {
+					editors[i] = new DefaultCellEditor(new JComboBox((Object[])options[i]));
+				}
+		}
+
+		TableCellEditor[] editors;
+		
+		@Override
+		public TableCellEditor getCellEditor(int row, int col)
+		{
+		    TableCellEditor editor = editors[row];
+		    if (editor != null)
+		        return editor;
+		    else
+		    	return super.getCellEditor(row,col);
 		}
 	}
 	
@@ -1476,17 +1585,36 @@ public class SwingUtil
 	public static class Memory extends DefaultComboBoxModel
 	{
 		@SuppressWarnings({ "unchecked" })
-		public static void update(JComboBox cb, Object...params)
+		public static void update(final JComboBox cb, Object...params)
 		{
 			Object value = param(null, 0, params);
 			Object value2 = param(null, 1, params);
 			
 			if (value instanceof Boolean) {
-				cb.setModel(new Memory(cb.getName()));
-				if ((Boolean)value && cb.getModel().getSize() > 0) {
-					Object el = cb.getModel().getElementAt(0);
-					cb.getModel().setSelectedItem(el);
+				Memory model = new Memory(stringValueOf(value2));
+				cb.setModel(model);
+				if ((Boolean)value && model.getSize() > 0) {
+					Object el = model.getElementAt(0);
+					model.setSelectedItem(el);
 				}
+		        final JTextField tf = comboEdit(cb);
+				tf.addMouseListener(newPopupAdapter(
+					objects("+", 
+		        		newMenu("Memory", 
+		        			objects("add", new ActionListener() {
+		        	        	public void actionPerformed(ActionEvent ae) {
+		        	        		Memory.update(cb, tf.getText());
+		        	        	}
+		        	        }), 
+		        	        objects("remove", new ActionListener() {
+		        	        	public void actionPerformed(ActionEvent ae) {
+		        	        		Memory.update(cb, null, tf.getText());
+		        	        	}
+		        	        })
+		        		)
+			        )
+		        ));
+				cb.setEditable(true);
 			}
 			else {
 				boolean add = value != null;
@@ -1532,7 +1660,7 @@ public class SwingUtil
 			this.name = name;
 			
 			capacity = getSetting(name + ".memory.capacity", capacity);
-			ValList values = (ValList) getListSetting(name + ".memory", list());
+			ValList values = (ValList) getListSetting(name + ".memory", vlist());
 			deque = new ArrayDeque<Object>(values);
 	
 			for (Object p : params)
@@ -1541,7 +1669,7 @@ public class SwingUtil
 		
 		public void contentsChanged() {
 			Object[] values = deque.toArray();
-			putListSetting(name + ".memory", list(values));
+			putListSetting(name + ".memory", asList(values));
 		}
 	
 	    Object selectedObject = null;
@@ -1630,5 +1758,62 @@ public class SwingUtil
 			return format(writer, "]").toString();
 		}
 		
+	}
+	
+	public static boolean hasNoSelection(JTable table) {
+		ListSelectionModel sm = table.getSelectionModel();
+		return sm.isSelectionEmpty();
+	}
+	
+	public static void setColumnWidthsAsPercentages(JTable table, Object...percentages) {
+		double factor = 10000;
+		TableColumnModel model = table.getColumnModel();
+		int columnCount = model.getColumnCount();
+		if (columnCount > 0) {
+			Double percentage = 1.0 / columnCount;
+			for (int i = 0; i < columnCount; i++) {
+				TableColumn column = model.getColumn(i);
+				double val = paramDouble(percentage, i, percentages) * factor;
+				column.setPreferredWidth((int) val);
+			}
+		}
+	}
+	
+	public static void setMaximumDimension(Component component, Integer...fac) {
+		Dimension size = component.getPreferredSize();
+		int fWidth = param(1, 0, fac);
+		int fHeight = param(1, 1, fac);
+		component.setMaximumSize(new Dimension(size.width * fWidth, size.height * fHeight));
+	}
+
+	public static void scaleDimension(Component component, Double...fac) {
+		Dimension size = component.getSize();
+		Double fWidth = param(1.0, 0, fac);
+		Double fHeight = param(1.0, 1, fac);
+		size = new Dimension(
+				(int)Math.round(size.width * fWidth), 
+				(int)Math.round(size.height * fHeight));
+		if (component instanceof JComponent)
+			component.setPreferredSize(size);
+		else
+			component.setSize(size);
+	}
+
+	public static JPanel surroundingBox(JComponent contents, String title, Object...params) {
+		JPanel box = new JPanel();
+		int titleJustification = paramInteger(TitledBorder.DEFAULT_JUSTIFICATION, 0, params);
+		int titlePosition = paramInteger(TitledBorder.DEFAULT_POSITION, 1, params) ;
+		box.setBorder(
+			BorderFactory.createTitledBorder(
+				BorderFactory.createEtchedBorder(),
+				title,
+				titleJustification,
+				titlePosition
+			)
+		);
+		box.setLayout(new BoxLayout(box, BoxLayout.Y_AXIS) );
+		box.add( contents );
+		box.add( Box.createVerticalStrut(10) );
+		return box;
 	}
 }

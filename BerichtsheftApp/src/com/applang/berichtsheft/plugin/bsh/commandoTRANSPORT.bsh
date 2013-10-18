@@ -1,0 +1,17 @@
+commandoTRANSPORT(view,pane,ns,label,var,options)
+{
+	entry = new com.applang.components.ProfileManager(view);
+	value = ns.getVariable(var);
+	if(value != null)
+		entry.setProfile(value.toString());
+
+	valueChanged()
+	{
+		text = entry.getProfile();
+		ns.setVariable(var, text);
+	}
+
+	pane.addComponent(entry);
+
+	return this;
+}

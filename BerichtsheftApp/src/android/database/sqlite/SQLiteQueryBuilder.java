@@ -167,7 +167,7 @@ public class SQLiteQueryBuilder
     public static String buildQueryString(
             boolean distinct, String tables, String[] columns, String where,
             String groupBy, String having, String orderBy, String limit) {
-        if (!notNullOrEmpty(groupBy) && notNullOrEmpty(having)) {
+        if (nullOrEmpty(groupBy) && notNullOrEmpty(having)) {
             throw new IllegalArgumentException(
                     "HAVING clauses are only permitted when using a groupBy clause");
         }

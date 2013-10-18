@@ -21,17 +21,19 @@ public class BerichtsheftShell extends Shell
 	public static void print(Object... params) {
 		String string = format(new StringWriter(), params).toString();
 		View view = jEdit.getActiveView();
-		if (view == null) 
-			Util2.print(string);
-		else {
+		if (view != null) {
 			Console console = ConsolePlugin.getConsole(view);
-			String name = BerichtsheftPlugin.NAME;
-			if (!name.equals(console.getShell().getName())) {
-				console.setShell(name);
+			if (console != null) {
+				String name = BerichtsheftPlugin.getProperty("berichtsheft.shell.title");
+				if (!name.equals(console.getShell().getName())) {
+					console.setShell(name);
+				}
+				Output output = console.getOutput();
+				output.writeAttrs(ConsolePane.colorAttributes(Color.BLACK), string);
+				return;
 			}
-			Output output = console.getOutput();
-			output.writeAttrs(ConsolePane.colorAttributes(Color.BLACK), string);
 		}
+		Util2.print(string);
 	}
 	
 	@Override

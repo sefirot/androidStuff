@@ -13,8 +13,13 @@ import java.awt.GridLayout;
 import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.StringReader;
 import java.io.Writer;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -23,7 +28,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.util.Arrays;
 import java.util.Random;
-import java.util.regex.MatchResult;
+import java.util.Scanner;
  
 import javax.swing.AbstractAction;
 import javax.swing.ImageIcon;
@@ -34,13 +39,19 @@ import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingWorker;
 
 import org.apache.commons.lang.StringEscapeUtils;
 import org.gjt.sp.jedit.BeanShell;
+import org.gjt.sp.jedit.jEdit;
 import org.gjt.sp.jedit.bsh.NameSpace;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.*;
+
 import org.json.JSONArray;
 import org.jsoup.Jsoup;
 import org.jsoup.parser.Parser;
@@ -50,20 +61,37 @@ import org.w3c.dom.NodeList;
 import org.w3c.dom.Element;
 
 import android.app.AlertDialog;
+import android.content.ContentResolver;
+import android.content.ContentUris;
+import android.content.ContentValues;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 import android.net.Uri;
+import android.provider.BaseColumns;
 import android.util.Log;
 import android.widget.TextView;
 
 import com.applang.BaseDirective;
 import com.applang.Dialogs;
+import com.applang.SwingUtil.Behavior;
 import com.applang.UserContext.EvaluationTask;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.R;
-import com.applang.berichtsheft.components.DataView;
-import com.applang.berichtsheft.plugin.BerichtsheftDockable;
+import com.applang.berichtsheft.plugin.DataDockable;
+import com.applang.berichtsheft.plugin.JEditOptionDialog;
+import com.applang.berichtsheft.plugin.DataDockable.TransportBuilder;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
+import com.applang.components.AndroidBridge;
+import com.applang.components.DataView;
+import com.applang.components.DatePicker;
+import com.applang.components.ProfileManager;
+import com.applang.components.ScriptManager;
+import com.applang.components.TextEditor;
+import com.applang.components.WeatherManager;
+import com.applang.components.DataView.ProviderModel;
+import com.applang.provider.NotePadProvider;
+import com.applang.provider.WeatherInfoProvider;
+import com.applang.provider.WeatherInfo.Weathers;
 
 import junit.framework.TestCase;
 
@@ -79,11 +107,47 @@ public class HelperTests extends TestCase {
 
 	protected void setUp() throws Exception {
 		super.setUp();
-		Settings.load("");
+		BerichtsheftApp.loadSettings();
 	}
 
 	protected void tearDown() throws Exception {
 		super.tearDown();
+	}
+	
+    public static String[] getStateStrings() {
+    	try {
+			String res = resourceFrom("/res/raw/states.json", "UTF-8");
+			return ((ValList) walkJSON(null, new JSONArray(res), null)).toArray(new String[0]);
+		} catch (Exception e) {
+			fail(e.getMessage());
+			return null;
+		}
+	}
+	
+	File keinFehlerFile = new File(relativePath(), "bin/com/applang/berichtsheft/test/Kein Fehler im System.txt");
+	
+	public static void show_Frame(Object...params) {
+		final javax.swing.Action action = param(null, 2, params);
+		showFrame(param(new Rectangle(100,100,100,100), 0, params), 
+				param("", 1, params),
+				new UIFunction() {
+					public Component[] apply(final Component comp, Object[] parms) {
+						return components(action != null ? 
+								new JButton(action) : 
+								new JButton(new AbstractAction("Dispose") {
+									@Override
+									public void actionPerformed(ActionEvent ev) {
+										pullThePlug((JFrame)comp);
+									}
+								}));
+					}
+				}, 
+				null, null, 
+				Behavior.TIMEOUT);
+	}
+	
+	public static void main(String...args) {
+		HelperTests.show_Frame();
 	}
 
 	private void symbolicLinks(File dir, String targetDir, String...names) throws Exception {
@@ -118,7 +182,7 @@ public class HelperTests extends TestCase {
 	    return attributes.size();
 	}
 	
-	private void bshTest(String contents) throws Exception {
+	private void setupJEdit(String contents, Object...params) throws Exception {
 		File tempFile = BerichtsheftPlugin.getTempFile("test.bsh");
 		contentsToFile(tempFile, 
 				String.format(
@@ -133,7 +197,8 @@ public class HelperTests extends TestCase {
 						"        run();\n" +
 						"}\n" +
 						"doSomethingUseful();", contents));
-		File jarsDir = tempDir(true, BerichtsheftPlugin.NAME, "settings", "jars");
+		String subDirName = BerichtsheftPlugin.NAME;
+		File jarsDir = tempDir(true, subDirName, "settings", "jars");
 		symbolicLinks(jarsDir, ".jedit/jars", 
 				"BerichtsheftPlugin.jar",
 				"Console.jar",
@@ -142,23 +207,30 @@ public class HelperTests extends TestCase {
 				"ErrorList.jar",
 				"CommonControls.jar",
 				"kappalayout.jar");
-		File commandoDir = tempDir(false, BerichtsheftPlugin.NAME, "settings", "console", "commando");
-		symbolicLinks(commandoDir, ".jedit/console/commando", 
-				"android.xml",
-				"transport.xml");
-		BerichtsheftApp.main(
+		File settingsDir = tempDir(false, subDirName, "settings");
+		symbolicLinks(settingsDir, ".jedit", "keymaps");
+		settingsDir = tempDir(false, subDirName, "settings", "plugins");
+		symbolicLinks(settingsDir, ".jedit/plugins", "berichtsheft");
+		File commandoDir = tempDir(false, subDirName, "settings", "console");
+		symbolicLinks(commandoDir, ".jedit/console", "commando");
+		copyFile(
+				new File(tempDir(false, subDirName, "settings", "plugins", "berichtsheft"), "jedit.properties"), 
+				new File(tempDir(false, subDirName, "settings"), "properties"));
+		BerichtsheftPlugin.props = null;
+		jEdit.main(strings(
 				"-nosplash",
 				"-noserver",
 				String.format("-settings=%s", jarsDir.getParent()), 
-				String.format("-run=%s", tempFile.getPath()));
+				String.format("-run=%s", tempFile.getPath()), 
+				join(" ", params)));
 	}
 
-	private void performBshTest(final String title, final String contents) {
+	private void scriptTest(final String title, final String script, final Object...params) {
 		show_Frame(null, "",
 			new AbstractAction(title) {
 				public void actionPerformed(ActionEvent ev) {
 					try {
-						bshTest(contents);
+						setupJEdit(script, params);
 					} catch (Exception e) {
 						Log.e(TAG, title, e);
 					}
@@ -168,25 +240,32 @@ public class HelperTests extends TestCase {
 	}
 
 	public void testCommando() {
-		String contents = 
-				"import com.applang.berichtsheft.plugin.*;\n" +
-				"BerichtsheftToolBar.scanCommandoActions();\n" +
-				"BerichtsheftToolBar.commands.getAction(\"commando.transport\").invoke(view);\n";
-		performBshTest("testCommando", contents);
+		String script = String.format(
+				"com.applang.berichtsheft.plugin.BerichtsheftPlugin.invokeAction(view, \"%s\");\n", 
+				"commando.Dokumente");
+		scriptTest("testCommando", script);
 	}
 
 	public void testAndroidFileChooser() throws Exception {
-		String contents = "import com.applang.berichtsheft.plugin.*;\n" +
+		String script = "import com.applang.components.*;\n" +
 				"androidFileName = \"\";\n" +
 				"do {\n" +
-				"	androidFileName = BerichtsheftPlugin.chooseFileFromSdcard(view,false,androidFileName);\n" +
+				"	androidFileName = AndroidBridge.chooseFileFromSdcard(view,false,androidFileName);\n" +
 				"} while (androidFileName != null);";
-		performBshTest("testAndroidFileChooser", contents);
+		scriptTest("testAndroidFileChooser", script);
 //		underTest = true;
-//		println(BerichtsheftPlugin.chooseFileFromSdcard(null, false, ""));
+//		println(AndroidBridge.chooseFileFromSdcard(null, false, ""));
 	}
+	
+	public void testSpellchecking() {
+		String script = "import com.applang.berichtsheft.plugin.*;\n" +
+				"jEdit.openFile(view.getEditPane(), \"/home/lotharla/work/Workshop/Examples/poem.txt\");\n" + 
+				"view.getEditPane().getTextArea().selectAll();\n" + 
+				"BerichtsheftPlugin.invokeAction(view, String actionName);";
+		scriptTest("testSpellchecking", script);
+   }
 
-	public void testCommands() throws Exception {
+	public void _testCommands() throws Exception {
 		String path = ".jedit/console/commando/transport.xml";
 		File file = new File(path);
 		assertTrue(fileExists(file));
@@ -204,7 +283,7 @@ public class HelperTests extends TestCase {
 					JOptionPane.OK_CANCEL_OPTION, 
 					JOptionPane.PLAIN_MESSAGE, 
 					null, null, null))
-				performBshTest("COMMAND", script);
+				scriptTest("COMMAND", script);
 		}
 	}
 
@@ -226,7 +305,7 @@ public class HelperTests extends TestCase {
 		return split(response, NEWLINE_REGEX);
 	}
 	
-	String adb = "/home/lotharla/android-sdk-linux/platform-tools/adb";
+	String adb = BerichtsheftPlugin.getProperty("ADB_COMMAND");
 	String[] scripts = {
 			adb + " shell ls -l \"/sdcard/%s\" | \n" +
 			"awk '{\n" +
@@ -243,20 +322,20 @@ public class HelperTests extends TestCase {
 	
 	public void testShellRun() throws Exception {
 		underTest = true;
-		shellRunTest(BerichtsheftPlugin.buildAdbCommand("-r", "/sdcard/xxx", ""), "rm");
+		shellRunTest(AndroidBridge.buildAdbCommand("-r", "/sdcard/xxx", ""), "rm");
 		existTest(false, "xxx/", "");
 		
-		shellRunTest(BerichtsheftPlugin.buildAdbCommand("mkdir", "/sdcard/xxx/", ""), "mkdir");
+		shellRunTest(AndroidBridge.buildAdbCommand("mkdir", "/sdcard/xxx/", ""), "mkdir");
 		existTest(true, "xxx/", "");
 		
 		runShellScript("dev", adb + " devices");
-		shellRunTest(BerichtsheftPlugin.buildAdbCommand("push", "/sdcard/xxx/", "/tmp/dev"), "push");
+		shellRunTest(AndroidBridge.buildAdbCommand("push", "/sdcard/xxx/", "/tmp/dev"), "push");
 		existTest(true, "dev", "xxx/");
 		
-		shellRunTest(BerichtsheftPlugin.buildAdbCommand("rm", "/sdcard/xxx/dev", ""), "rm");
+		shellRunTest(AndroidBridge.buildAdbCommand("rm", "/sdcard/xxx/dev", ""), "rm");
 		existTest(false, "dev", "xxx/");
 		
-		shellRunTest(BerichtsheftPlugin.buildAdbCommand("rmdir", "/sdcard/xxx/", ""), "rmdir");
+		shellRunTest(AndroidBridge.buildAdbCommand("rmdir", "/sdcard/xxx/", ""), "rmdir");
 		existTest(false, "xxx/", "");
 	}
 
@@ -270,11 +349,35 @@ public class HelperTests extends TestCase {
 		println(value);
 	}
 
-	String settingsDir = "/home/lotharla/work/Niklas/androidStuff/BerichtsheftApp/.jedit/plugins/berichtsheft";
-	
-	public void testTransports() {
-		assertTrue(BerichtsheftDockable.transportsLoaded(settingsDir));
-		NodeList nodes = evaluateXPath(BerichtsheftDockable.transports, "//TRANSPORT");
+	public void testTransports() throws Exception {
+		printNodeInfo(ProfileManager.transports.getDocumentElement());
+    	String dbPath = createNotePad();
+    	String schema = "com.applang.provider.NotePad";
+    	Object[] projection = fullProjection(schema);
+		String profile = dbTable(fileUri(dbPath, null), "notes").toString();
+		BerichtsheftPlugin.setProperty("TRANSPORT_PROFILE", profile);
+		String oper = "pull";
+		BerichtsheftPlugin.setProperty("TRANSPORT_OPER", oper);
+		println();
+		underTest = true;
+		String template = builder.makeTemplate(projection);
+    	printMatchResults(template, TransportBuilder.TEMPLATE_PATTERN);
+		assertTrue(ProfileManager.setTemplate(template, profile, oper, schema));
+		ValMap map = ProfileManager.getProfileAsMap();
+		println("profileMap", map);
+		String template2 = template.replace("created", "created|unixepoch");
+		assertTrue(ProfileManager.setTemplate(template2));
+		map = ProfileManager.getProfileAsMap();
+		assertEquals(template2, map.get("template"));
+		assertEquals(oper, map.get("oper"));
+		println("profileMap", map);
+		println();
+		printNodeInfo(ProfileManager.transports.getDocumentElement());
+//		ProfileManager.saveTransports(System.getProperty("settings.dir");
+	}
+
+	private void printNodeInfo(Object item) {
+		NodeList nodes = evaluateXPath(item, "./*");
 		for (int i = 0; i < nodes.getLength(); i++) {
 			Element el = (Element) nodes.item(i);
 			NamedNodeMap attributes = el.getAttributes();
@@ -283,57 +386,300 @@ public class HelperTests extends TestCase {
 				println("%s : %s", node.getNodeName(), node.getNodeValue());
 			}
 		}
-		underTest = true;
-		String uriString = "file:///home/lotharla/Downloads/note_pad2.db?title=TEXT&note=TEXT&created=INTEGER#notes";
-		putSetting("TRANSPORT_URI", uriString);
-		String template;
-		println(template = BerichtsheftDockable.getTemplate());
-		assertTrue(BerichtsheftDockable.setTemplate(template.replace("'created", "'created|unixepoch")));
-		println(template = BerichtsheftDockable.getTemplate());
-//		BerichtsheftDockable.saveTransports(settingsDir);
 	}
 
 	public static String encodeXml(String string, boolean decode) {
 		return decode ? StringEscapeUtils.unescapeXml(string) : StringEscapeUtils.escapeXml(string);
 	}
 
-	public void testConversion() {
-		System.setProperty("settings.dir", settingsDir);
-		Object time = now();
-		println(time = BerichtsheftDockable.doConversion("unixepoch", "" + time, "push"));
-		println(time = BerichtsheftDockable.doConversion("unixepoch", "" + time, "pull"));
-		BerichtsheftDockable.saveTransports();
-		
-		String uriString = "file:///home/lotharla/Downloads/note_pad2.db?title=TEXT&note=TEXT&created=INTEGER#notes";
+	public void testEncode() {
+		String uriString = "file:///tmp/temp.db?title=TEXT&note=TEXT&created=INTEGER#notes";
 		println(uriString = encodeUri(uriString, false));
 		println(uriString = encodeUri(uriString, true));
 		println(uriString = encodeXml(uriString, false));
 		println(uriString = encodeXml(uriString, true));
 	}
 
-	public void testTemplate() throws Exception {
-    	String template = " 'xxx'\t'yyy'\f'zzz' ";
-    	MatchResult[] mr = findAllIn(template, BerichtsheftDockable.TRANSPORT_TEMPLATE_PATTERN);
-    	for (int i = 0; i < mr.length; i++) {
-    		MatchResult m = mr[i];
-    		println("%d(%d,%d,%d)%s", i, m.groupCount(), m.start(), m.end(), m.group());
-    		for (int j = 1; j <= m.groupCount(); j++) {
-    			println(m.group(j));
-    		}
-		}
-    	println("(%d)%s", template.length(), template);
+	public void testConversion() {
+		Object time = now();
+		println(time = ScriptManager.doConversion(time, "unixepoch", "push"));
+		println(time = ScriptManager.doConversion(time, "unixepoch", "pull"));
+		println(time = ScriptManager.doConversion("" + time, "unixepoch", "push"));
+		println(time = ScriptManager.doConversion("" + time, "unixepoch", "pull"));
+		println(time = ScriptManager.doConversion(null, "unixepoch", "push"));
+		println(time = ScriptManager.doConversion(null, "unixepoch", "pull"));
+	}
+
+	public void testTemplate() {
+    	String template = " `xxx``yyy`\f`zzz` ";
+    	printMatchResults(template, TransportBuilder.TEMPLATE_PATTERN);
     	underTest = true;
-    	ValList projection = BerichtsheftDockable.evaluateTemplate(template);
+    	ValList projection = builder.evaluateTemplate(template, null);
 		assertEquals(3, projection.size());
 		assertEquals("xxx", projection.get(0));
 		assertEquals("yyy", projection.get(1));
 		assertEquals("zzz", projection.get(2));
-		assertEquals(4, BerichtsheftDockable.fieldSeparators.length);
-		for (int i = 0; i < BerichtsheftDockable.fieldSeparators.length; i++) {
-			String s = BerichtsheftDockable.fieldSeparators[i];
-			println(Arrays.toString(strings(s, BerichtsheftDockable.escapeRegex(s))));
+		assertEquals(4, builder.fieldSeparators.length);
+		for (int i = 0; i < builder.fieldSeparators.length; i++) {
+			String s = builder.fieldSeparators[i];
+			println(Arrays.toString(strings(s, DataDockable.escapeAwkRegex(s))));
+		}
+		printMatchResults("2.0(6h)", WeatherManager.PRECIPITATION_PATTERN);
+		printMatchResults("Tr(12h)", WeatherManager.PRECIPITATION_PATTERN);
+	}
+
+	Uri uri = getConstantByName("CONTENT_URI", "com.applang.provider.WeatherInfo", "Weathers");
+	
+    private String createNotePad() throws Exception {
+    	BerichtsheftApp.getActivity().deleteDatabase(NotePadProvider.DATABASE_NAME);
+		
+		long now = now();
+		String pattern = DatePicker.calendarFormat;
+		long today = toTime(formatDate(now, pattern), pattern);
+		InfraTests.generateNotePadData(BerichtsheftApp.getActivity(), true, 
+				new Object[][] {
+					{ 1L, "kein", "Kein", null, now }, 
+					{ 2L, "fehler", "Fehler", null, now }, 
+					{ 3L, "efhler", "eFhler", null, now }, 
+					{ 4L, "ehfler", "ehFler", null, now }, 
+					{ 5L, "im", "im", null, now }, 
+					{ 6L, "system", "System", null, now }, 
+					{ 1L, "Velocity1", "$kein $fehler $im $system", today, now }, 
+					{ 2L, "Velocity2", "$kein $efhler $im $system", today - getMillis(2), now }, 	
+					{ 3L, "Velocity3", "$kein $ehfler $im $system", today - getMillis(1), now }, 	
+				});
+		
+    	uri = getConstantByName("CONTENT_URI", "com.applang.provider.NotePad", "NoteColumns");
+    	File dbFile = getDatabaseFile(BerichtsheftApp.getActivity(), uri);
+    	String dbPath = "/tmp/temp.db";
+    	copyFile(dbFile, new File(dbPath));
+    	return dbPath;
+    }
+	
+    private String createWeatherInfo() throws Exception {
+    	BerichtsheftApp.getActivity().deleteDatabase(WeatherInfoProvider.DATABASE_NAME);
+		
+		long now = now();
+		String pattern = DatePicker.calendarFormat;
+		long today = toTime(formatDate(now, pattern), pattern);
+		ContentResolver contentResolver = BerichtsheftApp.getActivity().getContentResolver();
+		InfraTests.generateData(contentResolver, Weathers.CONTENT_URI, true, new Object[][] {
+			{ 1L, "here", "overcast", 11.1f, 1f, -1f, today, now }, 	
+		});
+		
+    	uri = getConstantByName("CONTENT_URI", "com.applang.provider.WeatherInfo", "Weathers");
+    	File dbFile = getDatabaseFile(BerichtsheftApp.getActivity(), uri);
+    	String dbPath = "/tmp/temp.db";
+    	copyFile(dbFile, new File(dbPath));
+    	return dbPath;
+    }
+
+    public Object unixepoch(String oper, Object value) {
+    	Object result = null;
+    	String pattern = DatePicker.calendarFormat;
+    	if ("pull".equals(oper))
+    		result = toTime(value.toString(), new Object[]{pattern});
+    	else if ("push".equals(oper))
+    		result = formatDate(Long.valueOf(stringValueOf(value)), new Object[]{pattern});
+    	return result;
+    }
+
+    public void _testUnixepoch() {
+    	println(unixepoch("push", ""));
+    	println(unixepoch("push", null));
+    }
+
+    public void testWeatherInfo() throws Exception {
+    	String dbPath = createWeatherInfo();
+    	WeatherManager wm = new WeatherManager();
+		if (wm.openConnection(dbPath)) {
+			wm.parseSite("10519", DatePicker.Period.loadParts(0));
+			wm.evaluate(true);
+			wm.closeConnection();
+		}
+    }
+
+    public void testUpdateOrInsert() throws Exception {
+    	String dbPath = createWeatherInfo();
+    	String uriString = fileUri(dbPath, "weathers").toString();
+		ProviderModel provider = new ProviderModel(uriString);
+		println(com.applang.Util2.toString(provider.info));
+		BidiMultiMap projection = new BidiMultiMap(new ValList(provider.info.getList("name")));
+		Object pk = provider.info.get("PRIMARY_KEY");
+		projection.removeKey(pk);
+		Object[] items = objects();
+       	ContentValues values = contentValues(provider.info, projection.getKeys(), items);
+		ValMap profile = ProfileManager.getProfileAsMap("weather", "download");
+   	
+    	dbPath = createNotePad();
+    	uriString = fileUri(dbPath, "notes").toString();
+		provider = new ProviderModel(uriString);
+		projection = builder.elaborateProjection(objects("title", "note", "created"), null, "");
+       	values = contentValues(provider.info, projection.getKeys(), "title", "note", now());
+		profile = ProfileManager.getProfileAsMap("tagesberichte", "pull");
+       	
+		pk = BaseColumns._ID;
+		Object result = provider.updateOrInsert(uriString, profile, projection, pk, values);
+		assertNotNull(result);
+		assertTrue(result instanceof Uri);
+		long id = ContentUris.parseId((Uri) result);
+		assertThat(id, is(greaterThan(-1l)));
+		result = provider.updateOrInsert(uriString, profile, projection, pk, values);
+		assertNotNull(result);
+		assertTrue(result instanceof Integer);
+		assertThat((int)result, is(greaterThan(0)));
+		
+		projection.insert(0, pk, null);
+		values.putNull(pk.toString());
+		result = provider.updateOrInsert(uriString, profile, projection, null, values);
+		assertNotNull(result);
+		assertTrue(result instanceof Uri);
+		assertThat(ContentUris.parseId((Uri) result), is(lessThan(0l)));
+		values.put("created", now());
+		result = provider.updateOrInsert(uriString, profile, projection, "", values);
+		assertNotNull(result);
+		assertTrue(result instanceof Uri);
+		assertThat(ContentUris.parseId((Uri) result), allOf(greaterThan(-1l), not(equalTo(id))));
+	}
+
+	private String generateTagesberichteTemplate(String oper) {
+		underTest = true;
+		BerichtsheftPlugin.setOptionProperty("record-decoration", "fold");
+		BerichtsheftPlugin.setOptionProperty("record-separator", "whitespace");
+		if ("push".equals(oper)) {
+			return " `created|unixepoch` '`title`'\n`note`\n";
+		}
+		else if ("pull".equals(oper)) {
+			return " `modified|now``created|unixepoch` '`title`'\n`note`\n";
+		}
+		return null;
+    }
+
+	public void testScan() throws Exception {
+		String template = generateTagesberichteTemplate("pull");
+		ValList fields = builder.evaluateTemplate(template, null);
+		assertTrue(isAvailable(0, fields));
+		BidiMultiMap projection = builder.elaborateProjection(fields.toArray(), null, "");
+		assertNotNull(projection);
+		println(projection);
+		InputStream is = HelperTests.class.getResourceAsStream("tagesberichte.txt");
+		BufferedReader reader = new BufferedReader(new InputStreamReader(is, Charset.forName("UTF-8")));
+		DataView.ConsumerModel model = builder.scan(reader, projection);
+		is.close();
+		assertNotNull(model);
+		println(model);
+		JTable table = model.makeTable();
+    	DataDockable.showItems(null,
+				"berichtsheft.transport-from-buffer.label",
+				String.format("%d record(s)", model.getRowCount()),
+				table, 
+				JOptionPane.DEFAULT_OPTION,
+				Behavior.MODAL,
+				null, -2);
+	}
+	
+	TransportBuilder builder = new TransportBuilder();
+	
+	public void testRoundTrip() throws Exception {
+    	String dbPath = createNotePad();
+    	String uriString = fileUri(dbPath, "notes").toString();
+    	ProviderModel provider = new ProviderModel(uriString);
+		String name = "tagesberichte";
+		ValMap profile = ProfileManager.getProfileAsMap(name, "push");
+		Object schema = profile.get("schema");
+		String[] full = toStrings(fullProjection(schema));
+		println(com.applang.Util2.toString(provider.query(uriString, full)));
+		Object[][] mods = provider.query(uriString, strings("_id","modified","title"));
+//		println(com.applang.Util2.toString(mods));
+		String template = stringValueOf(profile.get("template"));
+    	ValList list = builder.evaluateTemplate(template, profile);
+		BidiMultiMap projection = builder.elaborateProjection(list.toArray(), provider.info.getList("name"), provider.tableName);
+		DataView.ConsumerModel model = provider.query(uriString, projection);
+    	JTable table = model.makeTable();
+		DataDockable.showItems(null, 
+				"berichtsheft.transport-to-buffer.label", 
+				String.format("%d record(s)", model.getRowCount()),
+				table, 
+				JOptionPane.DEFAULT_OPTION, 
+	    		Behavior.MODAL, 
+	    		null, -1);
+		String text = builder.wrapRecords(table);
+		println(text);
+		profile = ProfileManager.getProfileAsMap(name, "pull");
+		template = stringValueOf(profile.get("template"));
+    	list = builder.evaluateTemplate(template, profile);
+		projection = builder.elaborateProjection(list.toArray(), provider.info.getList("name"), provider.tableName);
+		model = builder.scan(new StringReader(text), projection);
+		table = model.makeTable();
+    	DataDockable.showItems(null,
+				"berichtsheft.transport-from-buffer.label",
+				String.format("%d record(s)", model.getRowCount()),
+				table, 
+				JOptionPane.DEFAULT_OPTION,
+				Behavior.MODAL,
+				null, -1);
+//    	profile.put("name", "tagesbirichte");
+    	int[] results = provider.pickRecords(null, table, uriString, profile);
+		assertNotNull("process canceled", results);
+		println("results", results);
+		println(com.applang.Util2.toString(provider.query(uriString, full)));
+		for (int i = 0; i < mods.length; i++) {
+			Object[] mod = mods[i];
+			Object[][] m = provider.query(uriString, strings("modified"), "_id=?", strings(mod[0].toString()));
+			if ((long)m[0][0] > (long)mod[1])
+				println(String.format("record '%s' updated", mod[2]));
 		}
 	}
+	
+	public void testQuery() throws Exception {
+    	String dbPath = createNotePad();
+    	String uriString = fileUri(dbPath, "notes").toString();
+    	String schema = "com.applang.provider.NotePad";
+    	ProviderModel provider = new ProviderModel(uriString);
+    	Object[] fields = fullProjection(schema);
+    	ValList list = builder.evaluateTemplate(builder.makeTemplate(fields), null);
+    	assertTrue(Arrays.equals(fields, list.toArray()));
+    	ValMap map = ProfileManager.getProfileAsMap("tagesberichte", "push");
+    	println(map);
+    	assertTrue(map.containsKey("template"));
+    	list = builder.evaluateTemplate(map.get("template").toString(), map);
+		BidiMultiMap projection = builder.elaborateProjection(list.toArray(), provider.info.getList("name"), provider.tableName);
+		assertNotNull(projection);
+		DataView.ConsumerModel model = provider.query(uriString, projection);
+		println(model);
+    	final JTable table = model.makeTable();
+		int result = DataDockable.showItems(null, "berichtsheft.transport-to-buffer.label", 
+				String.format("%d record(s)", model.getRowCount()),
+				table, 
+				JOptionPane.OK_CANCEL_OPTION, 
+	    		Behavior.MODAL, 
+	    		new Job<Void>() {
+					public void perform(Void t, Object[] params) throws Exception {
+						String text = builder.wrapRecords(table);
+						println(text);
+					}
+				}, -1);
+		println(result);
+    }
+
+	public void _testAwkScript() {
+		DataView dataView = new DataView();
+		dataView.load(uri);
+		String text = "{{{Berufsschule	H	Friday, 17.May.2013}}}\n" +
+				"{{{Bericht	XXX	Wednesday, 22.May.2013}}}\n" +
+				"{{{Bemerkung	V	Thursday, 18.Jul.2013}}}";
+		String path = BerichtsheftPlugin.getTempFile("transport.txt").getPath();
+		contentsToFile(new File(path), text);
+		String awkFileName = join(".", path.substring(0, path.lastIndexOf('.')), "awk");
+		if (DataDockable.generateAwkScript(awkFileName)) {
+			BerichtsheftPlugin.setProperty("AWK_PROGFILE", awkFileName);
+			String sqliteFileName = join(".", path.substring(0, path.lastIndexOf('.')), "sql");
+			BerichtsheftPlugin.setProperty("AWK_INFILE", path);
+			BerichtsheftPlugin.setProperty("AWK_OUTFILE", sqliteFileName);
+			BerichtsheftPlugin.setProperty("SQLITE_FILE", sqliteFileName);
+			BerichtsheftPlugin.setProperty("SQLITE_DBFILE", dataView.getDatabasePath());
+		}
+    }
 	
 	private JLabel label;
 	private JButton cancel;
@@ -462,7 +808,7 @@ public class HelperTests extends TestCase {
 						return null;
 					}
 	    		},
-	    		true);
+	    		Behavior.TIMEOUT);
 	}
 	
 	public void testOptionDialogModeless() {
@@ -475,7 +821,7 @@ public class HelperTests extends TestCase {
 						public void actionPerformed(ActionEvent e) {
 							showOptionDialog(frame, "modeless", 
 									"test",
-									Modality.ALWAYS_ON_TOP + JOptionPane.DEFAULT_OPTION, 
+									Behavior.ALWAYS_ON_TOP + JOptionPane.DEFAULT_OPTION, 
 									JOptionPane.PLAIN_MESSAGE,
 									null, 
 									objects("opt1","opt2"), null, 
@@ -494,7 +840,7 @@ public class HelperTests extends TestCase {
 			}, 
 			null, 
 			null, 
-			true);
+			Behavior.TIMEOUT);
 	}
 	
 	public void testInputDialog() throws Exception {
@@ -525,6 +871,27 @@ public class HelperTests extends TestCase {
 					null, null, value);
 			println(String.valueOf(result));
 		}
+	}
+	
+	public void testResizableOptionDialog() {
+		JTextArea textArea = new JTextArea("");
+		textArea.setEditable(true);
+		textArea.setText(contentsFromFile(keinFehlerFile));
+		ValList list = defaultOptions(12);
+		Object initialOption = list.remove(-1);
+		Object[] options = list.toArray();
+		int option = showResizableDialog(textArea, null, new Function<Integer>() {
+			public Integer apply(Object...parms) {
+				JScrollPane scrollPane = new JScrollPane((Component) parms[0]);
+				scrollPane.setPreferredSize(new Dimension(500,200));
+				return JOptionPane.showOptionDialog(null, scrollPane, "testResizableOptionDialog", 
+						JOptionPane.DEFAULT_OPTION, 
+						JOptionPane.PLAIN_MESSAGE, 
+						null, 
+						(Object[])parms[1], parms[2]);
+			}
+		}, options, initialOption);
+		println("dialogResult %d", option);
 	}
 	
 	public void testSingleChoice() {
@@ -570,11 +937,11 @@ public class HelperTests extends TestCase {
 										}, 
 										null, 
 										null, 
-										Modality.NONE);
+										Behavior.NONE);
 							}
 						}));
 					}
-				}, null, null, true);
+				}, null, null, Behavior.TIMEOUT);
 	}
 	
 	public void testDialogFeed() throws Exception {
@@ -617,7 +984,7 @@ public class HelperTests extends TestCase {
 		
 		int type = (int) BaseDirective.options.get(result);
 		String prompt = "";
-		ValList values = list();
+		ValList values = vlist();
 		switch (type) {
 		case Dialogs.DIALOG_TEXT_ENTRY:
 			prompt = "name";
@@ -625,8 +992,7 @@ public class HelperTests extends TestCase {
 			break;
 		case Dialogs.DIALOG_TEXT_INFO:
 			prompt = "text";
-			values.add(contentsFromFile(new File(relativePath(), 
-					"bin/com/applang/berichtsheft/test/Kein Fehler im System.txt")));
+			values.add(contentsFromFile(keinFehlerFile));
 			break;
 		case Dialogs.DIALOG_YES_NO_MESSAGE:
 			prompt = "macht nix";
@@ -644,7 +1010,7 @@ public class HelperTests extends TestCase {
 		case Dialogs.DIALOG_SINGLE_CHOICE:
 		case Dialogs.DIALOG_MULTIPLE_CHOICE:
 			prompt = "United";
-			values.addAll(list(getStateStrings()));
+			values.addAll(asList(getStateStrings()));
 			break;
 		default:
 			break;
@@ -652,58 +1018,40 @@ public class HelperTests extends TestCase {
 		result = BerichtsheftApp.prompt(type, result, prompt, toStrings(values));
 		println(String.valueOf(result));
 		testPrompts();
-    }
-
-    public static String[] getStateStrings() {
-    	try {
-			String res = resourceFrom("/res/raw/states.json", "UTF-8");
-			return ((ValList) walkJSON(null, new JSONArray(res), null)).toArray(new String[0]);
-		} catch (Exception e) {
-			fail(e.getMessage());
-			return null;
-		}
 	}
-    
-    Uri uri = getConstantByName("com.applang.provider.WeatherInfo", "Weathers", "CONTENT_URI");
-
-    public void testDataView() throws Exception {
-    	String propFileName = "/tmp/.properties";
-    	Settings.load(propFileName);
-		final DataView dv = new DataView(BerichtsheftApp.getActivity());
-		dv.askUri(null, null);
-		uri = dv.getUri();
-    	Deadline.wait = 2000;
-    	showFrame(null, uri.toString(), new UIFunction() {
-    		public Component[] apply(final Component comp, Object[] parms) {
-    			dv.load(uri);
-    			return components(dv);
-    		}
-    	}, null, null, true);
-    	Settings.save(propFileName);
-    }
-
-    public void testFileView() throws Exception {
-    	
-    }
 	
-	public static void show_Frame(Object...params) {
-		final javax.swing.Action action = param(null, 2, params);
-		showFrame(param(new Rectangle(100,100,100,100), 0, params), param("", 1, params),
+	public void testJEditOptionDialog() {
+		new JEditOptionDialog(null, 
+				BerichtsheftPlugin.getProperty("berichtsheft.spellcheck-selection.title"), 
+				"", 
+				"Hello", 
+				JOptionPane.OK_CANCEL_OPTION,
+				Behavior.MODAL, 
+				BerichtsheftPlugin.getProperty("manager.action-SPELLCHECK.icon"), 
+				null);
+	}
+	
+	public void testJOrtho() {
+		BerichtsheftPlugin.setupSpellChecker(".jedit/plugins/berichtsheft");
+    	Deadline.wait = 2000;
+    	showFrame(null, 
+				"Spellchecker",
 				new UIFunction() {
 					public Component[] apply(final Component comp, Object[] parms) {
-						return components(action != null ? 
-								new JButton(action) : 
-								new JButton(new AbstractAction("Dispose") {
-									@Override
-									public void actionPerformed(ActionEvent ev) {
-										pullThePlug((JFrame)comp);
-									}
-								}));
+						TextEditor textEditor = new TextEditor();
+				        try {
+				        	textEditor.createBufferTextArea("text", "/modes/text.xml");
+							textEditor.setText(
+								new Scanner(new File("/home/lotharla/work/Workshop/Examples/poem.txt"))
+									.useDelimiter("\\Z").next());
+						} catch (Exception e) {}
+				        Component component = textEditor.getUIComponent();
+				        component.setPreferredSize(new Dimension(400, 400));
+						return components(component);
 					}
-				}, null, null, true);
-	}
-	
-	public static void main(String...args) {
-		HelperTests.show_Frame();
+				}, 
+				null, 
+				null, 
+				Behavior.TIMEOUT);
 	}
 }

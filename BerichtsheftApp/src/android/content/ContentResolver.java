@@ -3,12 +3,17 @@ package android.content;
 import static com.applang.Util1.*;
 
 import java.io.File;
+import java.util.Observable;
 
+import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.Uri;
+import android.util.Log;
 
-public class ContentResolver
+public class ContentResolver extends Observable
 {
+    private static final String TAG = ContentResolver.class.getSimpleName();
+
 	public static final String CURSOR_DIR_BASE_TYPE = "vnd.android.cursor.dir";
     public static final String CURSOR_ITEM_BASE_TYPE = "vnd.android.cursor.item";
 
@@ -23,38 +28,36 @@ public class ContentResolver
 
     public ContentProvider acquireProvider(final Uri uri)
     {
-    	if (contentProvider == null) {
-    		contentProvider = new ContentProvider();
-			authority = null;
-			if (SCHEME_CONTENT.equals(uri.getScheme())) {
-				authority = uri.getAuthority();
-				if (authority != null) {
-					try {
-						Class<?> c = Class.forName(authority + "Provider");
-						contentProvider = (ContentProvider) c.newInstance();
-					} catch (Exception e) {
-					}
-				}
-			} else if (SCHEME_FILE.equals(uri.getScheme())) {
-				final File file = new File(uri.getPath());
-				mContext = new Context() {
-					{
-						mPackageInfo = new PackageInfo("", file.getParent());
-					}
-
-					@Override
-					public ContentResolver getContentResolver() {
-						return ContentResolver.this;
-					}
-				};
-			}
-			contentProvider.setContext(mContext);
-			contentProvider.onCreate();
-		}
+    	contentProvider = new ContentProvider();
+    	String authority = null;
+    	if (SCHEME_CONTENT.equals(uri.getScheme())) {
+    		authority = uri.getAuthority();
+    		if (authority != null) {
+    			try {
+    				Class<?> c = Class.forName(authority + "Provider");
+    				contentProvider = (ContentProvider) c.newInstance();
+    			} catch (Exception e) {
+    				Log.e(TAG, "acquireProvider", e);
+    			}
+    		}
+    	} else if (SCHEME_FILE.equals(uri.getScheme())) {
+    		final File file = new File(uri.getPath());
+    		mContext = new Context() {
+    			{
+    				mPackageInfo = new PackageInfo("", file.getParent());
+    			}
+    			
+    			@Override
+    			public ContentResolver getContentResolver() {
+    				return ContentResolver.this;
+    			}
+    		};
+    	}
+    	contentProvider.setContext(mContext);
+    	contentProvider.onCreate();
 		return contentProvider;
     }
 
-    public String authority = null;
     public ContentProvider contentProvider = null;
     
 	public Cursor rawQuery(Uri uri, String...sql) {
@@ -84,9 +87,16 @@ public class ContentResolver
 		return acquireProvider(uri).getType(uri);
 	}
 
-	public void notifyChange(Uri uri, Object object) {
-		// TODO Auto-generated method stub
-		
+	public void notifyChange(Uri uri, ContentObserver observer) {
+		setChanged();
+		notifyObservers(uri);
 	}
 
+    public final void registerContentObserver(Uri uri, boolean notifyForDescendents, ContentObserver observer) {
+    	addObserver(observer);
+    }
+    
+	public final void unregisterContentObserver(ContentObserver observer) {
+		deleteObserver(observer);
+	}
 }

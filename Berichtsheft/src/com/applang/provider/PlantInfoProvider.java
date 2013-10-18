@@ -22,8 +22,8 @@ import java.util.HashMap;
 /**
  * Provides access to a database of plants.
  */
-public class PlantInfoProvider extends ContentProvider {
-
+public class PlantInfoProvider extends ContentProvider
+{
     private static final String TAG = "PlantInfoProvider";
 
     public static final String DATABASE_NAME = "plant_info.db";
@@ -63,8 +63,8 @@ public class PlantInfoProvider extends ContentProvider {
      */
 	public static class DatabaseHelper extends SQLiteOpenHelper {
 
-		public DatabaseHelper(Context context) {
-            super(context, DATABASE_NAME, null, DATABASE_VERSION);
+		public DatabaseHelper(Context context, String dbName) {
+            super(context, dbName, null, DATABASE_VERSION);
         }
 
         @Override
@@ -96,7 +96,7 @@ public class PlantInfoProvider extends ContentProvider {
 
     @Override
     public boolean onCreate() {
-        mOpenHelper = new DatabaseHelper(getContext());
+        mOpenHelper = new DatabaseHelper(getContext(), DATABASE_NAME);
         return true;
     }
 
@@ -141,6 +141,10 @@ public class PlantInfoProvider extends ContentProvider {
         return c;
     }
 
+	private void notifyChange(Uri uri) {
+		getContext().getContentResolver().notifyChange(uri, null);
+	}
+
     @Override
     public String getType(Uri uri) {
         switch (sUriMatcher.match(uri)) {
@@ -178,7 +182,7 @@ public class PlantInfoProvider extends ContentProvider {
         long rowId = db.insert(PLANTS_TABLE_NAME, Plants.NAME, values);
         if (rowId > 0) {
             Uri plantUri = ContentUris.withAppendedId(Plants.CONTENT_URI, rowId);
-            getContext().getContentResolver().notifyChange(plantUri, null);
+            notifyChange(plantUri);
             return plantUri;
         }
 
@@ -204,7 +208,7 @@ public class PlantInfoProvider extends ContentProvider {
             throw new IllegalArgumentException("Unknown URI " + uri);
         }
 
-        getContext().getContentResolver().notifyChange(uri, null);
+        notifyChange(uri);
         return count;
     }
 
@@ -227,7 +231,7 @@ public class PlantInfoProvider extends ContentProvider {
             throw new IllegalArgumentException("Unknown URI " + uri);
         }
 
-        getContext().getContentResolver().notifyChange(uri, null);
+        notifyChange(uri);
         return count;
     }
 

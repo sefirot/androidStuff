@@ -24,23 +24,60 @@ plugin.com.applang.berichtsheft.plugin.BerichtsheftPlugin.depend.0=jdk 1.6
 plugin.com.applang.berichtsheft.plugin.BerichtsheftPlugin.depend.1=jedit 05.00.01.00
 plugin.com.applang.berichtsheft.plugin.BerichtsheftPlugin.depend.2=plugin console.ConsolePlugin 5.1
 plugin.com.applang.berichtsheft.plugin.BerichtsheftPlugin.depend.3=plugin projectviewer.ProjectPlugin 3.5.0
-
 plugin.com.applang.berichtsheft.plugin.BerichtsheftPlugin.description=This plugin provides a dockable panel for controlling the 'Berichtsheft' process.
+
 # plugin menu
-plugin.com.applang.berichtsheft.plugin.BerichtsheftPlugin.menu=berichtsheft \
+plugin.com.applang.berichtsheft.plugin.BerichtsheftPlugin.menu=datadock \
+	notedock \
 	- \
-	berichtsheft.choose-uri \
-	berichtsheft.transport-to-buffer \
-	berichtsheft.transport-from-buffer
+	datadock.choose-uri \
+	datadock.update-uri \
+	datadock.transport-to-buffer \
+	datadock.transport-from-buffer \
+	berichtsheft.spellcheck-selection
 
 # action labels for actions supplied by dockables.xml
-berichtsheft.label=Berichtsheft
+datadock.label=Data
+notedock.label=Notes
 
-# action labels for actions supplied by actions.xml
-berichtsheft.choose-uri.label=Choose database
-berichtsheft.update-uri.label=Update database view
-berichtsheft.transport-from-buffer.label=Transport selected text from current buffer into database
-berichtsheft.transport-to-buffer.label=Transport selected items to current buffer
+# action messages for actions supplied by dockables.xml and commando commands
+berichtsheft.no-text-selection.message=No selected text in current buffer available
+datadock.transport-check.message=required field '%s' does not correspond to a column in table '%s'
+datadock.transport-fail.message=transport '%s' failed with '%s'
+datadock.transport-to-buffer.message=No selected cells in table detected
+datadock.transport-to-buffer.message.1=Determine insertion point for this
+datadock.template-evaluation.message.1=template evaluation : no field identified
+datadock.template-evaluation.message.2=template evaluation inconsistent
+berichtsheft.choose-uri.message=Not a valid SQLite database
+datadock.transport-uri.message=No URI available
+berichtsheft.connect.message=connecting '%s'\n...
+berichtsheft.query.message=query on '%s' failed with projection '%s'
+manager.update.message.1='%s' updated
+manager.add.message.1='%s' NOT added
+manager.add.message.2='%s' added
+manager.remove.message.1='%s' not found
+manager.remove.message.2='%s' removed
+manager.delete.message=Delete '%s'
+manager.save.message.1=Save changes to '%s'
+manager.save.message.2=Save '%s'
+dataview.updateOrInsert.message=%d record(s) inserted, %d updated
+dataview.updateOrInsert.message.1=updateOrInsert on '%s' failed with values '%s'
+dataview.updateOrInsert.message.2=%d. selected record -- processing stopped
+dataview.updateOrInsert.message.3=%d. selected record -- no insert
+dataview.updateOrInsert.message.4=%d. selected record -- no update
+datadock.scan.message.1=input not ending with a closing record decorator
+datadock.scan.message.2=input not starting with an opening record decorator
+datadock.scan.message.3=problem recognizing a record
+datadock.split.message.1=record (%d) not starting with the opening field separator
+datadock.split.message.2=record (%d) : field '%s' not recognized
+berichtsheft.doConversion.message.1=conversion script '%s' not available
+berichtsheft.doConversion.message.2=conversion script '%s' failed on value '%s'
+datadock.dockable-required.message=dockable window 'Data' required open !
+berichtsheft.tool-missing.message=external tool '%s' not available
+berichtsheft.android-devices.message=No Android devices found
+berichtsheft.android-sdcard-directory.message=need name of a directory here (trailing '/')
+berichtsheft.prompt-update.message=Update this record ?
+berichtsheft.export-document.message=document '%s' updated
 
 # plugin option pane
 plugin.com.applang.berichtsheft.plugin.BerichtsheftPlugin.option-pane=berichtsheft
@@ -50,6 +87,7 @@ options.berichtsheft.code=new com.applang.berichtsheft.plugin.BerichtsheftOption
 
 # Option pane labels
 options.berichtsheft.label=Berichtsheft
+options.berichtsheft.sdk=Android SDK :
 options.berichtsheft.adb=ADB command :
 options.berichtsheft.awk=AWK command :
 options.berichtsheft.sqlite=SQLite command :
@@ -65,13 +103,90 @@ options.berichtsheft.record-separator.title=Record separator :
 options.berichtsheft.record-decoration.title=Record decoration :
 
 # window title
-berichtsheft.title=Berichtsheft
+datadock.title=Data
+notedock.title=Note Picker
+datadock.weather.title=Wetter
+berichtsheft.shell.title=Berichtsheft
+berichtsheft.spellcheck-selection.title=Spellchecking text selection
 
 # window toolbar buttons
-berichtsheft.choose-uri.icon=Open.png
-berichtsheft.update-uri.icon=22x22/actions/view-refresh.png
-berichtsheft.transport-to-buffer.icon=RunToBuffer.png
-berichtsheft.transport-from-buffer.icon=RunToBuffer.png
+datadock.weather.icon=/res/drawable/weather.png
+datadock.choose-uri.icon=/images/book_open_22x22.png
+datadock.update-uri.icon=/images/refresh_22x22.png
+datadock.transport-to-buffer.icon=22x22/actions/run-to-buffer.png
+datadock.transport-from-buffer.icon=22x22/actions/run-to-buffer.png
+berichtsheft.spellcheck-selection.icon=/com/inet/jortho/icon.png
+manager.add.icon=22x22/actions/list-add.png
+manager.remove.icon=22x22/actions/list-remove.png
+berichtsheft.insert-enter.icon=/images/enter_22x22.png
+berichtsheft.insert-field.icon=/images/insert_22x22.png
+berichtsheft.insert-function.icon=/images/function_22x22.png
+berichtsheft.edit-function.icon=/images/function_22x22.png
+berichtsheft.export-document.icon=/images/export_22x22.png
+
+manager.update-change.icon=/images/update_22x22.png
+manager.update-change.label=confirm changes
+manager.erase-change.icon=/images/erase_22x22.png
+manager.erase-change.label=dismiss changes
+
+manager.action-PREVIOUS.icon=/org/gjt/sp/jedit/icons/themes/tango/22x22/actions/go-previous.png
+manager.action-PREVIOUS.label=previous note(s)
+manager.action-NEXT.icon=/org/gjt/sp/jedit/icons/themes/tango/22x22/actions/go-next.png
+manager.action-NEXT.label=next note(s)
+manager.action-FIRST.icon=/org/gjt/sp/jedit/icons/themes/tango/22x22/actions/go-first.png
+manager.action-FIRST.label=frst note(s)
+manager.action-LAST.icon=/org/gjt/sp/jedit/icons/themes/tango/22x22/actions/go-last.png
+manager.action-LAST.label=last note(s)
+manager.action-CALENDAR.icon=/images/calendar_22x22.png
+manager.action-CALENDAR.label=pick date from calendar
+manager.action-DATABASE.icon=/images/book_open_22x22.png
+manager.action-DATABASE.label=choose database
+manager.action-DOCUMENT.icon=/images/export_16x16.png
+manager.action-DOCUMENT.label=export document
+manager.action-ADD.icon=/images/plus_16x16.png
+manager.action-ADD.label=enter 'update' mode
+manager.action-UPDATE.icon=/images/update_16x16.png
+manager.action-UPDATE.label=update note(s)
+manager.action-INSERT.icon=/images/plus_16x16.png
+manager.action-INSERT.label=insert
+manager.action-MODIFY.icon=/images/bausteine_16x16.png
+manager.action-MODIFY.label=modify
+manager.action-DELETE.icon=/images/minus_16x16.png
+manager.action-DELETE.label=delete note(s)
+manager.action-SPELLCHECK.icon=/images/abc_16x16.png
+manager.action-SPELLCHECK.label=spell check
+manager.action-PICK.icon=/images/pick_22x22.png
+manager.action-PICK.label=pick note(s)
+manager.action-DATE.label=date or week of year
+manager.action-CATEGORY.label=category
+manager.action-IMPORT.icon=/images/import_16x16.png
+manager.action-IMPORT.label=import data
+manager.action-TEXT.icon=/images/export_16x16.png
+manager.action-TEXT.label=export text
+manager.action-ANDROID.icon=/images/android_15x16.png
+manager.action-ANDROID.label=synchronize with exported data on device
+manager.action-VMFILE.icon=/images/book_open_16x16.png
+manager.action-VMFILE.label=choose .vm-file
+manager.action-STRUCT.icon=/images/structure_16x16.png
+manager.action-STRUCT.label=show structure
+
+# action labels for actions supplied by actions.xml
+datadock.choose-uri.label=Choose database
+datadock.update-uri.label=Update database view
+datadock.transport-from-buffer.label=Pull selected text from current buffer into database
+datadock.transport-to-buffer.label=Push selected items to current buffer
+datadock.download-to-buffer.label=Download content to current buffer
+berichtsheft.spellcheck-selection.label=Spellcheck selection
+manager.add.label=add new item
+manager.remove.label=remove old item
+berichtsheft.insert-enter.label=insert 'new line' character into template at current position
+berichtsheft.insert-field.label=insert name of column into template at current position
+berichtsheft.insert-function.label=insert name of a conversion function at current position
+berichtsheft.edit-function.label=edit functions connected to the schema
+berichtsheft.export-document.label=export to ODT document
+berichtsheft.transport-push.label=push (db to buffer)
+berichtsheft.transport-pull.label=pull (buffer to db)
+berichtsheft.transport-download.label=download
 
 # default settings
 options.berichtsheft.show-toolbar=true
@@ -84,9 +199,9 @@ options.berichtsheft.field-decoration=none
 options.berichtsheft.record-separator=newline
 options.berichtsheft.record-decoration=none
 
-ADB_COMMAND=adb
-AWK_COMMAND=awk
-SQLITE_COMMAND=sqlite3
-commando.visible.android=true
-commando.visible.transport=true
+commando.visible.Android=true
+commando.visible.Transport=true
+commando.visible.Dokumente=true
+commando.visible.Wetter=true
+commando.visible.Spezial=true
 commando.extras=Format

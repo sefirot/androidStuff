@@ -34,11 +34,9 @@ import android.net.Uri;
 import android.util.Log;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeSet;
 
 import static com.applang.Util.*;
 import static com.applang.Util1.*;
@@ -64,7 +62,7 @@ public class NotePadProvider extends ContentProvider
     }
     
     public static int tableIndex(String name) {
-    	return list(DATABASE_TABLES).indexOf(name);
+    	return asList(DATABASE_TABLES).indexOf(name);
     }
    
     public static Uri contentUri(int index) {
@@ -326,6 +324,10 @@ public class NotePadProvider extends ContentProvider
         return c;
     }
 
+	private void notifyChange(Uri uri) {
+		getContext().getContentResolver().notifyChange(uri, null);
+	}
+
     @Override
     public Uri insert(Uri uri, ContentValues initialValues) {
         if (sUriMatcher.match(uri) != NOTES) {
@@ -361,7 +363,7 @@ public class NotePadProvider extends ContentProvider
         long rowId = db.insert(tableName, NoteColumns.NOTE, values);
         if (rowId > 0) {
             Uri noteUri = ContentUris.withAppendedId(contentUri(tableName), rowId);
-            getContext().getContentResolver().notifyChange(contentUri(tableName), null);
+            notifyChange(noteUri);
             return noteUri;
         }
 
@@ -390,7 +392,7 @@ public class NotePadProvider extends ContentProvider
             throw new IllegalArgumentException("Unknown URI " + uri);
         }
 
-        getContext().getContentResolver().notifyChange(contentUri(tableName), null);
+        notifyChange(uri);
         return count;
     }
 
@@ -417,7 +419,7 @@ public class NotePadProvider extends ContentProvider
             throw new IllegalArgumentException("Unknown URI " + uri);
         }
 
-        getContext().getContentResolver().notifyChange(contentUri(tableName), null);
+        notifyChange(uri);
         return count;
     }
 
@@ -542,7 +544,7 @@ public class NotePadProvider extends ContentProvider
 	        }
 	    );
 	    
-	    return sorted(map.keySet());
+	    return sortedSet(map.keySet());
 	}
 
 	public static ValMap bausteinMap(ContentResolver contentResolver, String selection, String... selectionArgs) {

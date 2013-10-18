@@ -1,0 +1,42 @@
+<?xml version="1.0" ?>
+
+<!DOCTYPE COMMANDO SYSTEM "commando.dtd">
+
+<COMMANDO>
+	<UI>
+		<CAPTION LABEL="ADB">
+		
+		<CHOICE LABEL="Action" VARNAME="oper"
+			EVAL="jEdit.getProperty(&quot;ADB_OPERATION&quot;, &quot;&quot;)">
+			<OPTION LABEL="Import from" VALUE="pull" />
+			<OPTION LABEL="Export to" VALUE="push" />
+		</CHOICE>
+		
+		<ANDROID_FILE_ENTRY LABEL="ANDROID file" VARNAME="androidFile"
+			EVAL="jEdit.getProperty(&quot;ANDROID_FILE&quot;, &quot;&quot;)" />
+		<FILE_ENTRY LABEL="PC file" VARNAME="pcFile"
+			EVAL="jEdit.getProperty(&quot;PC_FILE&quot;, &quot;&quot;)" />
+		<ENTRY LABEL="Parameters" VARNAME="params" />
+
+		</CAPTION>
+	</UI>
+
+	<COMMANDS>
+		<COMMAND SHELL="System">
+			import com.applang.*;
+			
+			jEdit.setProperty("ADB_OPERATION", oper);
+			jEdit.setProperty("ANDROID_FILE", androidFile);
+			jEdit.setProperty("PC_FILE", pcFile);
+			
+			buf = new StringBuffer();
+			if (androidFile.length() &gt; 0 &amp;&amp; pcFile.length() &gt; 0) {
+				cmd = com.applang.components.AndroidBridge.buildAdbCommand(oper, androidFile, pcFile);
+				if (params.length() &gt; 0)
+					cmd += " "+params;
+				buf.append(cmd);
+			}
+			buf.toString();
+		</COMMAND>
+	</COMMANDS>
+</COMMANDO>

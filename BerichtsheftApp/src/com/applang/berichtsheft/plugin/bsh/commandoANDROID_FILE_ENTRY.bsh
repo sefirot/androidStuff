@@ -18,14 +18,14 @@ commandoANDROID_FILE_ENTRY(view,pane,ns,label,var,options)
 	box.add(entry);
 	box.add(Box.createHorizontalStrut(12));
 
-	btn = new RolloverButton(GUIUtilities.loadIcon("Open.png"));
+	icon = com.applang.berichtsheft.plugin.BerichtsheftPlugin.loadIcon("/images/android_21x22.png");
+	btn = new RolloverButton(icon);
 	btn.setToolTipText("Choose a file");
 	listener = new ActionListener()
 	{
 		actionPerformed(evt)
 		{
-			import com.applang.berichtsheft.plugin.*;
-			file = BerichtsheftPlugin.chooseFileFromSdcard(view, false, entry.getText());
+			file = com.applang.components.AndroidBridge.chooseFileFromSdcard(view, false, entry.getText());
 			if(file != null)
 				entry.setText(file);
 		}

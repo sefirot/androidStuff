@@ -84,8 +84,8 @@ public class WeatherInfoProvider extends ContentProvider {
      */
     public static class DatabaseHelper extends SQLiteOpenHelper {
 
-    	public DatabaseHelper(Context context) {
-            super(context, DATABASE_NAME, null, DATABASE_VERSION);
+    	public DatabaseHelper(Context context, String dbName) {
+            super(context, dbName, null, DATABASE_VERSION);
         }
 
         @Override
@@ -119,7 +119,7 @@ public class WeatherInfoProvider extends ContentProvider {
 
     @Override
     public boolean onCreate() {
-        mOpenHelper = new DatabaseHelper(getContext());
+        mOpenHelper = new DatabaseHelper(getContext(), DATABASE_NAME);
         return true;
     }
 
@@ -163,6 +163,10 @@ public class WeatherInfoProvider extends ContentProvider {
         c.setNotificationUri(getContext().getContentResolver(), uri);
         return c;
     }
+
+	private void notifyChange(Uri uri) {
+		getContext().getContentResolver().notifyChange(uri, null);
+	}
 
     @Override
     public String getType(Uri uri) {
@@ -228,7 +232,7 @@ public class WeatherInfoProvider extends ContentProvider {
         long rowId = db.insert(WEATHERS_TABLE_NAME, Weathers.DESCRIPTION, values);
         if (rowId > 0) {
             Uri noteUri = ContentUris.withAppendedId(Weathers.CONTENT_URI, rowId);
-            getContext().getContentResolver().notifyChange(noteUri, null);
+            notifyChange(noteUri);
             return noteUri;
         }
 
@@ -254,7 +258,7 @@ public class WeatherInfoProvider extends ContentProvider {
             throw new IllegalArgumentException("Unknown URI " + uri);
         }
 
-        getContext().getContentResolver().notifyChange(uri, null);
+        notifyChange(uri);
         return count;
     }
 
@@ -277,7 +281,7 @@ public class WeatherInfoProvider extends ContentProvider {
             throw new IllegalArgumentException("Unknown URI " + uri);
         }
 
-        getContext().getContentResolver().notifyChange(uri, null);
+        notifyChange(uri);
         return count;
     }
 

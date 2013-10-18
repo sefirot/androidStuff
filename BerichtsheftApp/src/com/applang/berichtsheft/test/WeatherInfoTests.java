@@ -12,8 +12,6 @@ import java.io.StringWriter;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.Arrays;
-import java.util.regex.MatchResult;
-import java.util.regex.Pattern;
 
 import org.json.JSONObject;
 import org.json.JSONStringer;
@@ -26,24 +24,24 @@ import static com.applang.SwingUtil.*;
 import static com.applang.Util.*;
 import static com.applang.Util1.*;
 import static com.applang.Util2.*;
-import static com.applang.VelocityUtil.*;
 
 import android.net.Uri;
 
 import com.applang.Util.Function;
 import com.applang.Util.ValList;
 import com.applang.Util.ValMap;
+import com.applang.Util2.Settings;
 import com.applang.Util1;
-import com.applang.berichtsheft.components.DatePicker;
-import com.applang.berichtsheft.components.WeatherManager;
-import com.applang.berichtsheft.components.WeatherManager.Period;
-import com.applang.berichtsheft.plugin.JEditTextEditor;
+import com.applang.berichtsheft.BerichtsheftApp;
+import com.applang.components.DatePicker;
+import com.applang.components.WeatherManager;
 
 import junit.framework.TestCase;
 
 public class WeatherInfoTests extends TestCase
 {
 	public void setUp() throws Exception {
+    	System.setProperty("settings.dir", ".jedit/plugins/berichtsheft");
 		messRedirection = new Function<String>() {
 			public String apply(Object... params) {
 				String message = param("", 0, params);
@@ -57,14 +55,24 @@ public class WeatherInfoTests extends TestCase
 	protected void tearDown() throws Exception {
 		super.tearDown();
 	}
+	
+	public void testPeriod() throws Exception {
+		BerichtsheftApp.loadSettings();
+		assertTrue(DatePicker.Period.pick());
+		println(getSetting("weather.period", ""));
+		println(DatePicker.Period.getDescription());
+		String dateString = DatePicker.Period.weekDate();
+		int[] weekDate = DatePicker.parseWeekDate(dateString);
+		println(dateString, weekDate);
+	}
 
 	public void testEvaluation() throws Exception {
-		int[] dateParts = DatePicker.pickAPeriod(new int[] {2013, 1, 1, 2}, "pick day, week or month");
-		assertTrue(dateParts != null);
+//		int[] dateParts = DatePicker.pickAPeriod(new int[] {2013, 1, 1, 2}, "pick day, week or month");
+//		assertTrue(dateParts != null);
+//		DatePicker.Period.setParts(dateParts);
 		
-		WeatherManager wm = new WeatherManager(null);
-		WeatherManager.Period.setParts(dateParts);
-		wm.parseSite("10519", WeatherManager.Period.getParts());
+		WeatherManager wm = new WeatherManager();
+		wm.parseSite("10519", DatePicker.Period.loadParts(0));
 		wm.evaluate(false);
     }
 	
@@ -97,14 +105,14 @@ public class WeatherInfoTests extends TestCase
             is.close();
             osw.close();
             
-            WeatherManager wm = new WeatherManager(null);
+            WeatherManager wm = new WeatherManager();
             assertTrue(wm.openConnection("databases/weather_info.db"));
            
             is = process.getInputStream();
             br = new BufferedReader(new InputStreamReader(is));
             
             int unfound = 0;
-            ValMap values = new ValMap();
+            ValMap values = vmap();
             while ((line = br.readLine()) != null) {
 //            	System.out.println(line);
                 String[] parts = line.split("\t", 3);
@@ -137,7 +145,7 @@ public class WeatherInfoTests extends TestCase
     	
     	Elements elements = doc.select("select[name=ind] > option");
 		
-		final ValMap stations = new ValMap();
+		final ValMap stations = vmap();
 		for (Element element : elements) 
 			stations.put(element.text().trim(), element.attr("value"));
 		
@@ -167,7 +175,7 @@ public class WeatherInfoTests extends TestCase
 		Element partes = doc.getElementById("partes");
 		assertNotNull(partes);
 		Elements elements = partes.select("b");
-		ValMap details = new ValMap();
+		ValMap details = vmap();
 		for (Element element : elements) 
 			details.put(element.text().trim(), element.parent().nextSibling().toString());
 		

@@ -216,20 +216,20 @@ public class Util2
 	    }
 	    
 		public static boolean doImpex(Context context, String[] fileNames, boolean export) {
+			boolean retval = true;
 			try {
 				String path = getDatabasesPath(context);
 				for (String fileName : fileNames) {
 					File importDir = directory(path, false);
 					File exportDir = directory(path, true);
 					
-					doCopy(fileName, export, importDir, exportDir);
+					retval &= doCopy(fileName, export, importDir, exportDir);
 				}
 			} catch (IOException e) {
 				Log.e(TAG, "doImpex", e);
-				return false;
+				retval = false;
 			}
-			
-			return true;
+			return retval;
 	    }
 
 		public static String getDatabasesPath(Context context) {

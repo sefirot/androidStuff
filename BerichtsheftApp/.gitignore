@@ -6,3 +6,6 @@ build/
 .jedit/history
 .jedit/perspective.xml
 .jedit/recent.xml
+.jedit/properties
+.jedit/killring.xml
+.jedit/DockableWindowManager/

@@ -27,7 +27,7 @@ public class ViewGroup extends View {
 		}
 	}
 	
-	ValList views = new ValList();
+	ValList views = vlist();
 
     public void addView(View child, LayoutParams params) {
     	views.add(child);

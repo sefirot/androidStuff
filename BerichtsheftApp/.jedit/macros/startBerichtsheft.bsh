@@ -1,0 +1,18 @@
+void doSomethingUseful()
+{
+    void run()
+    {
+        view = jEdit.getLastView();
+        
+        view.getDockableWindowManager().showDockableWindow("console");
+        com.applang.berichtsheft.plugin.BerichtsheftPlugin.checkAvailabilityOfTools();
+        view.getDockableWindowManager().showDockableWindow("datadock");
+    }
+
+    if(jEdit.getLastView() == null)
+        VFSManager.runInAWTThread(this);
+    else
+        run();
+}
+
+doSomethingUseful();

@@ -1,0 +1,28 @@
+commandoMEMORY(view,pane,ns,label,var,options)
+{
+	import com.applang.*;
+	
+	choice = new JComboBox(options);
+	value = ns.getVariable(var);
+	if(value != null)
+	{
+		SwingUtil.Memory.update(choice, new Object[]{true, value});
+	}
+
+	valueChanged()
+	{
+		value = SwingUtil.comboEdit(choice).getText();
+		ns.setVariable(var,value);
+	}
+
+	box = new Box(BoxLayout.Y_AXIS);
+	hint = new JLabel();
+	hint.setText("use context menu to manage memory");
+	hint.setAlignmentX(Component.CENTER_ALIGNMENT);
+	box.add(hint);
+	box.add(choice);
+	box.add(Box.createVerticalStrut(12));
+	pane.addComponent(label,box);
+
+	return this;
+}
