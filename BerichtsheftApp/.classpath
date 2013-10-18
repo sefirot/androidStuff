@@ -20,10 +20,7 @@
 	</classpathentry>
 	<classpathentry kind="lib" path=".jedit/jars/CommonControls.jar"/>
 	<classpathentry kind="lib" path=".jedit/jars/ErrorList.jar"/>
-	<classpathentry kind="lib" path=".jedit/jars/hunspell.jar"/>
-	<classpathentry kind="lib" path=".jedit/jars/jna.jar"/>
 	<classpathentry kind="lib" path=".jedit/jars/kappalayout.jar"/>
-	<classpathentry kind="lib" path=".jedit/jars/SpellCheck.jar" sourcepath="/home/lotharla/work/jEdit/plugins/SpellCheck/src/main"/>
 	<classpathentry kind="lib" path=".jedit/jars/mysql-connector-java-5.1.22-bin.jar"/>
 	<classpathentry kind="lib" path=".jedit/jars/hamcrest-all-1.3.0RC2.jar"/>
 	<classpathentry kind="lib" path=".jedit/jars/jsoup-1.7.1.jar" sourcepath="/home/lotharla/jsoup/jsoup-1.7.1-sources.jar">

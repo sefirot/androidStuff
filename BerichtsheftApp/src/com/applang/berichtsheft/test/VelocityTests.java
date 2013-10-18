@@ -108,7 +108,7 @@ public class VelocityTests extends TestCase
         
         assertEquals(s1, s2);
         
-        new TemplateNodeView("description.vm");
+//        new TemplateNodeView("description.vm");
 	}
 
 	public void testBasics() {
