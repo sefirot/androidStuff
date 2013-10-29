@@ -11,8 +11,9 @@
 
 	<COMMANDS>
 		<COMMAND SHELL="System">
+			import com.applang.berichtsheft.*;
 			buf = new StringBuffer();
-			script = System.getProperty("user.dir") + "/scripts/process.sh";
+			script = BerichtsheftApp.berichtsheftPath(new String[]{"Skripte/process.sh"});
 			buf.append("\"" + script + "\" \"" + task + "\" \"" + source + "\" \"" + target + "\"");
 			if (params.length() > 0)
 				buf.append(" "+params);

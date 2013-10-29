@@ -43,7 +43,6 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTextField;
-import javax.swing.JToolBar;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.event.HyperlinkEvent;
@@ -70,8 +69,8 @@ import com.applang.berichtsheft.BerichtsheftApp;
 public class FormEditor extends JSplitPane
 {
 	public static void main(String[] args) throws Exception {
-		final String inputPath = param("Vorlagen/Tagesberichte.odt", 0, args);
-		final String outputPath = param("Dokumente/Tagesberichte.odt", 1, args);
+		final String inputPath = param(BerichtsheftApp.berichtsheftPath("Vorlagen/Tagesberichte.odt"), 0, args);
+		final String outputPath = param(BerichtsheftApp.berichtsheftPath("Dokumente/Tagesberichte.odt"), 1, args);
 		
         SwingUtilities.invokeLater(new Runnable() {
 			public void run() {
@@ -107,9 +106,7 @@ public class FormEditor extends JSplitPane
 										public Component[] apply(Component comp, Object[] parms) {
 											JFrame frame = (JFrame)comp;
 											Container contentPane = frame.getContentPane();
-											JToolBar top = new JToolBar();
-											top.setName("top");
-											contentPane.add(top, BorderLayout.NORTH);
+											northToolBar(contentPane);
 											southStatusBar(contentPane);
 											contentPane.add(formEditor, BorderLayout.CENTER);
 											return null;
@@ -169,7 +166,7 @@ public class FormEditor extends JSplitPane
 	
 	static void unmask(String inputPath, String outputPath) {
 		try {
-			String stylePath = getSetting("mask.xsl", "scripts/mask.xsl");
+			String stylePath = getSetting("mask.xsl", BerichtsheftApp.berichtsheftPath("Skripte/mask.xsl"));
 			xmlTransform(inputPath, stylePath, outputPath, 
 					"mode", 2);
 		} catch (Exception e) {
@@ -181,7 +178,7 @@ public class FormEditor extends JSplitPane
 	
 	static boolean generateMask(String contentXml) {
 		try {
-			String stylePath = getSetting("mask.xsl", "scripts/mask.xsl");
+			String stylePath = getSetting("mask.xsl", BerichtsheftApp.berichtsheftPath("Skripte/mask.xsl"));
 			String dummy = "/tmp/temp.html";
 			xmlTransform(contentXml, stylePath, dummy, 
 					"mode", 1);

@@ -8,6 +8,7 @@ import java.awt.Cursor;
 import java.awt.Dialog;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Frame;
 import java.awt.KeyboardFocusManager;
 import java.awt.LayoutManager;
@@ -102,8 +103,6 @@ import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableColumn;
 import javax.swing.table.TableColumnModel;
 import javax.swing.text.JTextComponent;
-
-import com.applang.Util.Function;
 
 import android.util.Log;
 
@@ -1017,16 +1016,6 @@ public class SwingUtil
 	    	return null;
 	}
 
-	public static void addFocusObserver(JTextComponent jtc) {
-	    jtc.addFocusListener(new FocusListener() {
-	        public void focusGained(FocusEvent e) {
-	            ((JTextComponent)e.getSource()).selectAll();
-	        }
-	        public void focusLost(FocusEvent arg0) {    
-	        }
-	    });
-	}
-
 	public static void addTabKeyForwarding(JComponent jc) {
 	    jc.addKeyListener(new KeyAdapter() {
 			@Override
@@ -1052,12 +1041,20 @@ public class SwingUtil
 	public static boolean underTest = false;
 	public static Function<String> messRedirection = null;
 	
+	public static JToolBar northToolBar(Container container) {
+		JToolBar bar = new JToolBar();
+		bar.setName("north");
+		bar.setFloatable(true);
+		container.add(bar, BorderLayout.NORTH);
+		return bar;
+	}
+	
 	public static void southStatusBar(Container container) {
-		JToolBar bottom = new JToolBar();
-		bottom.setName("bottom");
-		bottom.setFloatable(false);
-		messageBox(bottom);
-		container.add(bottom, BorderLayout.SOUTH);
+		JToolBar bar = new JToolBar();
+		bar.setName("south");
+		bar.setFloatable(false);
+		messageBox(bar);
+		container.add(bar, BorderLayout.SOUTH);
 	}
 
 	public static JLabel messageBox(Container container) {
@@ -1107,14 +1104,6 @@ public class SwingUtil
 			message(message);
 		}
 	}
-	
-	public interface CustomActionType 
-	{
-		public int index();
-		public String resourceName();
-	    public String iconName();
-	    public String description();
-	}
 
 	public static String resourceFrom(String path, String encoding) {
 		if (notNullOrEmpty(path)) {
@@ -1140,6 +1129,14 @@ public class SwingUtil
 		}
 		else
 			return null;
+	}
+	
+	public interface CustomActionType 
+	{
+		public int index();
+		public String resourceName();
+	    public String iconName();
+	    public String description();
 	}
 	
     public static class CustomAction extends AbstractAction
@@ -1180,7 +1177,7 @@ public class SwingUtil
         		return;
         	
         	message("");
-        	println(type == null ? ae.getActionCommand() : type.toString());
+        	Log.d(TAG, type == null ? ae.getActionCommand() : type.toString());
         	
         	action_Performed(ae);
         }
@@ -1484,10 +1481,41 @@ public class SwingUtil
 		
 		return null;
 	}
+
+	public static void addFocusObserver(JTextComponent jtc) {
+	    jtc.addFocusListener(new FocusListener() {
+	        public void focusGained(FocusEvent e) {
+	            ((JTextComponent)e.getSource()).selectAll();
+	        }
+	        public void focusLost(FocusEvent arg0) {    
+	        }
+	    });
+	}
+	
+	public static void setLongText(JTextComponent tc, String text) {
+		tc.setText(text);
+		tc.setCaretPosition(tc.getText().length());
+	}
+	
+	public static String trimPath(String path, int width, Font font, JComponent jc) {
+        FontMetrics fm = jc.getFontMetrics(font);
+        if (width > 0 && fm != null) {
+            int strWidth = fm.stringWidth(path);
+            if (strWidth > width) {
+                StringBuilder sb = new StringBuilder(path);
+                String prefix = "...";
+                while (fm.stringWidth(prefix + sb.toString()) > width) {
+                    sb.delete(0, 1);
+                }
+                path = prefix + sb.toString();
+            }
+        }
+        return path;
+	}
 	
 	public static int[] textMeasures(String text, Font font) {
 		AffineTransform affinetransform = new AffineTransform();     
-		FontRenderContext frc = new FontRenderContext(affinetransform,true,true);     
+		FontRenderContext frc = new FontRenderContext(affinetransform, true, true);     
 		int textwidth = (int)(font.getStringBounds(text, frc).getWidth());
 		int textheight = (int)(font.getStringBounds(text, frc).getHeight());
 		return new int[]{textwidth,textheight};
@@ -1779,6 +1807,25 @@ public class SwingUtil
 		}
 	}
 	
+    public static JScrollPane scrollableViewport(JTable table, Dimension size) {
+		table.setPreferredScrollableViewportSize(size);
+//		table.setFillsViewportHeight(true);
+    	return new JScrollPane(table);
+	}
+	
+    public static void selectRowAndScrollToVisible(JTable table, int...rows) {
+    	if (!isAvailable(0, rows))
+    		return;
+    	int row1;
+    	if (rows.length < 2)
+    		row1 = rows[0];
+    	else
+    		row1 = rows[1];
+    	table.getSelectionModel().setSelectionInterval(rows[0], row1);
+    	Rectangle cellRect = table.getCellRect(rows[0], 0, true);
+    	table.scrollRectToVisible(cellRect);
+    }
+
 	public static void setMaximumDimension(Component component, Integer...fac) {
 		Dimension size = component.getPreferredSize();
 		int fWidth = param(1, 0, fac);

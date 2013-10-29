@@ -38,7 +38,7 @@ plugin.com.applang.berichtsheft.plugin.BerichtsheftPlugin.menu=datadock \
 
 # action labels for actions supplied by dockables.xml
 datadock.label=Data
-notedock.label=Notes
+notedock.label=Note Picker
 
 # action messages for actions supplied by dockables.xml and commando commands
 berichtsheft.no-text-selection.message=No selected text in current buffer available
@@ -48,18 +48,21 @@ datadock.transport-to-buffer.message=No selected cells in table detected
 datadock.transport-to-buffer.message.1=Determine insertion point for this
 datadock.template-evaluation.message.1=template evaluation : no field identified
 datadock.template-evaluation.message.2=template evaluation inconsistent
-berichtsheft.choose-uri.message=Not a valid SQLite database
 datadock.transport-uri.message=No URI available
-berichtsheft.connect.message=connecting '%s'\n...
-berichtsheft.query.message=query on '%s' failed with projection '%s'
 manager.update.message.1='%s' updated
 manager.add.message.1='%s' NOT added
 manager.add.message.2='%s' added
 manager.remove.message.1='%s' not found
 manager.remove.message.2='%s' removed
 manager.delete.message=Delete '%s'
+manager.delete.message.1=Delete this :
 manager.save.message.1=Save changes to '%s'
 manager.save.message.2=Save '%s'
+dataview.choose-uri.message=Not a valid SQLite database
+dataview.connect.message=connecting '%s'\n...
+dataview.no-info-for-table.message=no information available about table '%s'
+dataview.no-primary-key.message=primary key column is indeterminate
+dataview.query.message=query on '%s' failed with projection '%s'
 dataview.updateOrInsert.message=%d record(s) inserted, %d updated
 dataview.updateOrInsert.message.1=updateOrInsert on '%s' failed with values '%s'
 dataview.updateOrInsert.message.2=%d. selected record -- processing stopped
@@ -76,7 +79,7 @@ datadock.dockable-required.message=dockable window 'Data' required open !
 berichtsheft.tool-missing.message=external tool '%s' not available
 berichtsheft.android-devices.message=No Android devices found
 berichtsheft.android-sdcard-directory.message=need name of a directory here (trailing '/')
-berichtsheft.prompt-update.message=Update this record ?
+dataview.prompt-update.message=Update this record ?
 berichtsheft.export-document.message=document '%s' updated
 
 # plugin option pane
@@ -111,19 +114,20 @@ berichtsheft.spellcheck-selection.title=Spellchecking text selection
 
 # window toolbar buttons
 datadock.weather.icon=/res/drawable/weather.png
+datadock.choose-db.icon=22x22/actions/document-open.png
 datadock.choose-uri.icon=/images/book_open_22x22.png
 datadock.update-uri.icon=/images/refresh_22x22.png
 datadock.transport-to-buffer.icon=22x22/actions/run-to-buffer.png
 datadock.transport-from-buffer.icon=22x22/actions/run-to-buffer.png
 berichtsheft.spellcheck-selection.icon=/com/inet/jortho/icon.png
-manager.add.icon=22x22/actions/list-add.png
-manager.remove.icon=22x22/actions/list-remove.png
 berichtsheft.insert-enter.icon=/images/enter_22x22.png
 berichtsheft.insert-field.icon=/images/insert_22x22.png
 berichtsheft.insert-function.icon=/images/function_22x22.png
 berichtsheft.edit-function.icon=/images/function_22x22.png
 berichtsheft.export-document.icon=/images/export_22x22.png
 
+manager.add.icon=/org/gjt/sp/jedit/icons/themes/tango/22x22/actions/list-add.png
+manager.remove.icon=/org/gjt/sp/jedit/icons/themes/tango/22x22/actions/list-remove.png
 manager.update-change.icon=/images/update_22x22.png
 manager.update-change.label=confirm changes
 manager.erase-change.icon=/images/erase_22x22.png
@@ -152,7 +156,7 @@ manager.action-INSERT.label=insert
 manager.action-MODIFY.icon=/images/bausteine_16x16.png
 manager.action-MODIFY.label=modify
 manager.action-DELETE.icon=/images/minus_16x16.png
-manager.action-DELETE.label=delete note(s)
+manager.action-DELETE.label=delete
 manager.action-SPELLCHECK.icon=/images/abc_16x16.png
 manager.action-SPELLCHECK.label=spell check
 manager.action-PICK.icon=/images/pick_22x22.png
@@ -171,8 +175,9 @@ manager.action-STRUCT.icon=/images/structure_16x16.png
 manager.action-STRUCT.label=show structure
 
 # action labels for actions supplied by actions.xml
-datadock.choose-uri.label=Choose database
-datadock.update-uri.label=Update database view
+datadock.choose-db.label=Choose database file
+datadock.choose-uri.label=Choose data source
+datadock.update-uri.label=Update data source view
 datadock.transport-from-buffer.label=Pull selected text from current buffer into database
 datadock.transport-to-buffer.label=Push selected items to current buffer
 datadock.download-to-buffer.label=Download content to current buffer

@@ -96,7 +96,6 @@ public class WeatherManager extends ActionPanel
 	
 	@Override
 	public void start(Object... params) {
-    	System.setProperty("settings.dir", ".jedit/plugins/berichtsheft");
 		super.start(params);
 	}
 	
@@ -129,9 +128,9 @@ public class WeatherManager extends ActionPanel
         	if (t != null) {
 				switch (t) {
 				case DATABASE:
-					if (dataView.askUri(null, dbName)) {
+					if (dataView.configureData(null)) {
 						String uriString = dataView.getUriString();
-						dataView.updateUri(uriString);
+						dataView.reset(uriString);
 						dbName = dbInfo(dataView.getUri());
 						if (notNullOrEmpty(dbName))
 							openConnection(dbName);
@@ -332,7 +331,6 @@ public class WeatherManager extends ActionPanel
 		AlertDialog dialog;
 		TextView tv = new TextView(null, true);
 		tv.getTextArea().setFont(monoSpaced());
-		tv.setId(1);
 		dialog = new AlertDialog.Builder(BerichtsheftApp.getActivity(),	false)
 				.setTitle(title)
 				.setView(tv)

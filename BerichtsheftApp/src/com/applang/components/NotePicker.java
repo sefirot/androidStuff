@@ -21,9 +21,14 @@ import java.util.regex.Pattern;
 
 import javax.swing.JComboBox;
 import javax.swing.JOptionPane;
+import javax.swing.JPopupMenu;
+import javax.swing.JTable;
 import javax.swing.JTextField;
-import javax.swing.event.AncestorEvent;
-import javax.swing.event.AncestorListener;
+import javax.swing.SwingUtilities;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
+
+import org.gjt.sp.jedit.View;
 
 import static com.applang.SwingUtil.*;
 import static com.applang.Util.*;
@@ -34,45 +39,53 @@ import android.content.ContentUris;
 import android.content.ContentValues;
 import android.net.Uri;
 
+import com.applang.Util.ValMap;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
-import com.applang.berichtsheft.plugin.BerichtsheftShell;
-import com.applang.components.DataView.ConsumerModel;
-import com.applang.components.DataView.ProviderModel;
+import com.applang.components.DataView.DataModel;
+import com.applang.components.DataView.Provider;
 
 public class NotePicker extends ActionPanel
 {
 	public static void main(String[] args) {
-    	underTest = param("true", 0, args).equals("true");
-		int behavior = Behavior.NONE;
-		if (underTest)
-			behavior |= Behavior.EXIT_ON_CLOSE;
-		DataView dataView = new DataView();
-		
-		BerichtsheftPlugin.setupSpellChecker(".jedit/plugins/berichtsheft");
-		TextEditor textEditor = new TextEditor();
-		textEditor.installSpellChecker();
-//		textEditor.createTextArea("text", "/modes/text.xml");
-        String title = "Berichtsheft database";
-		NotePicker notePicker = new NotePicker(dataView, textEditor, 
-				null,
-				title, 1);
-		createAndShowGUI(title, 
-				new Dimension(800, 200), 
-				notePicker, 
-				textEditor.getUIComponent(), 
-				behavior);
+		SwingUtilities.invokeLater(new Runnable() {
+			public void run() {
+				BerichtsheftApp.loadSettings();
+				BerichtsheftPlugin.setupSpellChecker(BerichtsheftApp.berichtsheftPath());
+				DataView dataView = new DataView();
+				dataView.setUri();
+				TextEditor textEditor = new TextEditor();
+				textEditor.installSpellChecker();
+//				textEditor.createTextArea("text", "/modes/text.xml");
+				String title = "Berichtsheft database";
+				NotePicker notePicker = new NotePicker(dataView, textEditor, 
+						null,
+						title, 1);
+				createAndShowGUI(title, 
+						new Dimension(800, 400), 
+						notePicker, 
+						textEditor.getUIComponent(), 
+						Behavior.EXIT_ON_CLOSE,
+						dataView);
+			}
+		});
 	}
 	
 	@Override
-	protected void start(Object... params) {
-		super.start(params);
+	public void start(Object... params) {
 		dbName = getSetting("database", "");
+		if (!use_jdbc())
+			initialize(dataView.getUriString());
+		else if (fileExists(new File(dbName)))
+			initialize(dbName);
 	}
 	
 	@Override
 	public void finish(Object... params) {
-		((TextEditor) dataComponent).uninstallSpellChecker();
+		if (!use_jdbc())
+			dataView.reset(dataView.getUriString());
+		TextEditor textArea = (TextEditor) dataComponent;
+		textArea.uninstallSpellChecker();
 		try {
 			if (getCon() != null)
 				getCon().close();
@@ -103,20 +116,10 @@ public class NotePicker extends ActionPanel
 				setDirty(true);
 			}
 		});
+		if (!use_jdbc() && dataView.getUri() == null)
+			dataView.setUri();
 		this.dataView = dataView;
 		installNotePicking(this);
-		this.addAncestorListener(new AncestorListener() {
-			public void ancestorAdded(AncestorEvent event) {
-				if (!use_jdbc())
-					initialize(NotePicker.this.dataView.getUriString());
-				else if (fileExists(new File(dbName)))
-					initialize(dbName);
-			}
-			public void ancestorRemoved(AncestorEvent event) {
-			}
-			public void ancestorMoved(AncestorEvent event) {
-			}
-		});
 	}
 
 	@SuppressWarnings("rawtypes")
@@ -130,7 +133,6 @@ public class NotePicker extends ActionPanel
 			@Override
 			public void keyTyped(KeyEvent e) {
 				super.keyTyped(e);
-				checkDocumentPossible();
 			}
 			@Override
 			public void keyPressed(KeyEvent e) {
@@ -157,12 +159,6 @@ public class NotePicker extends ActionPanel
 		addButton(container, ActionType.PREVIOUS.index(), new NoteAction(ActionType.PREVIOUS));
 		addButton(container, ActionType.NEXT.index(), new NoteAction(ActionType.NEXT));
 		addButton(container, ActionType.LAST.index(), new NoteAction(ActionType.LAST));
-//		addButton(container, ActionType.SPELLCHECK.index(), new NoteAction(ActionType.SPELLCHECK));
-//		
-//		attachDropdownMenu(buttons[ActionType.ACTIONS.index()], newPopupMenu(
-//		    	objects(ActionType.DOCUMENT.description(), documentActions[0]), 
-//		    	objects(ActionType.DOCUMENT.description(), documentActions[1]) 
-//	    ));
 		installAddRemove(container, "note");
 		installUpdate(container);
 		clear();
@@ -181,27 +177,21 @@ public class NotePicker extends ActionPanel
 		@Override
         protected void action_Performed(ActionEvent ae) {
         	String dateString = getDate();
-        	switch ((ActionType)getType()) {
+        	ActionType type = (ActionType)getType();
+			switch (type) {
 			case DATABASE:
 				updateOnRequest();
 				dbName = chooseDatabase(dbName);
 				break;
 			case CALENDAR:
 				dateString = pickDate(dateString);
-				checkDocumentPossible();
 				date.requestFocusInWindow();
 				break;
 			case FIRST:
-				browse(BrowseDirection.FIRST);
-				break;
 			case PREVIOUS:
-				browse(BrowseDirection.PREVIOUS);
-				break;
 			case NEXT:
-				browse(BrowseDirection.NEXT);
-				break;
 			case LAST:
-				browse(BrowseDirection.LAST);
+				browse(type);
 				break;
 			case PICK:
 				if (use_jdbc()) {
@@ -213,7 +203,7 @@ public class NotePicker extends ActionPanel
 					finder.keyLine();
 					Long time = toTime(dateString, DatePicker.calendarFormat);
 					pkRow = finder.pointer(time, getCategory());
-					browse(BrowseDirection.HERE);
+					browse(type);
 				}
 				break;
 			case DATE:
@@ -222,26 +212,15 @@ public class NotePicker extends ActionPanel
 			case CATEGORY:
 				comboBoxes[0].requestFocusInWindow();
 				break;
-			case DOCUMENT:
-				updateOnRequest();
-				fillDocument(dateString);
+			case INSERT:
 				break;
-			case SPELLCHECK:
+			case DELETE:
+				deleteSelection();
 				break;
 			default:
 				return;
 			}
         }
-	}
-	
-	private NoteAction[] documentActions = new NoteAction[] {
-		new NoteAction(ActionType.DOCUMENT), 
-		new NoteAction(ActionType.TEXT),
-	};
-
-	private void checkDocumentPossible() {
-		int kind = DatePicker.kindOfDate(getDate());
-		documentActions[0].setEnabled(kind > 1 && getCategory().length() > 0);
 	}
 	
 	private void clear() {
@@ -261,33 +240,55 @@ public class NotePicker extends ActionPanel
 		enableAction(ActionType.NEXT.index(), pkRow < lastRow() && pkRow > -1);
 		enableAction(ActionType.LAST.index(), pkRow < lastRow() && pkRow > -1);
 	}
-
-	private ProviderModel provider = null;
 	
-	private ConsumerModel consumer() {
-		return use_jdbc() ? null : (ConsumerModel) dataView.getTable().getModel();
+	private DataModel dataModel() {
+		if (dataView == null)
+			return null;
+		return (DataModel) dataView.getTable().getModel();
 	}
+
+	private Provider provider = null;
 	
 	private Object pk = null;
 	public int pkColumn = -1, pkRow = -1;
+	
+	private boolean createProvider() {
+		provider = new Provider(dataView);
+		ValMap info = provider.info;
+		if (info.size() > 0) {
+			pk = info.get("PRIMARY_KEY");
+			pkColumn = info.getList("name").indexOf(pk);
+			if (pkColumn < 0) {
+				BerichtsheftPlugin.consoleMessage("dataview.no-primary-key.message");
+			}
+		}
+		else {
+			BerichtsheftPlugin.consoleMessage("dataview.no-info-for-table.message", provider.tableName);
+			pkColumn = -1;
+		}
+		return pkColumn > -1;
+	}
 
 	public Object pkValue() {
-		return consumer().getValueAt(pkRow, pkColumn);
+		Object[] row = dataModel().getValues(false, pkRow);
+		return row[pkColumn];
 	}
 
 	public int lastRow() {
-		ConsumerModel consumer = consumer();
-		if (consumer == null)
+		DataModel model = dataModel();
+		if (model == null)
 			return -1;
 		else
-			return consumer.getRowCount() - 1;
+			return model.getRowCount() - 1;
 	}
 	
 	public void setRow(Object pkValue) {
-		ConsumerModel consumer = consumer();
-		for (int i = 0; i < consumer.getRowCount(); i++) 
-			if (consumer.getValueAt(i, pkColumn).equals(pkValue))
+		DataModel model = dataModel();
+		for (int i = 0; i < model.getRowCount(); i++) {
+			Object[] row = dataModel().getValues(false, i);
+			if (row[pkColumn].equals(pkValue))
 				pkRow = i;
+		}
 	}
 	
 	private void initialize(String dbString) {
@@ -306,90 +307,45 @@ public class NotePicker extends ActionPanel
 			}
 		}
 		else {
-			if (notNullOrEmpty(dbString)) {
-				dataView.setUri(Uri.parse(dbString));
-				String tableName = dbTableName(dataView.getUriString());
-				String[] sql = generateSqlQuery(tableName);
-				dataView.reload(sql);
-			}
-			else {
-				dataView.loadUri();
-				dbString = dataView.getUriString();
-			}
-			provider = new ProviderModel(dataView);
-			retrieveCategories();
-			pk = provider.info.get("PRIMARY_KEY");
-			pkColumn = consumer().columns.indexOf(pk);
-			if (pkColumn < 0) {
-				BerichtsheftShell.print("primary key column is indeterminate", NEWLINE);
-			}
-			browse(BrowseDirection.FIRST);
+			refresh();
 		}
 		setWindowTitle(this, String.format("Berichtsheft database : %s", dbString));
 	}
 
-    public static final String DEFAULT_SORT_ORDER = "created,title";
-    
-	private String[] generateSqlQuery(String tableName) {
-		Object[] projection = fullProjection("com.applang.provider.NotePad");
-		return strings("select " + join(",", projection) + " from " + tableName + " order by " + DEFAULT_SORT_ORDER);
-	}
-
-	public void refresh(boolean complete) {
+	public void refresh() {
 		if (use_jdbc()) {
 			finder.keyLine(searchPattern);
 			pickNote(getDate(), finder.pattern);
 			retrieveCategories();
 		}
-		else {
-			if (complete)
-				dataView.reload();
-			retrieveCategories();
-			browse(BrowseDirection.HERE);
-		}
-	}
-	
-	@Override
-	public boolean openConnection(String dbPath, Object... params) {
-		try {
-			if (super.openConnection(dbPath, arrayextend(params, true, "notes")))
-				return true;
-			
-			if ("sqlite".equals(getScheme()))
-				getStmt().execute("CREATE TABLE notes (" +
-						"_id INTEGER PRIMARY KEY," +
-						"title TEXT," +
-						"note TEXT," +
-						"created INTEGER," +
-						"modified INTEGER, " +
-						"UNIQUE (created, title))");
-			else if ("mysql".equals(getScheme())) 
-				getStmt().execute("CREATE TABLE notes (" +
-						"_id BIGINT PRIMARY KEY," +
-						"title VARCHAR(40)," +
-						"note TEXT," +
-						"created BIGINT," +
-						"modified BIGINT, " +
-						"UNIQUE (created, title))");
-			
-			return true;
-		} catch (Exception e) {
-			handleException(e);
-			return false;
+		else if (!noRefresh) {
+			clear();
+			if (createProvider()) {
+				dataView.populate(provider, null, null, DEFAULT_SORT_ORDER);
+				retrieveCategories();
+				browse(ActionType.PICK);
+			}
 		}
 	}
 
-	@Override
+    private static final String DEFAULT_SORT_ORDER = "created,title";
+    
+    @Override
 	protected String chooseDatabase(String dbName) {
 		if (use_jdbc()) {
 			File dbFile = DataView.chooseDb(null, false, dbName, true);
-			if (dbFile != null)
+			if (dbFile != null) {
 				dbName = dbFile.getPath();
+				initialize(dbName);
+			}
 		}
-		else if (dataView.askUri(null, dbName)) {
-			dbName = dataView.getUriString();
+		else {
+			View view = getView() instanceof View ? (View) getView() : null;
+			if (dataView.configureData(view)) {
+				dbName = dataView.getUriString();
+				initialize(dbName);
+			}
 		}
-		initialize(dbName);
 		return dbName;
 	}
 
@@ -510,14 +466,26 @@ public class NotePicker extends ActionPanel
 	public Long[] timeLine(Object... params) {
 		ArrayList<Long> timelist = new ArrayList<Long>();
 		try {
-			String pattern = param(allCategories, 0, params);
-			PreparedStatement ps = getCon().prepareStatement("select distinct created FROM notes where title regexp ? order by created");
-			ps.setString(1, pattern);
-			ResultSet rs = ps.executeQuery();
-			while (rs.next()) {
-				timelist.add(rs.getLong(1));
+			if (use_jdbc()) {
+				String pattern = param(allCategories, 0, params);
+				PreparedStatement ps = getCon()
+						.prepareStatement(
+								"select distinct created FROM notes where title regexp ? order by created");
+				ps.setString(1, pattern);
+				ResultSet rs = ps.executeQuery();
+				while (rs.next()) {
+					timelist.add(rs.getLong(1));
+				}
+				rs.close();
 			}
-			rs.close();
+			else {
+				Object[][] res = provider.query(dataView.getUriString(), 
+						(String[])null, 
+						String.format("select distinct created FROM notes order by created", provider.tableName));
+				for (Object[] row : res) {
+					timelist.add((Long) row[0]);
+				}
+			}
 		} catch (Exception e) {}
 		return timelist.toArray(new Long[0]);
 	}
@@ -562,7 +530,7 @@ public class NotePicker extends ActionPanel
 					}
 				}
 				else {
-					ConsumerModel model = consumer();
+					DataModel model = dataModel();
 					int[] index = {
 							model.columns.indexOf("created"), 
 							model.columns.indexOf("title")
@@ -680,26 +648,26 @@ public class NotePicker extends ActionPanel
 			return pointer > 0;
 		}
 	
-		public String find(BrowseDirection direct, long... epoch) {
+		public String find(ActionType direct, long... epoch) {
 			boolean available = bunchAvailable(epoch);
 			
 			int index = pointer(this.index[0]);
-			if (direct == BrowseDirection.HERE) 
+			if (direct == ActionType.PICK) 
 				if (!available) {
 					message(String.format("'%s' on %s not available", pattern, formatDate(epoch.length, epoch[0])));
 					if (index >= keys.length) {
-						direct = BrowseDirection.PREVIOUS;
+						direct = ActionType.PREVIOUS;
 						available = true;
 					}
 					else
-						direct = BrowseDirection.NEXT;
+						direct = ActionType.NEXT;
 				}
 			
-			boolean next = direct == BrowseDirection.NEXT;
+			boolean next = direct == ActionType.NEXT;
 			if (next && epoch.length > 1) 
 				index = pointer(this.index[1]);
 			else {
-				if (available && direct != BrowseDirection.HERE)
+				if (available && direct != ActionType.PICK)
 					index += next ? 1 : -1;
 			}
 			if (index < 0 || index >= keys.length)
@@ -728,62 +696,119 @@ public class NotePicker extends ActionPanel
 		clear();
 		setDate(dateString);
 		try {
-			checkDocumentPossible();
 			finder.pattern = pattern;
 			finder.epoch = getTime(dateString);
 			if (nullOrEmpty(finder.epoch)) {
 				message(String.format("value for '%s' doesn't make sense", ActionType.DATE.description()));
 				date.requestFocus();
 			}
-			browse(BrowseDirection.HERE);			
+			browse(ActionType.PICK);			
 		} catch (Exception e) {
 			handleException(e);
 			setText("");
 		}
 	}
 	
-	public enum BrowseDirection { FIRST, PREVIOUS, HERE, NEXT, LAST }
+	private boolean browseFree = true;
 	
-	public void browse(BrowseDirection direct) {
-		updateOnRequest();
-		String text = "";
-		if (use_jdbc()) {
-			ResultSet rs = null;
-			if (finder.find(direct, finder.epoch) != null)
-				rs = query(finder.epoch);
-			enableAction(ActionType.PREVIOUS.index(),
-					finder.previousBunchAvailable(finder.epoch));
-			enableAction(ActionType.NEXT.index(),
-					finder.nextBunchAvailable(finder.epoch));
-			text = refreshWith(rs);
-		}
-		else if (pkColumn > -1) {
-			switch (direct) {
-			case FIRST:
-				pkRow = 0;
-				break;
-			case PREVIOUS:
-				pkRow--;
-				break;
-			case NEXT:
-				pkRow++;
-				break;
-			case LAST:
-				pkRow = lastRow();
-				break;
-			default:
-				pkRow = Math.min(Math.max(0, pkRow), lastRow());
-				break;
+	public void browse(ActionType direct) {
+		if (!browseFree)
+			return;
+		try {
+			browseFree = false;
+			updateOnRequest();
+			String text = "";
+			if (use_jdbc()) {
+				ResultSet rs = null;
+				if (finder.find(direct, finder.epoch) != null)
+					rs = query(finder.epoch);
+				enableAction(ActionType.PREVIOUS.index(),
+						finder.previousBunchAvailable(finder.epoch));
+				enableAction(ActionType.NEXT.index(),
+						finder.nextBunchAvailable(finder.epoch));
+				text = refreshWith(rs);
 			}
-			enableBrowseActions();
-			Object[] rec = (Object[]) select();
-			setDate(formatDate(1, (Long) rec[0]));
-			setCategory(stringValueOf(rec[1]));
-			text = stringValueOf(rec[2]);
+			else if (pkColumn > -1) {
+				switch (direct) {
+				case FIRST:
+					pkRow = 0;
+					break;
+				case PREVIOUS:
+					pkRow--;
+					break;
+				case NEXT:
+					pkRow++;
+					break;
+				case LAST:
+					pkRow = lastRow();
+					break;
+				default:
+					pkRow = Math.min(Math.max(0, pkRow), lastRow());
+					break;
+				}
+				enableBrowseActions();
+				if (direct != ActionType.DELETE) {
+					int[] rows = dataView.getTable().getSelectedRows();
+					if (rows.length > 0 && direct == ActionType.PICK)
+						rows = new int[] { rows[0], rows[rows.length - 1] };
+					else
+						rows = new int[] { pkRow };
+					dataView.synchronizeSelection(rows, tablePopup, tableSelectionListener);
+				}
+				Object[] rec = (Object[]) select();
+				setDate(formatDate(1, (Long) rec[0]));
+				setCategory(stringValueOf(rec[1]));
+				text = stringValueOf(rec[2]);
+			}
+			setText(text);
+		} 
+		finally {
+			browseFree = true;
 		}
-		setText(text);
 	}
 
+	private JPopupMenu tablePopup = newPopupMenu(
+			objects(ActionType.DELETE.description(), new NoteAction(ActionType.DELETE))
+	);
+	
+	private ListSelectionListener tableSelectionListener = new ListSelectionListener() {
+		@Override
+		public void valueChanged(ListSelectionEvent e) {
+			if (e.getValueIsAdjusting())
+				return;
+			int sel = dataView.getTable().getSelectedRow();
+			if (sel > -1) {
+				pkRow = sel;
+				browse(ActionType.PICK);
+			}
+		}
+	};
+
+	private void deleteSelection() {
+		updateOnRequest();
+		JTable table = dataView.getTable();
+		int[] rows = table.getSelectedRows();
+		if (isAvailable(0, rows)) {
+			boolean refresh = false;
+			try {
+				begin_delete();
+				for (int i = 0; i < rows.length; i++) {
+					pkRow = rows[i];
+					browse(ActionType.DELETE);
+					Boolean done = do_delete(getLongItem());
+					if (done != null)
+						refresh |= done;
+				}
+			} 
+			catch (Throwable e) {} 
+			finally {
+				end_delete();
+			}
+			if (refresh)
+				refresh();
+		}
+	}
+	
 	@Override
 	public Object select(Object... args) {
 		args = reduceDepth(args);
@@ -831,6 +856,12 @@ public class NotePicker extends ActionPanel
 		Object[] rec = (Object[]) item;
 		return String.format(shortFormat, rec[1], rec[0]);
 	}
+	
+	@Override
+	protected String toLongString(Object item) {
+		Object[] rec = (Object[]) item;
+		return String.format(noteFormat2, rec[1], rec[0], rec[2]);
+	}
 
 	@Override
 	public boolean isItemValid(Object item) {
@@ -842,6 +873,11 @@ public class NotePicker extends ActionPanel
 	@Override
 	protected Object getItem() {
 		return objects(getDate(), getCategory());
+	}
+
+	@Override
+	protected Object getLongItem() {
+		return objects(getDate(), getCategory(), getText());
 	}
 
 	@Override
@@ -892,7 +928,7 @@ public class NotePicker extends ActionPanel
 		String text = getText();
 		long id = updateOrAdd(true, text, rec);
 		if (refresh)
-			refresh(true);
+			refresh();
 		return id > -1;
 	}
 
@@ -911,7 +947,7 @@ public class NotePicker extends ActionPanel
 		}
 		if (done) {
 			clear();
-			refresh(true);
+			refresh();
 		}
 		return done;
 	}
@@ -921,6 +957,36 @@ public class NotePicker extends ActionPanel
 		TextEditor editor = (TextEditor) textArea;
 		updateText(editor, text);
 		editor.undo.discardAllEdits();
+	}
+	
+	@Override
+	public boolean openConnection(String dbPath, Object... params) {
+		try {
+			if (super.openConnection(dbPath, arrayextend(params, true, "notes")))
+				return true;
+			
+			if ("sqlite".equals(getScheme()))
+				getStmt().execute("CREATE TABLE notes (" +
+						"_id INTEGER PRIMARY KEY," +
+						"title TEXT," +
+						"note TEXT," +
+						"created INTEGER," +
+						"modified INTEGER, " +
+						"UNIQUE (created, title))");
+			else if ("mysql".equals(getScheme())) 
+				getStmt().execute("CREATE TABLE notes (" +
+						"_id BIGINT PRIMARY KEY," +
+						"title VARCHAR(40)," +
+						"note TEXT," +
+						"created BIGINT," +
+						"modified BIGINT, " +
+						"UNIQUE (created, title))");
+			
+			return true;
+		} catch (Exception e) {
+			handleException(e);
+			return false;
+		}
 	}
 
 	private static final String orderClause = " order by created, title";
@@ -1222,8 +1288,8 @@ public class NotePicker extends ActionPanel
 		int[] weekDate = DatePicker.parseWeekDate(dateString);
 		String docName = "Tagesberichte_" + String.format("%d_%d", weekDate[1], weekDate[0]) + ".odt";
 		if (BerichtsheftApp.export(
-			"Vorlagen/Tagesberichte.odt", 
-			"Dokumente/" + docName, 
+			BerichtsheftApp.berichtsheftPath("Vorlagen/Tagesberichte.odt"), 
+			BerichtsheftApp.berichtsheftPath("Dokumente/" + docName), 
 			dbName, 
 			weekDate[1], weekDate[0]))
 		{

@@ -44,6 +44,7 @@ import org.gjt.sp.util.Log;
 import android.app.Activity;
 
 import com.applang.SwingUtil.PopupAdapter;
+import com.applang.Util.Function;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 import com.inet.jortho.PopupListener;
 import com.inet.jortho.SpellChecker;
@@ -272,10 +273,15 @@ public class TextEditor extends JTextArea implements TextComponent
 			tokenMarker.addRuleSet(new ParserRuleSet("text","MAIN"));
 			buffer.setTokenMarker(tokenMarker);
 			this.textArea.setBuffer(buffer);
-			Mode mode = new Mode(modeName);
+			final Mode mode = new Mode(modeName);
 			modeFileName = BerichtsheftPlugin.getSettingsDirectory() + modeFileName;
 			mode.setProperty("file", modeFileName);
-			mode.loadIfNecessary();
+			BerichtsheftPlugin.suppressErrorLog(new Function<Void>() {
+				public Void apply(Object... params) {
+					mode.loadIfNecessary();
+					return null;
+				}
+			});
 			buffer.setMode(mode);
 		}
 		Dimension size = this.textArea.getPreferredSize();

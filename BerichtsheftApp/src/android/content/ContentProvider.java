@@ -117,7 +117,8 @@ public class ContentProvider {
 					selection, selectionArgs, 
 					null, null, 
 					sortOrder);
-			cursor.setNotificationUri(getContext().getContentResolver(), uri);
+			if (cursor != null)
+				cursor.setNotificationUri(getContext().getContentResolver(), uri);
 		}
 		return cursor;
 	}

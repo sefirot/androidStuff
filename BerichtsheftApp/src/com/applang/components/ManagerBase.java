@@ -18,7 +18,9 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JTextField;
 
+import com.applang.SwingUtil.Behavior;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
+import com.applang.berichtsheft.plugin.JEditOptionDialog;
 
 @SuppressWarnings("rawtypes")
 public abstract class ManagerBase<T extends Object> extends JComponent
@@ -51,6 +53,10 @@ public abstract class ManagerBase<T extends Object> extends JComponent
 	
 	protected String toString(Object item) {
 		return String.valueOf(item);
+	}
+	
+	protected String toLongString(Object item) {
+		return toString(item);
 	}
 
 	public boolean isItemValid(Object item) {
@@ -90,8 +96,53 @@ public abstract class ManagerBase<T extends Object> extends JComponent
 		return null;
 	}
 	
+	int decision = -1;
+    boolean noRefresh = false;
+	
+	private boolean _question(Object...params) throws Throwable {
+		switch (decision) {
+		case 1:
+			return true;
+		case 3:
+			return false;
+		}
+		decision = new JEditOptionDialog(null, 
+				param("Decision", 2, params), 
+				param("", 1, params), 
+				param("Are you sure", 0, params), 
+				5, 
+				Behavior.MODAL, 
+				BerichtsheftPlugin.getProperty("manager.action-DELETE.icon"), 
+				null).getResult();
+		if (decision < 2)
+			return true;
+		if (decision < 4)
+			return false;
+		throw new Throwable();
+	}
+
+	protected void begin_delete() {
+		decision = -1;
+		noRefresh = true;
+	}
+
+	protected void end_delete() {
+		noRefresh = false;
+		decision = -1;
+	}
+
+	protected Boolean do_delete(Object item) throws Throwable {
+		String string = BerichtsheftPlugin.getProperty("manager.delete.message.1");
+		if (_question(toLongString(item), string)) {
+			setDirty(false);
+			return remove(item);
+		}
+		return null;
+	}
+	
 	protected boolean deleteThis(Object item) {
-		String string = String.format(BerichtsheftPlugin.getProperty("manager.delete.message"), toString(item));
+		String string = 
+				String.format(BerichtsheftPlugin.getProperty("manager.delete.message"), toString(item));
 		if (isItemValid(item) && question(string, null, JOptionPane.YES_NO_OPTION)) {
 			setDirty(false);
 			return true;
@@ -100,20 +151,28 @@ public abstract class ManagerBase<T extends Object> extends JComponent
 	}
 
 	public Boolean delete(Object item) {
-		if (deleteThis(item)) {
-			boolean done = removeItem(item);
-			BerichtsheftPlugin.consoleMessage(
-					done ? 
-							"manager.remove.message.2" : 
-							"manager.remove.message.1", 
-					ManagerBase.this.toString(item));
-			return done;
-		}
-		return null;
+		if (deleteThis(item)) 
+			return remove(item);
+		else
+			return null;
+	}
+
+	private Boolean remove(Object item) {
+		boolean done = removeItem(item);
+		BerichtsheftPlugin.consoleMessage(
+				done ? 
+						"manager.remove.message.2" : 
+						"manager.remove.message.1", 
+				ManagerBase.this.toString(item));
+		return done;
 	}
 
 	protected Object getItem() {
 		return comboEdit(0).getText();
+	}
+
+	protected Object getLongItem() {
+		return getItem();
 	}
 	
 	protected void installAddRemove(Container container, final String itemName) {

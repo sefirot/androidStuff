@@ -34,11 +34,8 @@ public class NoteDockable extends JPanel implements EBComponent, DefaultFocusCom
 		textEditor = new TextEditor();
 		textEditor.installSpellChecker();
 		add(textEditor.getUIComponent(), BorderLayout.CENTER);
-		DataDockable dockable = (DataDockable) BerichtsheftPlugin.getDockable(view, "datadock", false);
-		DataView dataView = dockable != null ? dockable.dataView : new DataView();
-		notePicker = new NotePicker(dataView, textEditor, view);
+		notePicker = new NotePicker(BerichtsheftPlugin.dataView, textEditor, view);
 		add(notePicker, BorderLayout.NORTH);
-		propertiesChanged();
 	}
 
 	@Override
@@ -50,6 +47,7 @@ public class NoteDockable extends JPanel implements EBComponent, DefaultFocusCom
 	public void addNotify() {
 		super.addNotify();
 		EditBus.addToBus(this);
+		notePicker.start();
 	}
      
     @Override
@@ -67,7 +65,7 @@ public class NoteDockable extends JPanel implements EBComponent, DefaultFocusCom
 	}
 
 	void propertiesChanged() {
-		notePicker.refresh(false);
+		notePicker.refresh();
 	}
 	
 }

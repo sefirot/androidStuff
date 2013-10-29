@@ -302,7 +302,7 @@ public class Util2
 					writer.write(separator);
 					
 				Object o = params[i];
-				String s = o instanceof String ? (String)o : "";
+				String s = String.valueOf(o);
 				
 				MatchResult[] specifiers = findAllIn(s, FORMAT_SPECIFIER_PATTERN);
 				int specs = specifiers.length;
@@ -353,7 +353,7 @@ public class Util2
 		else if (o instanceof short[]) s = Arrays.toString((short[])o);
 		else if (o instanceof String[]) s = Arrays.toString((String[])o);
 		else
-			s = o.toString();
+			s = String.valueOf(o);
 		
 		return s;
 	}
@@ -415,11 +415,11 @@ public class Util2
 	}
 
 	public static String toString(ValMap o) {
-		return o.toString().replaceAll("\\], ", "\\],\n");
+		return String.valueOf(o).replaceAll("\\], ", "\\],\n");
 	}
 
 	public static String toString(Object o) {
-		String value = o.toString();
+		String value = String.valueOf(o);
 		int brac = value.indexOf('[');
 		return value.substring(brac > -1 ? brac : 0);
 	}
@@ -892,7 +892,7 @@ public class Util2
 		String fileName = pathCombine(new String[]{tempPath(), name});
 		String path = fileName + ".sh";
 		String fn = "\"" + fileName + "\"";
-		script = enclose("[ -e " + fn + " ] && rm " + fn + "\n", script, " > " + fn);
+		script = enclose("[ -e " + fn + " ] && rm " + fn + "\n", script, " > " + fn) + " 2>&1";
 		File file = new File(path);
 		contentsToFile(file, "#!/bin/bash\n" + script);
 		Process proc = null;

@@ -13,6 +13,8 @@ import java.sql.Statement;
 import javax.swing.AbstractButton;
 import javax.swing.BoxLayout;
 import javax.swing.JFrame;
+import javax.swing.JPanel;
+import javax.swing.JSplitPane;
 import javax.swing.JToolBar;
 
 import com.applang.berichtsheft.BerichtsheftApp;
@@ -34,27 +36,33 @@ public class ActionPanel extends ManagerBase<Object>
 		showFrame(null, title, 
 				new UIFunction() {
 					public Component[] apply(Component comp, Object[] parms) {
-						JFrame frame = (JFrame) comp;
-						Container contentPane = frame.getContentPane();
+						Container contentPane = new JPanel(new BorderLayout());
+						southStatusBar(contentPane);
+						actionPanel.joinContainer(northToolBar(contentPane));
+						contentPane.add(target, BorderLayout.CENTER);
+						Container secondPane = param(null, 0, params);
+						if (secondPane != null) {
+							JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
+							splitPane.setResizeWeight(0.5);
+							splitPane.setOneTouchExpandable(true);
+							splitPane.setTopComponent(contentPane);
+							splitPane.setBottomComponent(secondPane);
+							contentPane = splitPane;
+						}
 						if (preferred != null)
 							contentPane.setPreferredSize(preferred);
-						JToolBar top = new JToolBar();
-						top.setName("top");
-						southStatusBar(contentPane);
-						actionPanel.joinContainer(top);
-						contentPane.add(top, BorderLayout.NORTH);
-						contentPane.add(target, BorderLayout.CENTER);
+						return components(contentPane);
+					}
+				}, 
+				new UIFunction() {
+					public Component[] apply(Component comp, Object[] parms) {
+						actionPanel.start();
 						return null;
 					}
 				}, 
 				new UIFunction() {
 					public Component[] apply(Component comp, Object[] parms) {
-						return null;
-					}
-				}, 
-				new UIFunction() {
-					public Component[] apply(Component comp, Object[] parms) {
-						actionPanel.finish(params);
+						actionPanel.finish();
 						return null;
 					}
 				}, 
@@ -75,11 +83,11 @@ public class ActionPanel extends ManagerBase<Object>
 		PREVIOUS	(1, "manager.action-PREVIOUS"), 
 		NEXT		(2, "manager.action-NEXT"), 
 		DATABASE	(3, "manager.action-DATABASE"), 
-		DOCUMENT	(4, "manager.action-DOCUMENT"), 
+		INSERT		(4, "manager.action-INSERT"), 
 		FIRST		(5, "manager.action-FIRST"), 
 		UPDATE		(6, "manager.action-UPDATE"), 
 		LAST		(7, "manager.action-LAST"), 
-		SPELLCHECK	(8, "manager.action-SPELLCHECK"), 
+		DELETE		(8, "manager.action-DELETE"), 
 		PICK		(9, "manager.action-PICK"), 
 		DATE		(10, "manager.action-DATE"), 
 		CATEGORY	(11, "manager.action-CATEGORY"), 
@@ -96,10 +104,10 @@ public class ActionPanel extends ManagerBase<Object>
 	        this.resourceName = resourceName;
 	    }
 
+	    @Override
+	    public int index() { return index; }
 		@Override
 	    public String resourceName()   { return resourceName; }
-		@Override
-	    public int index() { return index; }
 		@Override
 		public String iconName() {
 			return BerichtsheftPlugin.getProperty(resourceName + ".icon");
@@ -128,7 +136,6 @@ public class ActionPanel extends ManagerBase<Object>
 		this.view = param(null, 0, params);
 		this.caption = com.applang.Util.paramString("Database", 1, params);
 		setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
-		start(params);
 	}
 	
 	public void joinContainer(Container container, Object...params) {

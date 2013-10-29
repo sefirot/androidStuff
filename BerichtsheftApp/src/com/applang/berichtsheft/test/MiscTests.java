@@ -54,12 +54,11 @@ import android.net.Uri;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.components.DataView;
 import com.applang.components.ActionPanel.ActionType;
-import com.applang.components.DataView.ConsumerModel;
+import com.applang.components.DataView.DataModel;
 import com.applang.components.DatePicker.Period;
 import com.applang.components.DatePicker;
 import com.applang.components.FormEditor;
 import com.applang.components.NotePicker;
-import com.applang.components.NotePicker.BrowseDirection;
 import com.applang.components.TextEditor;
 import com.applang.components.NotePicker.NoteFinder;
 
@@ -74,6 +73,9 @@ public class MiscTests extends XMLTestCase
 		np = new NotePicker(null, textEditor);
 		if (tempfile.exists())
 			tempfile.delete();
+		contentfile = new File(getSetting("content.xml", BerichtsheftApp.berichtsheftPath("Skripte/content.xml")));
+		paramsFilename = getSetting("params.xml", BerichtsheftApp.berichtsheftPath("Skripte/params.xml"));
+
 	}
 
 	File tempfile = new File("/tmp/temp.xml");
@@ -258,19 +260,6 @@ public class MiscTests extends XMLTestCase
 			testKeinFehler();
 	}
 	
-	public void testNotesBrowsing2() throws Exception {
-		setupKeinFehler(false);
-		PreparedStatement ps = np.getCon().prepareStatement(
-				"select _id,title,note,created,modified from notes order by created,title");
-		ResultSet rs = ps.executeQuery();
-		int rows = np.registerNotes(rs);
-		for (int i = 0; i < rows; i++) {
-			Object[] values = np.records[i];
-			println(values);
-		}
-		rs.close();
-	}
-
 	public void testNotesBrowsing() throws Exception {
 		setupKeinFehler(false);
 		DataView dv = new DataView();
@@ -282,7 +271,7 @@ public class MiscTests extends XMLTestCase
 		assertEquals(35, np.lastRow());
 		assertTrue(dv.reload());
 		println(dv.contentResolver.contentProvider.sql);
-		ConsumerModel model = (ConsumerModel) dv.getTable().getModel();
+		DataModel model = (DataModel) dv.getTable().getModel();
 		ValList columns = model.columns;
 		BidiMultiMap projection = new BidiMultiMap(columns);
 		projection.putValue("created", "unixepoch");
@@ -303,11 +292,11 @@ public class MiscTests extends XMLTestCase
 			assertEquals(values[index[3]], result[3]);
 			assertEquals(expected, np.getText());
 			if (np.isActionEnabled(ActionType.NEXT.index()))
-				np.browse(BrowseDirection.NEXT);
+				np.browse(ActionType.NEXT);
 		}
 		assertEquals(np.lastRow(), np.pkRow);
 	}
-	
+
 	public void testNoteFinding() throws Exception {
 		setupKeinFehler(false);
 		DataView dv = new DataView();
@@ -319,7 +308,7 @@ public class MiscTests extends XMLTestCase
 		keys = np.finder.keyLine();
 		println((Object)keys);
 		assertEquals(asList(keys).toString(), 36, keys.length);
-		ConsumerModel model = (ConsumerModel) dv.getTable().getModel();
+		DataModel model = (DataModel) dv.getTable().getModel();
 		int[] index = {
 				model.columns.indexOf("created"), 
 				model.columns.indexOf("title")
@@ -412,6 +401,19 @@ public class MiscTests extends XMLTestCase
 					is(greaterThan(-1)));
 			fail("expected to fail on UNIQUE constraint in the notes table");
 		} catch (Exception e) {}
+	}	
+	
+	public void testNotesListing() throws Exception {
+		setupKeinFehler(false);
+		PreparedStatement ps = np.getCon().prepareStatement(
+				"select _id,title,note,created,modified from notes order by created,title");
+		ResultSet rs = ps.executeQuery();
+		int rows = np.registerNotes(rs);
+		for (int i = 0; i < rows; i++) {
+			Object[] values = np.records[i];
+			println(values);
+		}
+		rs.close();
 	}
 
 	public void testNoteFinding1() throws Exception {
@@ -433,18 +435,18 @@ public class MiscTests extends XMLTestCase
 		long after = timeInMillis(dates[2][0], dates[2][1], dates[2][2]);
 		long before = timeInMillis(dates[0][0], dates[0][1], dates[0][2]);
 		np.setPattern("Berich");
-		assertEquals(finder.keyValue(epoch, categories[1]), finder.find(BrowseDirection.HERE, epoch));
+		assertEquals(finder.keyValue(epoch, categories[1]), finder.find(ActionType.PICK, epoch));
 		np.setPattern("Bericht_");
-		assertEquals(finder.keyValue(after, categories[2]), finder.find(BrowseDirection.HERE, epoch));
+		assertEquals(finder.keyValue(after, categories[2]), finder.find(ActionType.PICK, epoch));
 		np.setPattern("xxx");
-		assertEquals(finder.keyValue(after, categories[2]), finder.find(BrowseDirection.HERE, after));
+		assertEquals(finder.keyValue(after, categories[2]), finder.find(ActionType.PICK, after));
 		np.setPattern("Bericht");
-		assertEquals(finder.keyValue(epoch, categories[1]), finder.find(BrowseDirection.HERE, epoch));
-		assertEquals(finder.keyValue(after, categories[2]), finder.find(BrowseDirection.NEXT, epoch));
-		assertEquals(finder.keyValue(before, categories[0]), finder.find(BrowseDirection.PREVIOUS, epoch));
+		assertEquals(finder.keyValue(epoch, categories[1]), finder.find(ActionType.PICK, epoch));
+		assertEquals(finder.keyValue(after, categories[2]), finder.find(ActionType.NEXT, epoch));
+		assertEquals(finder.keyValue(before, categories[0]), finder.find(ActionType.PREVIOUS, epoch));
 		
 		interval = DatePicker.weekInterval("52/12", 1);
-		epoch = finder.epochFromKey(finder.find(BrowseDirection.NEXT, interval));
+		epoch = finder.epochFromKey(finder.find(ActionType.NEXT, interval));
 		assertEquals("1/13", np.formatDate(2, epoch));
 		
 		np.setPattern("Bemerkung");
@@ -491,7 +493,7 @@ public class MiscTests extends XMLTestCase
 			assertTrue(finder.nextBunchAvailable(interval));
 			
 			interval = DatePicker.weekInterval("1/13", 1);
-			epoch = finder.epochFromKey(finder.find(BrowseDirection.PREVIOUS, interval));
+			epoch = finder.epochFromKey(finder.find(ActionType.PREVIOUS, interval));
 			assertEquals("52/12", np.formatDate(2, epoch));
 			
 			np.setPattern(p.toString());
@@ -636,7 +638,7 @@ public class MiscTests extends XMLTestCase
 					"<textelement query=\"1\" param1=\"w?oop?\" day=\"0\" />" + 
 				"</control>");
 		
-		String styleSheet = getSetting("content.xsl", "scripts/content.xsl");
+		String styleSheet = getSetting("content.xsl", BerichtsheftApp.berichtsheftPath("Skripte/content.xsl"));
 		xmlTransform(inputfile, styleSheet, tempfile.getPath(), 
 				"debug", "yes", 
 				"dbfile", dbfile
@@ -725,8 +727,8 @@ public class MiscTests extends XMLTestCase
 			// Cast the TransformerFactory to SAXTransformerFactory.
 			SAXTransformerFactory saxTFactory = ((SAXTransformerFactory) tFactory);	  
 			// Create a TransformerHandler for each stylesheet.
-			TransformerHandler tHandler1 = saxTFactory.newTransformerHandler(new StreamSource(getSetting("control.xsl", "scripts/control.xsl")));
-			TransformerHandler tHandler2 = saxTFactory.newTransformerHandler(new StreamSource(getSetting("content.xsl", "scripts/content.xsl")));
+			TransformerHandler tHandler1 = saxTFactory.newTransformerHandler(new StreamSource(getSetting("control.xsl", BerichtsheftApp.berichtsheftPath("Skripte/control.xsl"))));
+			TransformerHandler tHandler2 = saxTFactory.newTransformerHandler(new StreamSource(getSetting("content.xsl", BerichtsheftApp.berichtsheftPath("Skripte/content.xsl"))));
 			tHandler2.getTransformer().setParameter("inputfile", "content.xml");
 //			TransformerHandler tHandler3 = saxTFactory.newTransformerHandler(new StreamSource("/tmp/foo3.xsl"));
 			
@@ -748,15 +750,15 @@ public class MiscTests extends XMLTestCase
 			tHandler2.setResult(new SAXResult(serializer.asContentHandler()));
 			
 			// Parse the XML input document. The input ContentHandler and output ContentHandler
-			// work in separate threads to optimize performance.   
+			// work in separate threads to optimize performance.
 			reader.parse(paramsFilename);
 	    }
 	    
 		check_documents(0, contentfile.getPath(), tempfile.getPath());
 	}
 	
-	File contentfile = new File(getSetting("content.xml", "scripts/content.xml"));
-	String paramsFilename = getSetting("params.xml", "scripts/params.xml");
+	File contentfile;
+	String paramsFilename;
 
 	Pattern textElementPattern = Pattern.compile("(.*form\\[1\\]/(text|textarea)\\[(\\d+)\\])");
 	
@@ -855,7 +857,7 @@ public class MiscTests extends XMLTestCase
 	public void testContent() throws Exception {
 		File tempDir = tempDir(true, BerichtsheftApp.NAME, "odt");
 		try {
-			File source = new File("Vorlagen/Tagesberichte.odt");
+			File source = new File(BerichtsheftApp.berichtsheftPath("Vorlagen/Tagesberichte.odt"));
 			assertTrue(source.exists());
 			File archive = new File(tempDir, "Vorlage.zip");
 			copyFile(source, archive);
@@ -869,8 +871,8 @@ public class MiscTests extends XMLTestCase
 			String _content = pathCombine(tempDir.getPath(), "_content.xml");
 			assertTrue(new File(content).renameTo(new File(_content)));
 			
-			String styleSheet1 = getSetting("control.xsl", "scripts/control.xsl");
-			String styleSheet2 = getSetting("content.xsl", "scripts/content.xsl");
+			String styleSheet1 = getSetting("control.xsl", BerichtsheftApp.berichtsheftPath("Skripte/control.xsl"));
+			String styleSheet2 = getSetting("content.xsl", BerichtsheftApp.berichtsheftPath("Skripte/content.xsl"));
 			Class.forName("org.sqlite.JDBC");
 			for (int way = 1; way < 3; way++) {
 				switch (way) {
@@ -904,7 +906,7 @@ public class MiscTests extends XMLTestCase
 			
 			assertTrue(new File(_content).delete());
 			
-			File destination = new File("Dokumente/Tagesberichte.odt");
+			File destination = new File(BerichtsheftApp.berichtsheftPath("Dokumente/Tagesberichte.odt"));
 			if (destination.exists())
 				destination.delete();
 			int zipped = zipArchive(destination, 
@@ -945,16 +947,16 @@ public class MiscTests extends XMLTestCase
 				parts[0]));
 		
 		assertTrue(BerichtsheftApp.export(
-				"Vorlagen/Tagesberichte.odt", 
-				"Dokumente/Tagesberichte_", 
+				BerichtsheftApp.berichtsheftPath("Vorlagen/Tagesberichte.odt"), 
+				BerichtsheftApp.berichtsheftPath("Dokumente/Tagesberichte_"), 
 				dbName, 
 				parts[1], 
 				parts[0]));
 	}
 
 	public void testXPath() throws Exception {
-		Document doc = xmlDocument(new File(getSetting("content.xml", "scripts/content.xml")));
-//		Document doc = xmlDocument(new File("Vorlagen/Tagesberichte_2012/styles.xml"));
+		Document doc = xmlDocument(new File(getSetting("content.xml", BerichtsheftApp.berichtsheftPath("Skripte/content.xml"))));
+//		Document doc = xmlDocument(new File(BerichtsheftApp.berichtsheftPath("Vorlagen/Tagesberichte_2012/styles.xml")));
 		
 /*		String path = 
 				"/document-content" +
@@ -995,8 +997,8 @@ public class MiscTests extends XMLTestCase
 		new File("/tmp/debug.out").delete();
 		File dir = tempDir(true, BerichtsheftApp.NAME);
 
-		String content = getSetting("content.xml", "scripts/content.xml");
-		String mask = getSetting("mask.xsl", "scripts/mask.xsl");
+		String content = getSetting("content.xml", BerichtsheftApp.berichtsheftPath("Skripte/content.xml"));
+		String mask = getSetting("mask.xsl", BerichtsheftApp.berichtsheftPath("Skripte/mask.xsl"));
 		String output = "/tmp/content.xml";
 		
 		clearMappings();
@@ -1037,8 +1039,8 @@ public class MiscTests extends XMLTestCase
 	}
 	
 	public void testFormEdit() throws Exception {
-		String inputPath = "Vorlagen/Tagesberichte.odt";
-		String outputPath = "Dokumente/Tagesberichte.odt";
+		String inputPath = BerichtsheftApp.berichtsheftPath("Vorlagen/Tagesberichte.odt");
+		String outputPath = BerichtsheftApp.berichtsheftPath("Dokumente/Tagesberichte.odt");
 		assertTrue(FormEditor.perform(inputPath, outputPath, true, 
 			new Job<FormEditor>() {
 				public void perform(FormEditor formEditor, Object[] params) throws Exception {

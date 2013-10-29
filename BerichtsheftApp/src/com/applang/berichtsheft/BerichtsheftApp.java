@@ -41,12 +41,17 @@ public class BerichtsheftApp
 		System.setProperty("settings.dir", ".jedit/plugins/berichtsheft");
 		Settings.load();
 	}
+	
+	public static String berichtsheftPath(String...parts) {
+		parts = arrayappend(strings(System.getProperty("settings.dir", "")), parts);
+		return pathCombine(parts);
+	}
 	/**
 	 * @param args
 	 */
 	public static void main(String...args) {
 		loadSettings();
-    	File defaultFile = new File(pathCombine(System.getProperty("settings.dir"), "jedit.properties"));
+    	File defaultFile = new File(berichtsheftPath("jedit.properties"));
     	try {
 	    	File file = new File(".jedit/properties");
 	    	if (!fileExists(file)) {
@@ -94,11 +99,11 @@ public class BerichtsheftApp
 		default:
 			AlertDialog.modal = type / 100 < 1;
 			Intent intent = new Intent(Dialogs.PROMPT_ACTION)
-			.putExtra(BaseDirective.TYPE, type % 100)
-			.putExtra(BaseDirective.TITLE, title)
-			.putExtra(BaseDirective.PROMPT, message)
-			.putExtra(BaseDirective.VALUES, values)
-			.putExtra(BaseDirective.DEFAULTS, defaults);
+					.putExtra(BaseDirective.TYPE, type % 100)
+					.putExtra(BaseDirective.TITLE, title)
+					.putExtra(BaseDirective.PROMPT, message)
+					.putExtra(BaseDirective.VALUES, values)
+					.putExtra(BaseDirective.DEFAULTS, defaults);
 			getActivity().startActivity(intent);
 			String result = intent.getExtras().getString(BaseDirective.RESULT);
 			return "null".equals(String.valueOf(result)) ? null : result;
@@ -214,8 +219,8 @@ public class BerichtsheftApp
 			throw new Exception(String.format("TransformerFactory feature '%s' missing", SAXResult.FEATURE));
 	    
 		SAXTransformerFactory saxTFactory = ((SAXTransformerFactory) tFactory);	  
-		TransformerHandler tHandler1 = saxTFactory.newTransformerHandler(new StreamSource(getSetting("control.xsl", "scripts/control.xsl")));
-		TransformerHandler tHandler2 = saxTFactory.newTransformerHandler(new StreamSource(getSetting("content.xsl", "scripts/content.xsl")));
+		TransformerHandler tHandler1 = saxTFactory.newTransformerHandler(new StreamSource(getSetting("control.xsl", BerichtsheftApp.berichtsheftPath("Skripte/control.xsl"))));
+		TransformerHandler tHandler2 = saxTFactory.newTransformerHandler(new StreamSource(getSetting("content.xsl", BerichtsheftApp.berichtsheftPath("Skripte/content.xsl"))));
 		tHandler2.getTransformer().setParameter("inputfile", inputFilename);
 		tHandler1.setResult(new SAXResult(tHandler2));
 		

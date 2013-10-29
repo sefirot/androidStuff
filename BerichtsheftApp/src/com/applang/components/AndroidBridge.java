@@ -295,12 +295,17 @@ public class AndroidBridge
 		return strip(false, join("|", parts), "|");
 	}
 
-	public static String adbScript(String device, String part) {
+	public static String getAdbCommand() {
 		String cmd = BerichtsheftPlugin.getProperty("ADB_COMMAND"); 
 		if (!cmd.startsWith("/")) {
 			String sdk = BerichtsheftPlugin.getProperty("ANDROID_SDK");
 			cmd = pathCombine(System.getProperty("user.home"), sdk, cmd);
 		}
+		return cmd;
+	}
+
+	public static String adbScript(String device, String part) {
+		String cmd = getAdbCommand(); 
 		if (notNullOrEmpty(device))
 			cmd += " -s " + device;
 		cmd += " " + part;
@@ -325,6 +330,8 @@ public class AndroidBridge
 			oper = "shell rm";
 		else if (oper.endsWith("-r")) 
 			oper = "shell rm -r";
+		else
+			oper = "version";
 		Object device = "";
 		ValList parts = splitAndroidFileName(androidFileName);
 		if (parts.size() > 1) {
@@ -340,7 +347,7 @@ public class AndroidBridge
 			parts.add(1, fileName);
 		else if ("pull".equals(oper))
 			parts.add(2, fileName);
-		String cmd = join(" ", parts.toArray()) + " 2>&1";
+		String cmd = join(" ", parts.toArray());
 		return adbScript(device.toString(), cmd);
 	}
 

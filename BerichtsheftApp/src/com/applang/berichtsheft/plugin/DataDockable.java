@@ -43,6 +43,7 @@ import com.applang.Util.ValList;
 import com.applang.Util.ValMap;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.components.DataView;
+import com.applang.components.DataView.Provider;
 import com.applang.components.DatePicker;
 import com.applang.components.ProfileManager;
 import com.applang.components.ScriptManager;
@@ -127,7 +128,6 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 		if (floating)
 			this.setPreferredSize(new Dimension(500, 250));
 
-		dataView = new DataView();
 		add(BorderLayout.CENTER, dataView);
 
 		this.toolPanel = new DataToolPanel();
@@ -136,7 +136,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 		propertiesChanged();
 	}
 	
-	public DataView dataView;
+	public DataView dataView = BerichtsheftPlugin.dataView;
 
 	public void focusOnDefaultComponent() {
 		dataView.requestFocus();
@@ -184,16 +184,16 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 	// Actions implementation
 	
 	public void chooseUri() {
-    	if (dataView.askUri(view, dataView.getInfo())) {
+    	if (dataView.configureData(view)) {
     		BerichtsheftPlugin.setProperty("TRANSPORT_URI", dataView.getUriString());
     		updateUri();
 		}
     	else
-    		BerichtsheftPlugin.consoleMessage("berichtsheft.choose-uri.message");
+    		BerichtsheftPlugin.consoleMessage("dataview.choose-uri.message");
 	};
 	
 	public void updateUri() {
-		dataView.updateUri(dataView.getUriString());
+		dataView.reset(dataView.getUriString());
 		NoteDockable dockable = (NoteDockable) BerichtsheftPlugin.getDockable(view, "notedock", false);
 		if (dockable != null)
 			dockable.propertiesChanged();
@@ -340,7 +340,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 			int[] rows = table.getSelectedRows();
 			int[] cols = table.getSelectedColumns();
 			int length = isCellSelection ? cols.length : table.getColumnCount();
-			DataView.ConsumerModel model = (DataView.ConsumerModel) table.getModel();
+			DataView.DataModel model = (DataView.DataModel) table.getModel();
 			ValList records = vlist();
 			for (int i = 0; i < rows.length; i++) {
 				String rec = recordDecoration[0] + fieldSeparators[0];
@@ -384,9 +384,9 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 			recordDecoration = (String[]) BerichtsheftOptionPane.decorations.get(key);
 		}
 
-		public DataView.ConsumerModel scan(Readable input, BidiMultiMap projection) {
-			DataView.ConsumerModel model = 
-					new DataView.ConsumerModel().setProjection(projection);
+		public DataView.DataModel scan(Readable input, BidiMultiMap projection) {
+			DataView.DataModel model = 
+					new DataView.DataModel().setProjection(projection);
 			Scanner scanner = new Scanner(input);
 			String delimiter = null;
 			try {
@@ -469,7 +469,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 				table.selectAll();
 				break;
 			default:
-				table.getSelectionModel().setSelectionInterval(sel, 1);
+				table.getSelectionModel().setSelectionInterval(sel, sel);
 				break;
 			}
 			message = new JScrollPane(table);
@@ -496,11 +496,11 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 			BerichtsheftPlugin.consoleMessage("datadock.transport-uri.message");
 			return false;
 		}
-		final DataView.ProviderModel provider = new DataView.ProviderModel(uriString);
+		final Provider provider = new Provider(uriString);
 		boolean retval = true;
 		try {
 			if (dockable != null)
-				dockable.dataView.wire(true);
+				dockable.dataView.wireObserver(true);
 			final TransportBuilder builder = new TransportBuilder();
 			if ("push".equals(oper)) {
 				ValMap profile = ProfileManager.getProfileAsMap();
@@ -513,7 +513,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 							provider.tableName);
 					if (projection == null)
 						return false;
-					DataView.ConsumerModel model = provider.query(uriString, projection, profile.get("filter"));
+					DataView.DataModel model = provider.query(uriString, projection, profile.get("filter"));
 					if (model == null)
 						return false;
 					final JTable table = model.makeTable();
@@ -552,7 +552,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 							provider.tableName);
 					if (projection == null)
 						return false;
-					DataView.ConsumerModel model = builder.scan(new StringReader(text), projection);
+					DataView.DataModel model = builder.scan(new StringReader(text), projection);
 					if (null == model) {
 						BerichtsheftPlugin.consoleMessage("datadock.transport-fail.message", oper, "no data");
 						return false;
@@ -604,7 +604,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 						Object[] names = provider.info.getList("name").toArray();
 						ValMap profile = ProfileManager.getProfileAsMap("_weather", "download");
 						ValList conversions = vlist();
-						ValMap map = ScriptManager.getDefaultConversions(profile.get("schema"), provider.tableName);
+						ValMap map = ScriptManager.getDefaultConversions(profile.get("brand"), provider.tableName);
 						for (int i = 0; i < names.length; i++) {
 							Object conv = map.get(names[i]);
 							conversions.add(conv);
@@ -652,8 +652,8 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 				int[] weekDate = DatePicker.parseWeekDate(dateString);
 				String docName = "Tagesberichte_" + String.format("%d_%d", weekDate[1], weekDate[0]) + ".odt";
 				if (BerichtsheftApp.export(
-					"Vorlagen/Tagesberichte.odt", 
-					"Dokumente/" + docName, 
+					BerichtsheftApp.berichtsheftPath("Vorlagen/Tagesberichte.odt"), 
+					BerichtsheftApp.berichtsheftPath("Dokumente/" + docName), 
 					dbPath, 
 					weekDate[1], weekDate[0]))
 				{

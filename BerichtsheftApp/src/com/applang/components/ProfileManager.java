@@ -131,15 +131,15 @@ public class ProfileManager extends ManagerBase<Element>
 		comboBoxes[1] = new JComboBox();
 		container.add( Box.createVerticalStrut(10) );
 		box = new Box(BoxLayout.LINE_AXIS);
-		container.add(labelFor(box, "Schema", CENTER_ALIGNMENT));
+		container.add(labelFor(box, "Brand", CENTER_ALIGNMENT));
 		box.add(comboBoxes[1]);
 		box.add(BerichtsheftPlugin.makeCustomButton("berichtsheft.edit-function", new ActionListener() {
 			public void actionPerformed(ActionEvent evt) {
 				Object profile = comboBoxes[0].getSelectedItem();
-				Object schema = comboBoxes[1].getSelectedItem();
-				if (notNullOrEmpty(schema))
+				Object brand = comboBoxes[1].getSelectedItem();
+				if (notNullOrEmpty(brand))
 					new ScriptManager(view, container, 
-							ScriptManager.schemaSelector(schema), 
+							ScriptManager.brandSelector(brand), 
 							profile);
 			}
 		}, false));
@@ -147,12 +147,12 @@ public class ProfileManager extends ManagerBase<Element>
 			int checkedItem = -1;
 			
 			public void actionPerformed(ActionEvent evt) {
-				Object schema = comboBoxes[1].getSelectedItem();
-				if (notNullOrEmpty(schema)) {
-					final Object[] projection = fullProjection(schema);
+				Object brand = comboBoxes[1].getSelectedItem();
+				if (notNullOrEmpty(brand)) {
+					final Object[] projection = fullProjection(brand);
 					if (isAvailable(0, projection)) {
 						AlertDialog dialog = new AlertDialog.Builder(BerichtsheftApp.getActivity())
-								.setTitle(String.format("Columns for '%s'", schema))
+								.setTitle(String.format("Columns for '%s'", brand))
 								.setSingleChoiceItems(
 										arraycast(projection, new CharSequence[0]), 
 										-1, 
@@ -294,11 +294,11 @@ public class ProfileManager extends ManagerBase<Element>
 	}
 	
 	private void setTemplate(boolean refresh, String template, Object profile) {
-		Object schema = comboBoxes[1].getSelectedItem();
+		Object brand = comboBoxes[1].getSelectedItem();
 		Object filter = comboEdit(2).getText();
 		Object recordSeparator = comboBoxes[3].getSelectedItem();
 		Object recordDecoration = comboBoxes[4].getSelectedItem();
-		ProfileManager.setTemplate(template, profile, oper, schema, filter, recordSeparator, recordDecoration);
+		ProfileManager.setTemplate(template, profile, oper, brand, filter, recordSeparator, recordDecoration);
 		updateModels(refresh, true, true, profile);
 	}
 	
@@ -341,14 +341,7 @@ public class ProfileManager extends ManagerBase<Element>
 								model.addElement(name);
 						}
 						comboBoxes[0].setModel(model);
-						model = (DefaultComboBoxModel) comboBoxes[1].getModel();
-						model.removeAllElements();
-						model.addElement("");
-						ValList schemas = contentAuthorities(providerPackages);
-						for (Object schema : schemas) {
-							model.addElement(schema);
-						}
-						comboBoxes[1].setModel(model);
+						DataView.fillBrandCombo(comboBoxes[1]);
 					}
 				});
 			}
@@ -367,10 +360,10 @@ public class ProfileManager extends ManagerBase<Element>
 		blockChange(new Job<Void>() {
 			public void perform(Void t, Object[] params) throws Exception {
 				comboBoxes[0].getModel().setSelectedItem(profile);
-				String template = "", schema = "", filter = "", recordSeparator = "newline", recordDecoration = "none";
+				String template = "", brand = "", filter = "", recordSeparator = "newline", recordDecoration = "none";
 				Element element = select(profile);
 				if (element != null) {
-					schema = element.getAttribute("schema");
+					brand = element.getAttribute("brand");
 					Element el = selectElement(element, "./FILTER");
 					if (el != null)
 						filter = el.getTextContent();
@@ -382,7 +375,7 @@ public class ProfileManager extends ManagerBase<Element>
 					recordSeparator = element.getAttribute("recordSeparator");
 					recordDecoration = element.getAttribute("recordDecoration");
 				}
-				comboBoxes[1].getModel().setSelectedItem(schema);
+				comboBoxes[1].getModel().setSelectedItem(brand);
 				comboEdit(2).setText(filter);
 				comboBoxes[3].getModel().setSelectedItem(recordSeparator);
 				comboBoxes[4].getModel().setSelectedItem(recordDecoration);
@@ -402,7 +395,7 @@ public class ProfileManager extends ManagerBase<Element>
 	
 	public static void saveTransports(Object...params) {
 		if (transports != null) {
-			String settingsDir = param(System.getProperty("settings.dir", ""), 0, params);
+			String settingsDir = param(BerichtsheftApp.berichtsheftPath(), 0, params);
 			File file = new File(settingsDir, "transports.xml");
 			xmlNodeToFile(transports, true, file);
 		}
@@ -410,7 +403,7 @@ public class ProfileManager extends ManagerBase<Element>
 
 	public static boolean transportsLoaded(Object...params) {
 		if (transports == null) {
-			String settingsDir = param(System.getProperty("settings.dir", ""), 0, params);
+			String settingsDir = param(BerichtsheftApp.berichtsheftPath(), 0, params);
 			File file = new File(settingsDir, "transports.xml");
 			if (fileExists(file))
 				transports = xmlDocument(file);
@@ -439,7 +432,7 @@ public class ProfileManager extends ManagerBase<Element>
 			}
 			String value = param(null, 2, params);
 			if (value != null)
-				element.setAttribute("schema", value);
+				element.setAttribute("brand", value);
 			value = param(null, 3, params);
 			if (notNullOrEmpty(value))
 				setCDATASection(element, "FILTER", value);
@@ -476,8 +469,8 @@ public class ProfileManager extends ManagerBase<Element>
 			if (element != null) {
 				map.put("name", profile);
 				map.put("oper", oper);
-				if (element.hasAttribute("schema"))
-					map.put("schema", element.getAttribute("schema"));
+				if (element.hasAttribute("brand"))
+					map.put("brand", element.getAttribute("brand"));
 				Element el = selectElement(element, "./FILTER");
 				if (el != null)
 					map.put("filter", el.getTextContent());

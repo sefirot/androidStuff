@@ -15,6 +15,7 @@ import java.io.Writer;
 
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
@@ -62,6 +63,20 @@ public class AlertDialog extends Dialog implements DialogInterface
     public View findViewById(int id) {
     	return viewGroup.findViewById(id);
 	}
+    
+    @SuppressWarnings("unchecked")
+	public <T extends JComponent> T findComponentById(int id, Object...names) {
+    	View vw = findViewById(id);
+    	if (vw == null)
+    		return null;
+    	JComponent comp = vw.getComponent();
+    	ValList list = new ValList(asList(names));
+    	while (comp != null && list.size() > 0) {
+    		comp = findComponent(comp, stringValueOf(list.get(0)));
+    		list.remove(0);
+    	}
+    	return (T)comp;
+    }
 	
 	@SuppressWarnings("resource")
 	public Writer feed(int id) throws IOException {
@@ -231,7 +246,12 @@ public class AlertDialog extends Dialog implements DialogInterface
             return this;
         }
         
+        public Builder setView(JComponent component) {
+        	return setView(new View(component));
+        }
+        
         public Builder setView(View view) {
+        	view.setId(1);
         	if (view instanceof ViewGroup)
 	    		iterateViews((ViewGroup)view, 
 					new Function<Object[]>() {
@@ -297,6 +317,7 @@ public class AlertDialog extends Dialog implements DialogInterface
 			listSelectionModel.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 			listSelectionModel.addListSelectionListener(new ListSelectionListener() {
 				public void valueChanged(ListSelectionEvent e) {
+					if (e.getValueIsAdjusting()) return;
 					int which = table.getSelectedRow();
 					onClickListener.onClick(dialog, which);
 				}
@@ -342,6 +363,7 @@ public class AlertDialog extends Dialog implements DialogInterface
 			ListSelectionModel listSelectionModel = table.getSelectionModel();
 			listSelectionModel.addListSelectionListener(new ListSelectionListener() {
 				public void valueChanged(ListSelectionEvent e) {
+					if (e.getValueIsAdjusting()) return;
 					int which = table.getSelectedRow();
 					onClickListener.onClick(dialog, which, checkedItems[which]);
 				}
@@ -385,9 +407,7 @@ public class AlertDialog extends Dialog implements DialogInterface
             })
             .create();
 		if (isAvailable(0, defaults)) {
-			View vw = dlg.findViewById(1);
-			Container container = vw.getComponent();
-			JList list = findComponent(container, "list");
+			JList list = dlg.findComponentById(1, "list");
 			list.setSelectedValue(defaults[0], true);
 		}
 		dlg.open();

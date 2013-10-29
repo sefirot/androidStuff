@@ -13,6 +13,8 @@ import java.awt.GridLayout;
 import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStream;
@@ -31,6 +33,8 @@ import java.util.Random;
 import java.util.Scanner;
  
 import javax.swing.AbstractAction;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -69,12 +73,15 @@ import android.content.DialogInterface.OnClickListener;
 import android.net.Uri;
 import android.provider.BaseColumns;
 import android.util.Log;
+import android.view.View;
 import android.widget.TextView;
 
 import com.applang.BaseDirective;
 import com.applang.Dialogs;
 import com.applang.SwingUtil.Behavior;
 import com.applang.UserContext.EvaluationTask;
+import com.applang.Util.BidiMultiMap;
+import com.applang.Util.ValList;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.R;
 import com.applang.berichtsheft.plugin.DataDockable;
@@ -83,20 +90,21 @@ import com.applang.berichtsheft.plugin.DataDockable.TransportBuilder;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 import com.applang.components.AndroidBridge;
 import com.applang.components.DataView;
+import com.applang.components.DataView.DataModel;
 import com.applang.components.DatePicker;
 import com.applang.components.ProfileManager;
 import com.applang.components.ScriptManager;
 import com.applang.components.TextEditor;
 import com.applang.components.WeatherManager;
-import com.applang.components.DataView.ProviderModel;
+import com.applang.components.DataView.Provider;
 import com.applang.provider.NotePadProvider;
 import com.applang.provider.WeatherInfoProvider;
 import com.applang.provider.WeatherInfo.Weathers;
 
 import junit.framework.TestCase;
 
-public class HelperTests extends TestCase {
-
+public class HelperTests extends TestCase
+{
     private static final String TAG = HelperTests.class.getSimpleName();
     
 	protected static void setUpBeforeClass() throws Exception {
@@ -261,7 +269,8 @@ public class HelperTests extends TestCase {
 		String script = "import com.applang.berichtsheft.plugin.*;\n" +
 				"jEdit.openFile(view.getEditPane(), \"/home/lotharla/work/Workshop/Examples/poem.txt\");\n" + 
 				"view.getEditPane().getTextArea().selectAll();\n" + 
-				"BerichtsheftPlugin.invokeAction(view, String actionName);";
+				"actionName = \"berichtsheft.spellcheck-selection\";\n" +
+				"BerichtsheftPlugin.invokeAction(view, actionName);";
 		scriptTest("testSpellchecking", script);
    }
 
@@ -287,7 +296,7 @@ public class HelperTests extends TestCase {
 		}
 	}
 
-	private Object shellRunTest(String script, String target) throws Exception {
+	private ValList shellRunTest(String script, String target) throws Exception {
 		println(script.replaceAll(NEWLINE_REGEX, TAB));
 		String response = runShellScript(target, script);
 		String sh = "/tmp/" + target + ".sh";
@@ -305,32 +314,34 @@ public class HelperTests extends TestCase {
 		return split(response, NEWLINE_REGEX);
 	}
 	
-	String adb = BerichtsheftPlugin.getProperty("ADB_COMMAND");
-	String[] scripts = {
-			adb + " shell ls -l \"/sdcard/%s\" | \n" +
-			"awk '{\n" +
-				"gsub(/[ \\t\\r\\n\\f\\v\\b]+$/, \"\", $NF)\n" +
-				"m = match($0, /d/)\n" +
-				"if (m == 1) print $NF\"/\" ; else print $NF\n" +
-			"}' 2>&1",
-	};
-
 	private void existTest(boolean expected, String item, String subdir) throws Exception {
-		ValList list = (ValList) shellRunTest(String.format(scripts[0], subdir), "ls");
+		String adb = AndroidBridge.getAdbCommand();
+		String script = 
+				adb + " shell ls -l \"/sdcard/%s\" | \n" +
+					"awk '{\n" +
+						"gsub(/[ \\t\\r\\n\\f\\v\\b]+$/, \"\", $NF)\n" +
+						"m = match($0, /d/)\n" +
+						"if (m == 1) print $NF\"/\" ; else print $NF\n" +
+					"}'";
+		ValList list = (ValList) shellRunTest(String.format(script, subdir), "test");
 		assertEquals(expected, list.contains(item));
 	}
 	
 	public void testShellRun() throws Exception {
 		underTest = true;
+		if (shellRunTest(AndroidBridge.buildAdbCommand("", "", ""), "test").get(0).toString().startsWith("error"))
+			return;
+		
 		shellRunTest(AndroidBridge.buildAdbCommand("-r", "/sdcard/xxx", ""), "rm");
 		existTest(false, "xxx/", "");
 		
 		shellRunTest(AndroidBridge.buildAdbCommand("mkdir", "/sdcard/xxx/", ""), "mkdir");
 		existTest(true, "xxx/", "");
 		
+		String adb = AndroidBridge.getAdbCommand();
 		runShellScript("dev", adb + " devices");
 		shellRunTest(AndroidBridge.buildAdbCommand("push", "/sdcard/xxx/", "/tmp/dev"), "push");
-		existTest(true, "dev", "xxx/");
+//		existTest(true, "dev", "xxx/");
 		
 		shellRunTest(AndroidBridge.buildAdbCommand("rm", "/sdcard/xxx/dev", ""), "rm");
 		existTest(false, "dev", "xxx/");
@@ -350,10 +361,11 @@ public class HelperTests extends TestCase {
 	}
 
 	public void testTransports() throws Exception {
+		assertTrue(ProfileManager.transportsLoaded());
 		printNodeInfo(ProfileManager.transports.getDocumentElement());
     	String dbPath = createNotePad();
-    	String schema = "com.applang.provider.NotePad";
-    	Object[] projection = fullProjection(schema);
+    	String brand = "com.applang.provider.NotePad";
+    	Object[] projection = fullProjection(brand);
 		String profile = dbTable(fileUri(dbPath, null), "notes").toString();
 		BerichtsheftPlugin.setProperty("TRANSPORT_PROFILE", profile);
 		String oper = "pull";
@@ -362,7 +374,7 @@ public class HelperTests extends TestCase {
 		underTest = true;
 		String template = builder.makeTemplate(projection);
     	printMatchResults(template, TransportBuilder.TEMPLATE_PATTERN);
-		assertTrue(ProfileManager.setTemplate(template, profile, oper, schema));
+		assertTrue(ProfileManager.setTemplate(template, profile, oper, brand));
 		ValMap map = ProfileManager.getProfileAsMap();
 		println("profileMap", map);
 		String template2 = template.replace("created", "created|unixepoch");
@@ -373,7 +385,7 @@ public class HelperTests extends TestCase {
 		println("profileMap", map);
 		println();
 		printNodeInfo(ProfileManager.transports.getDocumentElement());
-//		ProfileManager.saveTransports(System.getProperty("settings.dir");
+//		ProfileManager.saveTransports();
 	}
 
 	private void printNodeInfo(Object item) {
@@ -488,6 +500,72 @@ public class HelperTests extends TestCase {
     	println(unixepoch("push", ""));
     	println(unixepoch("push", null));
     }
+	
+	@SuppressWarnings("unchecked")
+	public void testProjection() throws Exception {
+    	String dbPath = createNotePad();
+		DataView dv = new DataView();
+		String tableName = "notes";
+		Uri uri = fileUri(dbPath, tableName);
+		dv.setUri(uri);
+		dv.setBrand("com.applang.provider.NotePad");
+		BidiMultiMap projection;
+//		projection = dv.getProjection();
+		DataView.ProjectionModel model= dv.askProjection();
+		projection = model.getExpandedProjection();
+		println(projection);
+//		dv.setProjection(projection);
+		boolean changed = model.changed;
+		if (changed) assertThat((Boolean) projection.getValue("_id", 3), is(equalTo(false)));
+		Provider provider = new Provider(dv);
+		DataModel consumer = provider.query(dv.getUriString(), projection);
+		projection = consumer.getProjection();
+		if (changed) {
+			assertThat(projection.getKeys().size(), is(equalTo(4)));
+			assertThat(consumer.data.get(0).size(), is(equalTo(5)));
+			assertThat(consumer.columns.size(), is(equalTo(5)));
+			assertThat(consumer.conversions.length, is(equalTo(5)));
+			assertThat(consumer.getColumnCount(), is(equalTo(4)));
+			assertThat((Class<String>) consumer.getColumnClass(0),
+					is(equalTo(String.class)));
+			assertThat((Class<String>) consumer.getColumnClass(1),
+					is(equalTo(String.class)));
+			assertThat((Class<Long>) consumer.getColumnClass(2),
+					is(equalTo(Long.class)));
+			assertThat((Class<Long>) consumer.getColumnClass(3),
+					is(equalTo(Long.class)));
+			for (int i = 0; i < consumer.getRowCount(); i++) {
+				assertThat((String) consumer.getValueAt(i, 0), equalTo("Velocity"
+						+ (i + 1)));
+			}
+		}
+		JTable table = consumer.makeTable();
+		new AlertDialog.Builder(BerichtsheftApp.getActivity())
+				.setTitle("testProjection")
+				.setView(new View(scrollableViewport(table, new Dimension(400,100))))
+				.setNeutralButton(R.string.button_close, new OnClickListener() {
+					public void onClick(DialogInterface dialog, int which) {
+						dialog.dismiss();
+					}})
+				.create()
+				.open();
+	}
+	
+	public void testDataConfig() throws Exception {
+    	String dbPath = createNotePad();
+		DataView dv = new DataView();
+		Uri uri = fileUri(dbPath, null);
+		dv.setUri(uri);
+		dv.setBrand("com.applang.provider.NotePad");
+		while (dv.configureData(null, true)) {
+			println(dv.getUri());
+			println(dv.getBrand());
+			BidiMultiMap projection = dv.projectionModel.getExpandedProjection();
+			DataModel model = new DataModel().setProjection(projection);
+			println(model.columns);
+			println(model.getProjection());
+		}
+	}
 
     public void testWeatherInfo() throws Exception {
     	String dbPath = createWeatherInfo();
@@ -502,7 +580,7 @@ public class HelperTests extends TestCase {
     public void testUpdateOrInsert() throws Exception {
     	String dbPath = createWeatherInfo();
     	String uriString = fileUri(dbPath, "weathers").toString();
-		ProviderModel provider = new ProviderModel(uriString);
+		Provider provider = new Provider(uriString);
 		println(com.applang.Util2.toString(provider.info));
 		BidiMultiMap projection = new BidiMultiMap(new ValList(provider.info.getList("name")));
 		Object pk = provider.info.get("PRIMARY_KEY");
@@ -513,7 +591,7 @@ public class HelperTests extends TestCase {
    	
     	dbPath = createNotePad();
     	uriString = fileUri(dbPath, "notes").toString();
-		provider = new ProviderModel(uriString);
+		provider = new Provider(uriString);
 		projection = builder.elaborateProjection(objects("title", "note", "created"), null, "");
        	values = contentValues(provider.info, projection.getKeys(), "title", "note", now());
 		profile = ProfileManager.getProfileAsMap("tagesberichte", "pull");
@@ -564,13 +642,13 @@ public class HelperTests extends TestCase {
 		println(projection);
 		InputStream is = HelperTests.class.getResourceAsStream("tagesberichte.txt");
 		BufferedReader reader = new BufferedReader(new InputStreamReader(is, Charset.forName("UTF-8")));
-		DataView.ConsumerModel model = builder.scan(reader, projection);
+		DataView.DataModel model = builder.scan(reader, projection);
 		is.close();
 		assertNotNull(model);
 		println(model);
 		JTable table = model.makeTable();
     	DataDockable.showItems(null,
-				"berichtsheft.transport-from-buffer.label",
+				"datadock.transport-from-buffer.label",
 				String.format("%d record(s)", model.getRowCount()),
 				table, 
 				JOptionPane.DEFAULT_OPTION,
@@ -583,21 +661,21 @@ public class HelperTests extends TestCase {
 	public void testRoundTrip() throws Exception {
     	String dbPath = createNotePad();
     	String uriString = fileUri(dbPath, "notes").toString();
-    	ProviderModel provider = new ProviderModel(uriString);
+    	Provider provider = new Provider(uriString);
 		String name = "tagesberichte";
 		ValMap profile = ProfileManager.getProfileAsMap(name, "push");
-		Object schema = profile.get("schema");
-		String[] full = toStrings(fullProjection(schema));
+		Object brand = profile.get("brand");
+		String[] full = toStrings(fullProjection(brand));
 		println(com.applang.Util2.toString(provider.query(uriString, full)));
 		Object[][] mods = provider.query(uriString, strings("_id","modified","title"));
 //		println(com.applang.Util2.toString(mods));
 		String template = stringValueOf(profile.get("template"));
     	ValList list = builder.evaluateTemplate(template, profile);
 		BidiMultiMap projection = builder.elaborateProjection(list.toArray(), provider.info.getList("name"), provider.tableName);
-		DataView.ConsumerModel model = provider.query(uriString, projection);
+		DataView.DataModel model = provider.query(uriString, projection);
     	JTable table = model.makeTable();
 		DataDockable.showItems(null, 
-				"berichtsheft.transport-to-buffer.label", 
+				"datadock.transport-to-buffer.label", 
 				String.format("%d record(s)", model.getRowCount()),
 				table, 
 				JOptionPane.DEFAULT_OPTION, 
@@ -612,7 +690,7 @@ public class HelperTests extends TestCase {
 		model = builder.scan(new StringReader(text), projection);
 		table = model.makeTable();
     	DataDockable.showItems(null,
-				"berichtsheft.transport-from-buffer.label",
+				"datadock.transport-from-buffer.label",
 				String.format("%d record(s)", model.getRowCount()),
 				table, 
 				JOptionPane.DEFAULT_OPTION,
@@ -634,9 +712,9 @@ public class HelperTests extends TestCase {
 	public void testQuery() throws Exception {
     	String dbPath = createNotePad();
     	String uriString = fileUri(dbPath, "notes").toString();
-    	String schema = "com.applang.provider.NotePad";
-    	ProviderModel provider = new ProviderModel(uriString);
-    	Object[] fields = fullProjection(schema);
+    	String brand = "com.applang.provider.NotePad";
+    	Provider provider = new Provider(uriString);
+    	Object[] fields = fullProjection(brand);
     	ValList list = builder.evaluateTemplate(builder.makeTemplate(fields), null);
     	assertTrue(Arrays.equals(fields, list.toArray()));
     	ValMap map = ProfileManager.getProfileAsMap("tagesberichte", "push");
@@ -645,7 +723,7 @@ public class HelperTests extends TestCase {
     	list = builder.evaluateTemplate(map.get("template").toString(), map);
 		BidiMultiMap projection = builder.elaborateProjection(list.toArray(), provider.info.getList("name"), provider.tableName);
 		assertNotNull(projection);
-		DataView.ConsumerModel model = provider.query(uriString, projection);
+		DataView.DataModel model = provider.query(uriString, projection);
 		println(model);
     	final JTable table = model.makeTable();
 		int result = DataDockable.showItems(null, "berichtsheft.transport-to-buffer.label", 
@@ -894,6 +972,37 @@ public class HelperTests extends TestCase {
 		println("dialogResult %d", option);
 	}
 	
+	public void testLongTextEntry() {
+		final JTextField entry = new JTextField(20);
+		showDialog(null, null, "testLongTextEntry", 
+				new UIFunction() {
+					public Component[] apply(Component comp, Object[] parms) {
+						Box box = new Box(BoxLayout.X_AXIS);
+						box.add(entry);
+						box.add(BerichtsheftPlugin.makeCustomButton("datadock.choose-uri", new ActionListener() {
+							public void actionPerformed(ActionEvent evt) {
+							}
+						}, false));
+						setMaximumDimension(box, 100);
+						return components(box);
+					}
+				}, 
+				new UIFunction() {
+					public Component[] apply(Component comp, Object[] parms) {
+						entry.addComponentListener(new ComponentAdapter() {
+							@Override
+							public void componentResized(ComponentEvent e) {
+								String text = trimPath(uri.toString(), entry.getWidth(), entry.getFont(), entry);
+								setLongText(entry, text);
+							}
+						});
+						return null;
+					}
+				}, 
+				null, 
+				Behavior.MODAL | Behavior.EXIT_ON_CLOSE);
+	}
+	
 	public void testSingleChoice() {
 		println(JOptionPane.showInputDialog(null, "states", "united", 
 				JOptionPane.PLAIN_MESSAGE,
@@ -947,7 +1056,7 @@ public class HelperTests extends TestCase {
 	public void testDialogFeed() throws Exception {
 		final int id = 1;
 		final AlertDialog dialog = new AlertDialog.Builder(BerichtsheftApp.getActivity(), false)
-				.setView(new TextView(null, true).setId(id))
+				.setView(new TextView(null, true))
 				.setNeutralButton(R.string.button_close, new OnClickListener() {
 					public void onClick(DialogInterface dialog, int which) {
 						dialog.dismiss();
@@ -1032,13 +1141,13 @@ public class HelperTests extends TestCase {
 	}
 	
 	public void testJOrtho() {
-		BerichtsheftPlugin.setupSpellChecker(".jedit/plugins/berichtsheft");
+		BerichtsheftPlugin.setupSpellChecker(BerichtsheftApp.berichtsheftPath());
+		final TextEditor textEditor = new TextEditor();
     	Deadline.wait = 2000;
     	showFrame(null, 
 				"Spellchecker",
 				new UIFunction() {
 					public Component[] apply(final Component comp, Object[] parms) {
-						TextEditor textEditor = new TextEditor();
 				        try {
 				        	textEditor.createBufferTextArea("text", "/modes/text.xml");
 							textEditor.setText(
@@ -1050,7 +1159,12 @@ public class HelperTests extends TestCase {
 						return components(component);
 					}
 				}, 
-				null, 
+				new UIFunction() {
+					public Component[] apply(Component comp, Object[] parms) {
+						textEditor.spellcheck();
+						return null;
+					}
+				}, 
 				null, 
 				Behavior.TIMEOUT);
 	}

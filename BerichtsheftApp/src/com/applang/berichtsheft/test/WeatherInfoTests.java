@@ -41,7 +41,7 @@ import junit.framework.TestCase;
 public class WeatherInfoTests extends TestCase
 {
 	public void setUp() throws Exception {
-    	System.setProperty("settings.dir", ".jedit/plugins/berichtsheft");
+		BerichtsheftApp.loadSettings();
 		messRedirection = new Function<String>() {
 			public String apply(Object... params) {
 				String message = param("", 0, params);
@@ -57,7 +57,6 @@ public class WeatherInfoTests extends TestCase
 	}
 	
 	public void testPeriod() throws Exception {
-		BerichtsheftApp.loadSettings();
 		assertTrue(DatePicker.Period.pick());
 		println(getSetting("weather.period", ""));
 		println(DatePicker.Period.getDescription());
@@ -84,7 +83,7 @@ public class WeatherInfoTests extends TestCase
         {
         	ProcessBuilder builder = new ProcessBuilder(
             		home + "/gawk-4.0.0/gawk", 
-            		"-f", "scripts/descriptions.awk");
+            		"-f", BerichtsheftApp.berichtsheftPath("Skripte/descriptions.awk"));
 //            		"-f", home + "/work/awk/letter-count.awk", "-v", "letters=O V C *");
             builder.directory(new File(System.getProperty("user.dir")));
             builder.redirectErrorStream(true);

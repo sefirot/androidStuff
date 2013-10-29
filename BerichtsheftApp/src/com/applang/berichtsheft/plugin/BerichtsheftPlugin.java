@@ -39,6 +39,7 @@ import org.gjt.sp.util.IOUtilities;
 import org.gjt.sp.util.Log;
 
 import com.applang.components.AndroidBridge;
+import com.applang.components.DataView;
 import com.applang.components.TextEditor;
 import com.inet.jortho.FileUserDictionary;
 import com.inet.jortho.SpellChecker;
@@ -182,6 +183,16 @@ public class BerichtsheftPlugin extends EditPlugin {
 		textEditor.uninstallSpellChecker();
 	}
 	
+	public static <T> T suppressErrorLog(Function<T> func, Object...params) {
+		try {
+			Log.init(true,Log.ERROR + 1);
+			return func.apply(params);
+		} 
+		finally {
+			Log.init(true,Log.WARNING);
+		}
+	}
+	
 	public static void logDebug() {
 		Log.init(true,Log.DEBUG);
 		org.gjt.sp.jedit.Debug.TOKEN_MARKER_DEBUG = true;
@@ -189,7 +200,7 @@ public class BerichtsheftPlugin extends EditPlugin {
 	}
 	
 	public static String getSettingsDirectory() {
-		if (props != null) {
+		if (!insideJEdit()) {
 			return pathCombine(relativePath(), ".jedit");
 		}
 		return jEdit.getSettingsDirectory();
@@ -210,10 +221,10 @@ public class BerichtsheftPlugin extends EditPlugin {
 	
 	public static String getProperty(String name, String defaultValue) {
 		String prop;
-		if (props != null) 
-			prop = props.getProperty(name, defaultValue);
-		else
+		if (insideJEdit()) 
 			prop = jEdit.getProperty(name, defaultValue);
+		else
+			prop = props.getProperty(name, defaultValue);
 		if (nullOrEmpty(prop) && (name.endsWith("_COMMAND") || name.endsWith("_SDK"))) 
 			prop = getSetting(name, "");
 		return prop;
@@ -230,17 +241,20 @@ public class BerichtsheftPlugin extends EditPlugin {
 			} catch (Exception e) {}
 		}
 	}
+	public static boolean insideJEdit() {
+		return props == null;
+	}
 	
 	// NOTE used in scripts
 	public static void setProperty(String name, String value) {
-		if (props != null)
-			props.setProperty(name, value);
-		else
+		if (insideJEdit())
 			jEdit.setProperty(name, value);
+		else
+			props.setProperty(name, value);
 	}
     
 	public static void saveSettings() {
-		if (props == null)
+		if (insideJEdit())
 			jEdit.saveSettings();
 	}
     
@@ -324,10 +338,9 @@ public class BerichtsheftPlugin extends EditPlugin {
 		try {
 			if (path.startsWith("/"))
 				return iconFrom(path);
-			else if (underTest) {
-				path = pathCombine(System.getProperty("user.home"), 
-						"work/jEdit/jEdit/org/gjt/sp/jedit/icons/themes/tango", path);
-				return new ImageIcon(path);
+			else if (!insideJEdit()) {
+				path = pathCombine("/org/gjt/sp/jedit/icons/themes/tango", path);
+				return iconFrom(path);
 			}
 			else
 				return (ImageIcon) GUIUtilities.loadIcon(path);
@@ -373,4 +386,6 @@ public class BerichtsheftPlugin extends EditPlugin {
 		b.setToolTipText(toolTip);
 		return b;
 	}
+	
+	public static DataView dataView = new DataView();
 }

@@ -11,11 +11,11 @@
 		
   	<property file="berichtsheft.properties"/>
 	<property name="debug.out" location="/tmp/debug.out" />
-	<property name="params.xml" location="scripts/params.xml" />
-	<property name="content.xml" location="scripts/content.xml" />
-	<property name="content.xsl" location="scripts/content.xsl" />
-	<property name="control.xsl" location="scripts/control.xsl" />
-	<property name="mask.xsl" location="scripts/mask.xsl" />
+	<property name="params.xml" location=".jedit/plugins/berichtsheft/Skripte/params.xml" />
+	<property name="content.xml" location=".jedit/plugins/berichtsheft/Skripte/content.xml" />
+	<property name="content.xsl" location=".jedit/plugins/berichtsheft/Skripte/content.xsl" />
+	<property name="control.xsl" location=".jedit/plugins/berichtsheft/Skripte/control.xsl" />
+	<property name="mask.xsl" location=".jedit/plugins/berichtsheft/Skripte/mask.xsl" />
 	<property name="mask.html" location="/tmp/temp.html" />
 	<property name="src-dir" location="src" />
 	<property name="bin-dir" location="bin" />
@@ -54,7 +54,7 @@
 	
 	<target name="integrate.weathers">
 		<exec executable = "bash">
-			<arg value="scripts/process.sh" />
+			<arg value=".jedit/plugins/berichtsheft/Skripte/process.sh" />
 			<arg value="integrate_weathers" />
 		</exec>
 	</target>
@@ -83,7 +83,7 @@
 		    	
 	<target name="test.debug" depends="init">
 		<delete file="/tmp/temp.xml" />
-		<xslt in="/tmp/control.xml" out="/tmp/temp.xml" style="scripts/debug.xsl" classpathref="project.class.path">
+		<xslt in="/tmp/control.xml" out="/tmp/temp.xml" style=".jedit/plugins/berichtsheft/Skripte/debug.xsl" classpathref="project.class.path">
 		</xslt>
 	</target>
 	    	
@@ -96,7 +96,7 @@
 	</target>
 		    	
 	<target name="odt.update">
-		<zip destfile="Dokumente/Tagesberichte.odt"
+		<zip destfile=".jedit/plugins/berichtsheft/Dokumente/Tagesberichte.odt"
 			basedir="/tmp"
 			includes="content.xml"
 			update="true"

@@ -54,16 +54,16 @@ import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 @SuppressWarnings("rawtypes")
 public class ScriptManager extends ManagerBase<Element>
 {
-	public static String schemaSelector(Object name) {
-		return String.format("/SCHEMA[@name='%s']", name);
+	public static String brandSelector(Object name) {
+		return String.format("/BRAND[@name='%s']", name);
 	}
 	
-	public static boolean setDefaultConversions(Object schema, String tableName, ValMap conv) {
+	public static boolean setDefaultConversions(Object brand, String tableName, ValMap conv) {
 		if (ProfileManager.transportsLoaded()) {
-			String xpath = ProfileManager.transportsSelector + schemaSelector(schema);
+			String xpath = ProfileManager.transportsSelector + brandSelector(brand);
 			Element element = selectElement(ProfileManager.transports, xpath);
-			if (element != null) {
-				ValMap map = getDefaultConversions(schema, null);
+			if (element != null && notNullOrEmpty(tableName)) {
+				ValMap map = getDefaultConversions(brand, null);
 				map.put(tableName, conv);
 				JSONStringer jsonWriter = new JSONStringer();
 				try {
@@ -91,11 +91,11 @@ public class ScriptManager extends ManagerBase<Element>
 		return false;
 	}
 	
-	public static ValMap getDefaultConversions(Object schema, String tableName) {
+	public static ValMap getDefaultConversions(Object brand, String tableName) {
 		if (ProfileManager.transportsLoaded()) {
-			String xpath = ProfileManager.transportsSelector + schemaSelector(schema);
+			String xpath = ProfileManager.transportsSelector + brandSelector(brand);
 			Element element = selectElement(ProfileManager.transports, xpath);
-			if (element != null) {
+			if (element != null && notNullOrEmpty(tableName)) {
 				NodeList nodes = evaluateXPath(element, "./CONVERSIONS/text()");
 				if (nodes != null && nodes.getLength() > 0) {
 					Node node = nodes.item(0);
@@ -320,6 +320,7 @@ public class ScriptManager extends ManagerBase<Element>
 		textArea = new TextEditor().createBufferTextArea("beanshell", "/modes/java.xml");
 		
 		JToolBar bar = new JToolBar();
+		container.add(bar, BorderLayout.NORTH);
 		final RolloverButton btn = new RolloverButton();
 		btn.setName(DEFAULT_BUTTON_KEY);
 		btn.setText(DEFAULT_BUTTON_KEY);
@@ -360,7 +361,6 @@ public class ScriptManager extends ManagerBase<Element>
 		});
 		installAddRemove(bar, "function");
 		installUpdate(bar);
-		container.add(bar, BorderLayout.NORTH);
 		final RolloverButton test = new RolloverButton();
 		test.setText("Test");
 		test.addActionListener(new ActionListener() {

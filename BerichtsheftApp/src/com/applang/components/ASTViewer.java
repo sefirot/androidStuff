@@ -34,6 +34,7 @@ import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
+import javax.swing.SwingUtilities;
 import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
@@ -51,18 +52,22 @@ public class ASTViewer extends ActionPanel
     private static final String TAG = ASTViewer.class.getSimpleName();
     
 	public static void main(String[] args) {
-		TextEditor textEditor = new TextEditor();
-		
-        String title = "Velocity AST tool";
-		final ASTViewer viewer = new ASTViewer(textEditor, 
-				null,
-				title);
-		
-		ActionPanel.createAndShowGUI(title, 
-				new Dimension(700, 200), 
-				viewer, 
-				textEditor.getUIComponent(), 
-				0);
+		SwingUtilities.invokeLater(new Runnable() {
+			@Override
+			public void run() {
+				TextEditor textEditor = new TextEditor();
+				textEditor.createBufferTextArea("velocity", "/modes/velocity_pure.xml");
+				String title = "Velocity AST tool";
+				final ASTViewer viewer = new ASTViewer(textEditor, 
+						null,
+						title);
+				ActionPanel.createAndShowGUI(title, 
+						new Dimension(700, 200), 
+						viewer, 
+						textEditor.getUIComponent(), 
+						0);
+			}
+		});
 	}
 
 	enum ActionType implements CustomActionType

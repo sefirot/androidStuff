@@ -12,6 +12,10 @@ raw=/home/lotharla/work/Niklas/Bemerkungen*
 
 case "$1" in
 
+test)
+	echo "This was just a test"
+	;;
+
 confluence_notes)
 	db="$3"
 	cat > "$sql" << EOF
