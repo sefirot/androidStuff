@@ -232,6 +232,7 @@ public class Util1
 	}
 
 	public static Uri dbTable(Uri uri, String tableName) {
+		if (uri == null) return null;
 		Uri.Builder builder = uri.buildUpon();
 		if (hasAuthority(uri))
 			builder = builder.path(tableName);
@@ -241,7 +242,9 @@ public class Util1
 	}
 
 	public static String dbTableName(Uri uri) {
-		if (hasAuthority(uri)) {
+		if (uri == null) 
+			return null;
+		else if (hasAuthority(uri)) {
 	        boolean hasPath = notNullOrEmpty(uri.getPath());
 	        return hasPath ? uri.getPathSegments().get(0) : "";
 		}
@@ -276,6 +279,9 @@ public class Util1
 	}
 	
 	public static ValMap table_info(Context context, Uri uri, String tableName) {
+		final ValMap info = vmap();
+		if (uri == null || nullOrEmpty(tableName))
+			return info;
     	uri = dbTable(uri, null);
 		ContentResolver contentResolver = context.getContentResolver();
 		Cursor cursor = contentResolver.query(
@@ -284,7 +290,6 @@ public class Util1
 				String.format("pragma table_info(%s)", tableName),  
 				null, 
 				null);
-		final ValMap info = vmap();
 		info.getList("cid");
 		info.getList("name");
 		info.getList("type");
@@ -324,19 +329,18 @@ public class Util1
 	}
     
     public static ValList tables(Context context, Uri uri) {
-    	uri = dbTable(uri, null);
-		Cursor cursor = context.getContentResolver().query(
-				uri, 
-				null, 
-				"select name from sqlite_master where type = 'table'", 
-				null, 
-				null);
-		final ValList tables = vlist();
-		traverse(cursor, new Job<Cursor>() {
-			public void perform(Cursor c, Object[] params) throws Exception {
-				tables.add(c.getString(0));
-			}
-		});
+    	final ValList tables = vlist();
+    	if (uri != null) {
+			uri = dbTable(uri, null);
+			Cursor cursor = context.getContentResolver().query(uri, null,
+					"select name from sqlite_master where type = 'table'",
+					null, null);
+			traverse(cursor, new Job<Cursor>() {
+				public void perform(Cursor c, Object[] params) throws Exception {
+					tables.add(c.getString(0));
+				}
+			});
+		}
 		return tables;
 	}
 

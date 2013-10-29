@@ -507,7 +507,7 @@ public class Util
 	}
 	
 	public interface Job<T> {
-		public void perform(T t, Object[] params) throws Exception;
+		public void perform(T t, Object[] parms) throws Exception;
 	}
 		 
 	public static Object[] iterateFiles(boolean includeDirs, File dir, Job<Object> job, Object... params) throws Exception {
@@ -564,7 +564,7 @@ public class Util
 	}
     /**
      * @param parts
-     * @return	a <code>File</code> object constructed out of parts of the file path
+     * @return	a <code>File</code> object constructed from parts of the file path
      */
     public static File fileOf(String...parts) {
     	File file = null;
@@ -865,8 +865,13 @@ public class Util
 		}
 	}
 	
-	public static ValList vlist() {	return new ValList();	}
-	public static ValMap vmap() {	return new ValMap();	}
+	public static ValList vlist() {
+		return new ValList();
+	}
+	
+	public static ValMap vmap() {
+		return new ValMap();
+	}
 	
 	public static class ValMap extends HashMap<String,Object>
 	{
@@ -956,13 +961,14 @@ public class Util
 		
 		@Override
 		public String toString() {
+			String separator = "|";
 			StringBuilder sb = new StringBuilder();
 			int size = keys.size();
 			for (int i = 0; i < size; i++) {
 				sb.append(String.format("%s", keys.get(i)));
 				for (int j = 1; j < lists.length; j++) {
 					Object val = lists[j].get(i);
-					sb.append(String.format("=%s", String.valueOf(val)));
+					sb.append(String.format(separator + "%s", String.valueOf(val)));
 				}
 				if (i < size - 1)
 					sb.append(",\n");
@@ -1022,7 +1028,9 @@ public class Util
 		}
 		
 		public ValList getValues(int...listIndex) {
-			return isAvailable(0, listIndex) ? lists[listIndex[0]] : values;
+			return isAvailable(0, listIndex) ? 
+					(isAvailable(listIndex[0], lists) ? lists[listIndex[0]] : null) : 
+					values;
 		}
 
 		public Object getKey(Object value) {
@@ -1043,6 +1051,8 @@ public class Util
 		
 		public Object getValue(Object key, int...listIndex) {
 			ValList list = getValues(listIndex);
+			if (list == null)
+				return null;
 			int index = keys.indexOf(key);
 			if (index > -1)
 				return list.get(index);
@@ -1054,12 +1064,16 @@ public class Util
 			if (keys.indexOf(key) < 0)
 				add(key);
 			ValList list = getValues(listIndex);
-			int index = keys.indexOf(key);
-			list.set(index, value);
+			if (list != null) {
+				int index = keys.indexOf(key);
+				list.set(index, value);
+			}
 		}
 		
 		public boolean isUnique(Object value, int listIndex) {
-			ValList list = lists[listIndex];
+			ValList list = getValues(listIndex);
+			if (list == null) 
+				return false;
 			int index = list.indexOf(value);
 			return index > -1 && index == list.lastIndexOf(value);
 		}
