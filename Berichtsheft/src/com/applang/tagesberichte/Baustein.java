@@ -94,7 +94,7 @@ public class Baustein extends ListActivity
 					Visitor.visitLostAndFound(checkout, null, 
 							Visitor.beginLC(node));
 					if (Visitor.isEssential.apply(node)) {
-						int indents = paramInteger(0, 1, params);
+						int indents = param_Integer(0, 1, params);
 						adapter.addItem(node, indents);
 					}
 					return null;
@@ -226,7 +226,7 @@ public class Baustein extends ListActivity
 
 		public void addItem(Node node, Object...params) {
 			ValMap map = nodeMap(node, 
-					paramInteger(0, 0, params), 
+					param_Integer(0, 0, params), 
 					param(null, 1, params));
 			list.add(map);
 		}
@@ -305,8 +305,8 @@ public class Baustein extends ListActivity
 		@Override
 		protected Boolean doInBackground(Object... params) {
 			boolean problem = false;
-			String text = paramString(null, 0, params);
-			String title = paramString("", 1, params);
+			String text = param_String(null, 0, params);
+			String title = param_String("", 1, params);
 			if (notNullOrEmpty(text)) {
 				document = parse(new StringReader(text), title);
 				problem = problem();

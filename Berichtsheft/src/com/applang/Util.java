@@ -94,11 +94,11 @@ public class Util
 
 	public static int[] getCalendarDate(long time) {
 		calendar.setTimeInMillis(time);
-		return new int[] {
+		return ints(
 			calendar.get(Calendar.DAY_OF_MONTH), 
 			calendar.get(Calendar.MONTH), 
 			calendar.get(Calendar.YEAR)
-		};
+		);
 	}
 	/**
 	 * calculates the milliseconds after 1970-01-01 for a given start of a day (midnight)
@@ -384,7 +384,7 @@ public class Util
 		return array != null && index > -1 && index < array.length;
 	}
 	
-	public static Object[] reduceDepth(Object[] params) {
+	public static Object[] reduceDepth(Object...params) {
 		while (params != null && params.length == 1 && params[0] instanceof Object[])
 			params = (Object[])params[0];
 		return params;
@@ -436,7 +436,7 @@ public class Util
 			return defaultParam;
 	}
 	
-	public static Boolean paramBoolean(Boolean defaultParam, int index, Object... params) {
+	public static Boolean param_Boolean(Boolean defaultParam, int index, Object... params) {
 		Object param = param(defaultParam, index, params);
 		if (param instanceof Boolean)
 			return (Boolean)param;
@@ -444,7 +444,7 @@ public class Util
 			return defaultParam;
 	}
 	
-	public static Integer paramInteger(Integer defaultParam, int index, Object... params) {
+	public static Integer param_Integer(Integer defaultParam, int index, Object... params) {
 		Object param = param(defaultParam, index, params);
 		if (param instanceof Integer)
 			return (Integer)param;
@@ -452,7 +452,7 @@ public class Util
 			return defaultParam;
 	}
 	
-	public static Double paramDouble(Double defaultParam, int index, Object... params) {
+	public static Double param_Double(Double defaultParam, int index, Object... params) {
 		Object param = param(defaultParam, index, params);
 		if (param instanceof Double)
 			return (Double)param;
@@ -460,7 +460,7 @@ public class Util
 			return defaultParam;
 	}
 	
-	public static String paramString(String defaultParam, int index, Object... params) {
+	public static String param_String(String defaultParam, int index, Object... params) {
 		Object param = param(defaultParam, index, params);
 		if (param instanceof String)
 			return (String)param;
@@ -468,7 +468,7 @@ public class Util
 			return defaultParam;
 	}
 	
-	public static File paramFile(File defaultParam, int index, Object... params) {
+	public static File param_File(File defaultParam, int index, Object... params) {
 		if (params != null && index > -1 && params.length > index) {
 			if (params[index] instanceof File)
 				return (File)params[index];
@@ -479,6 +479,10 @@ public class Util
 	}
 	
 	public static Object[] objects(Object...params) {
+		return params;
+	}
+	
+	public static int[] ints(int...params) {
 		return params;
 	}
 	
@@ -510,7 +514,7 @@ public class Util
 		public void perform(T t, Object[] parms) throws Exception;
 	}
 		 
-	public static Object[] iterateFiles(boolean includeDirs, File dir, Job<Object> job, Object... params) throws Exception {
+	public static Object[] iterateFiles(boolean includeDirs, File dir, Job<Object> job, Object...params) throws Exception {
 		params = reduceDepth(params);
 		if (dir != null && dir.isDirectory()) {
 			for (File file : dir.listFiles())
@@ -518,13 +522,13 @@ public class Util
 					iterateFiles(includeDirs, file, job, params);
 				else if (file.isFile()) {
 					job.perform(file, params);
-					Integer n = paramInteger(null, 0, params);
+					Integer n = param_Integer(null, 0, params);
 					if (n != null)
 						params[0] = n + 1;
 				}
 			if (includeDirs) {
 				job.perform(dir, params);
-				Integer n = paramInteger(null, 1, params);
+				Integer n = param_Integer(null, 1, params);
 				if (n != null)
 					params[1] = n + 1;
 			}
@@ -650,7 +654,7 @@ public class Util
 	}
     
     public static void copyContents(InputStream in, OutputStream out, Object...params) throws IOException {
-		byte scoop[] = new byte[paramInteger(4096, 0, params).intValue()];
+		byte scoop[] = new byte[param_Integer(4096, 0, params).intValue()];
 		
 		int n;
 		while ((n = in.read(scoop, 0, scoop.length)) > -1) 
@@ -687,7 +691,7 @@ public class Util
 				public void perform(File f, Object[] params) throws Exception {
 					if (f.delete()) {
 						int no = (Integer) params[0];
-						Integer n = paramInteger(null, no, (Object[]) params[1]);
+						Integer n = param_Integer(null, no, (Object[]) params[1]);
 						if (n != null)
 							params[no] = n + 1;
 					}
@@ -731,7 +735,7 @@ public class Util
 	}
 	
 	public static String readAll(Reader rd, Object...params) throws IOException {
-		Integer chars = paramInteger(null, 0, params);
+		Integer chars = param_Integer(null, 0, params);
 		StringBuilder sb = new StringBuilder();
 		int cp, i = 0;
 		while ((cp = rd.read()) != -1) {
@@ -814,8 +818,8 @@ public class Util
 	 * @return	if path is null returns the absolute 'user.dir' system property otherwise the path relative to 'user.dir'.
 	 */
 	public static String relativePath(Object...params) {
-		String base = paramString(System.getProperty("user.dir"), 1, params);
-		String path = paramString(null, 0, params);
+		String base = param_String(System.getProperty("user.dir"), 1, params);
+		String path = param_String(null, 0, params);
 		if (path == null)
 			return base;
 		else
@@ -1262,7 +1266,7 @@ public class Util
 
 	public static String indentedLine(String line, Object level, Object...params) {
 	    StringBuffer sb = new StringBuffer();
-	    int indents = paramInteger(0, 0, params);
+	    int indents = param_Integer(0, 0, params);
 	    if (level instanceof String) {
 	    	String indentString = String.valueOf(level);
 		    if (notNullOrEmpty(indentString))

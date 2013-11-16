@@ -16,12 +16,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONStringer;
 
-import com.applang.Util.Function;
-import com.applang.Util.Job;
-import com.applang.Util.Predicate;
-import com.applang.Util.ValList;
-import com.applang.Util.ValMap;
-
 import android.app.Activity;
 import android.content.ContentResolver;
 import android.content.ContentValues;
@@ -123,7 +117,7 @@ public class Util1
 			new Function<Object[]>() {
 				public Object[] apply(Object... params) {
 					View v = param(null, 0, params);
-					int indent = paramInteger(null, 1, params);
+					int indent = param_Integer(null, 1, params);
 					Object[] parms = param(null, 2, params);
 					String s = (String) parms[0];
 					String line = /*v.getId() + " : " + */v.getClass().getSimpleName();
@@ -135,7 +129,7 @@ public class Util1
 			1, 
 			objects(s)
 		);
-		return paramString("", 0, params);
+		return param_String("", 0, params);
 	}
 
 	public static View getContentView(Activity activity) {
@@ -180,9 +174,9 @@ public class Util1
 	    return list;
 	}
 
-	public static Object[] fullProjection(Object authority) {
+	public static Object[] fullProjection(Object flavor) {
 		try {
-			Class<?> cls = Class.forName(authority + "Provider");
+			Class<?> cls = Class.forName(flavor + "Provider");
 			Field field = cls.getDeclaredField("FULL_PROJECTION");
 			if (field == null)
 				return null;
@@ -194,10 +188,10 @@ public class Util1
 		}
 	}
 
-	public static Uri contentUri(String authority, String path) {
+	public static Uri contentUri(String flavor, String path) {
     	Uri uri = new Uri.Builder()
     		.scheme(ContentResolver.SCHEME_CONTENT)
-    		.authority(authority)
+    		.authority(flavor)
     		.path(path)
     		.build();
     	return toStringUri(uri);
@@ -222,15 +216,6 @@ public class Util1
 		return uri != null && notNullOrEmpty(uri.getAuthority());
 	}
 
-	public static String dbInfo(Uri uri) {
-		if (uri == null)
-			return "";
-		else if (hasAuthority(uri))
-			return uri.getAuthority();
-		else
-			return uri.getPath();
-	}
-
 	public static Uri dbTable(Uri uri, String tableName) {
 		if (uri == null) return null;
 		Uri.Builder builder = uri.buildUpon();
@@ -239,6 +224,10 @@ public class Util1
 		else
 			builder = builder.fragment(tableName);
 		return builder.build();
+	}
+	
+	public static Uri dbTable(String uriString, String tableName) {
+		return dbTable(Uri.parse(uriString), tableName);
 	}
 
 	public static String dbTableName(Uri uri) {
@@ -254,6 +243,20 @@ public class Util1
 	
 	public static String dbTableName(String uriString) {
 		return dbTableName(Uri.parse(uriString));
+	}
+	
+	public static int version(Context context, Uri uri) {
+    	uri = dbTable(uri, null);
+		Cursor cursor = context.getContentResolver().query(
+				uri, 
+				null, 
+				"pragma user_version", 
+				null, 
+				null);
+        if (cursor != null && cursor.moveToFirst())
+        	return cursor.getInt(0);
+        else
+        	return 0;
 	}
 	
 	public static ValMap schema(Context context, Uri uri) {
@@ -362,9 +365,9 @@ public class Util1
 		return (Integer)params[0];
     }
 
-	public static String databaseName(Object authority) {
+	public static String databaseName(Object flavor) {
 		try {
-			Class<?> c = Class.forName(authority + "Provider");
+			Class<?> c = Class.forName(flavor + "Provider");
 			return c.getDeclaredField("DATABASE_NAME").get(null).toString();
 		} catch (Exception e) {
 			return null;
@@ -386,11 +389,11 @@ public class Util1
 	
 	public static File getDatabaseFile(Context context, Uri uri) {
 		if (hasAuthority(uri)) {
-			String name = databaseName(uri.getAuthority());
 			try {
+				String name = databaseName(uri.getAuthority());
 				return context.getDatabasePath(name).getCanonicalFile();
 			} catch (IOException e) {
-				Log.e(TAG, "getDatabasePath", e);
+				Log.e(TAG, "getDatabaseFile", e);
 				return null;
 			}
 		}

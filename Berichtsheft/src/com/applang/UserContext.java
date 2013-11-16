@@ -279,7 +279,7 @@ public class UserContext extends CustomContext implements Serializable
 					} catch (Exception e) {
 						publishProgress(
 							new Intent(Dialogs.PROMPT_ACTION)
-								.putExtra(BaseDirective.PROMPT, paramString("", 1, params))
+								.putExtra(BaseDirective.PROMPT, param_String("", 1, params))
 								.putExtra(BaseDirective.VALUES, strings(e.getMessage()))
 								.putExtra(BaseDirective.TYPE, Dialogs.DIALOG_TEXT_INFO));
 					}

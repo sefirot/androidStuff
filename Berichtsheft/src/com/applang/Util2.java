@@ -395,7 +395,7 @@ public class Util2
 		protected Activity activity;
 		
 		protected Result doInBackground(Object...params) {
-			Integer millis = paramInteger(null, 0, params);
+			Integer millis = param_Integer(null, 0, params);
 			if (millis != null)
 				delay(millis);
 			return null;

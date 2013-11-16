@@ -44,8 +44,8 @@ public class WeatherInfoProvider extends ContentProvider {
     private static final String TAG = "WeatherInfoProvider";
 
     public static final String DATABASE_NAME = "weather_info.db";
-    private static final int DATABASE_VERSION = 1;
-    private static final String WEATHERS_TABLE_NAME = "weathers";
+    public static final int DATABASE_VERSION = 1;
+    public static final String WEATHERS_TABLE_NAME = "weathers";
 
     private static HashMap<String, String> sWeathersProjectionMap;
 

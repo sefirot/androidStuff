@@ -447,13 +447,13 @@ public class VelocityUtil
 				Node node = (Node) nodeOrToken;
 				Token first = node.getFirstToken();
 				Token last = node.getLastToken();
-				return new int[] { first.beginLine, first.beginColumn,
-						last.endLine, last.endColumn };
+				return ints( first.beginLine, first.beginColumn,
+						last.endLine, last.endColumn );
 			}
 			else if (nodeOrToken instanceof Token) {
 				Token t = (Token) nodeOrToken;
-				return new int[] { t.beginLine, t.beginColumn, 
-						t.endLine, t.endColumn };
+				return ints( t.beginLine, t.beginColumn, 
+						t.endLine, t.endColumn );
 			}
 			else
 				return null;
@@ -520,10 +520,10 @@ public class VelocityUtil
 		}
 		
 		public static int[] getBeginToken(Token t) {
-			return new int[]{t.beginLine, t.beginColumn};
+			return ints(t.beginLine, t.beginColumn);
 		}
 		public static int[] getEndToken(Token t) {
-			return new int[]{t.endLine, t.endColumn};
+			return ints(t.endLine, t.endColumn);
 		}
 		public static void setBeginToken(Token t, int...lc) {
 			t.beginLine = lc[0]; t.beginColumn = lc[1];
@@ -547,10 +547,10 @@ public class VelocityUtil
 		}
 		
 		private static int[] diffLC(int[] minuend, int[] subtrahend) {
-			return new int[] {
+			return ints(
 				minuend[0] - subtrahend[0], 
 				minuend[1] - subtrahend[1], 
-				minuend[0]};
+				minuend[0]);
 		}
 		private static void shiftLC(Token t, int...diff) {
 			int line = diff[2];
@@ -725,7 +725,7 @@ public class VelocityUtil
     public static boolean checkTokenConsistency(SimpleNode document) {
     	boolean retval = true;
     	
-    	int[] lc = new int[]{1,1};
+    	int[] lc = ints(1,1);
     	
     	Token first = document.getFirstToken();
     	Token last = document.getLastToken();
@@ -792,11 +792,11 @@ public class VelocityUtil
 	public static int[] getProblemCoordinates() {
 		if (problem instanceof ExtendedParseException) {
 			ExtendedParseException epe = (ExtendedParseException) problem;
-			return new int[] {epe.getLineNumber(), epe.getColumnNumber()};
+			return ints(epe.getLineNumber(), epe.getColumnNumber());
 		}
 		else {
 			Token tok = problem.currentToken;
-			return new int[] {tok.endLine, tok.endColumn};
+			return ints(tok.endLine, tok.endColumn);
 		}
 	}
 	
@@ -928,7 +928,7 @@ public class VelocityUtil
 				values[i] = "null".equals(string) ? null : string;
 			}
 		
-		return arraycast(values, new String[0]);
+		return toStrings(values);
 	}
 
 	public static final Pattern VRI_PATTERN = Pattern.compile("\\" + VRI);

@@ -434,8 +434,8 @@ public class ConstructDialogs extends Dialogs
 	private Boolean isContentValid(final ValMap map, Object... params) {
 		final String type = getType(map);
     	String text = getText(map);
-    	String prefix = paramString("", 0, params);
-    	isOk = paramBoolean(true, 1, params);
+    	String prefix = param_String("", 0, params);
+    	isOk = param_Boolean(true, 1, params);
     	if (!isOk)
     		return false;
     	
