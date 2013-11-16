@@ -89,11 +89,12 @@
 	<xsl:template name="place_value">
 		<xsl:param name="textelement" />
 		<xsl:param name="q" select="$textelement/@query" />
-		<xsl:if test="$dbinfo and $controlinfo and $q">
+		<xsl:if test="$controlinfo and $q">
+			<xsl:variable name="d" select="$controlinfo//QUERY[position()=$q]/@dbinfo"/>
+			<xsl:variable name="dbinfo" select="$controlinfo//DBINFO[position()=$d]"/>
 			<xsl:variable name="db" select="sql:new()"/>
 			<xsl:if test="not(sql:connect($db, $dbinfo))" >
-				<xsl:message>Error connecting to the database</xsl:message>
-				<xsl:copy-of select="sql:getError($db)/ext-error" />
+				<xsl:message terminate="yes">Error connecting to the database : <xsl:value-of select="sql:getError($db)/ext-error" /></xsl:message>
 			</xsl:if>
 		
 			<xsl:variable name="query" select="$controlinfo//QUERY[position()=$q]/@statement"/>
@@ -122,8 +123,7 @@
 			<xsl:value-of select="sql:addParameterFromElement($db, $params)"/>
 			<xsl:variable name="table" select='sql:pquery($db, $query, $typeinfo )'/>
 			<xsl:if test="not($table)" >
-				<xsl:message>Error in query</xsl:message>
-				<xsl:copy-of select="sql:getError($db)/ext-error" />
+				<xsl:message terminate="yes">Error querying the database : <xsl:value-of select="sql:getError($db)/ext-error" /></xsl:message>
 			</xsl:if>
 			
 			<xsl:choose>

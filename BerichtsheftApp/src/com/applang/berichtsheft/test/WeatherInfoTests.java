@@ -13,28 +13,26 @@ import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.Arrays;
 
+import javax.swing.ProgressMonitorInputStream;
+
 import org.json.JSONObject;
 import org.json.JSONStringer;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.parser.Parser;
 import org.jsoup.select.Elements;
+
+import android.net.Uri;
+
+import com.applang.berichtsheft.BerichtsheftApp;
+import com.applang.components.DatePicker;
+import com.applang.components.WeatherManager;
 
 import static com.applang.SwingUtil.*;
 import static com.applang.Util.*;
 import static com.applang.Util1.*;
 import static com.applang.Util2.*;
-
-import android.net.Uri;
-
-import com.applang.Util.Function;
-import com.applang.Util.ValList;
-import com.applang.Util.ValMap;
-import com.applang.Util2.Settings;
-import com.applang.Util1;
-import com.applang.berichtsheft.BerichtsheftApp;
-import com.applang.components.DatePicker;
-import com.applang.components.WeatherManager;
 
 import junit.framework.TestCase;
 
@@ -57,22 +55,22 @@ public class WeatherInfoTests extends TestCase
 	}
 	
 	public void testPeriod() throws Exception {
-		assertTrue(DatePicker.Period.pick());
+		assertTrue(DatePicker.Period.pick(0));
 		println(getSetting("weather.period", ""));
-		println(DatePicker.Period.getDescription());
+		println(DatePicker.Period.getDescription(0));
 		String dateString = DatePicker.Period.weekDate();
 		int[] weekDate = DatePicker.parseWeekDate(dateString);
 		println(dateString, weekDate);
 	}
 
 	public void testEvaluation() throws Exception {
-//		int[] dateParts = DatePicker.pickAPeriod(new int[] {2013, 1, 1, 2}, "pick day, week or month");
-//		assertTrue(dateParts != null);
-//		DatePicker.Period.setParts(dateParts);
-		
+		int[] dateParts = ints(2013, 1, 1, 2);
+//		dateParts = DatePicker.pickAPeriod(dateParts, "pick day, week or month");
+		assertTrue(dateParts != null);
+		DatePicker.Period.setParts(dateParts);
 		WeatherManager wm = new WeatherManager();
-		wm.parseSite("10519", DatePicker.Period.loadParts(0));
-		wm.evaluate(false);
+		wm.parseAndEvaluate("10519", DatePicker.Period.getParts(), true, null);
+		startFrame(null);
     }
 	
 	String home = System.getProperty("user.home");
@@ -160,25 +158,32 @@ public class WeatherInfoTests extends TestCase
 			"ind=10519&year=2012&" +
 			"month=12&" +
 			"day=31&" +
-			"n_days=1&" +
+			"n_days=2&" +
 			"time=18Z&" +
 			"trans=DE&" +
 			"l=1&" +
 			"action=display";
 	
 	public void testDetails() throws Exception {
-    	Document doc = Jsoup.connect(DETAIL_URL)
-    			.timeout(10000)
-    			.get();
-    	
+		Document doc = getJsoup(DETAIL_URL);
 		Element partes = doc.getElementById("partes");
 		assertNotNull(partes);
 		Elements elements = partes.select("b");
 		ValMap details = vmap();
 		for (Element element : elements) 
 			details.put(element.text().trim(), element.parent().nextSibling().toString());
-		
+		println(details);
 		jsonTest(details);
+	}
+	
+	Document getJsoup(String url) throws Exception {
+		InputStream is = new URL(url).openStream();
+		ProgressMonitorInputStream pmis = new ProgressMonitorInputStream(null, url, is);
+		return Jsoup.parse(pmis, "UTF-8", "", Parser.htmlParser());
+//    	Connection connection = Jsoup.connect(url);
+//		return connection
+//    			.timeout(10000)
+//    			.get();
 	}
 /*
 	D: observation day.
@@ -215,9 +220,7 @@ public class WeatherInfoTests extends TestCase
 			"l=1&action=display";
 
     public void testMonthrep_1() throws Exception {
-    	Document doc = Jsoup.connect(MONTHREP_URL)
-    			.timeout(10000)
-    			.get();
+    	Document doc = getJsoup(MONTHREP_URL);
     	
     	Elements tables = doc.select("table:contains(Daily extreme temperatures)");
     	Element table = null, el = null;
@@ -384,15 +387,15 @@ public class WeatherInfoTests extends TestCase
 	public void testOpenWeather() {
         try
         {
-        	int days = 0;	//	Util.daysToTodayFrom(2012, 40, 2);
+        	int days = 100;	//	Util.daysToTodayFrom(2012, 40, 2);
     	    String url = String.format(
-    	    		"http://openweathermap.org/data/history?id=4885&cnt=%d&type=day", 
+    	    		"http://api.openweathermap.org/data/2.1/history/station/4885?cnt=%d&type=hour", 
     	    		days + 1);
             
-    	    String jsonText = readFromUrl(url, "UTF-8");
+    	    String jsonText = readFromUrlWithProgress(url, "UTF-8");
 //    		println(jsonText);
     	    
-			Object openWeather = Util1.walkJSON(null, new JSONObject(jsonText), new Function<Object>() {
+			Object openWeather = walkJSON(null, new JSONObject(jsonText), new Function<Object>() {
 				public Object apply(Object...params) {
 					Object[] path = param(null, 0, params);
 					Object value = param(null, 1, params);

@@ -25,7 +25,7 @@ public class Dialog extends JDialog
 		if (param0 instanceof Dimension)
 			setSize((Dimension)param0);
 		else if (param0 instanceof Double) {
-			scaleDimension(this, arraycast(params, new Double[0]));
+			scaleSize(this, arraycast(params, new Double[0]));
 		}
 		setVisible(true);
 		toFront();

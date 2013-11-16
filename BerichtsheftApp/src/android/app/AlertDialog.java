@@ -49,8 +49,8 @@ public class AlertDialog extends Dialog implements DialogInterface
 	public static boolean modal = true;
 	
 	public AlertDialog(Context context, Object...params) {
-		super(null, paramBoolean(modal, 0, params));
-		setAlwaysOnTop(paramBoolean(false, 1, params));
+		super(null, param_Boolean(modal, 0, params));
+		setAlwaysOnTop(param_Boolean(false, 1, params));
 		viewGroup = new ViewGroup(context);
 	}
 	

@@ -8,6 +8,7 @@
 	<xsl:output method="xml" indent="yes" omit-xml-declaration="yes" />
 
 	<xsl:param name="dbfile" select="//dbfile" />
+	<xsl:param name="dbfile2" select="//dbfile2" />
 	<xsl:param name="year" select="//year" />
 	<xsl:param name="weekInYear" select="//weekInYear" />
 	<xsl:param name="dayInWeek" select="//dayInWeek" />
@@ -50,23 +51,34 @@
 		<user />
 		<password/>
 	</DBINFO>
+	<DBINFO>
+		<dbdriver>org.sqlite.JDBC</dbdriver>
+		<dburl><xsl:value-of select="concat('jdbc:sqlite:', $dbfile2)" /></dburl>
+		<user />
+		<password/>
+	</DBINFO>
 	<QUERY 
+		dbinfo="1"
 		statement="SELECT note FROM notes where title regexp ? and created between ? and ?" 
 		typeinfo="string,integer,integer">
 	</QUERY>
 	<QUERY 
+		dbinfo="2"
 		statement="SELECT precipitation FROM weathers where created between ? and ?" 
 		typeinfo="integer,integer">
 	</QUERY>
 	<QUERY 
+		dbinfo="2"
 		statement="SELECT maxtemp FROM weathers where created between ? and ?" 
 		typeinfo="integer,integer">
 	</QUERY>
 	<QUERY 
+		dbinfo="2"
 		statement="SELECT mintemp FROM weathers where created between ? and ?" 
 		typeinfo="integer,integer">
 	</QUERY>
 	<QUERY 
+		dbinfo="2"
 		statement="SELECT description FROM weathers where created between ? and ?" 
 		typeinfo="integer,integer">
 	</QUERY>

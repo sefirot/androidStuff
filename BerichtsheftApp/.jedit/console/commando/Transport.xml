@@ -6,7 +6,7 @@
 		<TOGGLE LABEL="approve data" VARNAME="showData"
 			EVAL="jEdit.getBooleanProperty(&quot;SHOW_TRANSPORT_DATA&quot;, false)" />
 		
-		<URI_ENTRY LABEL="Database" VARNAME="uri" 
+		<DB_FILE_ENTRY LABEL="Database" VARNAME="uri" 
 			EVAL="jEdit.getProperty(&quot;TRANSPORT_URI&quot;, &quot;&quot;)"/>
 	</UI>
 

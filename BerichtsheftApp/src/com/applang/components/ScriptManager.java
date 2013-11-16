@@ -54,16 +54,16 @@ import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 @SuppressWarnings("rawtypes")
 public class ScriptManager extends ManagerBase<Element>
 {
-	public static String brandSelector(Object name) {
-		return String.format("/BRAND[@name='%s']", name);
+	public static String flavorSelector(Object name) {
+		return String.format("/FLAVOR[@name='%s']", name);
 	}
 	
-	public static boolean setDefaultConversions(Object brand, String tableName, ValMap conv) {
+	public static boolean setDefaultConversions(Object flavor, String tableName, ValMap conv) {
 		if (ProfileManager.transportsLoaded()) {
-			String xpath = ProfileManager.transportsSelector + brandSelector(brand);
+			String xpath = ProfileManager.transportsSelector + flavorSelector(flavor);
 			Element element = selectElement(ProfileManager.transports, xpath);
 			if (element != null && notNullOrEmpty(tableName)) {
-				ValMap map = getDefaultConversions(brand, null);
+				ValMap map = getDefaultConversions(flavor, null);
 				map.put(tableName, conv);
 				JSONStringer jsonWriter = new JSONStringer();
 				try {
@@ -91,24 +91,25 @@ public class ScriptManager extends ManagerBase<Element>
 		return false;
 	}
 	
-	public static ValMap getDefaultConversions(Object brand, String tableName) {
+	public static ValMap getDefaultConversions(Object flavor, String tableName) {
 		if (ProfileManager.transportsLoaded()) {
-			String xpath = ProfileManager.transportsSelector + brandSelector(brand);
+			String xpath = ProfileManager.transportsSelector + flavorSelector(flavor);
 			Element element = selectElement(ProfileManager.transports, xpath);
-			if (element != null && notNullOrEmpty(tableName)) {
+			if (element != null) {
 				NodeList nodes = evaluateXPath(element, "./CONVERSIONS/text()");
 				if (nodes != null && nodes.getLength() > 0) {
 					Node node = nodes.item(0);
 					try {
 						String text = node.getTextContent();
 						ValMap map = (ValMap) walkJSON(null, new JSONObject(text), null);
-						if (map != null)
+						if (map != null) {
 							if (notNullOrEmpty(tableName)) {
 								if (map.containsKey(tableName))
 									return (ValMap) map.get(tableName);
 							}
 							else
 								return map;
+						}
 					} catch (Exception e) {
 						Log.log(ERROR, ScriptManager.class, e);
 					}
@@ -139,22 +140,22 @@ public class ScriptManager extends ManagerBase<Element>
 		}
 	}
 	
-	private static final String DEFAULT_BUTTON_KEY = stringValueOf(defaultOptions(JOptionPane.OK_CANCEL_OPTION).get(0));
+	private static final String ACCEPT_BUTTON_KEY = stringValueOf(defaultOptions(13).get(0));
 	
 	private TextEditor textArea;
 	private JLabel mess;
 
 	public ScriptManager(final View view, Component relative, Object...params) {
-		String selector = com.applang.Util.paramString("", 0, params);
+		String selector = param_String("", 0, params);
 		this.selector += selector;
 		this.profile = param(null, 1, params);
 		
 		//	resizing problems (like in BoxLayout) of org.gjt.sp.jedit.textarea.StandaloneTextArea (behind TextEditor) 
 		//	make this dialog construction preferable
 		
-		String title = com.applang.Util.paramString("Script editor", 2, params);
+		String title = param_String("Script editor", 2, params);
 		final String function = param(null, 3, params);
-		int behavior = paramInteger(Behavior.MODAL, 4, params);
+		int behavior = param_Integer(Behavior.MODAL, 4, params);
 		showDialog(view, relative, 
 	    		title, 
 	    		new UIFunction() {
@@ -171,7 +172,7 @@ public class ScriptManager extends ManagerBase<Element>
 	    		new UIFunction() {
 					public Component[] apply(Component comp, Object[] parms) {
 						JDialog wnd = (JDialog) comp;
-						JButton btn = findComponent(wnd.getContentPane(), DEFAULT_BUTTON_KEY);
+						JButton btn = findComponent(wnd.getContentPane(), ACCEPT_BUTTON_KEY);
 						btn.getRootPane().setDefaultButton(btn);
 						if (function != null)
 							setFunction(function);
@@ -322,8 +323,8 @@ public class ScriptManager extends ManagerBase<Element>
 		JToolBar bar = new JToolBar();
 		container.add(bar, BorderLayout.NORTH);
 		final RolloverButton btn = new RolloverButton();
-		btn.setName(DEFAULT_BUTTON_KEY);
-		btn.setText(DEFAULT_BUTTON_KEY);
+		btn.setName(ACCEPT_BUTTON_KEY);
+		btn.setText(ACCEPT_BUTTON_KEY);
 		bar.add(btn);
 		comboBoxes[0].addItemListener(new ItemListener() {
 			public void itemStateChanged(ItemEvent ev) {
@@ -370,8 +371,8 @@ public class ScriptManager extends ManagerBase<Element>
 		});
 		test.setEnabled(findAllIn(selector, Pattern.compile("/")).length < 2);
 		bar.add(test);
-		textArea.setOnTextChanged(new Job<TextComponent>() {
-			public void perform(TextComponent t, Object[] params) throws Exception {
+		textArea.setOnTextChanged(new Job<ITextComponent>() {
+			public void perform(ITextComponent t, Object[] params) throws Exception {
 				setDirty(true);
 			}
 		});

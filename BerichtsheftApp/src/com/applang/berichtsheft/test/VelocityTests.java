@@ -240,7 +240,7 @@ public class VelocityTests extends TestCase
 		if (endColumn < 0)
 			return;
 		
-		Node n = Visitor.find(doc, new int[] {0,0}, "wo");
+		Node n = Visitor.find(doc, ints(0,0), "wo");
 		assertNotNull(n);
 		int[] beginLC = Visitor.beginLC(n);
 		assertEquals(1, beginLC[0]);
@@ -255,8 +255,8 @@ public class VelocityTests extends TestCase
 	}
 
 	void printAST(String text, Object...params) {
-		final boolean detailed = paramBoolean(true, 0, params);
-		final boolean essentials = paramBoolean(true, 1, params);
+		final boolean detailed = param_Boolean(true, 0, params);
+		final boolean essentials = param_Boolean(true, 1, params);
         try {
 			SimpleNode document = RuntimeSingleton.parse(new StringReader(text), "");
 			
@@ -264,7 +264,7 @@ public class VelocityTests extends TestCase
 			Visitor.walk(document, new Function<Object>() {
 				public Object apply(Object...params) {
 					Node node = param(null, 0, params);
-					int indents = paramInteger(0, 1, params);
+					int indents = param_Integer(0, 1, params);
 					if (Visitor.isProcessNode(node)) {
 						String string = node.toString();
 						int offset = string.indexOf("tokens=") + 7;
@@ -294,10 +294,10 @@ public class VelocityTests extends TestCase
 			JCheckBox[] checks = new JCheckBox[2];
 			checks[0] = new JCheckBox();
 			checks[0].setText("detailed");
-			checks[0].setSelected(paramBoolean(true, 0, params));
+			checks[0].setSelected(param_Boolean(true, 0, params));
 			checks[1] = new JCheckBox();
 			checks[1].setText("essentials");
-			checks[1].setSelected(paramBoolean(true, 1, params));
+			checks[1].setSelected(param_Boolean(true, 1, params));
 			JOptionPane.showMessageDialog(null, checks, "Visit", 
 					JOptionPane.PLAIN_MESSAGE, 
 					null);
@@ -321,13 +321,13 @@ public class VelocityTests extends TestCase
 		SimpleNode document = parse(new StringReader(string), "");
 		
 		Node node; 
-		int[] startLC = new int[]{0,0};
+		int[] startLC = ints(0,0);
 		while ((node = Visitor.find(document, startLC, "\\<")) != null) {
 			printTokens(node);
 			startLC = Visitor.beginLC(node);
 		}
 		
-		node = Visitor.find(document, new int[]{0,0}, "^\\<");
+		node = Visitor.find(document, ints(0,0), "^\\<");
 		Visitor.update(node, "<\n>");
 		printTokens(node);
 		printTail(document);
@@ -481,7 +481,8 @@ public class VelocityTests extends TestCase
         RuntimeSingleton.init( new Properties() );
 
 		ValMap map = null;
-		assertTrue(dbCon.open("databases/weather_info.db"));
+		String dbName = "databases/weather_info.db";
+		assertTrue(dbCon.open(dbName));
 		String sql = "select created,precipitation from weathers";
 		sql += " where created between ? and ? and location = ?";
 		try {
@@ -516,7 +517,7 @@ public class VelocityTests extends TestCase
         		"weather"));
 
 		VelocityContext vc = new VelocityContext();
-		assertTrue(dbCon.open("databases/weather_info.db"));
+		assertTrue(dbCon.open(dbName));
 		sql = "select created,precipitation,maxtemp,mintemp,description from weathers";
 		sql += " where created between ? and ? and location = ?";
 		try {
@@ -592,7 +593,7 @@ public class VelocityTests extends TestCase
 	public void testOpenWeather2() throws Exception {
     	int days = 4;	//	Util.daysToTodayFrom(2012, 40, 2);
 	    String url = String.format(
-	    		"http://openweathermap.org/data/history?id=4885&cnt=%d&type=day", 
+	    		"http://api.openweathermap.org/data/2.1/history/station/4885?cnt=%d&type=day", 
 	    		days + 1);
 	    String jsonText = readFromUrl(url, "UTF-8");
 //		println(jsonText);

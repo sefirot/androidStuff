@@ -38,11 +38,13 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.net.URL;
+import java.net.URLConnection;
 import java.nio.charset.Charset;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -51,12 +53,14 @@ import java.util.EventListener;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Scanner;
 import java.util.Set;
 import java.util.regex.MatchResult;
 import java.util.regex.Pattern;
 
 import javax.swing.AbstractAction;
 import javax.swing.AbstractButton;
+import javax.swing.Action;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -89,8 +93,11 @@ import javax.swing.JTextField;
 import javax.swing.JToolBar;
 import javax.swing.KeyStroke;
 import javax.swing.ListSelectionModel;
+import javax.swing.ProgressMonitor;
+import javax.swing.ProgressMonitorInputStream;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
+import javax.swing.UIManager;
 import javax.swing.WindowConstants;
 import javax.swing.border.TitledBorder;
 import javax.swing.event.AncestorListener;
@@ -103,6 +110,8 @@ import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableColumn;
 import javax.swing.table.TableColumnModel;
 import javax.swing.text.JTextComponent;
+
+import com.applang.Util.Job;
 
 import android.util.Log;
 
@@ -495,6 +504,25 @@ public class SwingUtil
 		}
 	}
 	
+	public static void startFrame(final Action action) {
+		showFrame(null, 
+				"Start",
+				new UIFunction() {
+					public Component[] apply(final Component comp, Object[] parms) {
+						return components(action != null ? 
+								new JButton(action) : 
+								new JButton(new AbstractAction("Dispose") {
+									@Override
+									public void actionPerformed(ActionEvent ev) {
+										pullThePlug((JFrame)comp);
+									}
+								}));
+					}
+				}, 
+				null, null, 
+				Behavior.TIMEOUT);
+	}
+	
 	public static int dialogResult = JOptionPane.CLOSED_OPTION;
 	
     public static int showDialog(Component parent, Component relative, 
@@ -648,18 +676,22 @@ public class SwingUtil
     public static ValList defaultOptions(int optionType) {
     	Object[] array;
     	ValList list = vlist();
-       	switch (optionType) {
+       	Object yesString = UIManager.get("OptionPane.yesButtonText");
+       	Object noString = UIManager.get("OptionPane.noButtonText");
+       	Object cancelString = UIManager.get("OptionPane.cancelButtonText");
+       	Object okString = UIManager.get("OptionPane.okButtonText");
+		switch (optionType) {
     	case JOptionPane.YES_NO_OPTION:
-    		array = objects( "Yes", "No", null );
+    		array = objects( yesString, noString, null );
         	break;
     	case JOptionPane.YES_NO_CANCEL_OPTION:
-    		array = objects( "Yes", "No", "Cancel", "Cancel" );
+    		array = objects( yesString, noString, cancelString, cancelString );
         	break;
     	case JOptionPane.OK_CANCEL_OPTION:
-    		array = objects( "OK", "Cancel", "Cancel" );
+    		array = objects( okString, cancelString, cancelString );
     		break;
     	case JOptionPane.DEFAULT_OPTION:
-    		array = objects( "Close", "Close" );
+			array = objects( "Close", "Close" );
     		break;
     	case 5:
     		array = objects( "Yes", "Yes all", "No", "No all", "Cancel", null );
@@ -672,6 +704,9 @@ public class SwingUtil
         	break;
     	case 12:
     		array = objects("OK","Save","Cancel","Save");
+        	break;
+    	case 13:
+    		array = objects("Accept","Deny","Accept");
         	break;
     	default:
     		return list;
@@ -805,13 +840,13 @@ public class SwingUtil
 				if (array != null) {
 					arrayexclude(arrayindexof(element, array), array, list);
 				}
-				boolean sort = paramBoolean(false, 2, params);
+				boolean sort = param_Boolean(false, 2, params);
 				if (sort) {
 					Set<String> set = sortedSet(list);
 					list = new ArrayList<String>();
 					list.addAll(set);
 				}
-				boolean first = paramBoolean(true, 3, params);
+				boolean first = param_Boolean(true, 3, params);
 				if (first)
 					list.add(0, element);
 				return list.toArray(new String[0]);
@@ -1049,12 +1084,13 @@ public class SwingUtil
 		return bar;
 	}
 	
-	public static void southStatusBar(Container container) {
+	public static JToolBar southStatusBar(Container container) {
 		JToolBar bar = new JToolBar();
 		bar.setName("south");
 		bar.setFloatable(false);
 		messageBox(bar);
 		container.add(bar, BorderLayout.SOUTH);
+		return bar;
 	}
 
 	public static JLabel messageBox(Container container) {
@@ -1083,17 +1119,17 @@ public class SwingUtil
 	public static void alert(Object...params) {
 		JOptionPane.showMessageDialog(
 				container, 
-				paramString("", 0, params), 
-				paramString("Alert", 1, params), 
-				paramInteger(JOptionPane.PLAIN_MESSAGE, 2, params));
+				param_String("", 0, params), 
+				param_String("Alert", 1, params), 
+				param_Integer(JOptionPane.PLAIN_MESSAGE, 2, params));
 	}
 
 	public static boolean question(Object...params) {
 		return JOptionPane.OK_OPTION == JOptionPane.showConfirmDialog(
 				container, 
-				paramString("Are you sure", 0, params), 
-				paramString("Question", 1, params), 
-				paramInteger(JOptionPane.OK_CANCEL_OPTION, 2, params));
+				param_String("Are you sure", 0, params), 
+				param_String("Question", 1, params), 
+				param_Integer(JOptionPane.OK_CANCEL_OPTION, 2, params));
 	}
 
 	public static void handleException(Exception e) {
@@ -1213,12 +1249,12 @@ public class SwingUtil
         	boolean multi = params[i] instanceof Object[];
         	Object[] parms = multi ? (Object[])param(null, i, params) : params;
         	
-        	String text = paramString("-", 0, parms);
-        	String name = paramString("button" + i, 2, parms);
+        	String text = param_String("-", 0, parms);
+        	String name = param_String("button" + i, 2, parms);
         	if ("-".equals(text)) {
         		group = (ButtonGroup)param(null, 1, parms);
         		
-        		if (paramBoolean(true, 2, parms)) {
+        		if (param_Boolean(true, 2, parms)) {
             		if (container instanceof JPanel) {
             			LayoutManager lm = container.getLayout();
             			int axis = lm instanceof BoxLayout ? 
@@ -1226,14 +1262,14 @@ public class SwingUtil
             			switch (axis) {
             			case BoxLayout.LINE_AXIS:
             			case BoxLayout.X_AXIS:
-            				container.add(Box.createHorizontalStrut(paramInteger(0, 3, parms)));
+            				container.add(Box.createHorizontalStrut(param_Integer(0, 3, parms)));
             				break;
             			case BoxLayout.PAGE_AXIS:
             			case BoxLayout.Y_AXIS:
-            				container.add(Box.createVerticalStrut(paramInteger(0, 3, parms)));
+            				container.add(Box.createVerticalStrut(param_Integer(0, 3, parms)));
             				break;
             			default:
-            				container.add(new JLabel(paramString(" ", 3, parms)));
+            				container.add(new JLabel(param_String(" ", 3, parms)));
             				break;
             			}
             		}
@@ -1298,10 +1334,10 @@ public class SwingUtil
         		else {
 	                button.setName(name);
 	                button.setActionCommand(name);
-	                button.setToolTipText(paramString("", 3, parms));
-	                button.setEnabled(paramBoolean(true, 4, parms));
-	            	button.setMnemonic(paramInteger(0, 5, parms));
-	                button.setSelected(paramBoolean(false, 6, parms));
+	                button.setToolTipText(param_String("", 3, parms));
+	                button.setEnabled(param_Boolean(true, 4, parms));
+	            	button.setMnemonic(param_Integer(0, 5, parms));
+	                button.setSelected(param_Boolean(false, 6, parms));
 	                KeyStroke ks = param(KeyStroke.getKeyStroke(' '), 7, parms);
 	                if (isType(JMenuItem.class, button))
 	                	((JMenuItem)button).setAccelerator(ks);
@@ -1518,7 +1554,7 @@ public class SwingUtil
 		FontRenderContext frc = new FontRenderContext(affinetransform, true, true);     
 		int textwidth = (int)(font.getStringBounds(text, frc).getWidth());
 		int textheight = (int)(font.getStringBounds(text, frc).getHeight());
-		return new int[]{textwidth,textheight};
+		return ints(textwidth,textheight);
 	}
 	
 	public static Font monoSpaced(Object... params) {
@@ -1526,11 +1562,11 @@ public class SwingUtil
 	}
 	
 	public static void printContainer(String message, Container container, Object... params) {
-		if (paramBoolean(true, 0, params)) {
+		if (param_Boolean(true, 0, params)) {
 			print(message + " : ");
 			iterateComponents(container, new ComponentFunction<String>() {
 				public String apply(Component comp, Object[] parms) {
-					String indent = paramString("", 0, parms);
+					String indent = param_String("", 0, parms);
 					println("%s%s%s", indent, comp.getName() == null ? "" : comp.getName() + " : ", comp.getClass());
 					return indent + "    ";
 				}
@@ -1801,7 +1837,7 @@ public class SwingUtil
 			Double percentage = 1.0 / columnCount;
 			for (int i = 0; i < columnCount; i++) {
 				TableColumn column = model.getColumn(i);
-				double val = paramDouble(percentage, i, percentages) * factor;
+				double val = param_Double(percentage, i, percentages) * factor;
 				column.setPreferredWidth((int) val);
 			}
 		}
@@ -1833,13 +1869,17 @@ public class SwingUtil
 		component.setMaximumSize(new Dimension(size.width * fWidth, size.height * fHeight));
 	}
 
-	public static void scaleDimension(Component component, Double...fac) {
-		Dimension size = component.getSize();
-		Double fWidth = param(1.0, 0, fac);
-		Double fHeight = param(1.0, 1, fac);
+	public static Dimension scaledDimension(Dimension size, Double...scaleFac) {
+		Double fWidth = param(1.0, 0, scaleFac);
+		Double fHeight = param(1.0, 1, scaleFac);
 		size = new Dimension(
 				(int)Math.round(size.width * fWidth), 
 				(int)Math.round(size.height * fHeight));
+		return size;
+	}
+
+	public static void scaleSize(Component component, Double...scaleFac) {
+		Dimension size = scaledDimension(component.getSize(), scaleFac);
 		if (component instanceof JComponent)
 			component.setPreferredSize(size);
 		else
@@ -1848,8 +1888,8 @@ public class SwingUtil
 
 	public static JPanel surroundingBox(JComponent contents, String title, Object...params) {
 		JPanel box = new JPanel();
-		int titleJustification = paramInteger(TitledBorder.DEFAULT_JUSTIFICATION, 0, params);
-		int titlePosition = paramInteger(TitledBorder.DEFAULT_POSITION, 1, params) ;
+		int titleJustification = param_Integer(TitledBorder.DEFAULT_JUSTIFICATION, 0, params);
+		int titlePosition = param_Integer(TitledBorder.DEFAULT_POSITION, 1, params) ;
 		box.setBorder(
 			BorderFactory.createTitledBorder(
 				BorderFactory.createEtchedBorder(),
@@ -1862,5 +1902,84 @@ public class SwingUtil
 		box.add( contents );
 		box.add( Box.createVerticalStrut(10) );
 		return box;
+	}
+	
+	public static String readFromUrlWithProgress(String url, String encoding) throws IOException {
+		InputStream is = null;
+		try {
+			is = new URL(url).openStream();
+			ProgressMonitorInputStream pmis = new ProgressMonitorInputStream(null, url, is);
+			BufferedReader rd = new BufferedReader(new InputStreamReader(pmis, Charset.forName(encoding)));
+			return readAll(rd);
+		} finally {
+			if (is != null)
+				is.close();
+		}
+	}
+	
+	public static int urlContentLength(String fileURL) {
+		try {
+			URL url = new URL(fileURL);
+			URLConnection urlConnection = url.openConnection();
+			if (urlConnection != null) {
+				return urlConnection.getContentLength();
+			}
+		} catch (Exception e) {
+			Log.e(TAG, "urlContentLength", e);
+		}
+		return -1;
+	}
+	
+	public static class ScanTask extends Task<Void>
+	{
+		public ScanTask(Component parent, String title, InputStream is, 
+				Job<Void> goAlong, 
+				Job<Void> followUp, 
+				Object...params) {
+			super(null, followUp, params);
+			this.goAlong = goAlong;
+			if (followUp != null)
+				sb = new StringBuilder();
+			pmis = new ProgressMonitorInputStream(parent, title, is);
+			progressMonitor = pmis.getProgressMonitor();
+			progressMonitor.setMillisToDecideToPopup(0);
+			progressMonitor.setMillisToPopup(0);
+			progressMonitor.setProgress(0);
+			in = new Scanner(pmis);
+			execute();
+		}
+		
+		ProgressMonitorInputStream pmis;
+		ProgressMonitor progressMonitor;
+		
+		@Override
+		protected Void doInBackground() throws Exception {
+			while (in.hasNextLine()) {
+				String line = in.nextLine();
+				if (goAlong != null)
+					goAlong.perform(null, objects(line, params));
+				if (sb != null) {
+					sb.append(line);
+					sb.append("\n");
+				}
+			}
+			in.close();
+			return null;
+		}
+
+		Scanner in;
+		Job<Void> goAlong;
+		StringBuilder sb = null;
+		 
+		@Override
+		protected void done() {
+			if (followUp != null) 
+				try {
+					followUp.perform(null, objects(sb.toString(), params));
+					cancel(true);
+				} catch (Exception e) {
+					Log.e(TAG, "follow-up", e);
+				}
+		}
 	}
 }

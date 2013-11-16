@@ -12,10 +12,8 @@ import java.sql.Statement;
 
 import javax.swing.AbstractButton;
 import javax.swing.BoxLayout;
-import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JSplitPane;
-import javax.swing.JToolBar;
 
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
@@ -124,17 +122,17 @@ public class ActionPanel extends ManagerBase<Object>
 		return view;
 	}
 	
-    protected String dbName;
+    protected String dbFilePath;
 	protected String caption;
 
-	public ActionPanel(DataComponent dataComponent, Object... params) {
-		this.dataComponent = dataComponent;
-		if (dataComponent instanceof TextComponent) {
-			this.textArea = (TextComponent) dataComponent;
+	public ActionPanel(IComponent iComponent, Object... params) {
+		this.iComponent = iComponent;
+		if (iComponent instanceof ITextComponent) {
+			this.textArea = (ITextComponent) iComponent;
 			setupTextArea();
 		}
 		this.view = param(null, 0, params);
-		this.caption = com.applang.Util.paramString("Database", 1, params);
+		this.caption = param_String("Database", 1, params);
 		setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
 	}
 	
@@ -185,8 +183,8 @@ public class ActionPanel extends ManagerBase<Object>
 		return buttons[index].getAction().isEnabled();
 	}
 
-	protected DataComponent dataComponent = null;
-	protected TextComponent textArea = null;
+	protected IComponent iComponent = null;
+	protected ITextComponent textArea = null;
 
 	protected boolean hasTextArea() {
 		return this.textArea != null;
@@ -248,6 +246,10 @@ public class ActionPanel extends ManagerBase<Object>
 
 	public boolean openConnection(String dbPath, Object... params) throws Exception {
 		return dbConnect.open(dbPath, params);
+	}
+	
+	public void closeConnection() {
+		dbConnect.close();
 	}
 	
 	protected void beforeConnecting(String path) throws Exception {

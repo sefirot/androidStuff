@@ -1,21 +1,23 @@
 <COMMANDO>
 	<UI>
-		<PERIOD LABEL="Weather period" VARNAME="period" />
+		<PERIOD LABEL="Weather period" VARNAME="period"
+			EVAL="no=0; jEdit.setProperty(&quot;period&quot;, &quot;&quot;+no); no" />
 			
 		<TOGGLE LABEL="show queried data" VARNAME="showData"
 			EVAL="jEdit.getBooleanProperty(&quot;SHOW_DATA&quot;, false)" />
 
-		<URI_ENTRY LABEL="Weather database" VARNAME="uri" 
-			EVAL="jEdit.getProperty(&quot;TRANSPORT_URI&quot;, &quot;&quot;)" />
+		<DB_FILE_ENTRY LABEL="Weather database" VARNAME="db" 
+			EVAL="jEdit.getProperty(&quot;WETTER_DB&quot;, &quot;&quot;)" />
 	</UI>
 
 	<COMMANDS>
 		<COMMAND SHELL="BeanShell">
-			jEdit.setProperty("TRANSPORT_URI", uri);
+			jEdit.setProperty("WETTER_DB", db);
 			jEdit.setBooleanProperty("SHOW_DATA", showData);
-			
+
 			buf = new StringBuffer();
-			buf.append("com.applang.berichtsheft.plugin.DataDockable.doTransport(view, \"weather\", new Object[]{"+showData+"}); ");
+			buf.append("import com.applang.berichtsheft.plugin.*; ");
+			buf.append("DataDockable.makeWetter(view, \"period\", new Object[]{"+showData+", \""+db+"\"}); ");
 			buf.toString();
 		</COMMAND>
 	</COMMANDS>

@@ -137,5 +137,5 @@ public class Activity extends Context
 
 	public View findViewById(int id) {
 		return viewGroup.findViewById(id);
-	}
+    }
 }

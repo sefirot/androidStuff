@@ -3,6 +3,8 @@ package com.applang.components;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.StringWriter;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -22,6 +24,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
+import javax.swing.SwingUtilities;
 
 import org.gjt.sp.jedit.View;
 import org.jsoup.Jsoup;
@@ -30,12 +33,15 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import com.applang.SwingUtil.Behavior;
+import com.applang.Util.Job;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.R;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 import com.applang.berichtsheft.plugin.BerichtsheftShell;
 import com.applang.berichtsheft.plugin.JEditOptionDialog;
 import com.applang.provider.WeatherInfo.Weathers;
+
+import console.Console;
 
 import android.app.AlertDialog;
 import android.content.DialogInterface;
@@ -58,17 +64,23 @@ public class WeatherManager extends ActionPanel
 	 * @throws Exception 
 	 */
 	public static void main(String[] args) throws Exception {
-		DataView dataView = new DataView();
-		
-        String title = "WeatherInfo database";
-		final WeatherManager weatherManager = new WeatherManager(dataView, 
-				null,
-				title);
-		
-		ActionPanel.createAndShowGUI(title, 
-				new Dimension(1000, 200), 
-				weatherManager, 
-				dataView.getUIComponent(), 0);
+		SwingUtilities.invokeLater(new Runnable() {
+			@Override
+			public void run() {
+				DataView dataView = new DataView();
+				
+		        String title = "WeatherInfo database";
+				final WeatherManager weatherManager = new WeatherManager(dataView, 
+						null,
+						title);
+				
+				ActionPanel.createAndShowGUI(title, 
+						new Dimension(1000, 200), 
+						weatherManager, 
+						dataView.getUIComponent(), 
+						Behavior.EXIT_ON_CLOSE);
+			}
+		});
 	}
 
 	private JLabel uriLabel;
@@ -78,9 +90,9 @@ public class WeatherManager extends ActionPanel
 		super(null);
 	}
 
-	public WeatherManager(DataComponent dataView, Object... params) {
+	public WeatherManager(IComponent dataView, Object... params) {
 		super(dataView, params);
-		this.dataView = (DataView) dataComponent;
+		this.dataView = (DataView) iComponent;
 		
 		addButton(this, ActionType.CALENDAR.index(), new InfoAction(ActionType.CALENDAR));
 		addButton(this, 4, new InfoAction("Weather"));
@@ -97,6 +109,7 @@ public class WeatherManager extends ActionPanel
 	@Override
 	public void start(Object... params) {
 		super.start(params);
+		dbFilePath = getSetting("database", "");
 	}
 	
 	@Override
@@ -108,7 +121,7 @@ public class WeatherManager extends ActionPanel
 			} catch (Exception e) {
 				handleException(e);
 			}
-		putSetting("database", dbName);
+		putSetting("database", dbFilePath);
 		super.finish(params);
 	}
     
@@ -129,19 +142,17 @@ public class WeatherManager extends ActionPanel
 				switch (t) {
 				case DATABASE:
 					if (dataView.configureData(null)) {
-						String uriString = dataView.getUriString();
-						dataView.reset(uriString);
-						dbName = dbInfo(dataView.getUri());
-						if (notNullOrEmpty(dbName))
-							openConnection(dbName);
-						uriLabel.setText(dbName);
+						dbFilePath = dataView.getDataConfiguration().getPath();
+						if (notNullOrEmpty(dbFilePath))
+							openConnection(dbFilePath);
+						uriLabel.setText(dbFilePath);
 					}
 					break;
 				case CALENDAR:
-					DatePicker.Period.pick();
+					DatePicker.Period.pick(0);
 					break;
 				case IMPORT:
-					retrieveWeatherData();
+					parseAndEvaluate(location, DatePicker.Period.loadParts(0), true, null);
 					break;
 				default:
 					return;
@@ -149,6 +160,8 @@ public class WeatherManager extends ActionPanel
 			}
         }
     }
+    
+    public String location = "10519";			//	BONN-ROLEBER
 	
 	private static final String URL_MONTHREP = "http://www.mundomanz.com/meteo_p/monthrep?" +
 			"countr=GERMANY&" +
@@ -237,35 +250,80 @@ public class WeatherManager extends ActionPanel
 			.build();
 	}
 	
-	public void parseSite(String location, int[] dateParts) {
+	private Document parseSite(String location, int[] dateParts) {
+		Document doc = null;
 		switch (dateParts[3]) {
 		case DatePicker.Period.MONTH:
 			break;
 		default:
 			dateParts = DatePicker.extendPeriod(1, dateParts);
 		}
-		final Uri uri = siteUri("PA", location, "all", dateParts);
+		Uri uri = siteUri("PA", location, "all", dateParts);
 		BerichtsheftShell.print("connecting '%s'\n... ", uri);
-		long millis = waiting(null, new ComponentFunction<Void>() {
-			public Void apply(Component comp, Object[] parms) {
-				try {
-					doc = Jsoup.connect(uri.toString())
-							.timeout(100000)
-							.get();
-				} catch (Exception e) {
-					handleException(e);
-					doc = null;
+		long millis = System.currentTimeMillis();
+		try {
+			doc = Jsoup.connect(uri.toString())
+					.timeout(100000)
+					.get();
+		} catch (Exception e) {
+			handleException(e);
+		}
+		BerichtsheftShell.print("%d sec(s)", (System.currentTimeMillis() - millis) / 1000, NEWLINE);
+		return doc;
+	}
+    
+	public void parseAndEvaluate(final String location, final int[] period, 
+			final boolean popup, 
+			final Function<Void> followUp, final Object... params) 
+	{
+		Boolean async = param_Boolean(true, 1, params);
+		if (!async) {
+			Document doc = parseSite(location, period);
+			evaluate(doc, popup);
+			if (followUp != null)
+				followUp.apply(params);
+		}
+		else {
+			final Console console = BerichtsheftShell.getConsole(true);
+			if (console != null)
+				BerichtsheftShell.consoleWait(console, true);
+			Task<Document> task = new Task<Document>(null, 
+					new Job<Document>() {
+				public void perform(Document doc, Object[] params) throws Exception {
+					evaluate(doc, popup);
+					if (followUp != null)
+						followUp.apply(params);
 				}
-				
-				return null;
-			}
-		});
-		BerichtsheftShell.print("%d sec(s)", millis / 1000, NEWLINE);
+			}, params) 
+			{
+				@Override
+				protected Document doInBackground() {
+					try {
+						setProgress(1);
+						return parseSite(location, period);
+					} finally {
+						setProgress(100);
+					}
+				}
+			};
+			task.addPropertyChangeListener(new PropertyChangeListener() {
+				public void propertyChange(PropertyChangeEvent evt) {
+					if ("progress" == evt.getPropertyName()) {
+						if (console != null) {
+							BerichtsheftShell.setBerichtsheftShell(console);
+							int progress = (Integer) evt.getNewValue();
+							BerichtsheftShell.consoleWait(console, progress < 100);
+						}
+					} 
+				}
+			});
+			task.execute();
+		}
 	}
 	
 	private Document doc = null;
 
-	public ValMap summary(boolean popup, String title) {
+	private ValMap summary(boolean popup, String title) {
 		final ValMap summary = vmap();
 		View view = BerichtsheftApp.getJEditView();
 		try {
@@ -335,12 +393,13 @@ public class WeatherManager extends ActionPanel
 				.setTitle(title)
 				.setView(tv)
 				.setNeutralButton(R.string.button_close,
-						new OnClickListener() {
-							public void onClick(DialogInterface dialog,
-									int which) {
-								dialog.cancel();
-							}
-						}).create();
+					new OnClickListener() {
+						public void onClick(DialogInterface dialog,
+								int which) {
+							dialog.cancel();
+						}
+					})
+				.create();
 		dialog.setModalExclusionType(AlertDialog.ModalExclusionType.APPLICATION_EXCLUDE);
 		dialog.open(new Dimension(800, 400));
 		return dialog;	
@@ -405,7 +464,7 @@ public class WeatherManager extends ActionPanel
 	
 	public static Pattern PRECIPITATION_PATTERN = clippingPattern("\\(", "\\)");
 	
-	public void evaluateSummary(ValMap summary) {
+	private void evaluateSummary(ValMap summary) {
 		if (summary == null)
 			return;
 		ValMap vormittag = vmap(), nachmittag = vmap();
@@ -483,9 +542,9 @@ public class WeatherManager extends ActionPanel
 		timeLine = precip.getKeys().toArray(new Long[0]);
 //		println("timeLine", formatDates(timeLine));
 //		println("interval", formatDates(interval));
-		int[] index = new int[]{
+		int[] index = ints(
 			index(interval[0]), index(interval[1])
-		};
+		);
 		long[] old = null;
 		for (int i = index[1]; i < index[0]; i++) {
 			ValList rec = precip.get(i);
@@ -622,29 +681,10 @@ public class WeatherManager extends ActionPanel
 				break;
 		}
 	}
-    
-    public String location = "10519";			//	BONN-ROLEBER
-    public int[] period;
-	
-	public void retrieveWeatherData() {
-		period = DatePicker.Period.loadParts(0);
-		new Task<Void>(null, 
-			new Job<Void>() {
-				public void perform(Void t, Object[] params) throws Exception {
-					boolean popup = getCon() != null;
-					evaluate(popup);
-				}
-			}) {
-				@Override
-				protected Void doInBackground() throws Exception {
-					parseSite(location, period);
-					return null;
-				}
-			}.execute();
-	}
 
-	public void evaluate(boolean popup) {
-		count = new int[] {0,0};
+	private void evaluate(Document doc, boolean popup) {
+		this.doc = doc;
+		count = ints(0,0);
 		switch (DatePicker.Period.length) {
 		case DatePicker.Period.MONTH:
 			measurements("Daily extreme temperatures");
@@ -655,7 +695,7 @@ public class WeatherManager extends ActionPanel
 			break;
 		}
 		if (count[0] > 0 || count[1] > 0)
-			BerichtsheftPlugin.consoleMessage("berichtsheft.updateOrInsert.message", 
+			BerichtsheftPlugin.consoleMessage("dataview.updateOrInsert.message", 
 				count[1], count[0]);
 	}
 
@@ -680,15 +720,6 @@ public class WeatherManager extends ActionPanel
 			handleException(e);
 			return false;
 		}
-	}
-
-	public void closeConnection() {
-		if (getCon() == null)
-			try {
-				getCon().close();
-			} catch (SQLException e) {
-				handleException(e);
-			}
 	}
 
 	public int update(long id, ValMap values) throws Exception {

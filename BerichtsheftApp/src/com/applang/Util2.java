@@ -19,6 +19,7 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -59,6 +60,7 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.util.Log;
@@ -100,8 +102,8 @@ public class Util2
 		 * <table border="1"><tr><th>index</th><th>description</th></tr><tr><td>0</td><td>file path to settings</td></tr></table>
 		 */
 		public static void load(Object... params) {
-			String fileName = paramString(defaultFilename(), 0, params);
-			boolean decoding = paramBoolean(false, 1, params);
+			String fileName = param_String(defaultFilename(), 0, params);
+			boolean decoding = param_Boolean(false, 1, params);
 			
 			if (properties == null)
 				clear();
@@ -132,8 +134,8 @@ public class Util2
 		 * @param params
 		 */
 		public static void save(Object... params) {
-			String fileName = paramString(defaultFilename(), 0, params);
-			boolean encoding = paramBoolean(false, 1, params);
+			String fileName = param_String(defaultFilename(), 0, params);
+			boolean encoding = param_Boolean(false, 1, params);
 			
 			if (properties == null)
 				clear();
@@ -170,10 +172,11 @@ public class Util2
 	@SuppressWarnings("unchecked")
 	//	used in xsl scripts
 	public static <T extends Object> void putSetting(String key, T value, Object... params) {
-		Object decimalPlace = param(null, 0, params);
-		if (value instanceof Double && decimalPlace instanceof Integer) {
-			value = (T)Double.valueOf(round((Double)value, (Integer)decimalPlace));
+		if (value instanceof Double && isAvailable(0, params)) {
+			Integer decimalPlace = param_Integer(0, 0, params);
+			value = (T)Double.valueOf(round((Double)value, decimalPlace));
 		}
+		Log.d(TAG, String.format("putSetting '%s' : %s", key, stringValueOf(value)));
 		Settings.properties.put(key, value);
 	}
 
@@ -182,7 +185,7 @@ public class Util2
 		try {
 			JSONStringer jsonWriter = new JSONStringer();
 			toJSON(jsonWriter, "", value, null);
-			Settings.properties.put(key, jsonWriter.toString());
+			putSetting(key, jsonWriter.toString());
 		} catch (Exception e) {
 			Log.e(TAG, "putListSetting", e);
 		}
@@ -193,7 +196,7 @@ public class Util2
 		try {
 			JSONStringer jsonWriter = new JSONStringer();
 			toJSON(jsonWriter, "", value, null);
-			Settings.properties.put(key, jsonWriter.toString());
+			putSetting(key, jsonWriter.toString());
 		} catch (Exception e) {
 			Log.e(TAG, "putMapSetting", e);
 		}
@@ -208,21 +211,23 @@ public class Util2
 	@SuppressWarnings("unchecked")
 	//	used in xsl scripts
 	public static <T extends Object> T getSetting(String key, T defaultValue) {
+		Object value = defaultValue;
 		try {
-			if (Settings.contains(key))
-				return (T)Settings.properties.get(key);
+			if (Settings.contains(key)) {
+				value = Settings.properties.get(key);
+			}
 		} catch (Exception e) {
 			Log.d(TAG, "getSetting", e);
 		}
-		
-		return defaultValue;
+		Log.d(TAG, String.format("getSetting '%s' : %s", key, stringValueOf(value)));
+		return (T)value;
 	}
 
 	@SuppressWarnings("rawtypes")
 	public static Collection getListSetting(String key, Collection defaultValue) {
 		try {
 			if (Settings.contains(key)) {
-				String s = (String) Settings.properties.get(key);
+				String s = getSetting(key, null);
 				return (ValList) walkJSON(null, new JSONArray(s), null);
 			}
 		} catch (Exception e) {
@@ -236,7 +241,7 @@ public class Util2
 	public static Map getMapSetting(String key, Map defaultValue) {
 		try {
 			if (Settings.contains(key)) {
-				String s = (String) Settings.properties.get(key);
+				String s = getSetting(key, null);
 				return (ValMap) walkJSON(null, new JSONObject(s), null);
 			}
 		} catch (Exception e) {
@@ -444,10 +449,10 @@ public class Util2
 			try {
 				close();
 				
-				String driver = Util.paramString("org.sqlite.JDBC", 2, params);
+				String driver = param_String("org.sqlite.JDBC", 2, params);
 				Class.forName(driver);
 				
-				scheme = Util.paramString("sqlite", 1, params);
+				scheme = param_String("sqlite", 1, params);
 				boolean memoryDb = "sqlite".equals(scheme) && dbPath == null;
 				
 				preConnect(dbPath);
@@ -458,7 +463,7 @@ public class Util2
 				
 				postConnect();
 				
-				String database = Util.paramString("sqlite_master", 3, params);
+				String database = param_String("sqlite_master", 3, params);
 				if ("sqlite".equals(scheme))
 					rs = stmt.executeQuery("select name from " + database + " where type = 'table'");
 				else if ("mysql".equals(scheme)) {
@@ -478,7 +483,7 @@ public class Util2
 					rs = stmt.executeQuery("show tables in " + database + ";");
 				}
 				
-				String tableName = Util.paramString(null, 0, params);
+				String tableName = param_String(null, 0, params);
 				if (tableName == null)
 					return true;
 				
@@ -622,6 +627,30 @@ public class Util2
 			return null;
 		}
 		return list;
+	}
+
+	public static BidiMultiMap getResultMultiMap(PreparedStatement ps, Object...params) {
+		BidiMultiMap bidi = bmap(params.length);
+		try {
+			ResultSet rs = ps.executeQuery();
+			ResultSetMetaData rsmd = rs.getMetaData();
+			int columnCount = Math.min(rsmd.getColumnCount(), params.length);
+			while (rs.next()) {
+				ValList list = vlist();
+				for (int i = 1; i <= columnCount; i++) {
+					Object value = rs.getObject(i);
+					Function<Object> conversion = param(null, i-1, params);
+					if (conversion != null) 
+						value = conversion.apply(value, rs);
+					list.add(value);
+				}
+				bidi.add(list.toArray());
+			}
+			rs.close();
+		} catch (Exception e) {
+			return null;
+		}
+		return bidi;
 	}
 	
 	public static void xmlTransform(String fileName, String styleSheet, String outFileName, Object... params) throws Exception {
@@ -803,7 +832,7 @@ public class Util2
 		}
 		
 		protected Result doInBackground(Object...params) throws Exception {
-			Integer millis = paramInteger(null, 0, params);
+			Integer millis = param_Integer(null, 0, params);
 			if (millis != null)
 				delay(millis);
 			return null;
@@ -838,7 +867,7 @@ public class Util2
 				}
 		}
 		
-		private Job<Result> followUp;
+		protected Job<Result> followUp;
     }
 
 	public static BufferedImage verticalflip(Image img) {
@@ -932,6 +961,33 @@ public class Util2
 		for (int c = 0; c < cursor.getColumnCount(); c++) 
 			list.add(getCellValue(cursor, -1, c));
 		return list;
+	}
+
+	public static boolean makeSureExists(Context context, String flavor, File target) {
+		if (isSQLite(target))
+			return true;
+		try {
+			Class<?> c = Class.forName(flavor + "Provider");
+			for (Class<?> cl : c.getDeclaredClasses()) {
+				String dbName = c.getDeclaredField("DATABASE_NAME").get(null).toString();
+				if ("DatabaseHelper".equals(cl.getSimpleName())) {
+					Object inst = cl.getConstructor(Context.class, String.class)
+							.newInstance(context, target == null ? dbName : "temp.db");
+					Method method = cl.getMethod("getWritableDatabase");
+					method.invoke(inst);
+					cl.getMethod("close").invoke(inst);
+					if (target != null) {
+						File tempDb = context.getDatabasePath("temp.db");
+						copyFile(tempDb, target);
+						tempDb.delete();
+					}
+				}
+			}
+			return true;
+		} catch (Exception e) {
+			Log.e(TAG, "makeSureExists", e);
+			return false;
+		}
 	}
 
 }

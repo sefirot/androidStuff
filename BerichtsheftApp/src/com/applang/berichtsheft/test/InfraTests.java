@@ -230,14 +230,14 @@ public class InfraTests extends TestCase
 		
 		for (int i = 0; i < 2; i++) 
 			assertEquals(
-					new int[]{3,6,2}[i], 
+					ints(3,6,2)[i], 
 					NotePadProvider.countNotes(contentResolver, i, "", null)[0].intValue());
     	
 		assertEquals(1, contentResolver.delete(NotePadProvider.contentUri(0), NoteColumns.TITLE + "=?", strings("Velocity2")));
 		
 		for (int i = 0; i < 2; i++) 
 			assertEquals(
-					new int[]{2,6,1}[i], 
+					ints(2,6,1)[i], 
 					NotePadProvider.countNotes(contentResolver, i, "", null)[0].intValue());
         
         assertEquals(15, contentObservations);

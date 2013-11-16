@@ -1,14 +1,11 @@
 package com.applang.berichtsheft.plugin;
 
-import static com.applang.Util2.*;
-
 import java.awt.Color;
 import java.io.StringWriter;
 
 import org.gjt.sp.jedit.View;
 import org.gjt.sp.jedit.jEdit;
-
-import com.applang.Util2;
+import org.gjt.sp.util.Log;
 
 import console.Console;
 import console.ConsolePane;
@@ -16,24 +13,64 @@ import console.ConsolePlugin;
 import console.Output;
 import console.Shell;
 
+import static com.applang.Util.*;
+import static com.applang.Util2.*;
+
 public class BerichtsheftShell extends Shell
 {
 	public static void print(Object... params) {
-		String string = format(new StringWriter(), params).toString();
+		final String string = format(new StringWriter(), params).toString();
+		Console console = getConsole(true);
+		if (console != null) {
+			perform(console, false, new Job<Console>() {
+				public void perform(Console console, Object[] parms) throws Exception {
+					String string = param("", 0, parms);
+					Output output = console.getOutput();
+					output.writeAttrs(ConsolePane.colorAttributes(Color.BLACK), string);
+				}
+			}, string);
+			return;
+		}
+		com.applang.Util2.print(string);
+	}
+	
+	public static void perform(Console console, boolean animated, Job<Console> job, Object...params) {
+		setBerichtsheftShell(console);
+		try {
+			if (animated)
+				consoleWait(console, true);
+			job.perform(console, params);
+		} catch (Exception e) {
+			Log.log(Log.ERROR, BerichtsheftShell.class, e);
+		}
+		finally {
+			if (animated)
+				consoleWait(console, false);
+		}
+	}
+	
+	public static void setBerichtsheftShell(Console console) {
+		String name = BerichtsheftPlugin.getProperty("berichtsheft.shell.title");
+		if (!name.equals(console.getShell().getName())) 
+			console.setShell(name);
+	}
+	
+	public static void consoleWait(Console console, boolean start) {
+		if (start)
+			console.startAnimation();
+		else
+			console.stopAnimation();
+	}
+	
+	public static Console getConsole(boolean show) {
+		Console console = null;
 		View view = jEdit.getActiveView();
 		if (view != null) {
-			Console console = ConsolePlugin.getConsole(view);
-			if (console != null) {
-				String name = BerichtsheftPlugin.getProperty("berichtsheft.shell.title");
-				if (!name.equals(console.getShell().getName())) {
-					console.setShell(name);
-				}
-				Output output = console.getOutput();
-				output.writeAttrs(ConsolePane.colorAttributes(Color.BLACK), string);
-				return;
-			}
+			if (show)
+				BerichtsheftPlugin.showDockable(view, "console");
+			console = ConsolePlugin.getConsole(view);
 		}
-		Util2.print(string);
+		return console;
 	}
 	
 	@Override

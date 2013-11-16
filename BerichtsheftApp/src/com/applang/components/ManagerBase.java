@@ -248,10 +248,10 @@ public abstract class ManagerBase<T extends Object> extends JComponent
 		}
 	}
 
-	protected void updateText(final TextComponent textComponent, final String text) {
+	protected void updateText(final ITextComponent iTextComponent, final String text) {
 		blockChange(new Job<Void>() {
 			public void perform(Void t, Object[] params) throws Exception {
-				textComponent.setText(text);
+				iTextComponent.setText(text);
 			}
 		});
 		setDirty(false);

@@ -1,17 +1,22 @@
 <COMMANDO>
 	<UI>
-		<URI_ENTRY LABEL="Berichtsheft database" VARNAME="uri" 
-			EVAL="jEdit.getProperty(&quot;TRANSPORT_URI&quot;, &quot;&quot;)" />
+		<DB_FILE_ENTRY LABEL="Notes database" VARNAME="db" 
+			EVAL="jEdit.getProperty(&quot;DOKUMENT_DB&quot;, &quot;&quot;)" />
+		<DB_FILE_ENTRY LABEL="Weathers database" VARNAME="db2" 
+			EVAL="jEdit.getProperty(&quot;DOKUMENT_DB2&quot;, &quot;&quot;)" />
 
-		<PERIOD LABEL="Berichtsheft period" VARNAME="period" />
+		<PERIOD LABEL="Berichtsheft period" VARNAME="period"
+			EVAL="no=1; jEdit.setProperty(&quot;period&quot;, &quot;&quot;+no); no" />
  	</UI>
 
 	<COMMANDS>
 		<COMMAND SHELL="BeanShell">
-			jEdit.setProperty("TRANSPORT_URI", uri);
-			
+			jEdit.setProperty("DOKUMENT_DB", db);
+			jEdit.setProperty("DOKUMENT_DB2", db2);
+
 			buf = new StringBuffer();
-			buf.append("com.applang.berichtsheft.plugin.DataDockable.doTransport(view, \"odt\", new Object[]{}); ");
+			buf.append("import com.applang.berichtsheft.plugin.*; ");
+			buf.append("DataDockable.makeDokument(view, \"odt\", new Object[]{false, \""+db+"\", \""+db2+"\"}); ");
 			buf.toString();
 		</COMMAND>
 	</COMMANDS>

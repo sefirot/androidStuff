@@ -49,9 +49,11 @@ import static com.applang.Util1.*;
 import static com.applang.Util2.*;
 import static com.applang.ZipUtil.*;
 
+import android.content.Context;
 import android.net.Uri;
 
 import com.applang.berichtsheft.BerichtsheftApp;
+import com.applang.berichtsheft.plugin.DataDockable;
 import com.applang.components.DataView;
 import com.applang.components.ActionPanel.ActionType;
 import com.applang.components.DataView.DataModel;
@@ -60,7 +62,9 @@ import com.applang.components.DatePicker;
 import com.applang.components.FormEditor;
 import com.applang.components.NotePicker;
 import com.applang.components.TextEditor;
+import com.applang.components.WeatherManager;
 import com.applang.components.NotePicker.NoteFinder;
+import com.applang.provider.WeatherInfo;
 
 public class MiscTests extends XMLTestCase
 {
@@ -219,7 +223,7 @@ public class MiscTests extends XMLTestCase
 
 	String test_db = "/tmp/test.db";
 	Pattern expat = Pattern.compile("(?s)\\n([^\\{\\}]+?)(?=\\n)");
-	int[] date = new int[] {2012, -Calendar.DECEMBER, 24};
+	int[] date = ints(2012, -Calendar.DECEMBER, 24);
 	
 	public void testKeinFehler() throws Exception {
 		assertTrue(np.openConnection(test_db));
@@ -247,30 +251,54 @@ public class MiscTests extends XMLTestCase
 		
 		assertEquals(36, np.finder.keyLine(NotePicker.allCategories).length);
 	}
-
-	private void setupKeinFehler(boolean newDb) throws Exception {
+	
+	private void setupKeinFehler(boolean newDb) {
 		if (newDb)
 			new File(test_db).delete();
-		assertTrue(np.openConnection(test_db));
-		ValMap map = getResultMap(
-				np.getCon().prepareStatement("select title,count(_id) from notes group by title"));
-		if (!new Integer(19).equals(map.get("1.")) || 
-				!new Integer(7).equals(map.get("2.")) || 
-				!new Integer(10).equals(map.get("3.")))
-			testKeinFehler();
+		try {
+			assertTrue(np.openConnection(test_db));
+			ValMap map = getResultMap(
+					np.getCon().prepareStatement("select title,count(_id) from notes group by title"));
+			if (!new Integer(19).equals(map.get("1.")) || 
+					!new Integer(7).equals(map.get("2.")) || 
+					!new Integer(10).equals(map.get("3.")))
+				testKeinFehler();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 	
-	public void testNotesBrowsing() throws Exception {
+	public void testContentUris() {
+		String tableName = "weathers";
+		String flavor = WeatherInfo.AUTHORITY;
+		Context context = BerichtsheftApp.getActivity();
+		Uri furi = fileUri(test_db, tableName);
+		assertEquals(tableName, dbTableName(furi));
+		assertTrue(makeSureExists(context, flavor, new File(test_db)));
+		ValMap info = table_info(context, furi, tableName);
+		assertTrue(info.containsKey("PRIMARY_KEY"));
+		Uri curi = contentUri(flavor, tableName);
+		assertEquals(tableName, dbTableName(curi));
+		info = table_info(context, curi, tableName);
+		assertTrue(info.containsKey("PRIMARY_KEY"));
+		println(getDatabaseFile(context, curi));
+		context.registerFlavor(flavor, test_db);
+		println(getDatabaseFile(context, curi));
+		info = table_info(context, curi, tableName);
+		assertTrue(info.containsKey("PRIMARY_KEY"));
+	}
+	
+	public void testNotesBrowsing() {
 		setupKeinFehler(false);
 		DataView dv = new DataView();
 		Uri uri = fileUri(test_db, "notes");
 		dv.setUri(uri);
 		np.setDataView(dv);
-		assertFalse(np.use_jdbc());
+		assertFalse(np.usingJdbc());
 		assertEquals(0, np.pkColumn);
 		assertEquals(35, np.lastRow());
 		assertTrue(dv.reload());
-		println(dv.contentResolver.contentProvider.sql);
+		println(dv.getSql());
 		DataModel model = (DataModel) dv.getTable().getModel();
 		ValList columns = model.columns;
 		BidiMultiMap projection = new BidiMultiMap(columns);
@@ -297,7 +325,7 @@ public class MiscTests extends XMLTestCase
 		assertEquals(np.lastRow(), np.pkRow);
 	}
 
-	public void testNoteFinding() throws Exception {
+	public void testNoteFinding() {
 		setupKeinFehler(false);
 		DataView dv = new DataView();
 		Uri uri = fileUri(test_db, "notes");
@@ -322,7 +350,7 @@ public class MiscTests extends XMLTestCase
 		}		
 	};
 
-	public void testNotesManagment() throws Exception {
+	public void testNotesManagment() {
 		setupKeinFehler(false);
 		DataView dv = new DataView();
 		Uri uri = fileUri(test_db, "notes");
@@ -508,7 +536,7 @@ public class MiscTests extends XMLTestCase
 		}
 	}
 	
-	public void testNoteFinding2() throws Exception {
+	public void testNoteFinding2() {
 		setupKeinFehler(false);
 		
 		String[] keys = np.finder.keyLine(NotePicker.allCategories);
@@ -630,18 +658,27 @@ public class MiscTests extends XMLTestCase
 		
 		String inputfile = "/tmp/control.xml";
 		contentsToFile(new File(inputfile), 
+			String.format(
 				"<control>" +
-					"<QUERY " + 
-						"statement=\"SELECT a FROM try WHERE a REGEXP ?\" typeinfo=\"string\" />" + 
+					"<DBINFO>" +
+						"<dbdriver>org.sqlite.JDBC</dbdriver>" +
+						"<dburl>jdbc:sqlite:%s</dburl>" +
+						"<user />" +
+						"<password/>" +
+					"</DBINFO>" +
+					"<QUERY " +
+						"dbinfo=\"1\" " + 
+						"statement=\"SELECT a FROM try WHERE a REGEXP ?\" " +
+						"typeinfo=\"string\" />" + 
 					"<textelement query=\"1\" param1=\"^b.*\" day=\"0\" />" + 
 					"<textelement query=\"1\" param1=\".*a.*\" day=\"0\" />" + 
 					"<textelement query=\"1\" param1=\"w?oop?\" day=\"0\" />" + 
-				"</control>");
+				"</control>", dbfile));
 		
-		String styleSheet = getSetting("content.xsl", BerichtsheftApp.berichtsheftPath("Skripte/content.xsl"));
+		String styleSheet = getSetting("content.xsl", null);	//	BerichtsheftApp.berichtsheftPath("Skripte/content.xsl")
+		assertNotNull(styleSheet);
 		xmlTransform(inputfile, styleSheet, tempfile.getPath(), 
-				"debug", "yes", 
-				"dbfile", dbfile
+				"debug", "yes"
 		);
 		
 		Document doc = xmlDocument(tempfile);
@@ -649,7 +686,7 @@ public class MiscTests extends XMLTestCase
 		assertEquals(3, tables.getLength());
 		for (int i = 0; i < tables.getLength(); i++) {
 			NodeList rows = tables.item(i).getChildNodes();
-			assertEquals(new int[]{2,3,2}[i], rows.getLength());
+			assertEquals(ints(2,3,2)[i], rows.getLength());
 			for (int j = 0; j < rows.getLength(); j++) {
 				NodeList cols = rows.item(j).getChildNodes();
 				assertEquals(1, cols.getLength());
@@ -857,7 +894,7 @@ public class MiscTests extends XMLTestCase
 	public void testContent() throws Exception {
 		File tempDir = tempDir(true, BerichtsheftApp.NAME, "odt");
 		try {
-			File source = new File(BerichtsheftApp.berichtsheftPath("Vorlagen/Tagesberichte.odt"));
+			File source = new File(BerichtsheftApp.odtVorlagePath("Tagesberichte"));
 			assertTrue(source.exists());
 			File archive = new File(tempDir, "Vorlage.zip");
 			copyFile(source, archive);
@@ -906,7 +943,7 @@ public class MiscTests extends XMLTestCase
 			
 			assertTrue(new File(_content).delete());
 			
-			File destination = new File(BerichtsheftApp.berichtsheftPath("Dokumente/Tagesberichte.odt"));
+			File destination = new File(BerichtsheftApp.odtDokumentPath("Tagesberichte"));
 			if (destination.exists())
 				destination.delete();
 			int zipped = zipArchive(destination, 
@@ -942,16 +979,118 @@ public class MiscTests extends XMLTestCase
 		int[] parts = DatePicker.parseWeekDate(dateString);
 		contentsToFile(new File(paramsFilename), 
 			BerichtsheftApp.parameters(
-				dbName, 
+				strings(dbName,dbName), 
 				parts[1], 
 				parts[0]));
 		
 		assertTrue(BerichtsheftApp.export(
-				BerichtsheftApp.berichtsheftPath("Vorlagen/Tagesberichte.odt"), 
-				BerichtsheftApp.berichtsheftPath("Dokumente/Tagesberichte_"), 
-				dbName, 
+				BerichtsheftApp.odtVorlagePath("Tagesberichte"), 
+				BerichtsheftApp.odtDokumentPath("Tagesberichte_"), 
+				strings(dbName,dbName), 
 				parts[1], 
 				parts[0]));
+	}
+
+	String test1_db = "/tmp/test1.db", test2_db = "/tmp/test2.db";
+	int[] date2 = ints(2012, -Calendar.DECEMBER, 25);
+	int[] period = ints(2013, 1, 1, 7);
+	
+	public void testKeinFehler2() throws Exception {
+		assertTrue(np.openConnection(test1_db));
+		
+		int[][] dates = new int[][] {date2};
+		
+		int length = 19;
+		assertEquals(length, 
+			generateData(true, expat, 1, 
+				dates, 
+				strings("Bericht"), 
+				2, length));
+		length = 7;
+		assertEquals(length, 
+			generateData(false, expat, 1, 
+				dates, 
+				strings("Bemerkung2"), 
+				21, length));
+		int[] date = getCalendarDate(dateInMillis(date2[0], -date2[1], date2[2], length));
+		dates = new int[][] {{date[2], -date[1], date[0]}};
+		length = 10;
+		assertEquals(length, 
+			generateData(false, expat, 1, 
+				dates, 
+				strings("Bemerkung3"), 
+				28, length));
+		
+		assertEquals(36, np.finder.keyLine(NotePicker.allCategories).length);
+	}
+	
+	private void setupKeinFehler2(boolean newDb) {
+		if (newDb) {
+			new File(test1_db).delete();
+			new File(test2_db).delete();
+		}
+		try {
+			assertTrue(np.openConnection(test1_db));
+			ValMap map = getResultMap(
+					np.getCon().prepareStatement("select title,count(_id) from notes group by title"));
+			if (!new Integer(19).equals(map.get("Bericht")) || 
+					!new Integer(7).equals(map.get("Bemerkung2")) || 
+					!new Integer(10).equals(map.get("Bemerkung3")))
+				testKeinFehler2();
+			if (!hasDbWeatherforPeriod(test2_db))
+				testWetter();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		finally {
+			np.closeConnection();
+		}
+	}
+	
+	private boolean hasDbWeatherforPeriod(String dbFileName) throws Exception {
+		DatePicker.Period.setParts(period);
+		long[] interval = DatePicker.Period.getInterval();
+		WeatherManager wm = new WeatherManager();
+		assertTrue(wm.openConnection(dbFileName));
+		PreparedStatement ps = wm.getCon().prepareStatement(
+				"select created from weathers " +
+				"where created between ? and ? and location=? " +
+				"order by created, location");
+		ps.setLong(1, interval[0]);
+		ps.setLong(2, interval[1] - 1);
+		ps.setString(3, wm.location);
+		BidiMultiMap bidi = getResultMultiMap(ps, (Object) null);
+		ValList list = bidi.getKeys();
+		boolean retval = list.size() > 0 && 
+				Long.compare((long) list.get(0), interval[0]) >= 0 && 
+				Long.compare((long) list.get(-1), interval[1]) <= 0;
+		wm.closeConnection();
+		return retval;
+	}
+
+	public void testWetter() throws Exception {
+		DatePicker.Period.saveParts(0, period);
+		assertTrue(DataDockable.makeWetter(null, "period", false, test2_db, false));
+		assertTrue(hasDbWeatherforPeriod(test2_db));
+	}
+
+	public void testOdtDokument() throws Exception {
+		setupKeinFehler2(false);
+		long time = now();
+		DatePicker.Period.saveParts(1, period);
+		assertTrue(DataDockable.makeDokument(null, "odt", true, test1_db, test2_db));
+		String dateString = DatePicker.Period.weekDate();
+		int[] weekDate = DatePicker.parseWeekDate(dateString);
+		String dokumentPath = BerichtsheftApp.odtDokumentPath("Tagesberichte", weekDate);
+		assertTrue(fileExists(dokumentPath));
+		long docTime = HelperTests.getFileTime(dokumentPath, 1).toMillis();
+		assertThat(docTime, is(greaterThan(time)));
+		File tempDir = tempDir(false, BerichtsheftApp.NAME, "odt");
+    	String content = pathCombine(tempDir.getPath(), "content.xml");
+		String _content = pathCombine(tempDir.getParentFile().getPath(), "_content.xml");
+		assertThat(HelperTests.getFileSize(content), is(greaterThan(HelperTests.getFileSize(_content))));
+		String report = check_documents(2, _content, content);
+		System.out.println(report);
 	}
 
 	public void testXPath() throws Exception {
@@ -1039,8 +1178,9 @@ public class MiscTests extends XMLTestCase
 	}
 	
 	public void testFormEdit() throws Exception {
-		String inputPath = BerichtsheftApp.berichtsheftPath("Vorlagen/Tagesberichte.odt");
-		String outputPath = BerichtsheftApp.berichtsheftPath("Dokumente/Tagesberichte.odt");
+    	Deadline.wait = 2000;
+		String inputPath = BerichtsheftApp.odtVorlagePath("Tagesberichte");
+		String outputPath = BerichtsheftApp.odtDokumentPath("Tagesberichte");
 		assertTrue(FormEditor.perform(inputPath, outputPath, true, 
 			new Job<FormEditor>() {
 				public void perform(FormEditor formEditor, Object[] params) throws Exception {
@@ -1071,6 +1211,6 @@ public class MiscTests extends XMLTestCase
 				println(cl);
 		}
 		println(contentAuthorities(providerPackages));
-		println(databases(BerichtsheftApp.getActivity(), "com.applang.provider"));
+		println((Object)databases(BerichtsheftApp.getActivity(), "com.applang.provider"));
 	}
 }

@@ -16,7 +16,7 @@ public class ContentResolver extends Observable
 
 	public static final String CURSOR_DIR_BASE_TYPE = "vnd.android.cursor.dir";
     public static final String CURSOR_ITEM_BASE_TYPE = "vnd.android.cursor.item";
-
+    public static final String RAW = "raw";
     public static final String SCHEME_CONTENT = "content";
     public static final String SCHEME_FILE = "file";
     
@@ -28,10 +28,10 @@ public class ContentResolver extends Observable
 
     public ContentProvider acquireProvider(final Uri uri)
     {
+    	Context context = mContext;
     	contentProvider = new ContentProvider();
-    	String authority = null;
     	if (SCHEME_CONTENT.equals(uri.getScheme())) {
-    		authority = uri.getAuthority();
+    		String authority = uri.getAuthority();
     		if (authority != null) {
     			try {
     				Class<?> c = Class.forName(authority + "Provider");
@@ -42,7 +42,7 @@ public class ContentResolver extends Observable
     		}
     	} else if (SCHEME_FILE.equals(uri.getScheme())) {
     		final File file = new File(uri.getPath());
-    		mContext = new Context() {
+    		context = new Context() {
     			{
     				mPackageInfo = new PackageInfo("", file.getParent());
     			}
@@ -53,7 +53,7 @@ public class ContentResolver extends Observable
     			}
     		};
     	}
-    	contentProvider.setContext(mContext);
+    	contentProvider.setContext(context);
     	contentProvider.onCreate();
 		return contentProvider;
     }
@@ -83,6 +83,13 @@ public class ContentResolver extends Observable
         return acquireProvider(uri).update(uri, values, where, whereArgs);
 	}
 
+    /**
+     * Return the MIME type of the given content URL.
+     *
+     * @param url A Uri identifying content (either a list or specific type),
+     * using the content:// scheme.
+     * @return A MIME type for the content, or null if the URL is invalid or the type is unknown
+     */
 	public String getType(Uri uri) {
 		return acquireProvider(uri).getType(uri);
 	}

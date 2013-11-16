@@ -22,7 +22,7 @@ public class TextView extends View {
 		JTextArea textArea = new JTextArea();
 		textArea.setName("textArea");
 		setComponent(textArea);
-		if (paramBoolean(false, 0, params))
+		if (param_Boolean(false, 0, params))
 			setMovementMethod(new ScrollingMovementMethod());
 		setId(0);
 		getTextArea().setEditable(false);

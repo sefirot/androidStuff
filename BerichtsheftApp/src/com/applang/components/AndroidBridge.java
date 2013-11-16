@@ -258,7 +258,7 @@ public class AndroidBridge
 	}
 
 	public static Object[] deviceInfo(String device, Object...params) {
-		String dir = paramString(null, 0, params);
+		String dir = param_String(null, 0, params);
 		boolean onlyDirs = param(false, 1, params);
 		String script, response;
 		Object[] array;

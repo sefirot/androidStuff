@@ -20,7 +20,7 @@ else
 	result = Util.toTime(value, new Object[]{pattern});
 result]]></BODY>
 	</FUNCTION>
-	<BRAND name="com.applang.provider.NotePad">
+	<FLAVOR name="com.applang.provider.NotePad">
 		<FUNCTION name="updateOrInsert-clause" profile="tagesberichte">
 <BODY><![CDATA[import com.applang.*;
 long created = values.getAsLong("created");
@@ -28,8 +28,8 @@ long[] interval = Util.dayInterval(created, 1);
 title = values.getAsString("title");
 String.format("created between %d and %d and title = '%s'", new Object[]{interval[0], interval[1] - 1, title})]]></BODY>
 		</FUNCTION>
-	<CONVERSIONS><![CDATA[{"notes":{"created":"unixepoch","modified":"unixepoch"}}]]></CONVERSIONS></BRAND>
-	<BRAND name="com.applang.provider.WeatherInfo">
+	<CONVERSIONS><![CDATA[{"words":{},"bausteine":{"created":"unixepoch"},"notes":{"created":"unixepoch","modified":"unixepoch"}}]]></CONVERSIONS></FLAVOR>
+	<FLAVOR name="com.applang.provider.WeatherInfo">
 		<FUNCTION name="updateOrInsert-clause" profile="_weather">
 <BODY><![CDATA[import com.applang.*;
 long created = values.getAsLong("created");
@@ -37,36 +37,36 @@ long[] interval = Util.dayInterval(created, 1);
 location = values.getAsString("location");
 String.format("created between %d and %d and location = '%s'", new Object[]{interval[0], interval[1] - 1, location})]]></BODY>
 		</FUNCTION>
-	<CONVERSIONS><![CDATA[{"weathers":{"created":"unixepoch","modified":"unixepoch"}}]]></CONVERSIONS></BRAND>
+	<CONVERSIONS><![CDATA[{"weathers":{"created":"unixepoch","modified":"unixepoch"}}]]></CONVERSIONS></FLAVOR>
 
-	<PROFILE brand="com.applang.provider.PlantInfo" name="plantinfo" oper="pull" recordDecoration="none" recordSeparator="whitespace">
+	<PROFILE flavor="com.applang.provider.PlantInfo" name="plantinfo" oper="pull" recordDecoration="none" recordSeparator="whitespace">
 		
 	<FILTER><![CDATA[group='xxx']]></FILTER><TEMPLATE><![CDATA[`botfamily`	`family`
 `botname`	`name`]]></TEMPLATE></PROFILE>
-	<PROFILE brand="com.applang.provider.NotePad" name="tagesberichte" oper="pull" recordDecoration="fold" recordSeparator="whitespace">
+	<PROFILE flavor="com.applang.provider.NotePad" name="tagesberichte" oper="pull" recordDecoration="fold" recordSeparator="whitespace">
 
 		
 	<TEMPLATE><![CDATA[ `modified|now``created|unixepoch` '`title`'
 `note`
 ]]></TEMPLATE></PROFILE>
-	<PROFILE brand="com.applang.provider.NotePad" name="tagesberichte" oper="push" recordDecoration="fold" recordSeparator="whitespace">
+	<PROFILE flavor="com.applang.provider.NotePad" name="tagesberichte" oper="push" recordDecoration="fold" recordSeparator="whitespace">
 
 		
 	<TEMPLATE><![CDATA[ `created|unixepoch` '`title`'
 `note`
 ]]></TEMPLATE></PROFILE>
-	<PROFILE brand="com.applang.provider.WeatherInfo" name="wetter" oper="push" recordDecoration="none" recordSeparator="whitespace">
+	<PROFILE flavor="com.applang.provider.WeatherInfo" name="wetter" oper="push" recordDecoration="none" recordSeparator="whitespace">
 		
 	<TEMPLATE><![CDATA[`_id`	`location`
 `description`	`precipitation`
 `maxtemp`	`mintemp`
 `created|unixepoch`	`modified`]]></TEMPLATE></PROFILE>
-	<PROFILE brand="com.applang.provider.WeatherInfo" name="_weather" oper="download">
+	<PROFILE flavor="com.applang.provider.WeatherInfo" name="_weather" oper="download">
 		
-	<URL><![CDATA[
-]]></URL></PROFILE>
+	<URL><![CDATA[content://com.applang.provider.WeatherInfo/weathers]]></URL></PROFILE>
 	<FUNCTION name="test"><BODY><![CDATA[import com.applang.*;
 push = "push".equals(oper);
-if (value == void)
-	return push ? "" : null;
-]]></BODY></FUNCTION><PROFILE brand="com.applang.provider.WeatherInfo" name="wetter" oper="download" recordDecoration="none" recordSeparator="newline"><URL><![CDATA[http://openweathermap.org/city/2931361]]></URL></PROFILE><PROFILE brand="com.applang.provider.WeatherInfo" name="wetter 4886" oper="download" recordDecoration="none" recordSeparator="newline"><URL><![CDATA[http://openweathermap.org/station/4886]]></URL></PROFILE></TRANSPORTS>
+//if (value == void)
+//	return push ? "" : null;
+//else
+//	value;]]></BODY></FUNCTION><PROFILE flavor="com.applang.provider.WeatherInfo" name="wetter" oper="download" recordDecoration="none" recordSeparator="newline"><URL><![CDATA[http://openweathermap.org/city/2931361]]></URL></PROFILE><PROFILE flavor="com.applang.provider.WeatherInfo" name="wetter 4886" oper="download" recordDecoration="none" recordSeparator="newline"><URL><![CDATA[http://openweathermap.org/station/4886]]></URL></PROFILE><PROFILE flavor="com.applang.provider.NotePad" name="file:/tmp/temp.db#notes" oper="pull" recordDecoration="none" recordSeparator="whitespace"><TEMPLATE><![CDATA[`_id`	`title`	`note`	`created|unixepoch`	`modified`]]></TEMPLATE></PROFILE></TRANSPORTS>

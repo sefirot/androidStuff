@@ -284,6 +284,11 @@ public class BerichtsheftPlugin extends EditPlugin {
 			wm.addDockableWindow(name);
 		return wm.getDockableWindow(name);
 	}
+	
+	public static void showDockable(View view, String name) {
+		DockableWindowManager wm = view.getDockableWindowManager();
+		wm.showDockableWindow(name);
+	}
 
 	// NOTE used in scripts
 	public static void invokeAction(View view, String actionName) {
@@ -329,11 +334,19 @@ public class BerichtsheftPlugin extends EditPlugin {
 		};
 	}
 
+	public static String inquireDbFileName(View view, String fileName) {
+		File dbFile = DataView.chooseDb(BerichtsheftPlugin.fileChooser(view), true, fileName, true);
+    	if (dbFile != null) {
+    		return dbFile.getPath();
+    	}
+    	return null;
+	}
+
 	public static File getTempFile(String name) {
 		return tempFile(name, NAME);
 	}
-
-	// NOTE used in scripts
+    		
+ 	// NOTE used in scripts
 	public static ImageIcon loadIcon(String path) {
 		try {
 			if (path.startsWith("/"))

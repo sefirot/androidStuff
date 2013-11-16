@@ -131,15 +131,15 @@ public class ProfileManager extends ManagerBase<Element>
 		comboBoxes[1] = new JComboBox();
 		container.add( Box.createVerticalStrut(10) );
 		box = new Box(BoxLayout.LINE_AXIS);
-		container.add(labelFor(box, "Brand", CENTER_ALIGNMENT));
+		container.add(labelFor(box, "Flavors", CENTER_ALIGNMENT));
 		box.add(comboBoxes[1]);
 		box.add(BerichtsheftPlugin.makeCustomButton("berichtsheft.edit-function", new ActionListener() {
 			public void actionPerformed(ActionEvent evt) {
 				Object profile = comboBoxes[0].getSelectedItem();
-				Object brand = comboBoxes[1].getSelectedItem();
-				if (notNullOrEmpty(brand))
+				Object flavor = comboBoxes[1].getSelectedItem();
+				if (notNullOrEmpty(flavor))
 					new ScriptManager(view, container, 
-							ScriptManager.brandSelector(brand), 
+							ScriptManager.flavorSelector(flavor), 
 							profile);
 			}
 		}, false));
@@ -147,12 +147,12 @@ public class ProfileManager extends ManagerBase<Element>
 			int checkedItem = -1;
 			
 			public void actionPerformed(ActionEvent evt) {
-				Object brand = comboBoxes[1].getSelectedItem();
-				if (notNullOrEmpty(brand)) {
-					final Object[] projection = fullProjection(brand);
+				Object flavor = comboBoxes[1].getSelectedItem();
+				if (notNullOrEmpty(flavor)) {
+					final Object[] projection = fullProjection(flavor);
 					if (isAvailable(0, projection)) {
 						AlertDialog dialog = new AlertDialog.Builder(BerichtsheftApp.getActivity())
-								.setTitle(String.format("Columns for '%s'", brand))
+								.setTitle(String.format("Columns for '%s'", flavor))
 								.setSingleChoiceItems(
 										arraycast(projection, new CharSequence[0]), 
 										-1, 
@@ -193,8 +193,8 @@ public class ProfileManager extends ManagerBase<Element>
 		container.add( Box.createVerticalStrut(10) );
 		box = new Box(BoxLayout.LINE_AXIS);
 		container.add(labelFor(box, "Template", CENTER_ALIGNMENT));
-		textArea.setOnTextChanged(new Job<TextComponent>() {
-			public void perform(TextComponent t, Object[] params) throws Exception {
+		textArea.setOnTextChanged(new Job<ITextComponent>() {
+			public void perform(ITextComponent t, Object[] params) throws Exception {
 				setDirty(true);
 			}
 		});
@@ -294,11 +294,11 @@ public class ProfileManager extends ManagerBase<Element>
 	}
 	
 	private void setTemplate(boolean refresh, String template, Object profile) {
-		Object brand = comboBoxes[1].getSelectedItem();
+		Object flavor = comboBoxes[1].getSelectedItem();
 		Object filter = comboEdit(2).getText();
 		Object recordSeparator = comboBoxes[3].getSelectedItem();
 		Object recordDecoration = comboBoxes[4].getSelectedItem();
-		ProfileManager.setTemplate(template, profile, oper, brand, filter, recordSeparator, recordDecoration);
+		ProfileManager.setTemplate(template, profile, oper, flavor, filter, recordSeparator, recordDecoration);
 		updateModels(refresh, true, true, profile);
 	}
 	
@@ -341,7 +341,7 @@ public class ProfileManager extends ManagerBase<Element>
 								model.addElement(name);
 						}
 						comboBoxes[0].setModel(model);
-						DataView.fillBrandCombo(comboBoxes[1]);
+						DataView.fillFlavorCombo(comboBoxes[1]);
 					}
 				});
 			}
@@ -360,10 +360,10 @@ public class ProfileManager extends ManagerBase<Element>
 		blockChange(new Job<Void>() {
 			public void perform(Void t, Object[] params) throws Exception {
 				comboBoxes[0].getModel().setSelectedItem(profile);
-				String template = "", brand = "", filter = "", recordSeparator = "newline", recordDecoration = "none";
+				String template = "", flavor = "", filter = "", recordSeparator = "newline", recordDecoration = "none";
 				Element element = select(profile);
 				if (element != null) {
-					brand = element.getAttribute("brand");
+					flavor = element.getAttribute("flavor");
 					Element el = selectElement(element, "./FILTER");
 					if (el != null)
 						filter = el.getTextContent();
@@ -375,7 +375,7 @@ public class ProfileManager extends ManagerBase<Element>
 					recordSeparator = element.getAttribute("recordSeparator");
 					recordDecoration = element.getAttribute("recordDecoration");
 				}
-				comboBoxes[1].getModel().setSelectedItem(brand);
+				comboBoxes[1].getModel().setSelectedItem(flavor);
 				comboEdit(2).setText(filter);
 				comboBoxes[3].getModel().setSelectedItem(recordSeparator);
 				comboBoxes[4].getModel().setSelectedItem(recordDecoration);
@@ -432,7 +432,7 @@ public class ProfileManager extends ManagerBase<Element>
 			}
 			String value = param(null, 2, params);
 			if (value != null)
-				element.setAttribute("brand", value);
+				element.setAttribute("flavor", value);
 			value = param(null, 3, params);
 			if (notNullOrEmpty(value))
 				setCDATASection(element, "FILTER", value);
@@ -460,17 +460,17 @@ public class ProfileManager extends ManagerBase<Element>
 	public static ValMap getProfileAsMap(Object...params) {
 		ValMap map = vmap();
 		String profile = BerichtsheftPlugin.getProperty("TRANSPORT_PROFILE");
-		profile = com.applang.Util.paramString(profile, 0, params);
+		profile = param_String(profile, 0, params);
 		String oper = BerichtsheftPlugin.getProperty("TRANSPORT_OPER");
-		oper = com.applang.Util.paramString(oper, 1, params);
+		oper = param_String(oper, 1, params);
 		if (notNullOrEmpty(profile) && transportsLoaded()) {
 			String xpath = "/TRANSPORTS/PROFILE[@name='" + profile + "' and @oper='" + oper + "']";
 			Element element = selectElement(transports, xpath);
 			if (element != null) {
 				map.put("name", profile);
 				map.put("oper", oper);
-				if (element.hasAttribute("brand"))
-					map.put("brand", element.getAttribute("brand"));
+				if (element.hasAttribute("flavor"))
+					map.put("flavor", element.getAttribute("flavor"));
 				Element el = selectElement(element, "./FILTER");
 				if (el != null)
 					map.put("filter", el.getTextContent());

@@ -25,9 +25,9 @@ commandoANDROID_FILE_ENTRY(view,pane,ns,label,var,options)
 	{
 		actionPerformed(evt)
 		{
-			file = com.applang.components.AndroidBridge.chooseFileFromSdcard(view, false, entry.getText());
-			if(file != null)
-				entry.setText(file);
+			text = com.applang.components.AndroidBridge.chooseFileFromSdcard(view, false, entry.getText());
+			if (text != null)
+				entry.setText(text);
 		}
 	};
 	btn.addActionListener(listener);

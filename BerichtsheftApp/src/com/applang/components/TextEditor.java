@@ -53,7 +53,7 @@ import static com.applang.Util.*;
 import static com.applang.Util2.*;
 import static com.applang.SwingUtil.*;
 
-public class TextEditor extends JTextArea implements TextComponent
+public class TextEditor extends JTextArea implements ITextComponent
 {
     class UndoAction extends AbstractAction {
         public UndoAction() {
@@ -424,7 +424,7 @@ public class TextEditor extends JTextArea implements TextComponent
 			super.addKeyListener(l);
 	}
 
-	public void setOnTextChanged(final Job<TextComponent> onTextChanged) {
+	public void setOnTextChanged(final Job<ITextComponent> onTextChanged) {
 		this.onTextChanged = onTextChanged;
 		TextArea textArea = getTextArea();
 		if (textArea != null) {
@@ -474,7 +474,7 @@ public class TextEditor extends JTextArea implements TextComponent
 		}
 	}
 	
-	private Job<TextComponent> onTextChanged = null;
+	private Job<ITextComponent> onTextChanged = null;
 	
 	private void update() {
 		try {

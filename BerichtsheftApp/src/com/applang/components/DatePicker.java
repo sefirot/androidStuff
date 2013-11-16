@@ -56,10 +56,10 @@ public class DatePicker
 	Font font = monoSpaced(Font.BOLD);
 
 	public DatePicker(Component relative, Object... params) {
-		date = paramString("", 0, params);
+		date = param_String("", 0, params);
 		timeLine = param(null, 1, params);
-		String title = paramString("Date Picker", 2, params);
-		final boolean cancelable = paramBoolean(false, 3, params);
+		String title = param_String("Date Picker", 2, params);
+		final boolean cancelable = param_Boolean(false, 3, params);
 		sdf.setCalendar(getCalendar());
 		showDialog(null, relative, 
 	    		title, 
@@ -534,7 +534,7 @@ public class DatePicker
 		public static final int MONTH = -1;
 		
 		public static int[] getParts() {
-			return new int[]{year, month, day, length};
+			return ints(year, month, day, length);
 		}
 		
 		public static void setParts(int...parts) {
@@ -582,6 +582,11 @@ public class DatePicker
 	    public static int[] loadParts(int no) {
 	    	load(no);
 	    	return getParts();
+		}
+	 	
+	    public static void saveParts(int no, int[] parts) {
+			Period.setParts(parts);
+			Period.save(no);
 		}
 		
 		public static String weekDate() {
@@ -631,21 +636,20 @@ public class DatePicker
 		}
 	 	
 		// NOTE used in scripts
-	    public static String getDescription() {
-			Period.load(0);
+	    public static String getDescription(int no) {
+			Period.load(no);
 			return description();
 		}
 	 	
 		// NOTE used in scripts
-	    public static boolean pick() {
-			Period.load(0);
+	    public static boolean pick(int no) {
+			Period.load(no);
 	
 			int[] period = pickAPeriod(Period.getParts(), "Pick day, week or month");
 			if (period == null)
 				return false;
 			
-			Period.setParts(period);
-			Period.save(0);
+			Period.saveParts(no, period);
 			return true;
 		}
 	}

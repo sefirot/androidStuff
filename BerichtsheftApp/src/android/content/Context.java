@@ -1,8 +1,5 @@
 package android.content;
 
-import static com.applang.Util.*;
-import static com.applang.Util2.*;
-
 import java.awt.Point;
 import java.io.File;
 
@@ -13,6 +10,10 @@ import android.database.sqlite.SQLiteDatabase.CursorFactory;
 import android.net.Uri;
 import android.os.Environment;
 import android.util.Log;
+
+import static com.applang.Util.*;
+import static com.applang.Util1.*;
+import static com.applang.Util2.*;
 
 public class Context
 {
@@ -78,7 +79,7 @@ public class Context
 
         public PackageInfo(String name, Object...params) {
             mPackageName = name;
-            mDataDir = paramString("", 0, params);
+            mDataDir = param_String("", 0, params);
         }
 
         private final String mDataDir;
@@ -137,13 +138,39 @@ public class Context
         return false;
     }
 	
+	private ValMap databasePaths = vmap();
+	
+	public void registerFlavor(String flavor, String path) {
+		databasePaths.put(databaseName(flavor), path);
+	}
+	
+	public void unregisterFlavor(String flavor) {
+		databasePaths.remove(databaseName(flavor));
+	}
+
+	public String getDatabasePath(Uri uri) {
+		if (uri == null)
+			return "";
+		else if (hasAuthority(uri)) {
+			String flavor = uri.getAuthority();
+			Object path = databasePaths.get(databaseName(flavor));
+			return stringValueOf(path);
+		}
+		else
+			return uri.getPath();
+	}
+	
     public File getDatabasePath(String name) {
-    	File dir = getDatabasesDir();
-    	if (!dir.isDirectory() && dir.mkdir()) {
-    		setPermissions(dir.getPath(), S_IRWXU|S_IRWXG|S_IXOTH);
-    	}
-    	return makeFilename(dir, name);
-    }
+		if (databasePaths.containsKey(name))
+			return new File(databasePaths.get(name).toString());
+		else {
+	    	File dir = getDatabasesDir();
+	    	if (!dir.isDirectory() && dir.mkdir()) {
+	    		setPermissions(dir.getPath(), S_IRWXU|S_IRWXG|S_IXOTH);
+	    	}
+	    	return makeFilename(dir, name);
+	 	}
+ 	}
 
 	public String[] databaseList() {
 		File[] files = getDatabasesDir().listFiles();

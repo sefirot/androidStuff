@@ -2,17 +2,14 @@ commandoPERIOD(view,pane,ns,label,var,options)
 {
 	import com.applang.*;
 	import com.applang.components.*;
+	import com.applang.berichtsheft.plugin.*;
 	
 	entry = new JTextField(30);
-	value = ns.getVariable(var);
-	if(Util.notNullOrEmpty(value))
-		entry.setText(value.toString());
-	else
-		entry.setText(DatePicker.Period.getDescription());
+	no = Util.toInt(0, ns.getVariable(var));
+	entry.setText(DatePicker.Period.getDescription(no));
 
 	valueChanged()
 	{
-		ns.setVariable(var,entry.getText());
 	}
 
 	dim = entry.getPreferredSize();
@@ -23,14 +20,14 @@ commandoPERIOD(view,pane,ns,label,var,options)
 	box.add(entry);
 	box.add(Box.createHorizontalStrut(12));
 
-	icon = com.applang.berichtsheft.plugin.BerichtsheftPlugin.loadIcon("/images/calendar_22x22.png");
+	icon = BerichtsheftPlugin.loadIcon("/images/calendar_22x22.png");
 	btn = new RolloverButton(icon);
 	btn.setToolTipText("Pick a period");
 	listener = new ActionListener()
 	{
 		actionPerformed(evt)
 		{
-			DatePicker.Period.pick();
+			DatePicker.Period.pick(no);
 			entry.setText(DatePicker.Period.description());
 		}
 	};

@@ -69,9 +69,8 @@ import com.applang.berichtsheft.BerichtsheftApp;
 public class FormEditor extends JSplitPane
 {
 	public static void main(String[] args) throws Exception {
-		final String inputPath = param(BerichtsheftApp.berichtsheftPath("Vorlagen/Tagesberichte.odt"), 0, args);
-		final String outputPath = param(BerichtsheftApp.berichtsheftPath("Dokumente/Tagesberichte.odt"), 1, args);
-		
+		final String inputPath = param(BerichtsheftApp.odtVorlagePath("Tagesberichte"), 0, args);
+		final String outputPath = param(BerichtsheftApp.odtDokumentPath("Tagesberichte"), 1, args);
         SwingUtilities.invokeLater(new Runnable() {
 			public void run() {
 				perform(inputPath, outputPath, false);
@@ -82,7 +81,6 @@ public class FormEditor extends JSplitPane
 	public static boolean perform(final String inputPath, final String outputPath, final boolean deadline, Object... params) {
 		try {
 			BerichtsheftApp.loadSettings();
-			
 			final Job<File> finish = new Job<File>() {
 				public void perform(File _content, Object[] params) throws Exception {
 					_content.delete();
@@ -90,7 +88,6 @@ public class FormEditor extends JSplitPane
 					Settings.save();
 				}
 			};
-			
 			boolean ok = BerichtsheftApp.manipContent(1, inputPath, outputPath, 
 					new Job<File>() {
 						public void perform(final File content, final Object[] params) throws Exception {
@@ -143,7 +140,6 @@ public class FormEditor extends JSplitPane
 										}
 									}, 
 									deadline ? Behavior.TIMEOUT : 0);
-							
 							if (deadline) {
 								if (isAvailable(1, params)) {
 									Job<Void> job = param(null, 1, params);
@@ -167,8 +163,7 @@ public class FormEditor extends JSplitPane
 	static void unmask(String inputPath, String outputPath) {
 		try {
 			String stylePath = getSetting("mask.xsl", BerichtsheftApp.berichtsheftPath("Skripte/mask.xsl"));
-			xmlTransform(inputPath, stylePath, outputPath, 
-					"mode", 2);
+			xmlTransform(inputPath, stylePath, outputPath, "mode", 2);
 		} catch (Exception e) {
 			handleException(e);
 		}
@@ -180,9 +175,7 @@ public class FormEditor extends JSplitPane
 		try {
 			String stylePath = getSetting("mask.xsl", BerichtsheftApp.berichtsheftPath("Skripte/mask.xsl"));
 			String dummy = "/tmp/temp.html";
-			xmlTransform(contentXml, stylePath, dummy, 
-					"mode", 1);
-
+			xmlTransform(contentXml, stylePath, dummy, "mode", 1);
 			File dir = tempDir(false, BerichtsheftApp.NAME);
 			pages = dir.listFiles(new FilenameFilter() {
 				public boolean accept(File dir, String name) {
@@ -190,13 +183,11 @@ public class FormEditor extends JSplitPane
 				}
 			});
 			images = new Image[pages.length];
-			
 			pageLayoutProperties = getElement("styles.xml", 
 					"/document-styles" +
 					"/automatic-styles" +
 					"/page-layout" +
 					"/page-layout-properties");
-			
 			return true;
 		} catch (Exception e) {
 			handleException(e);

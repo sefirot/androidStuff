@@ -1,6 +1,7 @@
 package com.applang;
 
 import static com.applang.Util.*;
+import static com.applang.Util2.*;
 
 import java.io.*;
 import java.util.*;
@@ -9,14 +10,14 @@ import java.util.zip.*;
 public class ZipUtil
 {
 	static String basePath(Object path) throws Exception {
-		return Util.paramFile(new File(""), 0, path).getCanonicalPath();
+		return param_File(new File(""), 0, path).getCanonicalPath();
 	}
 	
 	static String entryPath(Object file, String base) throws Exception {
-		return Util2.pathDivide(basePath(file), base);
+		return pathDivide(basePath(file), base);
 	}
 
-	public static class ZipJob implements Util.Job<Object>
+	public static class ZipJob implements Job<Object>
 	{
 		public ZipJob(Object base) throws Exception {
 			this.base = basePath(base);
@@ -26,13 +27,13 @@ public class ZipUtil
 		
 		@Override
 		public void perform(Object o, Object[] parms) throws Exception {
-			File file = Util.paramFile(null, 0, o);
+			File file = param_File(null, 0, o);
 
 			String path = o.toString();
 			if (file != null) 
 				path = entryPath(file, base);
 			
-			ZipOutputStream out = Util.param(null, 1, parms);
+			ZipOutputStream out = param(null, 1, parms);
 			
 			ZipEntry entry = new ZipEntry(path);
 			entry.setTime(file.lastModified());
@@ -42,7 +43,7 @@ public class ZipUtil
 			
 			if (file != null) {
 				FileInputStream in = new FileInputStream(file);
-				Util.copyContents(in, out);
+				copyContents(in, out);
 				in.close();
 			}
 			
@@ -50,7 +51,7 @@ public class ZipUtil
 		}
 	};
 
-	public static class UnzipJob implements Util.Job<ZipEntry>
+	public static class UnzipJob implements Job<ZipEntry>
 	{
 		public UnzipJob(Object base) throws Exception {
 			path = basePath(base);
@@ -60,16 +61,16 @@ public class ZipUtil
 		
 		@Override
 		public void perform(ZipEntry entry, Object[] parms) throws Exception {
-			ZipInputStream in = Util.param(null, 0, parms);
+			ZipInputStream in = param(null, 0, parms);
 			if (in == null)
 				return;
 			
-			File file = Util.fileOf(path, entry.getName());
+			File file = fileOf(path, entry.getName());
 			file.getParentFile().mkdirs();
 			file.createNewFile();
 			
 			OutputStream out = new FileOutputStream(file);
-			Util.copyContents(in, out);
+			copyContents(in, out);
 			out.close();
 		}
 	}
@@ -89,11 +90,11 @@ public class ZipUtil
 			ZipJob append = new ZipJob(base);
 			
 			for (Object o : params) {
-				File file = Util.paramFile(null, 0, o);
+				File file = param_File(null, 0, o);
 				if (file == null || !file.exists())
 					continue;
 				else if (file.isDirectory())
-					cnt += (Integer)Util.iterateFiles(false, file, append, 0, out)[0];
+					cnt += (Integer)iterateFiles(false, file, append, 0, out)[0];
 				else { 
 					append.perform(file, new Object[] {0, out});
 					cnt++;
@@ -108,7 +109,7 @@ public class ZipUtil
 		return cnt;
 	}
 	
-	public static int unzipArchive(File archive, Util.Job<ZipEntry> extract, boolean exclude, String... names) {
+	public static int unzipArchive(File archive, Job<ZipEntry> extract, boolean exclude, String... names) {
 		List<String> filter = asList(names);
 		
 		int cnt = 0;
@@ -153,20 +154,20 @@ public class ZipUtil
 			for (int i = 0; i < nDelete; i++) 
 				filter.add(entryPath(params[i], path));
 			
-			File temp = File.createTempFile("zip", ".zip", new File(Util2.tempPath()));
+			File temp = File.createTempFile("zip", ".zip", new File(tempPath()));
 			final ZipOutputStream out = new ZipOutputStream(new FileOutputStream(temp));
 			
-			cnt = unzipArchive(archive, new Util.Job<ZipEntry>() {
+			cnt = unzipArchive(archive, new Job<ZipEntry>() {
 				public void perform(ZipEntry zipEntry, Object[] parms) throws Exception {
-					ZipInputStream in = Util.param(null, 0, parms);
+					ZipInputStream in = param(null, 0, parms);
 					out.putNextEntry(zipEntry);
 			        if (!zipEntry.isDirectory())
-			        	Util.copyContents(in, out);
+			        	copyContents(in, out);
 				}
 			}, true, filter.toArray(new String[0]));
 			
 			cnt += zipArchive(out, base, 
-					Util2.arrayreduce(params, nDelete, params.length - nDelete));
+					arrayreduce(params, nDelete, params.length - nDelete));
 
 			if (archive.delete())
 				temp.renameTo(archive);

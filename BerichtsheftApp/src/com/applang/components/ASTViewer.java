@@ -65,7 +65,7 @@ public class ASTViewer extends ActionPanel
 						new Dimension(700, 200), 
 						viewer, 
 						textEditor.getUIComponent(), 
-						0);
+						Behavior.EXIT_ON_CLOSE);
 			}
 		});
 	}
@@ -210,8 +210,8 @@ public class ASTViewer extends ActionPanel
 		}
 		
 		public ASTModel(String text, Object...params) {
-			detail = paramBoolean(detail, 0, params);
-			essentials = paramBoolean(essentials, 1, params);
+			detail = param_Boolean(detail, 0, params);
+			essentials = param_Boolean(essentials, 1, params);
 			if (detail) {
 				columns.addElement("level");
 				columns.addElement("class");
@@ -232,7 +232,7 @@ public class ASTViewer extends ActionPanel
 						Visitor.visitLostAndFound(checkout, 
 								null, 
 								Visitor.beginLC(node));
-						int indents = paramInteger(0, 1, params);
+						int indents = param_Integer(0, 1, params);
 						if (!Visitor.isProcessNode(node)) {
 							if (!essentials || Visitor.isEssential.apply(node)) {
 								Vector<String> row = new Vector<String>();
@@ -359,9 +359,9 @@ public class ASTViewer extends ActionPanel
 	int manip = -1;
 
 	private int showAST(final Object...params) {
-		manip = paramInteger(0, 0, params);
-		final boolean detail = paramBoolean(true, 1, params);
-		final boolean essentials = paramBoolean(true, 2, params);
+		manip = param_Integer(0, 0, params);
+		final boolean detail = param_Boolean(true, 1, params);
+		final boolean essentials = param_Boolean(true, 2, params);
 		map = param(null, 3, params);
 		if (manip > 0) {
 			int option = showText(params);
@@ -512,7 +512,7 @@ public class ASTViewer extends ActionPanel
 		showAST();
 	}
 
-	public ASTViewer(TextComponent textArea, Object...params) {
+	public ASTViewer(ITextComponent textArea, Object...params) {
 		super(textArea, params);
 		
 		addButton(this, ActionType.VMFILE.index(), new ManipAction(ActionType.VMFILE));

@@ -8,7 +8,6 @@ import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.StringReader;
 import java.util.ArrayList;
-import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Scanner;
 import java.util.regex.MatchResult;
@@ -33,14 +32,12 @@ import org.gjt.sp.util.Log;
 
 import static com.applang.Util.*;
 import static com.applang.Util1.*;
-import static com.applang.Util2.*;
 import static com.applang.SwingUtil.*;
 
 import android.content.ContentValues;
 import android.net.Uri;
 
-import com.applang.Util.ValList;
-import com.applang.Util.ValMap;
+import com.applang.Util.Job;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.components.DataView;
 import com.applang.components.DataView.Provider;
@@ -48,7 +45,10 @@ import com.applang.components.DatePicker;
 import com.applang.components.ProfileManager;
 import com.applang.components.ScriptManager;
 import com.applang.components.WeatherManager;
+import com.applang.provider.WeatherInfo;
 import com.applang.provider.WeatherInfo.Weathers;
+
+import console.Console;
 
 /**
  * 
@@ -86,7 +86,22 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 			}, false));
 			add(BerichtsheftPlugin.makeCustomButton("datadock.transport-from-buffer", new ActionListener() {
 				public void actionPerformed(ActionEvent evt) {
-					transportFromBuffer();
+					final Console console = BerichtsheftShell.getConsole(true);
+					if (console != null) {
+						BerichtsheftShell.consoleWait(console, true);
+						new JEditOptionDialog(view, 
+								"Spinner test", 
+								"", 
+								"the spinner icon in the 'Berichtsheft' console window should be animated", 
+								JOptionPane.DEFAULT_OPTION, 
+								Behavior.NONE, 
+								null, 
+								new Job<Void>() {
+									public void perform(Void t, Object[] parms) throws Exception {
+										BerichtsheftShell.consoleWait(console, false);
+									}
+								});
+					}
 				}
 			}, true));
 			
@@ -159,7 +174,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 		}
 		
 		if (dataView.getUri() == null)
-			dataView.loadUri();
+			dataView.load();
 		else
 			dataView.reload();
 		
@@ -193,7 +208,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 	};
 	
 	public void updateUri() {
-		dataView.reset(dataView.getUriString());
+		dataView.nosync();
 		NoteDockable dockable = (NoteDockable) BerichtsheftPlugin.getDockable(view, "notedock", false);
 		if (dockable != null)
 			dockable.propertiesChanged();
@@ -451,7 +466,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 			String caption, 
 			Object message, 
 			int optionType, 
-			int modality, 
+			int behavior, 
 			Job<Void> followUp, Object...params) 
 	{
 		if (message instanceof JTable) {
@@ -459,7 +474,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 			table.setPreferredScrollableViewportSize(new Dimension(800,200));
 //	        table.setFillsViewportHeight(true);
 	        int sel;
-			switch (sel = paramInteger(-3, 0, params)) {
+			switch (sel = param_Integer(-3, 0, params)) {
 			case -3:
 				break;
 			case -2:
@@ -479,13 +494,13 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 				caption, 
 				message, 
 				optionType,
-				modality, 
+				behavior, 
 				null, followUp).getResult();
 	}
 	
 	// NOTE used in scripts
 	public static boolean doTransport(final View view, String oper, Object...params) {
-		boolean showData = paramBoolean(true, 0, params);
+		boolean showData = param_Boolean(true, 0, params);
 		DataDockable dockable = (DataDockable) BerichtsheftPlugin.getDockable(view, "datadock", false);
 		if (dockable == null) {
 			BerichtsheftPlugin.consoleMessage("datadock.dockable-required.message");
@@ -496,7 +511,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 			BerichtsheftPlugin.consoleMessage("datadock.transport-uri.message");
 			return false;
 		}
-		final Provider provider = new Provider(uriString);
+		Provider provider = new Provider(uriString);
 		boolean retval = true;
 		try {
 			if (dockable != null)
@@ -510,7 +525,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 				if (retval) {
 					BidiMultiMap projection = builder.elaborateProjection(list.toArray(), 
 							provider.info.getList("name"), 
-							provider.tableName);
+							provider.getTableName());
 					if (projection == null)
 						return false;
 					DataView.DataModel model = provider.query(uriString, projection, profile.get("filter"));
@@ -549,7 +564,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 				if (retval) {
 					BidiMultiMap projection = builder.elaborateProjection(list.toArray(), 
 							provider.info.getList("name"), 
-							provider.tableName);
+							provider.getTableName());
 					if (projection == null)
 						return false;
 					DataView.DataModel model = builder.scan(new StringReader(text), projection);
@@ -596,72 +611,6 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 				else
 					pushThis.perform(null, null);
 		   	}
-			else if ("weather".equals(oper)) {
-				final int[] results = new int[]{0,0,0};
-				WeatherManager wm = new WeatherManager() {
-					@Override
-					public Object updateOrInsert(String location, long time, ValMap values) {
-						Object[] names = provider.info.getList("name").toArray();
-						ValMap profile = ProfileManager.getProfileAsMap("_weather", "download");
-						ValList conversions = vlist();
-						ValMap map = ScriptManager.getDefaultConversions(profile.get("brand"), provider.tableName);
-						for (int i = 0; i < names.length; i++) {
-							Object conv = map.get(names[i]);
-							conversions.add(conv);
-						}
-						BidiMultiMap projection = new BidiMultiMap(new ValList(asList(names)), conversions);
-						Object pk = provider.info.get("PRIMARY_KEY");
-						projection.removeKey(pk);
-						ValList list = vlist();
-						for (Object key : projection.getKeys()) {
-							if (Weathers.LOCATION.equals(key))
-								list.add(location);
-							else if (Weathers.CREATED_DATE.equals(key))
-								list.add(time);
-							else if (Weathers.MODIFIED_DATE.equals(key))
-								list.add(now());
-							else if (values.containsKey(key))
-								list.add(values.get(key));
-						}
-						Object[] items = list.toArray();
-						ContentValues contentValues = contentValues(provider.info, projection.getKeys(), items);
-						Object result = provider.updateOrInsert(uriString, 
-								profile, 
-								projection, 
-								pk, 
-								contentValues,
-								provider.skipThis(view, items));
-						if (!provider.checkResult(result, ++results[2])) 
-							result = null;
-						else if (result instanceof Uri)
-							results[0]++;
-						else
-							results[1] += (int) result;
-						return result;
-					}
-				};
-				wm.parseSite(wm.location, DatePicker.Period.loadParts(0));
-				wm.evaluate(showData);
-				if (results[0] > 0 || results[1] > 0)
-					BerichtsheftPlugin.consoleMessage("dataview.updateOrInsert.message", 
-							results[0], results[1]);
-			}
-			else if ("odt".equals(oper)) {
-				String dbPath = dockable.dataView.getDatabasePath();
-				String dateString = DatePicker.Period.weekDate();
-				int[] weekDate = DatePicker.parseWeekDate(dateString);
-				String docName = "Tagesberichte_" + String.format("%d_%d", weekDate[1], weekDate[0]) + ".odt";
-				if (BerichtsheftApp.export(
-					BerichtsheftApp.berichtsheftPath("Vorlagen/Tagesberichte.odt"), 
-					BerichtsheftApp.berichtsheftPath("Dokumente/" + docName), 
-					dbPath, 
-					weekDate[1], weekDate[0]))
-				{
-					BerichtsheftPlugin.consoleMessage("berichtsheft.export-document.message", docName);
-				}
-				else
-					BerichtsheftPlugin.consoleMessage("berichtsheft.export-document.message", "");
-			}
 		} catch (Exception e) {
 			Log.log(Log.ERROR, DataDockable.class, e);
 		}
@@ -672,139 +621,99 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 		return retval;
 	}
 
-	@SuppressWarnings({ "rawtypes", "unchecked" })
-	public static boolean generateAwkScript(String awkFileName, Object...params) {
-		String uriString = BerichtsheftPlugin.getProperty("TRANSPORT_URI");
-		if (nullOrEmpty(uriString))
-			return false;
-		String tableName = dbTableName(uriString);
-		Map map = getMapSetting("TRANSPORT_MAPPINGS", vmap());
-		String template = param((String) map.get(uriString), 0, params);
-		if (template == null)
-			return false;
-		TransportBuilder builder = new TransportBuilder();
-		ValList projection = builder.evaluateTemplate(template, null);
-		boolean retval = isAvailable(0, projection);
-		if (retval) {
-			BerichtsheftPlugin.setProperty("TRANSPORT_TEMPLATE", template);
-			map.put(uriString, template);
-			putMapSetting("TRANSPORT_MAPPINGS", map);
-			ValMap info = table_info(
-					BerichtsheftApp.getActivity(), 
-					uriString, 
-					tableName);
-			Object pk = info.get("PRIMARY_KEY");
-			boolean additionalPk = projection.indexOf(pk) < 1;
-			if (additionalPk)
-				projection.add(pk);
-			StringBuilder sb = new StringBuilder();
-			sb.append("function assert(condition, string)\n" +
-					"{\n" +
-					"\tif (! condition) {\n" +
-					"\t\tprintf(\"%s:%d: assertion failed: %s\", FILENAME, FNR, string) > \"/dev/stderr\"\n" +
-					"\t\t_assert_exit = 1\n" +
-					"\t\texit 1\n" +
-					"\t}\n" +
-					"}\n");
-			sb.append("BEGIN {\n");
-			sb.append(String.format("\tFS = \"%s\"\n", escapeAwkRegex(builder.fieldSeparator[0])));
-			sb.append(String.format("\tRS = \"%s\"\n", 
-					escapeAwkRegex(builder.recordDecoration[1]) + 
-					escapeAwkRegex(builder.recordSeparator[0]) + 
-					escapeAwkRegex(builder.recordDecoration[0])));
-			sb.append("\t");
-			int length = builder.fieldSeparators.length;
-			for (int i = 0; i < length; i++) {
-				String sep = escapeAwkRegex(builder.fieldSeparators[i]);
-				if (i == 0)
-					sep = "^" + sep;
-				else {
-					sb.append(" ; ");
-					if (i == length - 1)
-						sep += "$";
-				}
-				sb.append("sep[" + i + "] = \"" + sep + "\"");
+	// NOTE used in scripts
+	public static boolean makeWetter(final View view, String oper, Object...params) {
+		boolean showData = param_Boolean(true, 0, params);
+		String dbPath = com.applang.Util.param_String("", 1, params);
+		Boolean async = param_Boolean(true, 2, params);
+		boolean retval = true;
+		if ("period".equals(oper)) {
+			final String uriString = Weathers.CONTENT_URI.toString();
+			final Provider provider = new Provider(WeatherInfo.AUTHORITY, new File(dbPath), uriString);
+			final int[] results = ints(0,0,0);
+			final ValMap profile = ProfileManager.getProfileAsMap("_weather", "download");
+			Object[] names = provider.info.getList("name").toArray();
+			ValList conversions = vlist();
+			ValMap map = ScriptManager.getDefaultConversions(profile.get("flavor"), provider.getTableName());
+			for (int i = 0; i < names.length; i++) {
+				Object conv = map.get(names[i]);
+				conversions.add(conv);
 			}
-			sb.append("\n");
-			sb.append("\tprint \"BEGIN TRANSACTION;\"\n");
-			sb.append("}\n");
-			sb.append("{\n");
-			sb.append("\trecord = $0\n");
-			sb.append("\tif (NR < 2)\n");
-			sb.append("\t\tgsub(/^" + escapeAwkRegex(builder.recordDecoration[0]) + "/, \"\", record)\n");
-			sb.append("\tgsub(/" + escapeAwkRegex(builder.recordDecoration[1]) + "$/, \"\", record)\n");
-			sb.append("\tfor (i = 0; i < " + length + "; i++)\n");
-			sb.append("\t{\n");
-			sb.append("\t\tm = match(record,sep[i])\n");
-			sb.append("\t\tassert(m > 0, sprintf(\"sep[%d] not matched\", i))\n");
-			sb.append("\t\tif (i < 1)\n");
-			sb.append("\t\t\tassert(RSTART == 1, sprintf(\"sep[0] matched at position %d\", RSTART))\n");
-			sb.append("\t\telse\n");
-			sb.append("\t\t\t$i = substr(record,1,RSTART-1)\n");
-			sb.append("\t\trecord = substr(record,RSTART+RLENGTH)\n");
-			sb.append("\t}\n");
-			sb.append("\tlen = length(record)\n");
-			sb.append("\tassert(len < 1, sprintf(\"%d chars left unmatched\", len))\n");
-			sb.append(String.format("\tprint \"INSERT INTO %s ", tableName));
-			Object[] array = projection.toArray();
-			sb.append(String.format("(%s) ", join(",", array)));
-			ValList fieldNames = info.getList("name");
-			for (int i = 0; i < array.length; i++) {
-				int index = fieldNames.indexOf(array[i]);
-				String type = info.getListValue("type", index).toString();
-				if (additionalPk && array[i].equals(pk))
-					array[i] = "\" \"null\" \"";
-				else {
-					array[i] = "\" $" + (i + 1) + " \"";
-					if ("TEXT".compareToIgnoreCase(type) == 0)
-						array[i] = enclose("'", array[i].toString());
+			final BidiMultiMap projection = new BidiMultiMap(new ValList(asList(names)), conversions);
+			final Object pk = provider.info.get("PRIMARY_KEY");
+			projection.removeKey(pk);
+			WeatherManager wm = new WeatherManager() {
+				@Override
+				public Object updateOrInsert(String location, long time, ValMap values) {
+					ValList list = vlist();
+					for (Object key : projection.getKeys()) {
+						if (Weathers.LOCATION.equals(key))
+							list.add(location);
+						else if (Weathers.CREATED_DATE.equals(key))
+							list.add(time);
+						else if (Weathers.MODIFIED_DATE.equals(key))
+							list.add(now());
+						else if (values.containsKey(key))
+							list.add(values.get(key));
+					}
+					Object[] items = list.toArray();
+					ContentValues contentValues = contentValues(provider.info, projection.getKeys(), items);
+					Object result = provider.updateOrInsert(uriString, 
+							profile, 
+							projection, 
+							pk, 
+							contentValues,
+							provider.skipThis(view, items));
+					if (!provider.checkResult(result, ++results[2])) 
+						result = null;
+					else if (result instanceof Uri)
+						results[0]++;
+					else if (result != null)
+						results[1] += (int) result;
+					return result;
 				}
-			}
-			sb.append(String.format("VALUES (%s)", join(",", array)));
-			sb.append(";\"\n");
-			sb.append("}\n");
-			sb.append("END {\n");
-			sb.append("\tif (_assert_exit) exit 1\n");
-			sb.append("\tprint \"COMMIT;\"\n");
-			sb.append("}\n");
-			contentsToFile(new File(awkFileName), sb.toString());
+			};
+			wm.parseAndEvaluate(wm.location, DatePicker.Period.loadParts(0), showData, 
+					new Function<Void>() {
+						public Void apply(Object... params) {
+							int[] results = param(null, 0, params);
+							if (results != null) {
+								if (results[0] > 0 || results[1] > 0)
+									BerichtsheftPlugin.consoleMessage("dataview.updateOrInsert.message", 
+											results[0], results[1]);
+							}
+							return null;
+						}
+					},
+					results, async);
 		}
 		return retval;
 	}
 
-	public static String escapeAwkRegex(String s) {
-		String escaped = "";
-		for (int i = 0; i < s.length(); i++) {
-			char ch = s.charAt(i);
-			switch (ch) {
-			case 7: escaped += "\\a"; break;
-			case 8: escaped += "\\b"; break;
-			case 9: escaped += "\\t"; break;
-			case 10: escaped += "\\n"; break;
-			case 11: escaped += "\\v"; break;
-			case 12: escaped += "\\f"; break;
-			case 13: escaped += "\\r"; break;
-			case '"': escaped += "\\\""; break;
-			case '/': escaped += "\\/"; break;
-			case '^': escaped += "\\^"; break;
-			case '$': escaped += "\\$"; break;
-			case '.': escaped += "\\."; break;
-			case '[': escaped += "\\["; break;
-			case ']': escaped += "\\]"; break;
-			case '|': escaped += "\\|"; break;
-			case '(': escaped += "\\("; break;
-			case ')': escaped += "\\)"; break;
-			case '{': escaped += "\\{"; break;
-			case '}': escaped += "\\}"; break;
-			case '*': escaped += "\\*"; break;
-			case '+': escaped += "\\+"; break;
-			case '?': escaped += "\\?"; break;
-			case ' ': escaped += " "; break;
-			default:
-				escaped += "\\" + Integer.toOctalString(ch);
-				break;
+	// NOTE used in scripts
+	public static boolean makeDokument(final View view, String oper, Object...params) {
+		boolean keep = param_Boolean(false, 0, params);
+		boolean retval = false;
+		if ("odt".equals(oper)) {
+			String dbPath = com.applang.Util.param_String(null, 1, params);
+			String dbPath2 = com.applang.Util.param_String(null, 2, params);
+			DatePicker.Period.load(1);
+			String dateString = DatePicker.Period.weekDate();
+			int[] weekDate = DatePicker.parseWeekDate(dateString);
+			String docPath = BerichtsheftApp.odtDokumentPath("Tagesberichte", weekDate);
+			if (BerichtsheftApp.export(
+					BerichtsheftApp.odtVorlagePath("Tagesberichte"), 
+					docPath, 
+					strings(dbPath,dbPath2), 
+					weekDate[1], weekDate[0], "\\d", keep))
+			{
+				retval = true;
 			}
+			else {
+				BerichtsheftPlugin.consoleMessage("berichtsheft.export-document.message.2");
+			}
+			BerichtsheftPlugin.consoleMessage("berichtsheft.export-document.message.1", docPath);
 		}
-		return escaped;
+		return retval;
 	}
 }

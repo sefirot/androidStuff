@@ -6,20 +6,16 @@ import java.awt.Dimension;
 import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Vector;
 
 import javax.swing.AbstractCellEditor;
-import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
@@ -35,7 +31,6 @@ import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 import javax.swing.event.CellEditorListener;
 import javax.swing.event.ChangeEvent;
-import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.AbstractTableModel;
@@ -47,6 +42,7 @@ import javax.swing.table.TableColumn;
 import javax.swing.table.TableModel;
 
 import org.gjt.sp.jedit.BeanShell;
+import org.gjt.sp.jedit.View;
 import org.gjt.sp.jedit.bsh.NameSpace;
 import org.gjt.sp.jedit.bsh.UtilEvalError;
 import org.w3c.dom.Element;
@@ -65,6 +61,7 @@ import android.util.Log;
 import android.widget.Toast;
 
 import com.applang.Util.BidiMultiMap;
+import com.applang.Util.ValMap;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.R;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
@@ -76,14 +73,15 @@ import static com.applang.Util2.*;
 import static com.applang.SwingUtil.*;
 
 @SuppressWarnings("rawtypes")
-public class DataView extends JPanel implements DataComponent
+public class DataView extends JPanel implements IComponent
 {
-	private static final String TAG = DataView.class.getSimpleName();
+	public static final String TAG = DataView.class.getSimpleName();
 	
 	Context context = BerichtsheftApp.getActivity();
-	public ContentResolver contentResolver = context.getContentResolver();
+	ContentResolver contentResolver = context.getContentResolver();
 	
 	public DataView() {
+		resetDataConfiguration();
 		createUI();
 	}
 	
@@ -101,7 +99,7 @@ public class DataView extends JPanel implements DataComponent
         final JTextField tf = comboEdit(sqlBox);
 		sqlBox.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				projectionModel = null;
+				dc.setProjectionModel(null);
 				reload(tf.getText());
 			}
 		});
@@ -109,7 +107,7 @@ public class DataView extends JPanel implements DataComponent
 			@Override
 			public void keyTyped(KeyEvent e) {
 				super.keyTyped(e);
-				projectionModel = null;
+				dc.setProjectionModel(null);
 			}
 		});
 		tf.setText("");
@@ -171,35 +169,42 @@ public class DataView extends JPanel implements DataComponent
 	public Component getUIComponent() {
 		return this;
 	}
-
-	private String brand = null;
-	public void setBrand(String brand) {
-		this.brand = brand;
+	
+	DataConfiguration dc;
+	
+	public DataConfiguration getDataConfiguration() {
+		return dc;
+	}
+	
+	public void resetDataConfiguration() {
+		dc = new DataConfiguration(context, null, null);
+	}
+	
+	public boolean configureData(View view) {
+		boolean retval = dc.display(true, view);
+		if (retval && sqlBox.isVisible())
+			dc.save();
+		return retval;
 	}
 
-	public String getBrand() {
-		return brand;
-	}
-
-	private Uri uri = null;
 	public void setUri(Uri uri) {
-		this.uri = uri;
+		dc.setUri(uri);
 	}
 	
 	public Uri getUri() {
-		return uri;
+		return dc.getUri();
 	}
 	
 	public String getUriString() {
-		return stringValueOf(uri);
+		return stringValueOf(getUri());
 	}
 
-	public String getInfo() {
-		return dbInfo(uri);
+	public void setFlavor(String flavor) {
+		dc.getProjectionModel().flavor = flavor;
 	}
-	
-	public String getDatabasePath() {
-		return com.applang.Util1.getDatabaseFile(context, uri).getPath();
+
+	public String getFlavor() {
+		return dc.getProjectionModel().flavor;
 	}
 
 	public void synchronizeSelection(int[] rows, Object...params) {
@@ -218,7 +223,7 @@ public class DataView extends JPanel implements DataComponent
 	private PopupAdapter popupAdapter = null;
 	private ListSelectionListener tableSelectionListener = null;
 
-	public void reset(String uriString) {
+	public void nosync() {
 		if (!sqlBox.isVisible()) {
 			sqlBox.setVisible(true);
 			switchSelectionMode(false);
@@ -231,61 +236,11 @@ public class DataView extends JPanel implements DataComponent
 				tableSelectionListener = null;
 			}
 		}
-		uri = Uri.parse(valueOrElse("", uriString));
-		saveUri();
-		reload();
+		load();
 	}
 
-	public void saveUri() {
-		String tableName = dbTableName(uri);
-		Uri.Builder builder = dbTable(uri, tableName).buildUpon().query("");
-		builder.appendQueryParameter("_", stringValueOf(brand));
-		if (projectionModel != null) {
-			BidiMultiMap projection = projectionModel.getProjection();
-			ValList names = projection.getKeys();
-			ValList convs = projection.getValues(1);
-			ValList types = projection.getValues(2);
-			for (int i = 0; i < names.size(); i++) {
-				String value = stringValueOf(types.get(i)) + "|"
-						+ stringValueOf(convs.get(i));
-				builder.appendQueryParameter(stringValueOf(names.get(i)), value);
-			}
-		}
-		putSetting("uri", builder.toString());
-		Settings.save();
-	}
-
-	public void setUri() {
-		String uriString = getSetting("uri", "");
-		if (notNullOrEmpty(uriString)) {
-			uri = Uri.parse(uriString);
-			String query = uri.getQuery();
-			if (query != null) {
-				ValList names = vlist();
-				ValList convs = vlist();
-				ValList types = vlist();
-				ValList list = split(query, "&");
-				for (int i = 0; i < list.size(); i++) {
-					String[] parts = list.get(i).toString().split("=", 2);
-					if ("_".equals(parts[0]))
-						brand = parts[1];
-					else {
-						names.add(parts[0]);
-						parts = parts[1].split("\\|", 2);
-						types.add(parts[0]);
-						convs.add(parts[1]);
-					}
-				}
-				String tableName = dbTableName(uri);
-				BidiMultiMap projection = new BidiMultiMap(names, convs, types);
-				projectionModel = new ProjectionModel(tableName, projection);
-				uri = uri.buildUpon().query(null).build();
-			}
-		}
-	}
-
-	public void loadUri() {
-		setUri();
+	public void load() {
+		resetDataConfiguration();
 		reload();
 	}
 
@@ -299,9 +254,11 @@ public class DataView extends JPanel implements DataComponent
 		return populate(new Job<Void>() {
 			public void perform(Void t, Object[] params) throws Exception {
 				wireObserver(true);
+				Uri uri = getUri();
 				String tableName = dbTableName(uri);
 				DataModel model = new DataModel();
 				String s = sql;
+				ProjectionModel projectionModel = dc.getProjectionModel();
 				if (projectionModel != null) {
 					BidiMultiMap projection = projectionModel.getProjection();
 					model.setProjection(projection);
@@ -315,7 +272,7 @@ public class DataView extends JPanel implements DataComponent
 				}
 				table.setModel(model);
 				if (sqlBox.isVisible())
-					comboEdit(sqlBox).setText(contentResolver.contentProvider.sql);
+					comboEdit(sqlBox).setText(getSql());
 				else
 					comboEdit(sqlBox).setText("");
 				wireObserver(false);
@@ -323,10 +280,15 @@ public class DataView extends JPanel implements DataComponent
 		});
     }
 	
+	public String getSql() {
+		return contentResolver.contentProvider.sql;
+	}
+	
 	private ContentObserver contentObserver = new ContentObserver() {
 		public void onChange(Object arg) {
-			String info = dbInfo((Uri)arg);
-			if (info.startsWith(getInfo()))
+			DataConfiguration dc = getDataConfiguration();
+			String path = dc.getContext().getDatabasePath((Uri)arg);
+			if (path.startsWith(dc.getPath()))
 				reload();
 		}
 	};
@@ -336,13 +298,11 @@ public class DataView extends JPanel implements DataComponent
 		if (unwire) 
 			contentResolver.unregisterContentObserver(contentObserver);
 		else 
-			contentResolver.registerContentObserver(uri, false, contentObserver);
+			contentResolver.registerContentObserver(getUri(), false, contentObserver);
 	}
 	
 	public void clear() {
-		uri = null;
-		brand = null;
-		projectionModel = null;
+		resetDataConfiguration();
 		table.setModel(new DataModel());
 	}
 	
@@ -355,7 +315,7 @@ public class DataView extends JPanel implements DataComponent
 			msg = e.getMessage();
 			retval = false;
 		}
-		if (notNullOrEmpty(dbTableName(uri)))
+		if (notNullOrEmpty(dc.getTableName()))
 			msg = String.format("%s record(s)", table.getModel().getRowCount());
 		else
 			setColumnWidthsAsPercentages(table, 
@@ -365,13 +325,12 @@ public class DataView extends JPanel implements DataComponent
     }
 	
 	public boolean populate(final Provider provider, final Object...params) {
+		dc = new DataConfiguration(provider);
 		return populate(new Job<Void>() {
 			public void perform(Void t, Object[] parms) throws Exception {
 				table.setAutoCreateRowSorter(false);
 				DataModel model = provider.query(getUriString(), 
-						projectionModel == null ? 
-							new BidiMultiMap() : 
-							projectionModel.getExpandedProjection(), 
+						dc.getProjectionModel().getExpandedProjection(), 
 						params);
 				table.setModel(model == null ? new DataModel() : model);
 				table.setAutoCreateRowSorter(true);
@@ -457,7 +416,7 @@ public class DataView extends JPanel implements DataComponent
 			chooser, 
 			new Function<String[]>() {
 				public String[] apply(Object... params) {
-					if (paramBoolean(false, 1, params))
+					if (param_Boolean(false, 1, params))
 						return null;
 					ValList list = (ValList) getListSetting(key, vlist());
 					if (providerIncluded) {
@@ -484,31 +443,31 @@ public class DataView extends JPanel implements DataComponent
 	}
 	
 	@SuppressWarnings("unchecked")
-	public static void fillBrandCombo(JComboBox comboBox) {
+	public static void fillFlavorCombo(JComboBox comboBox) {
 		DefaultComboBoxModel model = (DefaultComboBoxModel) comboBox.getModel();
 		model.removeAllElements();
 		model.addElement(null);
-		ValList brands = contentAuthorities(providerPackages);
-		for (Object brand : brands) {
-			model.addElement(brand);
+		ValList flavors = contentAuthorities(providerPackages);
+		for (Object flavor : flavors) {
+			model.addElement(flavor);
 		}
 		comboBox.setModel(model);
 	}
 	
-	public static JComponent dbBrandsComponent(String packageName, 
+	public static JComponent dbFlavorsComponent(String packageName, 
 			final Job<JTable> onDoubleClick, 
 			final Object...params) {
 		ValList rows = vlist();
 		if (notNullOrEmpty(packageName)) {
-			ValList brands = contentAuthorities(packageName);
-			for (Object brand : brands) {
-				rows.add(objects(split(brand.toString(), "\\.").get(-1)));
+			ValList flavors = contentAuthorities(packageName);
+			for (Object flavor : flavors) {
+				rows.add(objects(split(flavor.toString(), "\\.").get(-1)));
 			}
 		}
 		else  {
-			ValList brands = contentAuthorities(providerPackages);
-			for (Object brand : brands) {
-				rows.add(objects(brand));
+			ValList flavors = contentAuthorities(providerPackages);
+			for (Object flavor : flavors) {
+				rows.add(objects(flavor));
 			}
 		}
 		if (rows.size() < 1)
@@ -533,7 +492,7 @@ public class DataView extends JPanel implements DataComponent
 						try {
 							onDoubleClick.perform(table, params);
 						} catch (Exception e) {
-							Log.e(TAG, "dbBrandsComponent", e);
+							Log.e(TAG, "dbFlavorsComponent", e);
 						}
 					}
 				}
@@ -542,34 +501,9 @@ public class DataView extends JPanel implements DataComponent
 		return new JScrollPane(table);
 	}
 
-	public static boolean openOrCreateDb(Context context, String brand, File target) {
-		try {
-			Class<?> c = Class.forName(brand + "Provider");
-			for (Class<?> cl : c.getDeclaredClasses()) {
-				String dbName = c.getDeclaredField("DATABASE_NAME").get(null).toString();
-				if ("DatabaseHelper".equals(cl.getSimpleName())) {
-					Object inst = cl.getConstructor(Context.class, String.class)
-							.newInstance(context, target == null ? dbName : "temp.db");
-					Method method = cl.getMethod("getWritableDatabase");
-					method.invoke(inst);
-					cl.getMethod("close").invoke(inst);
-					if (target != null) {
-						File tempDb = context.getDatabasePath("temp.db");
-						copyFile(tempDb, target);
-						tempDb.delete();
-					}
-				}
-			}
-			return true;
-		} catch (Exception e) {
-			Log.e(TAG, "openOrCreateDb", e);
-			return false;
-		}
-	}
-	
 	private AlertDialog dialog = null;
 	
-	public String askBrand(String packageName) {
+	public String askFlavor(String packageName) {
 		final Object[] params = objects("");
 		final Job<JTable> onDoubleClick = new Job<JTable>() {
 			public void perform(JTable table, Object[] params) throws Exception {
@@ -580,12 +514,12 @@ public class DataView extends JPanel implements DataComponent
 				dialog.dismiss();
 			}
 		};
-		JComponent brandsComponent = dbBrandsComponent(packageName, onDoubleClick, params);
-		if (brandsComponent == null)
+		JComponent flavorsComponent = dbFlavorsComponent(packageName, onDoubleClick, params);
+		if (flavorsComponent == null)
 			return packageName;
 		dialog = new AlertDialog.Builder(context)
-				.setTitle("Database brand")
-				.setView(brandsComponent)
+				.setTitle("Database flavor")
+				.setView(flavorsComponent)
 				.setNeutralButton(R.string.button_ok, new OnClickListener() {
 					public void onClick(DialogInterface dialog, int which) {
 						AlertDialog dlg = (AlertDialog) dialog;
@@ -593,7 +527,7 @@ public class DataView extends JPanel implements DataComponent
 						try {
 							onDoubleClick.perform(table, params);
 						} catch (Exception e) {
-							Log.e(TAG, "askBrand", e);
+							Log.e(TAG, "askFlavor", e);
 						}
 					}
 				})
@@ -602,74 +536,85 @@ public class DataView extends JPanel implements DataComponent
 		return params[0].toString();
 	}
 	
-	public boolean askUri(org.gjt.sp.jedit.View view, String info) {
-		File dbFile = chooseDb(BerichtsheftPlugin.fileChooser(view), true, info, true);
+	public Uri askUri(View view, String path) {
+		Uri uri = null;
+		File dbFile = chooseDb(BerichtsheftPlugin.fileChooser(view), true, path, true);
     	if (dbFile != null) {
-    		Context context = BerichtsheftApp.getActivity();
+    		String flavor = null;
     		String dbPath = dbFile.getPath();
 			if (isProvider.apply(dbPath)) {
-				String brandName = askBrand(dbPath);
-				if (nullOrEmpty(brandName))
-					return false;
-				if (brandName.equals(dbPath))
-					brand = brandName;
+				String f = askFlavor(dbPath);
+				if (nullOrEmpty(f))
+					return null;
+				if (f.equals(dbPath))
+					flavor = f;
 				else
-					brand = join(".", dbPath, brandName);
-				if (!openOrCreateDb(context, brand, null))
-					return false;
-				uri = contentUri(brand, null);
+					flavor = join(".", dbPath, f);
+				if (!makeSureExists(context, flavor, null))
+					return null;
+				uri = contentUri(flavor, null);
 			}
 			else {
 				uri = Uri.fromFile(dbFile);
 				if (fileExists(dbFile))
-					brand = null;
+					flavor = null;
 				else {
-					brand = askBrand(null);
-					if (nullOrEmpty(brand))
-						return false;
-					if (!openOrCreateDb(context, brand, dbFile))
-						return false;
+					flavor = askFlavor(null);
+					if (nullOrEmpty(flavor))
+						return null;
+					if (!makeSureExists(context, flavor, dbFile))
+						return null;
 				}
 			}
-			projectionModel = null;
-    		final Job<JTable> onDoubleClick = new Job<JTable>() {
-				public void perform(JTable table, Object[] params) throws Exception {
-					int sel = table.getSelectedRow();
-					if (sel > -1) {
-						String t = table.getModel().getValueAt(sel, 0).toString();
-						uri = dbTable(uri, t);
-					}
-					dialog.dismiss();
-				}
-			};
-			dialog = new AlertDialog.Builder(context)
-					.setTitle(dbPath)
-					.setView(dbTablesComponent(context, uri, onDoubleClick))
-					.setNeutralButton(R.string.button_ok, new OnClickListener() {
-						public void onClick(DialogInterface dialog, int which) {
-							AlertDialog dlg = (AlertDialog) dialog;
-							JTable table = dlg.findComponentById(1, "table");
-							try {
-								onDoubleClick.perform(table, null);
-							} catch (Exception e) {
-								Log.e(TAG, "askUri", e);
-							}
+    		try {
+				final Job<JTable> onDoubleClick = new Job<JTable>() {
+					public Uri uri = null;
+					public void perform(JTable table, Object[] params) throws Exception {
+						int sel = table.getSelectedRow();
+						if (sel > -1) {
+							String tableName = table.getModel().getValueAt(sel, 0).toString();
+							uri = dbTable(uri, tableName);
 						}
-					})
-					.create();
-			dialog.open(0.5, 0.5);
-			return uri != null;
+						dialog.dismiss();
+					}
+				};
+				onDoubleClick.getClass().getField("uri").set(onDoubleClick, uri);
+				dialog = new AlertDialog.Builder(context)
+						.setTitle(dbPath)
+						.setView(dbTablesComponent(context, uri, onDoubleClick))
+						.setNeutralButton(R.string.button_ok, new OnClickListener() {
+							public void onClick(DialogInterface dialog, int which) {
+								AlertDialog dlg = (AlertDialog) dialog;
+								JTable table = dlg.findComponentById(1, "table");
+								try {
+									onDoubleClick.perform(table, null);
+								} catch (Exception e) {
+									Log.e(TAG, "askUri", e);
+								}
+							}
+						})
+						.create();
+				dialog.open(0.5, 0.5);
+				uri = (Uri) onDoubleClick.getClass().getField("uri").get(onDoubleClick);
+			} catch (Exception e) {
+				Log.e(TAG, "askUri", e);
+			}
 		}
-    	else
-    		return false;
+    	return uri;
 	}
-	
-	public ProjectionModel projectionModel = null;
-	
-	public class ProjectionModel extends AbstractTableModel
+
+	public static class ProjectionModel extends AbstractTableModel
 	{
-		public ProjectionModel(String tableName, Object...params) {
+		public ProjectionModel(Context context, Uri uri, String flavor, Object...params) {
+			this.flavor = flavor;
+			tableName = dbTableName(uri);
 			info = table_info(context, uri, tableName);
+			initialize(tableName, info);
+		}
+
+		private void initialize(String tableName, ValMap info, Object...params) {
+			this.tableName = tableName;
+			this.info = info;
 			names = info.getList("name").toArray();
 			types = info.getList("type").toArray();
 			checks = vlist();
@@ -687,20 +632,20 @@ public class DataView extends JPanel implements DataComponent
 					conversions.set(i, stringValueOf(projection.getValue(name)));
 				}
 			}
-			else {
-				ValMap map = ScriptManager.getDefaultConversions(brand, tableName);
-				for (int i = 0; i < length; i++) {
-					Object conv = map.get(names[i]);
-					conversions.set(i, stringValueOf(conv));
-				}
-			}
-			this.tableName = tableName;
 		}
-		
-		public String tableName;
-		public ValMap info;
-		public Object[] names, types;
-		ValList checks, conversions;
+
+		public ProjectionModel(Provider provider) {
+			this.flavor = provider.flavor;
+			initialize(provider.tableName, provider.info);
+			int pkColumn = info.getList("name").indexOf(info.get("PRIMARY_KEY"));
+			if (pkColumn > -1)
+				checks.set(pkColumn, false);
+		}
+
+		private String tableName;
+		private ValMap info;
+		private Object[] names, types;
+		private ValList checks, conversions;
 		
 		@Override
 		public int getRowCount() {
@@ -743,6 +688,7 @@ public class DataView extends JPanel implements DataComponent
 			else
 				conversions.set(row, value);
 			changed = true;
+			memorizeFlavor();
 		}
 		@Override
 		public Class<?> getColumnClass(int col) {
@@ -758,13 +704,29 @@ public class DataView extends JPanel implements DataComponent
 			else
 				return true;
 		}
+		
+		private String flavor;
+		public void setFlavor(String flavor) {
+			this.flavor = flavor;
+		}
 
-		public BidiMultiMap getExpandedProjection() {
-			BidiMultiMap projection = new BidiMultiMap(new ValList(asList(names)), 
-					new ValList(conversions), 
-					new ValList(asList(types)), 
-					new ValList(checks));
-			if (notNullOrEmpty(brand)) {
+		public String getFlavor() {
+			return flavor;
+		}
+
+		public void injectFlavor() {
+			if (notNullOrEmpty(flavor)) {
+				ValMap map = ScriptManager.getDefaultConversions(flavor, tableName);
+				for (int i = 0; i < names.length; i++) {
+					Object conv = map.get(names[i]);
+					conversions.set(i, stringValueOf(conv));
+				}
+				fireTableDataChanged();
+			}
+		}
+
+		private void memorizeFlavor() {
+			if (notNullOrEmpty(flavor)) {
 				ValMap map = vmap();
 				for (int i = 0; i < names.length; i++) 
 					if ((Boolean) checks.get(i)) {
@@ -773,9 +735,15 @@ public class DataView extends JPanel implements DataComponent
 						if (notNullOrEmpty(value))
 							map.put(key, value);
 					}
-				ScriptManager.setDefaultConversions(brand, tableName, map);
+				ScriptManager.setDefaultConversions(flavor, tableName, map);
 			}
-			return projection;
+		}
+		
+		public BidiMultiMap getExpandedProjection() {
+			return new BidiMultiMap(new ValList(asList(names)), 
+				new ValList(conversions), 
+				new ValList(asList(types)), 
+				new ValList(checks));
 		}
 
 		public BidiMultiMap getProjection() {
@@ -787,6 +755,11 @@ public class DataView extends JPanel implements DataComponent
 			return projection;
 		}
 		
+		@Override
+		public String toString() {
+			return getExpandedProjection().toString();
+		}
+
 		public boolean changed = false;
 	}
 	
@@ -831,7 +804,7 @@ public class DataView extends JPanel implements DataComponent
 				btn.addActionListener(this);
 				panel.add(btn);
 				panel.doLayout();
-				scaleDimension(btn, 0.333);
+				scaleSize(btn, 0.333);
 			}
 			txt.requestFocus();
 			return panel;
@@ -865,9 +838,7 @@ public class DataView extends JPanel implements DataComponent
 		return new JScrollPane(table);
 	}
 	
-	public ProjectionModel askProjection() { 
-		String tableName = dbTableName(uri);
-		ProjectionModel model = new ProjectionModel(tableName);
+	public ProjectionModel askProjection(ProjectionModel model) { 
 		JComponent projectionComponent = projectionComponent(dialog, model);
 		dialog = new AlertDialog.Builder(context)
 				.setTitle("Projection")
@@ -886,146 +857,6 @@ public class DataView extends JPanel implements DataComponent
 				ce.stopCellEditing();
 		}
 		return model;
-	}
-	
-	public boolean configureData(org.gjt.sp.jedit.View view, Object...params) {
-		boolean retval = new DataConfigurator().display(view, params);
-		return retval;
-	}
-	
-	public class DataConfigurator {
-		public DataConfigurator() {
-			tableName = dbTableName(uri);
-		}
-		
-		String tableName;
-		AlertDialog dialog;
-		JTextField entry;
-		JComboBox comboBox;
-		JTable[] tables = new JTable[2];
-		
-		public boolean display(final org.gjt.sp.jedit.View view, Object...params) {
-			JPanel panel = new JPanel();
-			panel.setLayout(new BoxLayout(panel, BoxLayout.PAGE_AXIS));
-			Box box = new Box(BoxLayout.X_AXIS);
-			box.add(new JLabel("Database"));
-			box.add(Box.createHorizontalStrut(10));
-			entry = new JTextField(40);
-			entry.addKeyListener(new KeyAdapter() {
-				@Override
-				public void keyTyped(KeyEvent e) {
-			    	setDbFile(new File(entry.getText()), tableName);
-				}
-			});
-			entry.addComponentListener(new ComponentAdapter() {
-				@Override
-				public void componentResized(ComponentEvent e) {
-					setLongText(entry, entry.getText());
-				}
-			});
-			box.add(entry);
-			box.add(BerichtsheftPlugin.makeCustomButton("datadock.choose-db", new ActionListener() {
-				public void actionPerformed(ActionEvent evt) {
-					File dbFile = chooseDb(BerichtsheftPlugin.fileChooser(view), true, getInfo(), true);
-			    	setDbFile(dbFile, null);
-				}
-			}, false));
-			setMaximumDimension(box, 100);
-			panel.add(box);
-			panel.add( Box.createVerticalStrut(10) );
-			box = new Box(BoxLayout.X_AXIS);
-			box.add(new JLabel("Brand"));
-			box.add(Box.createHorizontalStrut(10));
-			comboBox = new JComboBox();
-			fillBrandCombo(comboBox);
-			comboBox.addActionListener(new ActionListener() {
-				public void actionPerformed(ActionEvent e) {
-					brand = String.valueOf(comboBox.getSelectedItem());
-			    	setDbFile(new File(entry.getText()), tableName);
-				}
-			});
-			box.add(comboBox);
-			setMaximumDimension(box, 100);
-			panel.add(box);
-			panel.add( Box.createVerticalStrut(10) );
-			Dimension size = new Dimension(400, 100);
-			JComponent component = dbTablesComponent(context, uri, null);
-			tables[0] = findComponent(component, "table");
-			tables[0].setPreferredScrollableViewportSize(size);
-			setDbFile(null, tableName);
-			panel.add(component);
-			if (paramBoolean(true, 0, params)) {
-				if (projectionModel == null)
-					projectionModel = new ProjectionModel(tableName);
-				component = projectionComponent(dialog, projectionModel);
-				tables[1] = findComponent(component, "table");
-				tables[1].setPreferredScrollableViewportSize(size);
-				panel.add(component);
-				tables[0].getSelectionModel().addListSelectionListener(
-						new ListSelectionListener() {
-							public void valueChanged(ListSelectionEvent e) {
-								if (e.getValueIsAdjusting()) return;
-								int sel = tables[0].getSelectedRow();
-								if (sel > -1) {
-									tableName = stringValueOf(tables[0].getModel().getValueAt(sel, 0));
-									BidiMultiMap projection = projectionModel == null ?
-											null : 
-											projectionModel.getProjection();
-									projectionModel = new ProjectionModel(tableName, projection);
-									tables[1].setModel(projectionModel);
-								} else {
-									tableName = null;
-									tables[1].setModel(new DefaultTableModel());
-								}
-							}
-						});
-			}
-			dialog = new AlertDialog.Builder(context)
-					.setTitle("Data configuration")
-					.setView(panel)
-					.setPositiveButton(R.string.button_ok, new OnClickListener() {
-						public void onClick(DialogInterface dialog, int which) {
-							dismiss();
-							result = true;
-						}
-					})
-					.setNegativeButton(R.string.button_cancel, new OnClickListener() {
-						public void onClick(DialogInterface dialog, int which) {
-							dismiss();
-							result = false;
-						}
-					})
-					.create();
-			setLongText(entry, getInfo());
-			comboBox.getModel().setSelectedItem(brand);
-			dialog.open();
-			return result;
-		}
-
-		private void setDbFile(File dbFile, String tableName) {
-			if (fileExists(dbFile) && isSQLite(dbFile)) {
-				String dbPath = dbFile.getPath();
-				setLongText(entry, dbPath);
-				uri = fileUri(dbPath, null);
-				tables[0].setModel(dbTablesModel(context, uri));
-			}
-			TableModel model = tables[0].getModel();
-			for (int i = 0; i < model.getRowCount(); i++)
-				if (model.getValueAt(i, 0).equals(tableName)) 
-					tables[0].getSelectionModel().setSelectionInterval(i, i);			
-		}
-		
-		void dismiss() {
-			dialog.dismiss();
-			if (tables[1] != null) {
-				AbstractCellEditor ce = (AbstractCellEditor) tables[1].getCellEditor();
-				if (ce != null)
-					ce.stopCellEditing();
-			}
-			setUri(fileUri(entry.getText(), tableName));
-		}
-		
-		boolean result = false;
 	}
 	
 	public static class DataModel extends AbstractTableModel
@@ -1091,7 +922,7 @@ public class DataView extends JPanel implements DataComponent
 				List<Integer> list = new ArrayList<Integer>();
 				Object[] checks = valueOrElse(vlist(), projection.getValues(3)).toArray();
 				for (int i = 0; i < columns.size(); i++) 
-					if (paramBoolean(true, i, checks)) 
+					if (param_Boolean(true, i, checks)) 
 						list.add(i);
 				index = toIntArray(list);
 			}
@@ -1186,14 +1017,36 @@ public class DataView extends JPanel implements DataComponent
 
 	public static class Provider
 	{
-		Context context = BerichtsheftApp.getActivity();
-		public ContentResolver contentResolver = context.getContentResolver();
+		private Context context;
+		public Context getContext() {
+			return context;
+		}
+
+		public ContentResolver contentResolver;
 		
 		public Provider(DataView dv) {
 			this(dv.getUriString());
 		}
 		
 		public Provider(String uriString) {
+			this(BerichtsheftApp.getActivity(), uriString);
+		}
+		
+		public Provider(final String flavor, final File dbFile, String uriString) {
+			this(
+				new Context() {
+	    			{
+	    				mPackageInfo = new PackageInfo("", dbFile.getParent());
+	    				registerFlavor(flavor, dbFile.getPath());
+	    			}
+	    		}, 
+	    		uriString);
+			this.flavor = flavor;
+		}
+		
+		public Provider(Context context, String uriString) {
+			this.context = context;
+			contentResolver = context.getContentResolver();
 			tableName = dbTableName(uriString);
 			info = table_info(
 					context, 
@@ -1201,20 +1054,33 @@ public class DataView extends JPanel implements DataComponent
 					tableName);
 		}
 		
-		public String tableName;
+		private String tableName;
+		public String getTableName() {
+			return tableName;
+		}
+
 		public ValMap info;
+		public String flavor = null;
 
 		public Uri makeUri(String uriString) {
-			return Uri.parse(uriString);
+			uriString = valueOrElse("", uriString);
+			if (flavor == null)
+				return Uri.parse(uriString);
+			if (uriString.startsWith(ContentResolver.CURSOR_DIR_BASE_TYPE))
+				return contentUri(flavor, tableName);
+			if (uriString.startsWith(ContentResolver.CURSOR_ITEM_BASE_TYPE))
+				return contentUri(flavor, tableName);
+			return contentUri(flavor, null);
 		}
 		
 		public Object[][] query(String uriString, String[] columns, Object...params) {
+			Uri uri = makeUri(uriString);
 			String selection = param(null, 0, params);
 			String[] selectionArgs = param(null, 1, params);
 			String sortOrder = param(null, 2, params);
 			try {
 				final ArrayList<Object[]> rows = new ArrayList<Object[]>();
-				Cursor cursor = contentResolver.query(makeUri(uriString), 
+				Cursor cursor = contentResolver.query(uri, 
 						columns, 
 						selection, selectionArgs, 
 						sortOrder);
@@ -1225,7 +1091,7 @@ public class DataView extends JPanel implements DataComponent
 				});
 				return rows.toArray(new Object[0][]);
 			} catch (Exception e) {
-				BerichtsheftPlugin.consoleMessage("dataview.query.message", uriString, columns);
+				BerichtsheftPlugin.consoleMessage("dataview.query.message", uri.toString(), columns);
 				return null;
 			}
 		}
@@ -1234,8 +1100,9 @@ public class DataView extends JPanel implements DataComponent
 			String selection = param(null, 0, params);
 			String[] selectionArgs = param(null, 1, params);
 			String sortOrder = param(null, 2, params);
+			Uri uri = makeUri(uriString);
 			try {
-				Cursor cursor = contentResolver.query(makeUri(uriString), 
+				Cursor cursor = contentResolver.query(uri, 
 						projection.getKeys().toArray(strings()), 
 						selection, selectionArgs, 
 						sortOrder);
@@ -1243,7 +1110,7 @@ public class DataView extends JPanel implements DataComponent
 						.setProjection(projection)
 						.traverse(cursor);
 			} catch (Exception e) {
-				BerichtsheftPlugin.consoleMessage("dataview.query.message", uriString, projection.getKeys());
+				BerichtsheftPlugin.consoleMessage("dataview.query.message", uri.toString(), projection.getKeys());
 				return null;
 			}
 		}
@@ -1258,8 +1125,8 @@ public class DataView extends JPanel implements DataComponent
 			boolean found = false;
 			if (ProfileManager.transportsLoaded() && profile != null) {
 				Object name = profile.get("name");
-				Object brand = profile.get("brand");
-				String xpath = "//BRAND[@name='" + brand + "']";
+				Object flavor = profile.get("flavor");
+				String xpath = "//FLAVOR[@name='" + flavor + "']";
 				xpath += "/FUNCTION[@name='updateOrInsert-clause' and @profile='" + name + "']";
 				Element el = selectElement(ProfileManager.transports, xpath);
 				if (el != null) {
@@ -1303,7 +1170,7 @@ public class DataView extends JPanel implements DataComponent
 		
 		private int decision = -1;
 		
-		public Function<Integer> skipThis(final org.gjt.sp.jedit.View view, final Object[] items) {
+		public Function<Integer> skipThis(final View view, final Object[] items) {
 			return new Function<Integer>() {
 				public Integer apply(Object... params) {
 					switch (decision) {
@@ -1342,8 +1209,8 @@ public class DataView extends JPanel implements DataComponent
 				ContentValues values,
 				Object...params) 
 		{
+			Uri uri = makeUri(uriString);
 			try {
-				Uri uri = makeUri(uriString);
 				boolean primaryKey = notNullOrEmpty(primaryKeyColumnName);
 				boolean primaryKeyExtraColumn = primaryKey && 
 						!projection.getKeys().contains(primaryKeyColumnName.toString());
@@ -1377,16 +1244,16 @@ public class DataView extends JPanel implements DataComponent
 					retval = contentResolver.insert(uri, values);
 				return retval;
 			} catch (Exception e) {
-				BerichtsheftPlugin.consoleMessage("dataview.updateOrInsert.message.1", uriString, values);
+				BerichtsheftPlugin.consoleMessage("dataview.updateOrInsert.message.1", uri.toString(), values);
 				return null;
 			}
 		}
 		
-		public int[] pickRecords(org.gjt.sp.jedit.View view, JTable table, String uriString, ValMap profile) {
+		public int[] pickRecords(View view, JTable table, String uriString, ValMap profile) {
 			DataModel model = (DataModel) table.getModel();
 			BidiMultiMap projection = model.getProjection();
 			Object pk = info.get("PRIMARY_KEY");
-			int[] results = new int[]{0,0,0};
+			int[] results = ints(0,0,0);
 			for (int i = 0; i < model.getRowCount(); i++) {
 				int row = table.convertRowIndexToView(i);
 				if (table.isRowSelected(row)) {
@@ -1426,13 +1293,32 @@ public class DataView extends JPanel implements DataComponent
 			}
 			return true;
 		}
+
+		public Uri insert(String uriString, ContentValues values) {
+			Uri uri = makeUri(uriString);
+			return contentResolver.insert(uri, values);
+		}
+
+		public int update(String uriString, ContentValues values, Object...params) {
+			Uri uri = makeUri(uriString);
+			String where = param(null, 0, params);
+			String[] whereArgs = param(null, 1, params);
+			return contentResolver.update(uri, values, where, whereArgs);
+		}
+
+		public int delete(String uriString, Object...params) {
+			Uri uri = makeUri(uriString);
+			String where = param(null, 0, params);
+			String[] whereArgs = param(null, 1, params);
+			return contentResolver.delete(uri, where, whereArgs);
+		}
 	}
 	
 	public static void main(String...args) {
 		BerichtsheftApp.loadSettings();
     	underTest = param("true", 0, args).equals("true");
     	final DataView dv = new DataView();
-		dv.loadUri();
+		dv.load();
 		if (dv.configureData(null)) {
 			dv.reload();
 		}

@@ -32,8 +32,6 @@ plugin.com.applang.berichtsheft.plugin.BerichtsheftPlugin.menu=datadock \
 	- \
 	datadock.choose-uri \
 	datadock.update-uri \
-	datadock.transport-to-buffer \
-	datadock.transport-from-buffer \
 	berichtsheft.spellcheck-selection
 
 # action labels for actions supplied by dockables.xml
@@ -80,7 +78,9 @@ berichtsheft.tool-missing.message=external tool '%s' not available
 berichtsheft.android-devices.message=No Android devices found
 berichtsheft.android-sdcard-directory.message=need name of a directory here (trailing '/')
 dataview.prompt-update.message=Update this record ?
-berichtsheft.export-document.message=document '%s' updated
+berichtsheft.export-document.message.1=document '%s' updated
+berichtsheft.export-document.message.2=problems processing the document, see Utilities->Troubleshooting->Activity log !!!
+dataview.sqlite-required.message=Only SQLite database files are acceptable
 
 # plugin option pane
 plugin.com.applang.berichtsheft.plugin.BerichtsheftPlugin.option-pane=berichtsheft

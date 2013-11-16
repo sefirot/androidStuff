@@ -3,7 +3,14 @@ package android.util;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.UnknownHostException;
-import java.util.logging.*;
+import java.util.logging.ConsoleHandler;
+import java.util.logging.ErrorManager;
+import java.util.logging.FileHandler;
+import java.util.logging.Formatter;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 
 import static com.applang.Util.*;
 
@@ -52,17 +59,29 @@ public final class Log
 		}
 	}
     
+    public static void logConsoleHandling(int priority) {
+		try {
+			Logger rootLogger = Logger.getLogger("");
+	    	for (Handler handler : rootLogger.getHandlers()) 
+	    		if (handler instanceof ConsoleHandler) {
+	    			((ConsoleHandler) handler).setFormatter(new LogFormatter());
+	    			break;
+	    		}
+	    	Log.changeLogLevel(priority);
+		} catch (Exception ex) {
+			new ErrorManager().error("logConsoleHandling", ex, ErrorManager.GENERIC_FAILURE);
+		}
+    }
+    
     public static void logFileHandling(String pattern, int limit, int count, boolean append) {
 //    	logFileHandling("%t/" + TAG + "-log.%u-%g.txt", 8192, 5, false)
 		try {
-			Logger rootLogger = Logger.getLogger("");	//	this one on top of the hierarchy
-			//	get rid of the default ConsoleHandler
+			Logger rootLogger = Logger.getLogger("");
 	    	for (Handler handler : rootLogger.getHandlers()) 
 	    		if (handler instanceof ConsoleHandler) {
 	    			rootLogger.removeHandler(handler);
 	    			break;
 	    		}
-	    	
 			FileHandler fileHandler = new FileHandler(pattern, limit, count, append);
 			fileHandler.setFormatter(new LogFormatter());
 			rootLogger.addHandler(fileHandler);

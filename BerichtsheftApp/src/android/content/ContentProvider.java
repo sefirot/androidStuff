@@ -33,7 +33,7 @@ public class ContentProvider {
 			else
 				return ContentResolver.CURSOR_DIR_BASE_TYPE;
 		}
-		return null;
+		return ContentResolver.RAW;
 	}
     
     public SQLiteOpenHelper openHelper() {

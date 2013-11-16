@@ -39,7 +39,9 @@ public class JEditOptionDialog extends EnhancedDialog
 		this.options = defaultOptions(optionType);
 		this.followUp = followUp;
 		this.params = params;
-		Icon icon = UIManager.getIcon("OptionPane.informationIcon");
+		Icon icon = optionType == JOptionPane.DEFAULT_OPTION ? 
+				UIManager.getIcon("OptionPane.informationIcon") :
+				UIManager.getIcon("OptionPane.questionIcon");
 		if (notNullOrEmpty(iconPath))
 			icon = BerichtsheftPlugin.loadIcon(iconPath);
 		init(caption, icon, message);
