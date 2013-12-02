@@ -1,10 +1,5 @@
 package com.applang.berichtsheft.test;
 
-import static com.applang.Util.*;
-import static com.applang.Util1.*;
-import static com.applang.Util2.*;
-import static com.applang.SwingUtil.*;
-
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -92,14 +87,8 @@ import android.widget.TextView;
 
 import com.applang.BaseDirective;
 import com.applang.Dialogs;
-import com.applang.SwingUtil.Behavior;
 import com.applang.UserContext.EvaluationTask;
-import com.applang.Util.BidiMultiMap;
-import com.applang.Util.Function;
-import com.applang.Util.ValList;
-import com.applang.Util.ValMap;
 import com.applang.berichtsheft.BerichtsheftApp;
-import com.applang.berichtsheft.R;
 import com.applang.berichtsheft.plugin.DataDockable;
 import com.applang.berichtsheft.plugin.JEditOptionDialog;
 import com.applang.berichtsheft.plugin.DataDockable.TransportBuilder;
@@ -118,7 +107,11 @@ import com.applang.components.DataView.Provider;
 import com.applang.provider.NotePadProvider;
 import com.applang.provider.WeatherInfoProvider;
 import com.applang.provider.WeatherInfo.Weathers;
-import com.jdotsoft.jarloader.JarClassLoader;
+
+import static com.applang.Util.*;
+import static com.applang.Util1.*;
+import static com.applang.Util2.*;
+import static com.applang.SwingUtil.*;
 
 import junit.framework.TestCase;
 
@@ -216,13 +209,15 @@ public class HelperTests extends TestCase
 				new File(tempDir(false, subDirName, "settings", "plugins", "berichtsheft"), "jedit.properties"), 
 				new File(tempDir(false, subDirName, "settings"), "properties"));
 		BerichtsheftPlugin.props = null;
-        JarClassLoader jcl = new JarClassLoader();
-        jcl.invokeMain("com.applang.berichtsheft.BerichtsheftApp", strings(
+        String[] args = strings(
 				"-nosplash",
 				"-noserver",
 				String.format("-settings=%s", jarsDir.getParent()), 
 				String.format("-run=%s", tempFile.getPath()), 
-				join(" ", params)));
+				join(" ", params));
+        BerichtsheftApp.main(args);
+//		com.jdotsoft.jarloader.JarClassLoader jcl = new JarClassLoader();
+//		jcl.invokeMain("com.applang.berichtsheft.BerichtsheftApp", args);
 	}
 
 	private void scriptTest(final String title, final String script, final Object...params) {
@@ -504,16 +499,16 @@ public class HelperTests extends TestCase
 	@SuppressWarnings("unchecked")
 	public void testProjection() throws Exception {
     	String dbPath = createNotePad();
-		DataView dv = new DataView();
-		String tableName = "notes";
+    	String tableName = "notes";
 		Uri uri = fileUri(dbPath, tableName);
+		String flavor = "com.applang.provider.NotePad";
+		DataView dv = new DataView();
 		dv.setUri(uri);
-		dv.setFlavor("com.applang.provider.NotePad");
 		Provider provider = new Provider(dv);
 		BidiMultiMap projection = new BidiMultiMap(provider.info.getList("name"));
 		projection.removeKey("_id");
 		Context context = BerichtsheftApp.getActivity();
-		ProjectionModel model = new ProjectionModel(context, uri, dv.getFlavor(), projection);
+		ProjectionModel model = new ProjectionModel(context, uri, flavor, projection);
 		model.injectFlavor();
 		model= dv.askProjection(model);
 		projection = model.getExpandedProjection();
@@ -545,7 +540,7 @@ public class HelperTests extends TestCase
 		new AlertDialog.Builder(context)
 				.setTitle("testProjection")
 				.setView(new View(scrollableViewport(table, new Dimension(400,100))))
-				.setNeutralButton(R.string.button_close, new OnClickListener() {
+				.setNeutralButton(android.R.string.close, new OnClickListener() {
 					public void onClick(DialogInterface dialog, int which) {
 						dialog.dismiss();
 					}})
@@ -553,19 +548,22 @@ public class HelperTests extends TestCase
 				.open();
 	}
 	
-	public void testDataConfig1() throws Exception {
+	public void testInquireUri() throws Exception {
     	String dbPath = createNotePad();
 		Uri uri = fileUri(dbPath + "~", "notes");
 		String uriString = DataConfiguration.inquireUri(stringValueOf(uri));
 		println(uriString);
 	}
 	
-	public void testDataConfig2() throws Exception {
+	public void testDataConfig() throws Exception {
     	String dbPath = createNotePad();
 		DataView dv = new DataView();
 		Uri uri = fileUri(dbPath, null);
 		dv.setUri(uri);
-		while (dv.configureData(null)) {
+		Context context = BerichtsheftApp.getActivity();
+		ProjectionModel pmodel = new ProjectionModel(context, uri, null);
+		dv.getDataConfiguration().setProjectionModel(pmodel);
+		while (dv.configureData(null, true)) {
 			println(dv.getUri());
 			println(dv.getFlavor());
 			BidiMultiMap projection = 
@@ -1131,6 +1129,7 @@ public class HelperTests extends TestCase
 						box.add(entry);
 						box.add(BerichtsheftPlugin.makeCustomButton("datadock.choose-uri", new ActionListener() {
 							public void actionPerformed(ActionEvent evt) {
+								entry.setText(BerichtsheftPlugin.inquireDbFileName(null, null));
 							}
 						}, false));
 						setMaximumDimension(box, 100);
@@ -1150,7 +1149,7 @@ public class HelperTests extends TestCase
 					}
 				}, 
 				null, 
-				Behavior.MODAL | Behavior.EXIT_ON_CLOSE);
+				Behavior.MODAL);
 	}
 	
 	public void testSingleChoice() {
@@ -1207,7 +1206,7 @@ public class HelperTests extends TestCase
 		final int id = 1;
 		final AlertDialog dialog = new AlertDialog.Builder(BerichtsheftApp.getActivity(), false)
 				.setView(new TextView(null, true))
-				.setNeutralButton(R.string.button_close, new OnClickListener() {
+				.setNeutralButton(android.R.string.close, new OnClickListener() {
 					public void onClick(DialogInterface dialog, int which) {
 						dialog.dismiss();
 					}

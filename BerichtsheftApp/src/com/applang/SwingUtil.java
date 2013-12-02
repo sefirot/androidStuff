@@ -691,7 +691,8 @@ public class SwingUtil
     		array = objects( okString, cancelString, cancelString );
     		break;
     	case JOptionPane.DEFAULT_OPTION:
-			array = objects( "Close", "Close" );
+    	case 3:
+			array = objects( "Close", null );
     		break;
     	case 5:
     		array = objects( "Yes", "Yes all", "No", "No all", "Cancel", null );

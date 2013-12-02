@@ -963,24 +963,18 @@ public class Util2
 		return list;
 	}
 
-	public static boolean makeSureExists(Context context, String flavor, File target) {
-		if (isSQLite(target))
-			return true;
+	public static boolean makeSureExists(String flavor, File dbFile) {
 		try {
 			Class<?> c = Class.forName(flavor + "Provider");
 			for (Class<?> cl : c.getDeclaredClasses()) {
-				String dbName = c.getDeclaredField("DATABASE_NAME").get(null).toString();
 				if ("DatabaseHelper".equals(cl.getSimpleName())) {
+					Context context = Context.contextForFlavor("", flavor, dbFile);
+					String dbName = c.getDeclaredField("DATABASE_NAME").get(null).toString();
 					Object inst = cl.getConstructor(Context.class, String.class)
-							.newInstance(context, target == null ? dbName : "temp.db");
+							.newInstance(context, dbName);
 					Method method = cl.getMethod("getWritableDatabase");
 					method.invoke(inst);
 					cl.getMethod("close").invoke(inst);
-					if (target != null) {
-						File tempDb = context.getDatabasePath("temp.db");
-						copyFile(tempDb, target);
-						tempDb.delete();
-					}
 				}
 			}
 			return true;

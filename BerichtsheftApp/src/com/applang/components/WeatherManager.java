@@ -141,7 +141,7 @@ public class WeatherManager extends ActionPanel
         	if (t != null) {
 				switch (t) {
 				case DATABASE:
-					if (dataView.configureData(null)) {
+					if (dataView.configureData(null, false)) {
 						dbFilePath = dataView.getDataConfiguration().getPath();
 						if (notNullOrEmpty(dbFilePath))
 							openConnection(dbFilePath);
@@ -392,7 +392,7 @@ public class WeatherManager extends ActionPanel
 		dialog = new AlertDialog.Builder(BerichtsheftApp.getActivity(),	false)
 				.setTitle(title)
 				.setView(tv)
-				.setNeutralButton(R.string.button_close,
+				.setNeutralButton(android.R.string.close,
 					new OnClickListener() {
 						public void onClick(DialogInterface dialog,
 								int which) {

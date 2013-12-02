@@ -51,7 +51,7 @@
     </target>
     
     <target name="build.post">
-		<jar jarfile=".jedit/jars/BerichtsheftPlugin.jar" 
+<!--		<jar jarfile=".jedit/jars/BerichtsheftPlugin.jar" 
 			update="true">
 			<fileset dir="/home/lotharla/" casesensitive="yes">
 				<include name="sqlite4java-282/*.jar"/>
@@ -59,7 +59,7 @@
 				<include name="sqlite4java-282/*.dll"/>
 				<include name="sqlite4java-282/*.jnilib"/>
 			</fileset>
-		</jar>
+		</jar> -->
     </target>
     
     <property name="abs.build.dir" location="${build.dir}"/>

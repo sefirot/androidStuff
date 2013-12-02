@@ -35,10 +35,7 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 
-import com.applang.SwingUtil.Memory;
-import com.applang.Util.Job;
 import com.applang.berichtsheft.BerichtsheftApp;
-import com.applang.berichtsheft.R;
 import com.applang.berichtsheft.plugin.DataDockable.TransportBuilder;
 import com.applang.berichtsheft.plugin.BerichtsheftOptionPane;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
@@ -162,7 +159,7 @@ public class ProfileManager extends ManagerBase<Element>
 											}
 										}
 								)
-								.setNeutralButton(R.string.button_ok, new OnClickListener() {
+								.setNeutralButton(android.R.string.ok, new OnClickListener() {
 									public void onClick(DialogInterface dialog, int which) {
 										dialog.dismiss();
 										if (checkedItem > -1) {

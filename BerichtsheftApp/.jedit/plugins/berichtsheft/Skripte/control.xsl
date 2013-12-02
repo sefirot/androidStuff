@@ -47,13 +47,13 @@
 <control>
 	<DBINFO>
 		<dbdriver>org.sqlite.JDBC</dbdriver>
-		<dburl><xsl:value-of select="concat('jdbc:sqlite:', $dbfile)" /></dburl>
+		<dburl><xsl:value-of select="concat('jdbc:sqlite:', util:canonicalPath($dbfile))" /></dburl>
 		<user />
 		<password/>
 	</DBINFO>
 	<DBINFO>
 		<dbdriver>org.sqlite.JDBC</dbdriver>
-		<dburl><xsl:value-of select="concat('jdbc:sqlite:', $dbfile2)" /></dburl>
+		<dburl><xsl:value-of select="concat('jdbc:sqlite:', util:canonicalPath($dbfile2))" /></dburl>
 		<user />
 		<password/>
 	</DBINFO>

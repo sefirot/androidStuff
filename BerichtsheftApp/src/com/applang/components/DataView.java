@@ -180,8 +180,8 @@ public class DataView extends JPanel implements IComponent
 		dc = new DataConfiguration(context, null, null);
 	}
 	
-	public boolean configureData(View view) {
-		boolean retval = dc.display(true, view);
+	public boolean configureData(View view, boolean full) {
+		boolean retval = dc.display(view, full);
 		if (retval && sqlBox.isVisible())
 			dc.save();
 		return retval;
@@ -200,11 +200,11 @@ public class DataView extends JPanel implements IComponent
 	}
 
 	public void setFlavor(String flavor) {
-		dc.getProjectionModel().flavor = flavor;
+		dc.getProjectionModel().setFlavor(flavor);
 	}
 
 	public String getFlavor() {
-		return dc.getProjectionModel().flavor;
+		return dc.getProjectionModel().getFlavor();
 	}
 
 	public void synchronizeSelection(int[] rows, Object...params) {
@@ -448,7 +448,7 @@ public class DataView extends JPanel implements IComponent
 		model.removeAllElements();
 		model.addElement(null);
 		ValList flavors = contentAuthorities(providerPackages);
-		for (Object flavor : flavors) {
+		for (Object flavor : sortedSet(flavors)) {
 			model.addElement(flavor);
 		}
 		comboBox.setModel(model);
@@ -520,7 +520,7 @@ public class DataView extends JPanel implements IComponent
 		dialog = new AlertDialog.Builder(context)
 				.setTitle("Database flavor")
 				.setView(flavorsComponent)
-				.setNeutralButton(R.string.button_ok, new OnClickListener() {
+				.setNeutralButton(android.R.string.ok, new OnClickListener() {
 					public void onClick(DialogInterface dialog, int which) {
 						AlertDialog dlg = (AlertDialog) dialog;
 						JTable table = dlg.findComponentById(1, "table");
@@ -550,7 +550,7 @@ public class DataView extends JPanel implements IComponent
 					flavor = f;
 				else
 					flavor = join(".", dbPath, f);
-				if (!makeSureExists(context, flavor, null))
+				if (!makeSureExists(flavor, null))
 					return null;
 				uri = contentUri(flavor, null);
 			}
@@ -562,7 +562,7 @@ public class DataView extends JPanel implements IComponent
 					flavor = askFlavor(null);
 					if (nullOrEmpty(flavor))
 						return null;
-					if (!makeSureExists(context, flavor, dbFile))
+					if (!makeSureExists(flavor, dbFile))
 						return null;
 				}
 			}
@@ -582,7 +582,7 @@ public class DataView extends JPanel implements IComponent
 				dialog = new AlertDialog.Builder(context)
 						.setTitle(dbPath)
 						.setView(dbTablesComponent(context, uri, onDoubleClick))
-						.setNeutralButton(R.string.button_ok, new OnClickListener() {
+						.setNeutralButton(android.R.string.ok, new OnClickListener() {
 							public void onClick(DialogInterface dialog, int which) {
 								AlertDialog dlg = (AlertDialog) dialog;
 								JTable table = dlg.findComponentById(1, "table");
@@ -608,12 +608,10 @@ public class DataView extends JPanel implements IComponent
 		public ProjectionModel(Context context, Uri uri, String flavor, Object...params) {
 			this.flavor = flavor;
 			tableName = dbTableName(uri);
-			info = table_info(context, uri, tableName);
-			initialize(tableName, info);
+			initialize(table_info(context, uri, tableName), params);
 		}
 
-		private void initialize(String tableName, ValMap info, Object...params) {
-			this.tableName = tableName;
+		private void initialize(ValMap info, Object...params) {
 			this.info = info;
 			names = info.getList("name").toArray();
 			types = info.getList("type").toArray();
@@ -636,7 +634,8 @@ public class DataView extends JPanel implements IComponent
 
 		public ProjectionModel(Provider provider) {
 			this.flavor = provider.flavor;
-			initialize(provider.tableName, provider.info);
+			tableName = provider.tableName;
+			initialize(provider.info);
 			int pkColumn = info.getList("name").indexOf(info.get("PRIMARY_KEY"));
 			if (pkColumn > -1)
 				checks.set(pkColumn, false);
@@ -843,7 +842,7 @@ public class DataView extends JPanel implements IComponent
 		dialog = new AlertDialog.Builder(context)
 				.setTitle("Projection")
 				.setView(projectionComponent)
-				.setNeutralButton(R.string.button_close, new OnClickListener() {
+				.setNeutralButton(android.R.string.close, new OnClickListener() {
 					public void onClick(DialogInterface dialog, int which) {
 						dialog.dismiss();
 					}
@@ -1033,14 +1032,7 @@ public class DataView extends JPanel implements IComponent
 		}
 		
 		public Provider(final String flavor, final File dbFile, String uriString) {
-			this(
-				new Context() {
-	    			{
-	    				mPackageInfo = new PackageInfo("", dbFile.getParent());
-	    				registerFlavor(flavor, dbFile.getPath());
-	    			}
-	    		}, 
-	    		uriString);
+			this(Context.contextForFlavor(BerichtsheftApp.packageName, flavor, dbFile), uriString);
 			this.flavor = flavor;
 		}
 		
@@ -1070,7 +1062,7 @@ public class DataView extends JPanel implements IComponent
 				return contentUri(flavor, tableName);
 			if (uriString.startsWith(ContentResolver.CURSOR_ITEM_BASE_TYPE))
 				return contentUri(flavor, tableName);
-			return contentUri(flavor, null);
+			return contentUri(flavor, tableName);
 		}
 		
 		public Object[][] query(String uriString, String[] columns, Object...params) {
@@ -1319,7 +1311,7 @@ public class DataView extends JPanel implements IComponent
     	underTest = param("true", 0, args).equals("true");
     	final DataView dv = new DataView();
 		dv.load();
-		if (dv.configureData(null)) {
+		if (dv.configureData(null, true)) {
 			dv.reload();
 		}
 		showFrame(null, dv.getUriString(), 

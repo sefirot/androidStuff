@@ -336,8 +336,17 @@ public class SQLiteDatabase {
     	SQLiteDatabase db = new SQLiteDatabase();
         db.mFlags = flags;
 		try {
-			db.connection = new SQLiteConnection(new File(path));
+			db.connection = new SQLiteConnection(path == null ? null : new File(path));
 			db.connection.open((flags & CREATE_IF_NECESSARY) > 0);
+			String libPath = System.getProperty("sqlite4java.library.path");
+		    String os = getOs();
+		    String arch = getArch(os);
+		    String libName = String.format("pcre-%s-%s.so", os, arch);
+			File extensionFile = new File(libPath, libName);
+			if (fileExists(extensionFile)) {
+				db.connection.setExtensionLoadingEnabled(true);
+				db.connection.loadExtension(extensionFile, "sqlite3_regexp_init");
+			}
 		} catch (com.almworks.sqlite4java.SQLiteException e) {
 			Log.e(TAG, "openDatabase", e);
 			return null;
@@ -347,6 +356,46 @@ public class SQLiteDatabase {
 			db.mFactory = factory;
 		
         return db;
+    }
+
+    private static String getArch(String os) {
+      String arch = System.getProperty("os.arch");
+      if (arch == null) {
+        Log.w(TAG, "os.arch is null");
+        arch = "x86";
+      } else {
+        arch = arch.toLowerCase(Locale.US);
+        if ("win32".equals(os) && "amd64".equals(arch)) {
+          arch = "x64";
+        }
+      }
+      Log.d(TAG, "os.arch=" + arch);
+      return arch;
+    }
+
+    private static String getOs() {
+      String osname = System.getProperty("os.name");
+      String os;
+      if (osname == null) {
+        Log.w(TAG, "os.name is null");
+        os = "linux";
+      } else {
+        osname = osname.toLowerCase(Locale.US);
+        if (osname.startsWith("mac") || osname.startsWith("darwin") || osname.startsWith("os x")) {
+          os = "osx";
+        } else if (osname.startsWith("windows")) {
+          os = "win32";
+        } else {
+          String runtimeName = System.getProperty("java.runtime.name");
+          if (runtimeName != null && runtimeName.toLowerCase(Locale.US).contains("android")) {
+            os = "android";
+          } else {
+            os = "linux";
+          }
+        }
+      }
+      Log.d(TAG, "os.name=" + osname + "; os=" + os);
+      return os;
     }
 
     public static SQLiteDatabase openOrCreateDatabase(File file, CursorFactory factory) {
@@ -427,7 +476,7 @@ public class SQLiteDatabase {
         mBindArgs.put(index, value);
     }
 
-	boolean execSql(String sql, Object[] bindArgs) {
+    public boolean execSQL(String sql, Object[] bindArgs) {
 		SQLiteStatement stm = null;
     	try {
 			stm = doBind(connection.prepare(sql), bindArgs);
@@ -488,7 +537,7 @@ public class SQLiteDatabase {
         }
         sql.append(')');
         
-        if (execSql(sql.toString(), bindArgs))
+        if (execSQL(sql.toString(), bindArgs))
 			try {
 				return connection.getLastInsertId();
 			} catch (com.almworks.sqlite4java.SQLiteException e) {}
@@ -532,7 +581,7 @@ public class SQLiteDatabase {
             sql.append(whereClause);
         }
         
-        if (execSql(sql.toString(), bindArgs))
+        if (execSQL(sql.toString(), bindArgs))
 			try {
 				return connection.getChanges();
 			} catch (com.almworks.sqlite4java.SQLiteException e) {}
@@ -544,7 +593,7 @@ public class SQLiteDatabase {
     	String sql = "DELETE FROM " + table +
             	(notNullOrEmpty(whereClause) ? " WHERE " + whereClause : "");
     	
-        if (execSql(sql, whereArgs))
+        if (execSQL(sql, whereArgs))
 			try {
 				return connection.getChanges();
 			} catch (com.almworks.sqlite4java.SQLiteException e) {}

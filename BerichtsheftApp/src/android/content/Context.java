@@ -17,6 +17,20 @@ import static com.applang.Util2.*;
 
 public class Context
 {
+	public static Context contextForFlavor(final String packageName, final String flavor, final File dbFile) {
+		return new Context() {
+			{
+				setPackageInfo(packageName, dbFile.getParent());
+				registerFlavor(flavor, dbFile.getPath());
+			}
+		};
+	}
+	
+	@Override
+	public String toString() {
+		return String.format("Context : '%s' %s", getPackageName(), getDataDirFile().getPath());
+	}
+
 	private final static String TAG = Context.class.getSimpleName();
     private final static boolean DEBUG = false;
     
@@ -67,13 +81,6 @@ public class Context
     public static final int S_IROTH = 00004;
     public static final int S_IWOTH = 00002;
     public static final int S_IXOTH = 00001;
-    
-    public void setPackageInfo(String packageName, Object...params) {
-    	if (packageName == null) 
-    		mPackageInfo = param(null, 0, params);
-    	else
-    		mPackageInfo = new PackageInfo(packageName, params);
-	}
 
     public static class PackageInfo {
 
@@ -96,6 +103,13 @@ public class Context
             return new File(dataDir, "data/" + getPackageName());
         }
     }
+    
+    public void setPackageInfo(String packageName, Object...params) {
+    	if (packageName == null) 
+    		mPackageInfo = param(null, 0, params);
+    	else
+    		mPackageInfo = new PackageInfo(packageName, params);
+	}
     
     protected PackageInfo mPackageInfo;
     

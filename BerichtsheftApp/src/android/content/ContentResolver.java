@@ -44,7 +44,7 @@ public class ContentResolver extends Observable
     		final File file = new File(uri.getPath());
     		context = new Context() {
     			{
-    				mPackageInfo = new PackageInfo("", file.getParent());
+    				setPackageInfo("", file.getParent());
     			}
     			
     			@Override
@@ -65,7 +65,9 @@ public class ContentResolver extends Observable
     }
 
 	public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs, String sortOrder) {
-		if (hasAuthority(uri) || projection != null || selectionArgs != null || sortOrder != null)
+		if (selection != null && projection == null && selectionArgs == null && sortOrder == null)
+			return rawQuery(uri, selection);
+		else if (hasAuthority(uri) || projection != null || selectionArgs != null || sortOrder != null)
 			return acquireProvider(uri).query(uri, projection, selection, selectionArgs, sortOrder);
 		else
 			return rawQuery(uri, selection);

@@ -199,12 +199,10 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 	// Actions implementation
 	
 	public void chooseUri() {
-    	if (dataView.configureData(view)) {
+    	if (dataView.configureData(view, true)) {
     		BerichtsheftPlugin.setProperty("TRANSPORT_URI", dataView.getUriString());
     		updateUri();
 		}
-    	else
-    		BerichtsheftPlugin.consoleMessage("dataview.choose-uri.message");
 	};
 	
 	public void updateUri() {

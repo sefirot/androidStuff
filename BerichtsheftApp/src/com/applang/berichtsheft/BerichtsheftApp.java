@@ -21,19 +21,26 @@ import org.apache.xml.serializer.Serializer;
 import org.apache.xml.serializer.SerializerFactory;
 import org.gjt.sp.jedit.View;
 import org.gjt.sp.jedit.jEdit;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 import org.xml.sax.XMLReader;
 import org.xml.sax.helpers.XMLReaderFactory;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.Intent;
+import android.database.Cursor;
+import android.net.Uri;
 import android.util.Log;
 
 import com.applang.BaseDirective;
 import com.applang.Dialogs;
 
 import static com.applang.Util.*;
+import static com.applang.Util1.*;
 import static com.applang.Util2.*;
 import static com.applang.SwingUtil.*;
 import static com.applang.ZipUtil.*;
@@ -43,6 +50,7 @@ public class BerichtsheftApp
 	public static void loadSettings() {
 		System.setProperty("settings.dir", ".jedit/plugins/berichtsheft");
 		Settings.load();
+		System.setProperty("sqlite4java.library.path", ".jedit/jars/sqlite4java");
 	}
 	/**
 	 * @param args
@@ -230,8 +238,10 @@ public class BerichtsheftApp
 			throw new Exception(String.format("TransformerFactory feature '%s' missing", SAXResult.FEATURE));
 	    
 		SAXTransformerFactory saxTFactory = ((SAXTransformerFactory) tFactory);	  
-		TransformerHandler tHandler1 = saxTFactory.newTransformerHandler(new StreamSource(getSetting("control.xsl", BerichtsheftApp.berichtsheftPath("Skripte/control.xsl"))));
-		TransformerHandler tHandler2 = saxTFactory.newTransformerHandler(new StreamSource(getSetting("content.xsl", BerichtsheftApp.berichtsheftPath("Skripte/content.xsl"))));
+		String controlStyleSheet = getSetting("control.xsl", BerichtsheftApp.berichtsheftPath("Skripte/control.xsl"));
+		String contentStyleSheet = getSetting("content.xsl", BerichtsheftApp.berichtsheftPath("Skripte/content.xsl"));
+		TransformerHandler tHandler1 = saxTFactory.newTransformerHandler(new StreamSource(controlStyleSheet));
+		TransformerHandler tHandler2 = saxTFactory.newTransformerHandler(new StreamSource(contentStyleSheet));
 		tHandler2.getTransformer().setParameter("inputfile", inputFilename);
 		tHandler2.getTransformer().setErrorListener(new ErrorListener() {
 			@Override
@@ -276,5 +286,63 @@ public class BerichtsheftApp
 		if (isAvailable(1, weekDate))
 			name += String.format("_%d_%d", weekDate[1], weekDate[0]);
 		return berichtsheftPath("Dokumente/" + name + ".odt");
+	}
+
+	public static void doIndirection(Element element, String attr, String tag, Job<Element> job, Object...params) {
+		int no = toInt(0, element.getAttribute(attr));
+		if (no > 0) {
+			NodeList nodeList = evaluateXPath(element.getOwnerDocument(), "//" + tag);
+			if (nodeList.getLength() >= no)
+				try {
+					job.perform( (Element) nodeList.item(no - 1), params );
+				}
+				catch (Exception e) {
+					Log.e(TAG, e.getMessage());
+				}
+		}
+	}
+
+	public static void performQueries(String controlFileName) throws Exception {
+		final Context context = BerichtsheftApp.getActivity();
+		File file = new File(controlFileName);
+		Document doc = xmlDocument(file);
+		NodeList nodeList = evaluateXPath(doc.getDocumentElement(), "*[@query]");
+		for (int i = 0; i < nodeList.getLength(); i++) {
+			final Element element = (Element) nodeList.item(i);
+			doIndirection(element, "query", "QUERY", new Job<Element>() {
+				public void perform(Element el, Object[] parms) throws Exception {
+					doIndirection(el, "dbinfo", "DBINFO", new Job<Element>() {
+						public void perform(Element el, Object[] parms) throws Exception {
+							NodeList nodeList = evaluateXPath(el, "dburl");
+							String url = nodeList.item(0).getTextContent();
+							String path = url.substring(url.lastIndexOf(":") + 1);
+							Uri uri = fileUri(path, null);
+							Element query = param(null, 0, parms);
+							if (query != null) {
+								ValList list = vlist();
+								list.add(query.getAttribute("statement"));
+								for (int j = 1; j < element.getAttributes().getLength(); j++) {
+									String param = element.getAttribute("param" + j);
+									if (notNullOrEmpty(param))
+										list.add(param);
+								}
+								Cursor cursor = context.getContentResolver().rawQuery(uri, toStrings(list));
+								list = vlist();
+								traverse(cursor, new Job<Cursor>() {
+									public void perform(Cursor c, Object[] parms) throws Exception {
+										ValList list = param(null, 0, parms);
+										list.add(c.getString(0));
+									}
+								}, list);
+								String text = join(NEWLINE, list.toArray());
+								element.setTextContent(text);
+								element.setAttribute("query", "0");
+							}
+						}
+					}, objects(el));
+				}
+			});
+		}
+		xmlNodeToFile(doc, true, file);
 	}
 }

@@ -103,7 +103,7 @@ public class DataConfiguration
 		if (notNullOrEmpty(uri))
 			save();
 		context = provider.getContext();
-		uri = provider.makeUri(uri.toString());
+		uri = provider.makeUri(stringValueOf(uri));
 		tableName = provider.getTableName();
 		path = context.getDatabasePath(uri);
 		projectionModel = new ProjectionModel(provider);
@@ -114,7 +114,7 @@ public class DataConfiguration
 	private JComboBox comboBox;
 	private JTable[] tables = new JTable[2];
 	
-	public boolean display(final boolean full, final View view) {
+	public boolean display(final View view, final boolean full) {
 		JPanel panel = new JPanel();
 		panel.setLayout(new BoxLayout(panel, BoxLayout.PAGE_AXIS));
 		Box box = new Box(BoxLayout.X_AXIS);
@@ -201,13 +201,13 @@ public class DataConfiguration
 		dialog = new AlertDialog.Builder(context)
 				.setTitle("Data configuration")
 				.setView(panel)
-				.setPositiveButton(R.string.button_ok, new OnClickListener() {
+				.setPositiveButton(android.R.string.ok, new OnClickListener() {
 					public void onClick(DialogInterface dialog, int which) {
 						dismiss();
 						result = true;
 					}
 				})
-				.setNegativeButton(R.string.button_cancel, new OnClickListener() {
+				.setNegativeButton(android.R.string.cancel, new OnClickListener() {
 					public void onClick(DialogInterface dialog, int which) {
 						dismiss();
 						result = false;
@@ -215,7 +215,7 @@ public class DataConfiguration
 				})
 				.create();
 		setLongText(entry, path);
-		if (projectionModel != null) 
+		if (full) 
 			comboBox.getModel().setSelectedItem(projectionModel.getFlavor());
 		dialog.open();
 		return result;
@@ -333,7 +333,7 @@ public class DataConfiguration
 			new DataConfiguration(BerichtsheftApp.getActivity(), 
 					uriString == null ? null : Uri.parse(uriString), 
 					null);
-		if (dc.display(false, null)) 
+		if (dc.display(null, false)) 
 			return stringValueOf(dc.getUri());
 		else
 			return null;
@@ -346,7 +346,7 @@ public class DataConfiguration
 		BerichtsheftApp.loadSettings();
 		DataConfiguration dc = new DataConfiguration(BerichtsheftApp.getActivity(), null, null);
 		do {
-			if (dc.display(true, null)) 
+			if (dc.display(null, true)) 
 				dc.save();
 			else
 				break;

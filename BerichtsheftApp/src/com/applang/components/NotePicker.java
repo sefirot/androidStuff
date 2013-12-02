@@ -205,8 +205,10 @@ public class NotePicker extends ActionPanel
 				else if (pkColumn > -1) {
 					finder.keyLine();
 					Long time = toTime(dateString, DatePicker.calendarFormat);
-					pkRow = finder.pointer(time, getCategory());
-					browse(type);
+					if (time != null) {
+						pkRow = finder.pointer(time, getCategory());
+						browse(type);
+					}
 				}
 				break;
 			case DATE:
@@ -317,7 +319,8 @@ public class NotePicker extends ActionPanel
 			refresh();
 		}
 		JComponent jc = (JComponent) getParent();
-		setWindowTitle(this, String.format(
+		if (jc != null)
+			setWindowTitle(this, String.format(
 				"Berichtsheft database : %s", 
 				trimPath(dbString, jc.getWidth() / 2, jc.getFont(), jc)));
 	}
@@ -351,7 +354,7 @@ public class NotePicker extends ActionPanel
 		}
 		else {
 			View view = getView() instanceof View ? (View) getView() : null;
-			if (dataView.configureData(view)) {
+			if (dataView.configureData(view, false)) {
 				dbName = dataView.getUriString();
 				initialize(dbName);
 			}
@@ -688,9 +691,9 @@ public class NotePicker extends ActionPanel
 			long t = epochFromKey(key);
 			if (epoch.length > 1) {
 				if (epoch.length == 2)
-					this.epoch = DatePicker.weekInterval(formatWeek(t), 1);
+					this.epoch = DatePicker.weekInterval(formatDate(2, t), 1);
 				else
-					this.epoch = DatePicker.monthInterval(formatMonth(t), 1);
+					this.epoch = DatePicker.monthInterval(formatDate(3, t), 1);
 			}
 			else
 				this.epoch = new long[] {t};
@@ -971,6 +974,25 @@ public class NotePicker extends ActionPanel
 		updateText(editor, text);
 		editor.undo.discardAllEdits();
 	}
+
+	public static String formatDate(int kind, long time) {
+		switch (kind) {
+		case 2:
+			return DatePicker.weekDate(weekInterval(new Date(time), 1));
+		case 3:
+			return DatePicker.monthDate(monthInterval(new Date(time), 1));
+		default:
+			return com.applang.Util.formatDate(time, DatePicker.calendarFormat);
+		}
+	}
+
+	public Date parseDate(String dateString) {
+		try {
+			return new Date(toTime(dateString, DatePicker.calendarFormat));
+		} catch (Exception e) {
+			return null;
+		}
+	}
 	
 	@Override
 	public boolean openConnection(String dbPath, Object... params) {
@@ -1231,33 +1253,6 @@ public class NotePicker extends ActionPanel
 			all += wrapNote(records[i]);
 		}
 		return all;
-	}
-
-	public String formatDate(int kind, long time) {
-		switch (kind) {
-		case 2:
-			return formatWeek(time);
-		case 3:
-			return formatMonth(time);
-		default:
-			return com.applang.Util.formatDate(time, DatePicker.calendarFormat);
-		}
-	}
-
-	private String formatWeek(long time) {
-		return DatePicker.weekDate(weekInterval(new Date(time), 1));
-	}
-
-	private String formatMonth(long time) {
-		return DatePicker.monthDate(monthInterval(new Date(time), 1));
-	}
-
-	public Date parseDate(String dateString) {
-		try {
-			return new Date(toTime(dateString, DatePicker.calendarFormat));
-		} catch (Exception e) {
-			return null;
-		}
 	}
 
 	public String wrapNote(Object... params) throws Exception {

@@ -131,16 +131,18 @@ public class BerichtsheftPlugin extends EditPlugin {
 		File dir = fileOf(settingsDir, "plugins", NAME);
 		dir.mkdirs();
 		
-		String commandDir = MiscUtilities.constructPath(settingsDir, "console");
-		commandDir = MiscUtilities.constructPath(commandDir, "commando");
-		File file = new File(commandDir);
+		String path = MiscUtilities.constructPath(settingsDir, "console");
+		path = MiscUtilities.constructPath(path, "commando");
+		File file = new File(path);
 		if (!file.exists())
 			file.mkdirs();
-		BerichtsheftToolBar.userCommandDirectory = commandDir;
+		BerichtsheftToolBar.userCommandDirectory = path;
 		
-		String path = dir.getPath();
+		path = dir.getPath();
 		System.setProperty("settings.dir", path);
 		Settings.load();
+		path = pathCombine(settingsDir, "jars", "sqlite4java");
+		System.setProperty("sqlite4java.library.path", path);
 	}
 	
 	public static void setupSpellChecker(String path) {
@@ -334,12 +336,30 @@ public class BerichtsheftPlugin extends EditPlugin {
 		};
 	}
 
+	//	NOTE	used in scripts
 	public static String inquireDbFileName(View view, String fileName) {
 		File dbFile = DataView.chooseDb(BerichtsheftPlugin.fileChooser(view), true, fileName, true);
     	if (dbFile != null) {
     		return dbFile.getPath();
     	}
     	return null;
+	}
+
+	public static String getSqliteCommand() {
+		String cmd = getProperty("SQLITE_COMMAND"); 
+		if (!cmd.startsWith("/")) {
+			String sdk = getProperty("ANDROID_SDK");
+			cmd = pathCombine(System.getProperty("user.home"), sdk, cmd);
+		}
+		return cmd;
+	}
+
+	public static String sqliteScript(String db, String statement) {
+		String cmd = getSqliteCommand(); 
+		if (notNullOrEmpty(db))
+			cmd += " " + db;
+		cmd += " <<<\"" + statement + "\"";
+		return cmd;
 	}
 
 	public static File getTempFile(String name) {
