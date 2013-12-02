@@ -173,7 +173,7 @@ public class NotePadProvider extends ContentProvider
     	db.execSQL("DROP TABLE IF EXISTS " + DATABASE_TABLES[index]);
     }
 
-	private static void createTable(int index, SQLiteDatabase db) {
+	public static void createTable(int index, SQLiteDatabase db) {
 		String sql = "CREATE TABLE IF NOT EXISTS " + DATABASE_TABLES[index] + " ("
 		    + NoteColumns._ID + " INTEGER PRIMARY KEY,"
 		    + NoteColumns.TITLE + " TEXT,"

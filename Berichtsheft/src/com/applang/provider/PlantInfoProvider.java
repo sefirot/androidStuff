@@ -83,7 +83,7 @@ public class PlantInfoProvider extends ContentProvider
         public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
             Log.w(TAG, "Upgrading database from version " + oldVersion + " to "
                     + newVersion + ", which will destroy all old data");
-            db.execSQL("DROP TABLE IF EXISTS plants");
+            db.execSQL("DROP TABLE IF EXISTS " + PLANTS_TABLE_NAME);
             onCreate(db);
         }
     }

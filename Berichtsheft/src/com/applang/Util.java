@@ -717,6 +717,15 @@ public class Util
 		}
 	}
 	
+	// NOTE used in xsl scripts
+	public static String canonicalPath(String filePath) {
+		try {
+			return new File(filePath).getCanonicalPath();
+		} catch (Exception e) {
+			return filePath;
+		}
+	}
+	
 	public static boolean isSymlink(File file) throws IOException {
 		if (file == null)
 			throw new NullPointerException("File must not be null");
