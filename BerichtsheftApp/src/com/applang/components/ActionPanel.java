@@ -11,42 +11,38 @@ import java.sql.Connection;
 import java.sql.Statement;
 
 import javax.swing.AbstractButton;
+import javax.swing.Action;
 import javax.swing.BoxLayout;
 import javax.swing.JPanel;
-import javax.swing.JSplitPane;
+import javax.swing.JToggleButton;
 
+import com.applang.UserContext;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
+import static com.applang.VelocityUtil.evaluate;
 import static com.applang.SwingUtil.*;
 
 public class ActionPanel extends ManagerBase<Object>
 {
+    protected static final String TAG = ActionPanel.class.getSimpleName();
+    
 	public static void createAndShowGUI(String title, 
 			final Dimension preferred, 
-			final ActionPanel actionPanel, 
-			final Component target, 
 			int modality, 
+			final ActionPanel actionPanel, 
+			final Function<Component> centerComponent, 
 			final Object... params)
 	{
 		showFrame(null, title, 
 				new UIFunction() {
 					public Component[] apply(Component comp, Object[] parms) {
 						Container contentPane = new JPanel(new BorderLayout());
-						southStatusBar(contentPane);
 						actionPanel.joinContainer(northToolBar(contentPane));
-						contentPane.add(target, BorderLayout.CENTER);
-						Container secondPane = param(null, 0, params);
-						if (secondPane != null) {
-							JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
-							splitPane.setResizeWeight(0.5);
-							splitPane.setOneTouchExpandable(true);
-							splitPane.setTopComponent(contentPane);
-							splitPane.setBottomComponent(secondPane);
-							contentPane = splitPane;
-						}
+						contentPane.add(centerComponent.apply(params), BorderLayout.CENTER);
+						southStatusBar(contentPane);
 						if (preferred != null)
 							contentPane.setPreferredSize(preferred);
 						return components(contentPane);
@@ -88,11 +84,13 @@ public class ActionPanel extends ManagerBase<Object>
 		DELETE		(8, "manager.action-DELETE"), 
 		PICK		(9, "manager.action-PICK"), 
 		DATE		(10, "manager.action-DATE"), 
-		CATEGORY	(11, "manager.action-CATEGORY"), 
+		TITLE		(11, "manager.action-TITLE"), 
 		IMPORT		(12, "manager.action-IMPORT"), 
 		TEXT		(13, "manager.action-TEXT"), 
-		ANDROID		(14, "manager.action-ANDROID"), 
-		ACTIONS		(15, "Actions"); 		//	needs to stay last !
+		TOGGLE		(14, "manager.action-TOGGLE"), 
+		STRUCT		(15, "manager.action-STRUCT"), 
+		ANDROID		(16, "manager.action-ANDROID"), 
+		ACTIONS		(17, "Actions"); 		//	needs to stay last !
 		
 		private final int index;   
 	    private final String resourceName;
@@ -114,6 +112,10 @@ public class ActionPanel extends ManagerBase<Object>
 		public String description() {
 			return BerichtsheftPlugin.getProperty(resourceName.concat(".label"));
 		}
+		@Override
+		public String name(int state) {
+			return BerichtsheftPlugin.getProperty(resourceName.concat(".label") + "." + state);
+		}
 	}
 
 	private Container view;
@@ -128,11 +130,10 @@ public class ActionPanel extends ManagerBase<Object>
 	public ActionPanel(IComponent iComponent, Object... params) {
 		this.iComponent = iComponent;
 		if (iComponent instanceof ITextComponent) {
-			this.textArea = (ITextComponent) iComponent;
-			setupTextArea();
+			setupTextArea((ITextComponent) iComponent);
 		}
-		this.view = param(null, 0, params);
-		this.caption = param_String("Database", 1, params);
+		view = param(null, 0, params);
+		caption = param_String("Database", 1, params);
 		setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
 	}
 	
@@ -156,6 +157,11 @@ public class ActionPanel extends ManagerBase<Object>
 	public void addButton(Container container, int index, CustomAction customAction) {
 		if (index > -1 && index < buttons.length)
 			container.add(buttons[index] = BerichtsheftPlugin.makeCustomButton(customAction, false));
+	}
+	
+	public void addToggle(Container container, int index, CustomAction customAction) {
+		if (index > -1 && index < buttons.length)
+			container.add(buttons[index] = new JToggleButton(customAction));
 	}
 	
 	public CustomAction getAction(int index) {
@@ -184,30 +190,52 @@ public class ActionPanel extends ManagerBase<Object>
 	}
 
 	protected IComponent iComponent = null;
-	protected ITextComponent textArea = null;
+	protected ITextComponent textComponent = null;
+	
+	protected void setupTextArea(ITextComponent iTextComponent) {
+		textComponent = iTextComponent;
+		textComponent.addKeyListener(new KeyAdapter() {
+			@Override
+			public void keyTyped(KeyEvent e) {
+				setDirty(true);
+			}
+		});
+	}
+	
+	protected void toggleTextView(CustomAction toggleAction) {
+		String name1 = toggleAction.getType().name(1);
+		String name2 = toggleAction.getType().name(2);
+		if (toggleAction.getValue(Action.NAME).equals(name1))
+			toggleAction.putValue(Action.NAME, name2);
+		else
+			toggleAction.putValue(Action.NAME, name1);
+		boolean textView = toggleAction.getValue(Action.NAME).equals(name2);
+    	String script = getText();
+		getTextEditor().toggle(textView);
+    	if (textView) {
+			setText(toText(script));
+    	}
+	}
+
+	protected String toText(String script) {
+		return evaluate(new UserContext(), script, TAG);
+	}
+	
+	public TextEditor getTextEditor() {
+		return (TextEditor) textComponent;
+	}
 
 	protected boolean hasTextArea() {
-		return this.textArea != null;
+		return textComponent != null;
 	}
 
 	public void setText(String text) {
 		if (hasTextArea()) 
-			this.textArea.setText(text);
+			textComponent.setText(text);
 	}
 
 	public String getText() {
-		return hasTextArea() ? this.textArea.getText() : null;
-	}
-	
-	protected void setupTextArea() {
-		if (hasTextArea()) {
-			this.textArea.addKeyListener(new KeyAdapter() {
-				@Override
-				public void keyTyped(KeyEvent e) {
-					setDirty(true);
-				}
-			});
-		}
+		return hasTextArea() ? textComponent.getText() : null;
 	}
 
 	protected String chooseDatabase(String dbName) {

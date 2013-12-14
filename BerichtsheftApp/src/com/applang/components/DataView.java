@@ -60,10 +60,8 @@ import android.net.Uri;
 import android.util.Log;
 import android.widget.Toast;
 
-import com.applang.Util.BidiMultiMap;
-import com.applang.Util.ValMap;
+import com.applang.berichtsheft.BerichtsheftActivity;
 import com.applang.berichtsheft.BerichtsheftApp;
-import com.applang.berichtsheft.R;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 import com.applang.berichtsheft.plugin.JEditOptionDialog;
 
@@ -77,7 +75,7 @@ public class DataView extends JPanel implements IComponent
 {
 	public static final String TAG = DataView.class.getSimpleName();
 	
-	Context context = BerichtsheftApp.getActivity();
+	Context context = new BerichtsheftActivity();
 	ContentResolver contentResolver = context.getContentResolver();
 	
 	public DataView() {
@@ -132,7 +130,7 @@ public class DataView extends JPanel implements IComponent
 						Point pt = new Point(ev.getX(), ev.getY());
 						SwingUtilities.convertPointToScreen(pt, table);
 						Toast.makeText(
-								BerichtsheftApp.getActivity().setLocation(pt), 
+								new BerichtsheftActivity().setLocation(pt), 
 								String.valueOf(value), 
 								Toast.LENGTH_LONG).show();
 					} catch (Exception e) {
@@ -182,7 +180,7 @@ public class DataView extends JPanel implements IComponent
 	
 	public boolean configureData(View view, boolean full) {
 		boolean retval = dc.display(view, full);
-		if (retval && sqlBox.isVisible())
+		if (retval)
 			dc.save();
 		return retval;
 	}
@@ -284,7 +282,7 @@ public class DataView extends JPanel implements IComponent
 		return contentResolver.contentProvider.sql;
 	}
 	
-	private ContentObserver contentObserver = new ContentObserver() {
+	private ContentObserver contentObserver = new ContentObserver(null) {
 		public void onChange(Object arg) {
 			DataConfiguration dc = getDataConfiguration();
 			String path = dc.getContext().getDatabasePath((Uri)arg);
@@ -325,14 +323,16 @@ public class DataView extends JPanel implements IComponent
     }
 	
 	public boolean populate(final Provider provider, final Object...params) {
-		dc = new DataConfiguration(provider);
+//		dc = new DataConfiguration(provider);
 		return populate(new Job<Void>() {
 			public void perform(Void t, Object[] parms) throws Exception {
 				table.setAutoCreateRowSorter(false);
+				ProjectionModel projectionModel = dc.getProjectionModel();
+				BidiMultiMap projection = projectionModel.getExpandedProjection();
 				DataModel model = provider.query(getUriString(), 
-						dc.getProjectionModel().getExpandedProjection(), 
+						projection, 
 						params);
-				table.setModel(model == null ? new DataModel() : model);
+				table.setModel(valueOrElse(new DataModel(), model));
 				table.setAutoCreateRowSorter(true);
 			}
 		});
@@ -459,7 +459,7 @@ public class DataView extends JPanel implements IComponent
 			final Object...params) {
 		ValList rows = vlist();
 		if (notNullOrEmpty(packageName)) {
-			ValList flavors = contentAuthorities(packageName);
+			ValList flavors = contentAuthorities(strings(packageName));
 			for (Object flavor : flavors) {
 				rows.add(objects(split(flavor.toString(), "\\.").get(-1)));
 			}
@@ -606,9 +606,9 @@ public class DataView extends JPanel implements IComponent
 	public static class ProjectionModel extends AbstractTableModel
 	{
 		public ProjectionModel(Context context, Uri uri, String flavor, Object...params) {
-			this.flavor = flavor;
+			setFlavor(flavor);
 			tableName = dbTableName(uri);
-			initialize(table_info(context, uri, tableName), params);
+			initialize(table_info2(context, uri, tableName, flavor), params);
 		}
 
 		private void initialize(ValMap info, Object...params) {
@@ -633,7 +633,7 @@ public class DataView extends JPanel implements IComponent
 		}
 
 		public ProjectionModel(Provider provider) {
-			this.flavor = provider.flavor;
+			setFlavor(provider.getFlavor());
 			tableName = provider.tableName;
 			initialize(provider.info);
 			int pkColumn = info.getList("name").indexOf(info.get("PRIMARY_KEY"));
@@ -712,29 +712,36 @@ public class DataView extends JPanel implements IComponent
 		public String getFlavor() {
 			return flavor;
 		}
+		
+		public boolean hasFlavor() {
+			return notNullOrEmpty(flavor);
+		}
 
 		public void injectFlavor() {
-			if (notNullOrEmpty(flavor)) {
-				ValMap map = ScriptManager.getDefaultConversions(flavor, tableName);
-				for (int i = 0; i < names.length; i++) {
-					Object conv = map.get(names[i]);
-					conversions.set(i, stringValueOf(conv));
+			if (hasFlavor()) {
+				ValMap map = ScriptManager.getDefaultProjection(flavor, tableName);
+				if (map.get("version") == info.get("VERSION")) {
+					BidiMultiMap projection = (BidiMultiMap) map.get("projection");
+					if (projection != null) {
+						for (int i = 0; i < names.length; i++) {
+							Integer[] index = projection.get(names[i]);
+							if (index.length > 0) {
+								conversions.set(i, projection.getValue(names[index[0]], 1));
+								checks.set(i, projection.getValue(names[index[0]], 3));
+							}
+						}
+						fireTableDataChanged();
+					}
 				}
-				fireTableDataChanged();
 			}
 		}
 
 		private void memorizeFlavor() {
-			if (notNullOrEmpty(flavor)) {
+			if (hasFlavor()) {
 				ValMap map = vmap();
-				for (int i = 0; i < names.length; i++) 
-					if ((Boolean) checks.get(i)) {
-						String key = names[i].toString();
-						Object value = conversions.get(i);
-						if (notNullOrEmpty(value))
-							map.put(key, value);
-					}
-				ScriptManager.setDefaultConversions(flavor, tableName, map);
+				map.put("version", info.get("VERSION"));
+				map.put("projection", getExpandedProjection());
+				ScriptManager.setDefaultProjection(flavor, tableName, map);
 			}
 		}
 		
@@ -1028,22 +1035,22 @@ public class DataView extends JPanel implements IComponent
 		}
 		
 		public Provider(String uriString) {
-			this(BerichtsheftApp.getActivity(), uriString);
+			this(new BerichtsheftActivity(), uriString);
 		}
 		
-		public Provider(final String flavor, final File dbFile, String uriString) {
-			this(Context.contextForFlavor(BerichtsheftApp.packageName, flavor, dbFile), uriString);
-			this.flavor = flavor;
+		public Provider(String flavor, final File dbFile, String uriString) {
+			this(Context.contextForFlavor(BerichtsheftActivity.packageName, flavor, dbFile), uriString);
 		}
 		
-		public Provider(Context context, String uriString) {
+		private Provider(Context context, String uriString) {
 			this.context = context;
 			contentResolver = context.getContentResolver();
 			tableName = dbTableName(uriString);
-			info = table_info(
+			info = table_info2(
 					context, 
-					uriString, 
-					tableName);
+					Uri.parse(uriString), 
+					tableName, 
+					context.getFlavor());
 		}
 		
 		private String tableName;
@@ -1052,17 +1059,18 @@ public class DataView extends JPanel implements IComponent
 		}
 
 		public ValMap info;
-		public String flavor = null;
+		
+		public String getFlavor() {
+			return context.getFlavor();
+		}
 
 		public Uri makeUri(String uriString) {
 			uriString = valueOrElse("", uriString);
+			String flavor = getFlavor();
 			if (flavor == null)
 				return Uri.parse(uriString);
-			if (uriString.startsWith(ContentResolver.CURSOR_DIR_BASE_TYPE))
+			else
 				return contentUri(flavor, tableName);
-			if (uriString.startsWith(ContentResolver.CURSOR_ITEM_BASE_TYPE))
-				return contentUri(flavor, tableName);
-			return contentUri(flavor, tableName);
 		}
 		
 		public Object[][] query(String uriString, String[] columns, Object...params) {
@@ -1083,7 +1091,7 @@ public class DataView extends JPanel implements IComponent
 				});
 				return rows.toArray(new Object[0][]);
 			} catch (Exception e) {
-				BerichtsheftPlugin.consoleMessage("dataview.query.message", uri.toString(), columns);
+				BerichtsheftPlugin.consoleMessage("dataview.query.message", stringValueOf(uri), e.getMessage());
 				return null;
 			}
 		}
@@ -1102,7 +1110,7 @@ public class DataView extends JPanel implements IComponent
 						.setProjection(projection)
 						.traverse(cursor);
 			} catch (Exception e) {
-				BerichtsheftPlugin.consoleMessage("dataview.query.message", uri.toString(), projection.getKeys());
+				BerichtsheftPlugin.consoleMessage("dataview.query.message", stringValueOf(uri), e.getMessage());
 				return null;
 			}
 		}
@@ -1236,7 +1244,7 @@ public class DataView extends JPanel implements IComponent
 					retval = contentResolver.insert(uri, values);
 				return retval;
 			} catch (Exception e) {
-				BerichtsheftPlugin.consoleMessage("dataview.updateOrInsert.message.1", uri.toString(), values);
+				BerichtsheftPlugin.consoleMessage("dataview.updateOrInsert.message.1", stringValueOf(uri), e.getMessage());
 				return null;
 			}
 		}

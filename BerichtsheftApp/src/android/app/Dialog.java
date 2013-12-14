@@ -30,4 +30,6 @@ public class Dialog extends JDialog
 		setVisible(true);
 		toFront();
 	}
+
+	public Object result = null;
 }

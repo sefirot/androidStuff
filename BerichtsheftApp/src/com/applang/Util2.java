@@ -20,6 +20,7 @@ import java.io.OutputStreamWriter;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.lang.reflect.Method;
+import java.net.URL;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -30,9 +31,11 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.regex.MatchResult;
 import java.util.regex.Pattern;
 
@@ -55,14 +58,21 @@ import javax.xml.xpath.XPathFactory;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.json.JSONStringer;
+import org.w3c.dom.CDATASection;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+import com.applang.Util.ValMap;
+
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Resources;
+import android.content.res.Resources.ResourceURLFilter;
 import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.net.Uri;
 import android.util.Log;
 
 import static com.applang.Util.*;
@@ -71,6 +81,32 @@ import static com.applang.SwingUtil.*;
 
 public class Util2
 {
+	/**
+	 * @param params	optional parameters	
+	 * <table border="1"><tr><th>index</th><th>description</th></tr><tr><td>0</td><td>a path as <code>String</code> to relativize against 'user.dir'</td></tr></table>
+	 * @return	if path is null returns the absolute 'user.dir' system property otherwise the path relative to 'user.dir'.
+	 */
+	public static String relativePath(Object...params) {
+		String base = param_String(System.getProperty("user.dir"), 1, params);
+		String path = param_String(null, 0, params);
+		if (path == null)
+			return base;
+		else
+			return new File(base).toURI().relativize(new File(path).toURI()).getPath();
+	}
+	
+	public static String absolutePath(String className) throws Exception {
+		final String name = className.replaceAll("\\.", "/") + ".class";
+		Set<URL> res = Resources.getResourceURLs(
+			new ResourceURLFilter() {
+				public boolean accept(URL resourceUrl) {
+					String url = resourceUrl.getFile();
+					return url.endsWith(name);
+				}
+			});
+		return res.iterator().next().getFile();
+	}
+	
 	public static class Settings 
 	{
 		public static Properties properties = null;
@@ -81,6 +117,10 @@ public class Util2
 		
 		public static boolean contains(String key) {
 			return properties.containsKey(key);
+		}
+		
+		public static void remove(String key) {
+			properties.remove(key);
 		}
 		
 		public static String defaultFilename() {
@@ -176,15 +216,16 @@ public class Util2
 			Integer decimalPlace = param_Integer(0, 0, params);
 			value = (T)Double.valueOf(round((Double)value, decimalPlace));
 		}
-		Log.d(TAG, String.format("putSetting '%s' : %s", key, stringValueOf(value)));
-		Settings.properties.put(key, value);
+		String string = stringValueOf(value);
+		Log.d(TAG, String.format("putSetting '%s' : %s", key, string));
+		Settings.properties.put(key, string);
 	}
 
 	@SuppressWarnings("rawtypes")
 	public static void putListSetting(String key, Collection value) {
 		try {
 			JSONStringer jsonWriter = new JSONStringer();
-			toJSON(jsonWriter, "", value, null);
+			toJSON(null, jsonWriter, "", value, null);
 			putSetting(key, jsonWriter.toString());
 		} catch (Exception e) {
 			Log.e(TAG, "putListSetting", e);
@@ -195,7 +236,7 @@ public class Util2
 	public static void putMapSetting(String key, Map value) {
 		try {
 			JSONStringer jsonWriter = new JSONStringer();
-			toJSON(jsonWriter, "", value, null);
+			toJSON(null, jsonWriter, "", value, null);
 			putSetting(key, jsonWriter.toString());
 		} catch (Exception e) {
 			Log.e(TAG, "putMapSetting", e);
@@ -215,11 +256,28 @@ public class Util2
 		try {
 			if (Settings.contains(key)) {
 				value = Settings.properties.get(key);
+				if (value != null) {
+					String string = String.valueOf(value);
+					if (string.length() < 1)
+						value = null;
+					else if (defaultValue instanceof String) 
+						value = string;
+					else if (defaultValue instanceof Boolean)
+						value = Boolean.parseBoolean(string);
+					else if (defaultValue instanceof Integer)
+						value = Integer.parseInt(string);
+					else if (defaultValue instanceof Long)
+						value = Long.parseLong(string);
+					else if (defaultValue instanceof Float)
+						value = Float.parseFloat(string);
+					else if (defaultValue instanceof Double)
+						value = Double.parseDouble(string);
+				}
+				Log.d(TAG, String.format("getSetting '%s' : %s", key, String.valueOf(value)));
 			}
 		} catch (Exception e) {
 			Log.d(TAG, "getSetting", e);
 		}
-		Log.d(TAG, String.format("getSetting '%s' : %s", key, stringValueOf(value)));
 		return (T)value;
 	}
 
@@ -298,7 +356,7 @@ public class Util2
 	 * @return
 	 * @throws IOException
 	 */
-	public static Writer format(Writer writer, Object... params) {
+	public static Writer write(Writer writer, Object... params) {
 		String separator = "\t";
 		
 	    try {
@@ -317,13 +375,14 @@ public class Util2
 					Object[] args = arrayreduce(params, i + 1, specs);
 					for (int j = 0; j < args.length; j++)
 						args[j] = 
-							Util2.stringify(args[j], 
+							stringify(
+								args[j], 
 								specifiers[j].group().toLowerCase().endsWith("s"));
 					s = String.format(s, args);
 					i += specs;
 				}
 				else
-					s = Util2.stringify(o, true).toString();
+					s = stringify(o, true).toString();
 				
 				writer.write(s);
 			}
@@ -332,7 +391,7 @@ public class Util2
 		return writer;
 	}
 
-	public static Object stringify(Object o, boolean stringify) {
+	private static Object stringify(Object o, boolean stringify) {
 		if (!stringify || 
 				o instanceof String || 
 				o instanceof Short || 
@@ -344,9 +403,7 @@ public class Util2
 				o instanceof Byte || 
 				o instanceof Boolean)
 			return o;
-		
 		String s;
-		
 		if (o instanceof Object[]) s = Arrays.toString((Object[])o);
 		else if (o instanceof boolean[]) s = Arrays.toString((boolean[])o);
 		else if (o instanceof byte[]) s = Arrays.toString((byte[])o);
@@ -359,51 +416,41 @@ public class Util2
 		else if (o instanceof String[]) s = Arrays.toString((String[])o);
 		else
 			s = String.valueOf(o);
-		
 		return s;
 	}
 
 	@SuppressWarnings("resource")
-	public static Writer formatAssociation(Writer writer, String key, Object value, int commaPos) {
+	public static Writer writeAssoc(Writer writer, String key, Object value, int...pos) {
 		String commaString = ", ";
+		int commaPos = param(0,0,pos);
 		if (commaPos > 0)
-			writer = format(writer, commaString);
-		
+			writer = write(writer, commaString);
 		if (value == null) 
-			writer = format(writer, "%s=null", key);
+			writer = write(writer, "%s=null", key);
 		else
-			writer = format(writer, "%s=%s", key, value);
-		
+			writer = write(writer, "%s=%s", key, value);
 		if (commaPos < 0)
-			writer = format(writer, commaString);
-		
+			writer = write(writer, commaString);
 		return writer;
 	}
 
 	public static void print(Object... params) {
 		Object out = param(null, 0, params);
-		if (out instanceof Writer)
-			try {
-				params = arrayreduce(params, 1, params.length - 1);
-				((Writer)out).write(format(new StringWriter(), params).toString());
-			} catch (IOException e) {
-				Log.e(TAG, "print", e);
-			}
+		if (out instanceof Writer) {
+			Writer writer = (Writer) out;
+			write(writer, arrayreduce(params, 1, params.length - 1));
+		}
 		else
-			System.out.print(format(new StringWriter(), params).toString());
+			System.out.print(write(new StringWriter(), params).toString());
 	}
 
 	public static void println(Object... params) {
+		print(params);
 		Object out = param(null, 0, params);
-		if (out instanceof Writer)
-			try {
-				params = arrayreduce(params, 1, params.length - 1);
-				((Writer)out).write(format(new StringWriter(), params).toString() + NEWLINE);
-			} catch (IOException e) {
-				Log.e(TAG, "println", e);
-			}
+		if (out instanceof Writer) 
+			write((Writer) out, NEWLINE);
 		else
-			System.out.println(format(new StringWriter(), params).toString());
+			System.out.print(NEWLINE);
 	}
 
 	public static void noprint(Object... params) {}
@@ -672,7 +719,7 @@ public class Util2
 	    	DOMSource source = new DOMSource(node);
 	        Result result = new StreamResult(file);
 	
-	        Transformer t = Util2.xmlTransformer(omitXmlDeclaration);
+	        Transformer t = xmlTransformer(omitXmlDeclaration);
 	        t.transform(source, result);
 	    } catch (Exception e) {}
 	}
@@ -694,6 +741,24 @@ public class Util2
 			return "";
 		}
 		return sw.toString();
+	}
+	
+	public static Element xmlSerialize(BidiMultiMap bidi, Element element, 
+			Function<Object> filter, Object...params) throws Exception
+	{
+		JSONStringer jsonWriter = new JSONStringer();
+		toJSON(null, jsonWriter, "", asList(bidi.getLists()), filter, params);
+		CDATASection cdata = element.getOwnerDocument().createCDATASection(jsonWriter.toString());
+		element.appendChild(cdata);
+		return element;
+	}
+	
+	public static BidiMultiMap xmlDeserialize(Element element, 
+			Function<Object> filter, Object...params) throws Exception
+	{
+		String string = element.getTextContent();
+		ValList list = (ValList) walkJSON(null, new JSONArray(string), filter, params);
+		return new BidiMultiMap(list.toArray(new ValList[0]));
 	}
 
 	public static Element selectElement(Object item, String xpath) {
@@ -907,6 +972,21 @@ public class Util2
 		g.dispose();
 		return bimg;
 	}
+	
+    public static final int S_IRWXU = 00700;
+    public static final int S_IRUSR = 00400;
+    public static final int S_IWUSR = 00200;
+    public static final int S_IXUSR = 00100;
+
+    public static final int S_IRWXG = 00070;
+    public static final int S_IRGRP = 00040;
+    public static final int S_IWGRP = 00020;
+    public static final int S_IXGRP = 00010;
+
+    public static final int S_IRWXO = 00007;
+    public static final int S_IROTH = 00004;
+    public static final int S_IWOTH = 00002;
+    public static final int S_IXOTH = 00001;
 
 	public static void setPermissions(String fileName, int mode) {
 		try {
@@ -963,6 +1043,21 @@ public class Util2
 		return list;
 	}
 
+	public static ValMap table_info2(Context context, Uri uri, String tableName, String flavor) {
+		ValMap info = table_info(context, uri, tableName);
+		if (flavor != null) {
+			SQLiteDatabase db = SQLiteDatabase.openDatabase(
+					getDatabaseFile(context, uri).getPath(), 
+					null,
+					SQLiteDatabase.OPEN_READONLY);
+			if (db != null) {
+				info.put("VERSION", getFlavorVersion(flavor, db));
+				db.close();
+			}
+		}
+		return info;
+	}
+
 	public static boolean makeSureExists(String flavor, File dbFile) {
 		try {
 			Class<?> c = Class.forName(flavor + "Provider");
@@ -983,5 +1078,74 @@ public class Util2
 			return false;
 		}
 	}
+
+	/**
+	 * Recursive method used to find all classes in a given directory and subdirs.
+	 *
+	 * @param directory   The base directory
+	 * @param packageName The package name for classes found inside the base directory
+	 * @return The classes
+	 * @throws ClassNotFoundException
+	 */
+	@SuppressWarnings("rawtypes")
+	public static List<Class> findClasses(File directory, String packageName) throws ClassNotFoundException {
+	    List<Class> classes = new ArrayList<Class>();
+	    if (directory.exists()) {
+	    	File[] files = directory.listFiles();
+	    	for (File file : files) {
+	    		if (file.isDirectory()) {
+	    			assert !file.getName().contains(".");
+	    			classes.addAll(findClasses(file, packageName + "." + file.getName()));
+	    		} else if (file.getName().endsWith(".class")) {
+	    			classes.add(Class.forName(packageName + '.' + file.getName().substring(0, file.getName().length() - 6)));
+	    		}
+	    	}
+	    }
+	    return classes;
+	}
+
+	/**
+	 * Scans all classes accessible from the context class loader which belong to the given package and subpackages.
+	 *
+	 * @param packageName The base package
+	 * @return The classes
+	 * @throws ClassNotFoundException
+	 * @throws IOException
+	 */
+//	NOTE	there is a different method with the same signature in Util2 for Android
+	@SuppressWarnings("rawtypes")
+	public static Class[] getLocalClasses(String packageName, Object...params) throws Exception {
+	    ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+	    assert classLoader != null;
+	    String path = packageName.replace('.', '/');
+	    Enumeration<URL> resources = ClassLoader.getSystemResources(path);
+	    List<File> dirs = new ArrayList<File>();
+	    while (resources.hasMoreElements()) {
+	        URL resource = resources.nextElement();
+	        dirs.add(new File(resource.getFile()));
+	    }
+	    ArrayList<Class> classes = new ArrayList<Class>();
+	    for (File directory : dirs) {
+	        classes.addAll(findClasses(directory, packageName));
+	    }
+	    return classes.toArray(new Class[classes.size()]);
+	}
+	
+	public static String readAsset(Activity activity, String fileName) {
+        StringBuffer sb = new StringBuffer();
+        try {
+			String path = pathCombine("/assets", fileName);
+			InputStream is = Resources.class.getResourceAsStream( path );
+			while( true ) {
+			    int c = is.read();
+	            if( c < 0 )
+	                break;
+			    sb.append( (char)c );
+			}
+		} catch (Exception e) {
+			Log.e(TAG, "readAsset", e);
+		}
+        return sb.toString();
+    }
 
 }

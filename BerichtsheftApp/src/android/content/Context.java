@@ -2,6 +2,7 @@ package android.content;
 
 import java.awt.Point;
 import java.io.File;
+import java.util.Map;
 
 import android.content.res.Resources;
 import android.database.Cursor;
@@ -20,10 +21,11 @@ public class Context
 	public static Context contextForFlavor(final String packageName, final String flavor, final File dbFile) {
 		return new Context() {
 			{
-				setPackageInfo(packageName, dbFile.getParent());
-				registerFlavor(flavor, dbFile.getPath());
-			}
-		};
+				if (dbFile != null) {
+					setPackageInfo(packageName, dbFile.getParent());
+					registerFlavor(flavor, dbFile.getPath());
+				}
+			}};
 	}
 	
 	@Override
@@ -66,21 +68,6 @@ public class Context
         }
         setPermissions(name, perms);
     }
-
-    public static final int S_IRWXU = 00700;
-    public static final int S_IRUSR = 00400;
-    public static final int S_IWUSR = 00200;
-    public static final int S_IXUSR = 00100;
-
-    public static final int S_IRWXG = 00070;
-    public static final int S_IRGRP = 00040;
-    public static final int S_IWGRP = 00020;
-    public static final int S_IXGRP = 00010;
-
-    public static final int S_IRWXO = 00007;
-    public static final int S_IROTH = 00004;
-    public static final int S_IWOTH = 00002;
-    public static final int S_IXOTH = 00001;
 
     public static class PackageInfo {
 
@@ -152,14 +139,27 @@ public class Context
         return false;
     }
 	
-	private ValMap databasePaths = vmap();
+    private String flavor = null;
+    
+	public String getFlavor() {
+		return flavor;
+	}
+
+	public void setFlavor(String flavor) {
+		this.flavor = flavor;
+	}
+
+	private BidiMultiMap databasePaths = bmap(2);
 	
 	public void registerFlavor(String flavor, String path) {
-		databasePaths.put(databaseName(flavor), path);
+		String name = database(flavor);
+		databasePaths.putValue(name, path);
+		setFlavor(flavor);
 	}
 	
-	public void unregisterFlavor(String flavor) {
-		databasePaths.remove(databaseName(flavor));
+	public boolean unregisterFlavor(String flavor) {
+		String name = database(flavor);
+		return databasePaths.removeKey(name);
 	}
 
 	public String getDatabasePath(Uri uri) {
@@ -167,16 +167,17 @@ public class Context
 			return "";
 		else if (hasAuthority(uri)) {
 			String flavor = uri.getAuthority();
-			Object path = databasePaths.get(databaseName(flavor));
-			return stringValueOf(path);
+			String dbName = database(flavor);
+			File file = getDatabasePath(dbName);
+			return file.getPath();
 		}
 		else
 			return uri.getPath();
 	}
 	
     public File getDatabasePath(String name) {
-		if (databasePaths.containsKey(name))
-			return new File(databasePaths.get(name).toString());
+		if (databasePaths.getKeys().contains(name))
+			return new File(databasePaths.getValue(name).toString());
 		else {
 	    	File dir = getDatabasesDir();
 	    	if (!dir.isDirectory() && dir.mkdir()) {
@@ -220,6 +221,96 @@ public class Context
 	public Resources getResources() {
 		return new Resources(this);
 	}
+
+    /**
+     * Retrieve and hold the contents of the preferences file 'name', returning
+     * a SharedPreferences through which you can retrieve and modify its
+     * values.  Only one instance of the SharedPreferences object is returned
+     * to any callers for the same name, meaning they will see each other's
+     * edits as soon as they are made.
+     *
+     * @param path Desired preferences file. If a preferences file by this name
+     * does not exist, it will be created when you retrieve an
+     * editor (SharedPreferences.edit()) and then commit changes (Editor.commit()).
+     * @param mode Operating mode.  Use 0 or {@link #MODE_PRIVATE} for the
+     * default operation, {@link #MODE_WORLD_READABLE}
+     * and {@link #MODE_WORLD_WRITEABLE} to control permissions.
+     *
+     * @return Returns the single SharedPreferences instance that can be used
+     *         to retrieve and modify the preference values.
+     *
+     * @see #MODE_PRIVATE
+     * @see #MODE_WORLD_READABLE
+     * @see #MODE_WORLD_WRITEABLE
+     */
+    public SharedPreferences getSharedPreferences(final String path, int mode) {
+    	Settings.load(path);
+    	return new SharedPreferences() {
+			public Map<Object, ?> getAll() {
+				return Settings.properties;
+			}
+			public String getString(String key, String defValue) {
+				return getSetting(key, defValue);
+			}
+			public int getInt(String key, int defValue) {
+				return getSetting(key, defValue);
+			}
+			public long getLong(String key, long defValue) {
+				return getSetting(key, defValue);
+			}
+			public float getFloat(String key, float defValue) {
+				return getSetting(key, defValue);
+			}
+			public boolean getBoolean(String key, boolean defValue) {
+				return getSetting(key, defValue);
+			}
+			public boolean contains(String key) {
+				return Settings.contains(key);
+			}
+			public Editor edit() {
+				return new Editor() {
+					public Editor remove(String key) {
+						Settings.remove(key);
+						return this;
+					}
+					public Editor putString(String key, String value) {
+						putSetting(key, value);
+						return this;
+					}
+					public Editor putLong(String key, long value) {
+						putSetting(key, value);
+						return this;
+					}
+					public Editor putInt(String key, int value) {
+						putSetting(key, value);
+						return this;
+					}
+					public Editor putFloat(String key, float value) {
+						putSetting(key, value);
+						return this;
+					}
+					public Editor putBoolean(String key, boolean value) {
+						putSetting(key, value);
+						return this;
+					}
+					public boolean commit() {
+						Settings.save(path);
+						return true;
+					}
+					public Editor clear() {
+						Settings.clear();
+						return null;
+					}
+				};
+			}
+			public void registerOnSharedPreferenceChangeListener(OnSharedPreferenceChangeListener listener) {
+				// TODO Auto-generated method stub
+			}
+			public void unregisterOnSharedPreferenceChangeListener(OnSharedPreferenceChangeListener listener) {
+				// TODO Auto-generated method stub
+			}
+    	};
+    }
 	
 	public Point location;
 	public Context setLocation(Point location) {

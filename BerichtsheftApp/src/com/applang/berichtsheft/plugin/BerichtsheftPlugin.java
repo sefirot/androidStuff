@@ -185,13 +185,14 @@ public class BerichtsheftPlugin extends EditPlugin {
 		textEditor.uninstallSpellChecker();
 	}
 	
+	//	NOTE	leaves standard-out going to log
 	public static <T> T suppressErrorLog(Function<T> func, Object...params) {
 		try {
 			Log.init(true,Log.ERROR + 1);
 			return func.apply(params);
 		} 
 		finally {
-			Log.init(true,Log.WARNING);
+			Log.init(false,Log.WARNING);
 		}
 	}
 	
@@ -234,17 +235,19 @@ public class BerichtsheftPlugin extends EditPlugin {
 	
 	public static Properties props = null;
 	static {
-		try {
-			jEdit.getProperty("tip.show");
-		} catch (NullPointerException ex) {
-			try {
-				String fileName = pathCombine(relativePath(), "BerichtsheftPlugin.props");
-				props = loadProperties(fileName);
-			} catch (Exception e) {}
+		if (!insideJEdit()) {
+			String fileName = pathCombine(relativePath(), "BerichtsheftPlugin.props");
+			props = loadProperties(fileName);
 		}
 	}
+	
 	public static boolean insideJEdit() {
-		return props == null;
+		try {
+			jEdit.getProperty("tip.show");
+			return true;
+		} catch (NullPointerException ex) {
+			return false;
+		}
 	}
 	
 	// NOTE used in scripts
@@ -420,5 +423,11 @@ public class BerichtsheftPlugin extends EditPlugin {
 		return b;
 	}
 	
-	public static DataView dataView = new DataView();
+	public static DataView getDataView() {
+		if (dataView == null)
+			dataView = new DataView();
+		return dataView;
+	}
+
+	private static DataView dataView = null;
 }

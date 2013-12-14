@@ -672,10 +672,10 @@ public class FormEditor extends JSplitPane
 			};
 
 			public String toString() {
-				Writer writer = format(new StringWriter(), "[");
-				writer = formatAssociation(writer, "width", dim.getWidth(), 0);
-				writer = formatAssociation(writer, "height", dim.getHeight(), 1);
-				return format(writer, "]").toString();
+				Writer writer = write(new StringWriter(), "[");
+				writer = writeAssoc(writer, "width", dim.getWidth());
+				writer = writeAssoc(writer, "height", dim.getHeight(), 1);
+				return write(writer, "]").toString();
 			}
 		}
 		public class Offset extends Observable
@@ -711,10 +711,10 @@ public class FormEditor extends JSplitPane
 			};
 
 			public String toString() {
-				Writer writer = format(new StringWriter(), "[");
-				writer = formatAssociation(writer, "x", point.getX(), 0);
-				writer = formatAssociation(writer, "y", point.getY(), 1);
-				return format(writer, "]").toString();
+				Writer writer = write(new StringWriter(), "[");
+				writer = writeAssoc(writer, "x", point.getX());
+				writer = writeAssoc(writer, "y", point.getY(), 1);
+				return write(writer, "]").toString();
 			}
 		}
 		

@@ -28,6 +28,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 
 import com.applang.SwingUtil.Behavior;
+import com.applang.Util1;
 
 import android.util.Log;
 
@@ -38,7 +39,7 @@ import static com.applang.SwingUtil.*;
 public class DatePicker
 {
 	private static final String TAG = DatePicker.class.getSimpleName();
-	private static int modality = Behavior.MODAL;
+	public static int modality = Behavior.MODAL;
 
 	public static void main(String[] args) {
 		modality |= Behavior.EXIT_ON_CLOSE;

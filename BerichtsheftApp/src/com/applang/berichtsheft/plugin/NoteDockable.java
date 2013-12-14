@@ -34,7 +34,7 @@ public class NoteDockable extends JPanel implements EBComponent, DefaultFocusCom
 		textEditor = new TextEditor();
 		textEditor.installSpellChecker();
 		add(textEditor.getUIComponent(), BorderLayout.CENTER);
-		notePicker = new NotePicker(BerichtsheftPlugin.dataView, textEditor, view);
+		notePicker = new NotePicker(BerichtsheftPlugin.getDataView(), textEditor, view);
 		add(notePicker, BorderLayout.NORTH);
 	}
 

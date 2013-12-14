@@ -1,5 +1,6 @@
 package android.app;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
 import javax.swing.JFrame;
@@ -25,6 +26,12 @@ public class Activity extends Context
 		activities.put("com.applang.action.CONSTRUCT", "com.applang.ConstructDialogs");
 	}
 	
+	private Activity mParent = null;
+	
+	public Activity getParent() {
+		return mParent;
+	}
+
 	public void startActivity(Intent intent) {
 		String action = intent.getAction();
 		if (activities.containsKey(action)) {
@@ -32,11 +39,17 @@ public class Activity extends Context
 				Class<?> c = Class.forName(activities.get(action).toString());
 				Object inst = c.newInstance();
 				Method method = c.getMethod("setPackageInfo", String.class, Object[].class);
-				method.invoke(inst, null, new Object[] {this.mPackageInfo});
+				method.invoke(inst, null, objects(this.mPackageInfo));
 				method = c.getMethod("setIntent", Intent.class);
 				method.invoke(inst, intent);
-				method = c.getMethod("create");
-				method.invoke(inst);
+				Field field = Activity.class.getDeclaredField("mParent");
+				field.setAccessible(true);
+				field.set(inst, this);
+				field = Activity.class.getDeclaredField("mRequestCode");
+				field.setAccessible(true);
+				field.set(inst, mRequestCode);
+				method = Activity.class.getDeclaredMethod("onCreate", Bundle.class);
+				method.invoke(inst, (Object) null);
 			} catch (Exception e) {
 				Log.e(TAG, "startActivity", e);
 			}
@@ -48,7 +61,7 @@ public class Activity extends Context
 		startActivity(intent);
 	}
 	
-	public Integer mRequestCode = null;
+	private Integer mRequestCode = null;
 	
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
     }
@@ -62,10 +75,6 @@ public class Activity extends Context
     public void setIntent(Intent intent) {
     	this.intent = intent;
     }
-	
-	public void create() {
-		onCreate(null);
-	}
 
 	protected void onCreate(Bundle savedInstanceState) {
 	}
@@ -76,9 +85,28 @@ public class Activity extends Context
     public Dialog dialog = null;
 	
 	public final void showDialog(int id) {
+		AlertDialog.modal = id / 100 < 1;
     	dialog = onCreateDialog(id);
-    	if (dialog != null)
+    	if (dialog != null) {
     		dialog.open();
+    		if (dialog.isModal()) {
+    			setResult(dialog.result != null ? RESULT_OK : RESULT_CANCELED, intent);
+    			Activity ancestor = getParent();
+    			while (ancestor != null) {
+    				try {
+						Method method = ancestor.getClass().getDeclaredMethod("onActivityResult", 
+								Integer.TYPE, Integer.TYPE, Intent.class);
+						if (method != null) {
+							ancestor.onActivityResult(mRequestCode, mResultCode, mResultData);
+							break;
+						}
+					} catch (Exception e) {
+						Log.e(TAG, "showDialog", e);
+					}
+    				ancestor = ancestor.getParent();
+    			}
+    		}
+    	}
     }
     
 	protected Dialog onCreateDialog(int id) {

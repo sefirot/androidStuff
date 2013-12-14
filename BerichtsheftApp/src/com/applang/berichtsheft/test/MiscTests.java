@@ -51,20 +51,13 @@ import org.xml.sax.XMLFilter;
 import org.xml.sax.XMLReader;
 import org.xml.sax.helpers.XMLReaderFactory;
 
-import static com.applang.SwingUtil.*;
-import static com.applang.Util.*;
-import static com.applang.Util1.*;
-import static com.applang.Util2.*;
-import static com.applang.ZipUtil.*;
-
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
 
-import com.applang.Util.Function;
-import com.applang.Util.ValMap;
+import com.applang.berichtsheft.BerichtsheftActivity;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 import com.applang.berichtsheft.plugin.DataDockable;
@@ -81,6 +74,12 @@ import com.applang.components.NotePicker.NoteFinder;
 import com.applang.provider.NotePad;
 import com.applang.provider.PlantInfo;
 import com.applang.provider.WeatherInfo;
+
+import static com.applang.SwingUtil.*;
+import static com.applang.Util.*;
+import static com.applang.Util1.*;
+import static com.applang.Util2.*;
+import static com.applang.ZipUtil.*;
 
 public class MiscTests extends XMLTestCase
 {
@@ -176,6 +175,7 @@ public class MiscTests extends XMLTestCase
 	
 	public void testDatePicker() {
 	    int[] period = Period.loadParts(1);
+	    DatePicker.modality |= Behavior.TIMEOUT;
 		do {
 			period = DatePicker.pickAPeriod(period, "pick day, week or month");
 			if (period == null)
@@ -195,7 +195,7 @@ public class MiscTests extends XMLTestCase
 				dateInMillis(2013, 0, 1),
 				dateInMillis(2014, 0, 1),
 		};
-		PreparedStatement ps = np.preparePicking(true, NotePicker.allCategories, time);
+		PreparedStatement ps = np.preparePicking(true, NotePicker.allTitles, time);
 		ResultSet rs = ps.executeQuery();
 		np.registerNotes(rs);
 		String text = np.all();
@@ -368,31 +368,34 @@ public class MiscTests extends XMLTestCase
 	public void testFlavoredUris() {
 		String dbFileName = test_db;
 		new File(dbFileName).delete();
-		Context context = BerichtsheftApp.getActivity();
 		String[] tableNames = strings("notes", "weathers", "plants");
 		String[] flavors = strings(NotePad.AUTHORITY, WeatherInfo.AUTHORITY, PlantInfo.AUTHORITY);
 		ValMap info;
 		for (int i = 0; i < flavors.length; i++) {
-			String flavor = flavors[i];
 			String tableName = tableNames[i];
 			Uri furi = fileUri(dbFileName, tableName);
 			assertEquals(tableName, dbTableName(furi));
-			assertTrue(makeSureExists(flavor, new File(dbFileName)));
-			println(runShellScript("dump", BerichtsheftPlugin.sqliteScript(dbFileName, ".dump")));
+			assertTrue(makeSureExists(flavors[i], new File(dbFileName)));
+			println(runShellScript("dump", BerichtsheftPlugin.sqliteScript(dbFileName, ".tables")));
 		}
+		Context context = new BerichtsheftActivity();
 		for (int i = flavors.length - 1; i > -1; i--) {
 			String flavor = flavors[i];
 			String tableName = tableNames[i];
 			Uri curi = contentUri(flavor, tableName);
 			assertEquals(tableName, dbTableName(curi));
-			info = table_info(context, curi, tableName);
+			info = table_info2(context, curi, tableName, flavor);
 			assertTrue(info.containsKey("PRIMARY_KEY"));
-			println(getDatabaseFile(context, curi));
+			assertTrue(info.containsKey("VERSION"));
+			assertEquals(database(flavor), getDatabaseFile(context, curi).getName());
 			context.registerFlavor(flavor, dbFileName);
-			println(getDatabaseFile(context, curi));
-			info = table_info(context, curi, tableName);
+			assertEquals(dbFileName, getDatabaseFile(context, curi).getPath());
+			info = table_info2(context, curi, tableName, flavor);
 			assertTrue(info.containsKey("PRIMARY_KEY"));
+			assertTrue(info.containsKey("VERSION"));
 		}
+		for (int i = 0; i < flavors.length; i++)
+			assertTrue(context.unregisterFlavor(flavors[i]));
 	}
 	
 	public void testNotesBrowsing() {
@@ -486,7 +489,7 @@ public class MiscTests extends XMLTestCase
 		textEditor.insert("k", 0);
 		assertTrue(np.isDirty());
 		np.setDate(record[0].toString());
-		np.setCategory(record[1].toString());
+		np.setTitle(record[1].toString());
 		np.updateChange(true);
 		assertFalse(np.isDirty());
 		Object[] rec = (Object[]) np.select(record);
@@ -536,7 +539,7 @@ public class MiscTests extends XMLTestCase
 		
 		try {
 			assertThat(
-					np.insert(4, "", np.getCategory(), timeInMillis(dates[2][0], dates[2][1], dates[2][2])), 
+					np.insert(4, "", np.getTitle(), timeInMillis(dates[2][0], dates[2][1], dates[2][2])), 
 					is(greaterThan(-1)));
 			fail("expected to fail on UNIQUE constraint in the notes table");
 		} catch (Exception e) {}
@@ -554,8 +557,8 @@ public class MiscTests extends XMLTestCase
         Integer length = param(dates != null ? dates.length : 0, 1, params);
         
         if (empty) {
-            int cnt = np.delete(NotePicker.allCategories, NotePicker.allDates, false);
-            assertEquals(cnt, np.delete(NotePicker.allCategories, NotePicker.allDates, true));
+            int cnt = np.delete(NotePicker.allTitles, NotePicker.allDates, false);
+            assertEquals(cnt, np.delete(NotePicker.allTitles, NotePicker.allDates, true));
         }
         
         int cnt = 0;
@@ -564,7 +567,7 @@ public class MiscTests extends XMLTestCase
             MatchResult m = excerpts[i];
             int j = i - start;
             if (isAvailable(j, categories))
-            	np.setCategory(categories[j]);
+            	np.setTitle(categories[j]);
             time = dates != null && j < dates.length ?
                     timeInMillis(dates[j][0], dates[j][1], dates[j][2]) :
                     dateFromTodayInMillis(1, new Date(time), randomizeTimeOfDay);
@@ -572,7 +575,7 @@ public class MiscTests extends XMLTestCase
             String note = m.group(grp);
             if (empty)
                 assertThat(
-                    np.insert(1+i-start, note, np.getCategory(), time),
+                    np.insert(1+i-start, note, np.getTitle(), time),
                     is(greaterThan(-1)));
             else
                 assertThat(
@@ -604,7 +607,7 @@ public class MiscTests extends XMLTestCase
 		testData();
 		assertTrue(np.openConnection(test_db));
 		NoteFinder finder = np.finder;
-		String[] keys = finder.keyLine(NotePicker.allCategories);
+		String[] keys = finder.keyLine(NotePicker.allTitles);
 		assertEquals(asList(keys).toString(), dates.length, keys.length);
 		
 		np.setPattern(categories[1]);
@@ -665,7 +668,7 @@ public class MiscTests extends XMLTestCase
 			
 			interval = DatePicker.weekInterval("52/12", 1);
 			assertTrue(finder.bunchAvailable(interval[0]));
-			if (NotePicker.allCategories.equals(p)) {
+			if (NotePicker.allTitles.equals(p)) {
 				assertTrue(finder.previousBunchAvailable(interval));
 			}
 			else {
@@ -681,7 +684,7 @@ public class MiscTests extends XMLTestCase
 			np.setPattern(p.toString());
 			assertTrue(finder.previousBunchAvailable(interval));
 			assertTrue(finder.bunchAvailable(interval));
-			if (NotePicker.allCategories.equals(p)) {
+			if (NotePicker.allTitles.equals(p)) {
 				assertTrue(finder.nextBunchAvailable(interval));
 			}
 			else {
@@ -693,10 +696,10 @@ public class MiscTests extends XMLTestCase
 	public void _testNoteFinding2() {
 		setupKeinFehler(false);
 		assertTrue(np.openConnection(test_db));
-		String[] keys = np.finder.keyLine(NotePicker.allCategories);
+		String[] keys = np.finder.keyLine(NotePicker.allTitles);
 		println((Object)keys);
 		assertEquals(asList(keys).toString(), 36, keys.length);
-		np.setPattern(NotePicker.allCategories);
+		np.setPattern(NotePicker.allTitles);
 		
 		np.pickNote("1/13", np.getPattern());
 		String text = np.getText();
@@ -708,7 +711,7 @@ public class MiscTests extends XMLTestCase
 		setupKeinFehler(true);
 		assertTrue(np.openConnection(test_db));
 		PreparedStatement ps = np.getCon().prepareStatement("SELECT _id FROM notes where title regexp ?");
-		ps.setString(1, NotePicker.allCategories);
+		ps.setString(1, NotePicker.allTitles);
 		assertEquals(36, np.registerNotes(ps.executeQuery()));
 
 		interval = new long[] {
@@ -716,7 +719,7 @@ public class MiscTests extends XMLTestCase
 				timeInMillis(2013, 0, 2),
 		};
 		
-		ps = np.preparePicking(true, NotePicker.allCategories, interval);
+		ps = np.preparePicking(true, NotePicker.allTitles, interval);
 		ValMap map = getResultMap(ps);
 		assertEquals(2, map.size());
 		long[] ids = new long[2];
@@ -733,9 +736,9 @@ public class MiscTests extends XMLTestCase
 			i++;
 		}
 		
-		assertEquals(36, np.delete(NotePicker.allCategories, NotePicker.allDates, false));
-		np.remove(false, NotePicker.allCategories, NotePicker.formatDate(1, interval[0]));
-		assertEquals(34, np.delete(NotePicker.allCategories, NotePicker.allDates, false));
+		assertEquals(36, np.delete(NotePicker.allTitles, NotePicker.allDates, false));
+		np.remove(false, NotePicker.allTitles, NotePicker.formatDate(1, interval[0]));
+		assertEquals(34, np.delete(NotePicker.allTitles, NotePicker.allDates, false));
 	}
 
 	private long getId(String categ, long time) throws Exception, SQLException {
@@ -773,7 +776,7 @@ public class MiscTests extends XMLTestCase
 				timeInMillis(2012, -11, 31),
 		};
 		
-		np.setPattern(NotePicker.allCategories);
+		np.setPattern(NotePicker.allTitles);
 		
 		PreparedStatement ps = np.preparePicking(true, np.getPattern(), interval);
 		assertEquals(3, np.registerNotes(ps.executeQuery()));
@@ -789,7 +792,7 @@ public class MiscTests extends XMLTestCase
 					assertEquals(np.records[i][j], notes[i][j]);
 		}
 		
-		np.finder.keyLine(NotePicker.allCategories);
+		np.finder.keyLine(NotePicker.allTitles);
 		np.pickNote(DatePicker.weekDate(weekInterval(new Date(interval[0]), 1)), np.getPattern());
 		assertTrue(np.isWrapped(np.getText()));
 	}
@@ -933,7 +936,7 @@ public class MiscTests extends XMLTestCase
 	    }
 	}
 	
-	public void testXMLPiping() throws Exception {
+	public void testPiping() throws Exception {
 		// Instantiate  a TransformerFactory.
 	  	TransformerFactory tFactory = TransformerFactory.newInstance();
 	    // Determine whether the TransformerFactory supports The use uf SAXSource 
@@ -1254,6 +1257,7 @@ public class MiscTests extends XMLTestCase
 		int year = toInt(2013, xpathEngine.evaluate("/params/year", doc));
 		int weekInYear = toInt(5, xpathEngine.evaluate("/params/weekInYear", doc));
 		int dayInWeek = toInt(1, xpathEngine.evaluate("/params/dayInWeek", doc));
+	    DatePicker.modality |= Behavior.TIMEOUT;
 		String dateString = DatePicker.pickADate(
 				timeInMillis(year, weekInYear, dayInWeek), 
 				DatePicker.weekFormat,
@@ -1374,7 +1378,7 @@ public class MiscTests extends XMLTestCase
 		String dokumentPath = BerichtsheftApp.odtDokumentPath("Tagesberichte", weekDate);
 		assertTrue(fileExists(dokumentPath));
 		long docTime = HelperTests.getFileTime(dokumentPath, 1).toMillis();
-		assertThat(docTime, is(greaterThan(time)));
+		assertThat(docTime/1000, is(greaterThanOrEqualTo(time/1000)));
 		File tempDir = tempDir(false, BerichtsheftApp.NAME, "odt");
     	String content = pathCombine(tempDir.getPath(), "content.xml");
 		String _content = pathCombine(tempDir.getParentFile().getPath(), "_content.xml");
@@ -1383,7 +1387,7 @@ public class MiscTests extends XMLTestCase
 		System.out.println(report);
 	}
 
-	public void testXPath() throws Exception {
+	public void _testXPath() throws Exception {
 		Document doc = xmlDocument(new File(getSetting("content.xml", BerichtsheftApp.berichtsheftPath("Skripte/content.xml"))));
 //		Document doc = xmlDocument(new File(BerichtsheftApp.berichtsheftPath("Vorlagen/Tagesberichte_2012/styles.xml")));
 		
@@ -1501,6 +1505,6 @@ public class MiscTests extends XMLTestCase
 				println(cl);
 		}
 		println(contentAuthorities(providerPackages));
-		println((Object)databases(BerichtsheftApp.getActivity(), "com.applang.provider"));
+		println((Object)databases(new BerichtsheftActivity()));
 	}
 }

@@ -15,7 +15,7 @@
 		<ANDROID_FILE_ENTRY LABEL="ANDROID file" VARNAME="androidFile"
 			EVAL="jEdit.getProperty(&quot;ANDROID_FILE&quot;, &quot;&quot;)" />
 		<FILE_ENTRY LABEL="PC file" VARNAME="pcFile"
-			EVAL="jEdit.getProperty(&quot;PC_FILE&quot;, &quot;&quot;)" />
+			EVAL="jEdit.getProperty(&quot;PC_DIR&quot;, &quot;&quot;)" />
 		<ENTRY LABEL="Parameters" VARNAME="params" />
 
 		</CAPTION>
@@ -23,11 +23,10 @@
 
 	<COMMANDS>
 		<COMMAND SHELL="System">
-			import com.applang.*;
-			
-			jEdit.setProperty("ADB_OPERATION", oper);
-			jEdit.setProperty("ANDROID_FILE", androidFile);
-			jEdit.setProperty("PC_FILE", pcFile);
+			import com.applang.berichtsheft.plugin.*;
+			BerichtsheftPlugin.setProperty("ADB_OPERATION", oper);
+			BerichtsheftPlugin.setProperty("ANDROID_FILE", androidFile);
+			BerichtsheftPlugin.setProperty("PC_FILE", pcFile);
 			
 			buf = new StringBuffer();
 			if (androidFile.length() &gt; 0 &amp;&amp; pcFile.length() &gt; 0) {

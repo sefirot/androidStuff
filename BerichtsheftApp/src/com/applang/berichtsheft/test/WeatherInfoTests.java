@@ -422,7 +422,7 @@ public class WeatherInfoTests extends TestCase
 		File file = new File("/tmp/test.json");
 
 		JSONStringer jsonWriter = new JSONStringer();
-		toJSON(jsonWriter, "", object, null);
+		toJSON(null, jsonWriter, "", object, null);
 		contentsToFile(file, jsonWriter.toString());
 		
 		assertTrue(file.length() > 10);

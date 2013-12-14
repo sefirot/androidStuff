@@ -1075,7 +1075,6 @@ public class SwingUtil
 	
 	public static Container container = null;
 	public static boolean underTest = false;
-	public static Function<String> messRedirection = null;
 	
 	public static JToolBar northToolBar(Container container) {
 		JToolBar bar = new JToolBar();
@@ -1102,6 +1101,8 @@ public class SwingUtil
 		return label;
 	}
 
+	public static Function<String> messRedirection = null;
+	
 	public static void message(String text) {
 		if (messRedirection != null)
 			messRedirection.apply(text);
@@ -1173,6 +1174,7 @@ public class SwingUtil
 		public int index();
 		public String resourceName();
 	    public String iconName();
+	    public String name(int state);
 	    public String description();
 	}
 	
@@ -1531,7 +1533,8 @@ public class SwingUtil
 	
 	public static void setLongText(JTextComponent tc, String text) {
 		tc.setText(text);
-		tc.setCaretPosition(tc.getText().length());
+		int length = tc.getDocument().getLength();
+		tc.setCaretPosition(length);
 	}
 	
 	public static String trimPath(String path, int width, Font font, JComponent jc) {
@@ -1816,11 +1819,11 @@ public class SwingUtil
 	
 		@Override
 		public String toString() {
-			Writer writer = format(new StringWriter(), "[");
-			writer = formatAssociation(writer, "name", this.name, 0);
-			writer = formatAssociation(writer, "capacity", this.capacity, 1);
-			writer = formatAssociation(writer, "deque", this.deque, 1);
-			return format(writer, "]").toString();
+			Writer writer = write(new StringWriter(), "[");
+			writer = writeAssoc(writer, "name", this.name);
+			writer = writeAssoc(writer, "capacity", this.capacity, 1);
+			writer = writeAssoc(writer, "deque", this.deque, 1);
+			return write(writer, "]").toString();
 		}
 		
 	}

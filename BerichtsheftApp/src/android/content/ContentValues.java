@@ -47,7 +47,8 @@ public final class ContentValues {
      * @param values the values to start with
      * {@hide}
      */
-    private ContentValues(HashMap<String, Object> values) {
+    @SuppressWarnings("unused")
+	private ContentValues(HashMap<String, Object> values) {
         mValues = values;
     }
 

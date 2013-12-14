@@ -1,6 +1,8 @@
 package com.applang.components;
 
+import java.awt.BorderLayout;
 import java.awt.Component;
+import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyListener;
@@ -36,6 +38,7 @@ import org.gjt.sp.jedit.syntax.Token;
 import org.gjt.sp.jedit.syntax.TokenHandler;
 import org.gjt.sp.jedit.syntax.TokenMarker;
 import org.gjt.sp.jedit.syntax.TokenMarker.LineContext;
+import org.gjt.sp.jedit.textarea.JEditEmbeddedTextArea;
 import org.gjt.sp.jedit.textarea.Selection;
 import org.gjt.sp.jedit.textarea.StandaloneTextArea;
 import org.gjt.sp.jedit.textarea.TextArea;
@@ -53,114 +56,124 @@ import static com.applang.Util.*;
 import static com.applang.Util2.*;
 import static com.applang.SwingUtil.*;
 
-public class TextEditor extends JTextArea implements ITextComponent
+class Text_Editor extends JTextArea
 {
-    class UndoAction extends AbstractAction {
-        public UndoAction() {
-            super("Undo");
-            setEnabled(false);
-        }
-
-        public void actionPerformed(ActionEvent e) {
-            try {
-                undo.undo();
-            } catch (CannotUndoException ex) {
-                BerichtsheftPlugin.consoleMessage("Unable to undo: " + ex);
-            }
-            updateUndoState();
-            redoAction.updateRedoState();
-        }
-
-        protected void updateUndoState() {
-            if (undo.canUndo()) {
-                putValue(Action.NAME, undo.getUndoPresentationName());
-            } else {
-                putValue(Action.NAME, "Undo");
-            }
-            setEnabled(undo.canUndo());
-        }
-    }
-
-    class RedoAction extends AbstractAction {
-        public RedoAction() {
-            super("Redo");
-            setEnabled(false);
-        }
-
-        public void actionPerformed(ActionEvent e) {
-            try {
-                undo.redo();
-            } catch (CannotRedoException ex) {
-                BerichtsheftPlugin.consoleMessage("Unable to redo: " + ex);
-            }
-            updateRedoState();
-            undoAction.updateUndoState();
-        }
-
-        protected void updateRedoState() {
-            if (undo.canRedo()) {
-                putValue(Action.NAME, undo.getRedoPresentationName());
-            } else {
-                putValue(Action.NAME, "Redo");
-            }
-            setEnabled(undo.canRedo());
-        }
+    public Text_Editor() {
+		setLineWrap(true);
+		setWrapStyleWord(true);
+		setTabSize(4);
     }
 	
-    protected UndoAction undoAction = new UndoAction();
-    protected RedoAction redoAction = new RedoAction();
-    public UndoManager undo = new UndoManager();
+    public Text_Editor(int rows, int columns) {
+    	super(rows, columns);
+		setTabSize(4);
+    }
 
+	class UndoAction extends AbstractAction {
+		public UndoAction() {
+			super("Undo");
+			setEnabled(false);
+		}
+		
+		public void actionPerformed(ActionEvent e) {
+			try {
+				undo.undo();
+			} catch (CannotUndoException ex) {
+				BerichtsheftPlugin.consoleMessage("Unable to undo: " + ex);
+			}
+			updateUndoState();
+			redoAction.updateRedoState();
+		}
+		
+		protected void updateUndoState() {
+			if (undo.canUndo()) {
+				putValue(Action.NAME, undo.getUndoPresentationName());
+			} else {
+				putValue(Action.NAME, "Undo");
+			}
+			setEnabled(undo.canUndo());
+		}
+	}
+	
+	class RedoAction extends AbstractAction {
+		public RedoAction() {
+			super("Redo");
+			setEnabled(false);
+		}
+		
+		public void actionPerformed(ActionEvent e) {
+			try {
+				undo.redo();
+			} catch (CannotRedoException ex) {
+				BerichtsheftPlugin.consoleMessage("Unable to redo: " + ex);
+			}
+			updateRedoState();
+			undoAction.updateUndoState();
+		}
+		
+		protected void updateRedoState() {
+			if (undo.canRedo()) {
+				putValue(Action.NAME, undo.getRedoPresentationName());
+			} else {
+				putValue(Action.NAME, "Redo");
+			}
+			setEnabled(undo.canRedo());
+		}
+	}
+	
+	protected UndoAction undoAction = new UndoAction();
+	protected RedoAction redoAction = new RedoAction();
+	public UndoManager undo = new UndoManager();
+	
 	public void installUndoRedo() {
 		getDocument().addUndoableEditListener(new UndoableEditListener() {
 			public void undoableEditHappened(UndoableEditEvent e) {
-	            undo.addEdit(e.getEdit());
-	            undoAction.updateUndoState();
-	            redoAction.updateRedoState();
+				undo.addEdit(e.getEdit());
+				undoAction.updateUndoState();
+				redoAction.updateRedoState();
 			}
 		});
 		boolean menuInstalled = false;
-        for(MouseListener listener : getMouseListeners()){
-            if (listener instanceof PopupListener) {
+		for(MouseListener listener : getMouseListeners()){
+			if (listener instanceof PopupListener) {
 				try {
 					Field f = listener.getClass().getDeclaredField("menu");
 					f.setAccessible(true);
 					JPopupMenu menu = (JPopupMenu) f.get(listener);
-			        menu.insert(undoAction, 0);
-			        menu.insert(redoAction, 1);
-			        menu.insert(new JPopupMenu.Separator(), 2);
-			        menuInstalled = true;
+					menu.insert(undoAction, 0);
+					menu.insert(redoAction, 1);
+					menu.insert(new JPopupMenu.Separator(), 2);
+					menuInstalled = true;
 				} catch (Exception e) {
 					Log.log(Log.ERROR, TextEditor.class, e);
 				}
-            }
-        }
-        if (!menuInstalled) {
+			}
+		}
+		if (!menuInstalled) {
 			JPopupMenu menu = (JPopupMenu) new JPopupMenu();
-	        menu.insert(undoAction, 0);
-	        menu.insert(redoAction, 1);
-        	addMouseListener(new PopupAdapter(menu));
-        }
+			menu.insert(undoAction, 0);
+			menu.insert(redoAction, 1);
+			addMouseListener(new PopupAdapter(menu));
+		}
 	}
-
-    public void installSpellChecker() {
-        SpellChecker.register(this);
+	
+	public void installSpellChecker() {
+		SpellChecker.register(this);
 		installUndoRedo();
-    }
+	}
+	
+	public void uninstallSpellChecker() {
+		SpellChecker.unregister(this);
+	}
+}
 
-    public void uninstallSpellChecker() {
-        SpellChecker.unregister(this);
-    }
-    
+public class TextEditor extends Text_Editor implements ITextComponent
+{
 	public TextEditor() {
-		setLineWrap(true);
-		setWrapStyleWord(true);
-		setTabSize(4);
 	}
 
     public TextEditor(int rows, int columns) {
     	super(rows, columns);
-		setTabSize(4);
     }
 
 	public TextEditor(View view) {
@@ -175,12 +188,6 @@ public class TextEditor extends JTextArea implements ITextComponent
 			};
 		}
 	}
-	
-	private void setView(View vw) {
-		view = vw;
-		if (Activity.frame == null)
-			Activity.frame = view;
-	}
 
 	View view = null;
 
@@ -188,106 +195,149 @@ public class TextEditor extends JTextArea implements ITextComponent
 		return view;
 	}
 	
+	private void setView(View vw) {
+		view = vw;
+		if (Activity.frame == null)
+			Activity.frame = view;
+	}
+	
 	public boolean hasJEditTextArea() {
 		View view = getView();
 		return view != null && view.getTextArea() != null;
 	}
 	
-	public TextArea getTextArea() {
-		return hasJEditTextArea() ? getView().getTextArea() : textArea;
-	}
-	
-	private TextArea textArea = null;
+	private TextArea[] textAreas = {null,null};
 
 	public void setTextArea(TextArea textArea) {
-		this.textArea = textArea;
+		textAreas[0] = textArea;
 	}
+	
+	public TextArea getTextArea() {
+		return hasJEditTextArea() ? getView().getTextArea() : textAreas[0];
+	}
+	
+	public TextArea getTextArea2() {
+		return textAreas[1];
+	}
+	
+	JScrollPane scrollPane = null;
 	
 	@Override
 	public Component getUIComponent() {
-		return this.textArea != null ? this.textArea : new JScrollPane(this);
+		return textAreas[0] != null ? textAreas[0] : (scrollPane == null ? scrollPane = new JScrollPane(this) : scrollPane);
 	}
 
-	public TextEditor createBufferTextArea(String modeName, String modeFileName) {
-		final Properties props = new Properties();
-		String keymapDirName = pathCombine(BerichtsheftPlugin.getSettingsDirectory(), "keymaps");
-		String keymapFileName = pathCombine(keymapDirName, "imported_keys.props");
-		if (!fileExists(keymapFileName))
-			keymapFileName = pathCombine(keymapDirName, "jedit_keys.props");
-		props.putAll(BerichtsheftPlugin.loadProperties(keymapFileName));
-		props.putAll(BerichtsheftPlugin.loadProperties("/org/gjt/sp/jedit/jedit.props"));
-		props.setProperty("buffer.folding", "explicit");
-		props.setProperty("buffer.tabSize", "4");
-		props.setProperty("buffer.indentSize", "4");
-		props.setProperty("buffer.wrap", "soft");
-		props.setProperty("buffer.maxLineLen", "0");
-		String antiAlias = BerichtsheftPlugin.getProperty("view.antiAlias", "standard");
-		props.setProperty("view.antiAlias", antiAlias);
-		IPropertyManager propsMan = new IPropertyManager()	{
-			public String getProperty(String name)
-			{
-				String property = props.getProperty(name);
-				return property;
+	public void toggle(boolean unbuffered) {
+		Component target = getUIComponent();
+		Container container = target.getParent();
+		if (container != null) {
+			container.remove(target);
+			if (unbuffered) {
+				textAreas[1] = textAreas[0];
+				setTextArea(null);
+			} else if (textAreas[1] != null) {
+				setTextArea(textAreas[1]);
+				textAreas[1] = null;
 			}
-		};
-		this.textArea = new StandaloneTextArea(propsMan) {
-			{
-				setRightClickPopupEnabled(true);
-			}
-			
-			public JMenuItem addMenuItem(String action, String label)
-			{
-				final JEditBeanShellAction shellAction = getActionContext().getAction(action);
-				if (shellAction == null)
-					return null ;
-				
-				final StandaloneTextArea ta = this;
-				JMenuItem item = new JMenuItem();
-				item.setAction(new AbstractAction(label)
-				{
-					public void actionPerformed(ActionEvent e)
-					{
-						shellAction.invoke(ta);
-					}
-				});
-				
-				popup.add(item);
-				return item;
-			}
+			target = getUIComponent();
+			if (container.getLayout() instanceof BorderLayout)
+				container.add(target, BorderLayout.CENTER);
+			else
+				container.add(target);
+			container.validate();
+			container.repaint();
+		}
+    }
 
-			@Override
-			public void createPopupMenu(MouseEvent evt)
-			{
-				popup = new JPopupMenu();
-				addMenuItem("undo", "Undo");
-				addMenuItem("redo", "Redo");
-				popup.addSeparator();
-				addMenuItem("cut", "Cut");
-				addMenuItem("copy", "Copy");
-				addMenuItem("paste", "Paste");
-			}
-		};
+	public TextEditor createBufferedTextArea(String modeName, String modeFileName) {
+		boolean useEmbedded = false;
+		if (useEmbedded && BerichtsheftPlugin.insideJEdit()) {
+			textAreas[0] = new JEditEmbeddedTextArea() {
+				{
+					setRightClickPopupEnabled(true);
+				}
+				@Override
+				public void createPopupMenu(MouseEvent evt) {
+					popup = new JPopupMenu();
+					TextEditor.this.createPopupMenu(this, popup);
+				}
+			};
+		}
+		else {
+			final Properties props = new Properties();
+			String keymapDirName = pathCombine(BerichtsheftPlugin.getSettingsDirectory(), "keymaps");
+			String keymapFileName = pathCombine(keymapDirName, "imported_keys.props");
+			if (!fileExists(keymapFileName))
+				keymapFileName = pathCombine(keymapDirName, "jedit_keys.props");
+			props.putAll(BerichtsheftPlugin.loadProperties(keymapFileName));
+			props.putAll(BerichtsheftPlugin.loadProperties("/org/gjt/sp/jedit/jedit.props"));
+			props.setProperty("buffer.folding", "explicit");
+			props.setProperty("buffer.tabSize", "4");
+			props.setProperty("buffer.indentSize", "4");
+			props.setProperty("buffer.wrap", "soft");
+			props.setProperty("buffer.maxLineLen", "0");
+			String antiAlias = BerichtsheftPlugin.getProperty("view.antiAlias", "standard");
+			props.setProperty("view.antiAlias", antiAlias);
+			IPropertyManager propsMan = new IPropertyManager() {
+				public String getProperty(String name)
+				{
+					String property = props.getProperty(name);
+					return property;
+				}
+			};
+			textAreas[0] = new StandaloneTextArea(propsMan) {
+				{
+					setRightClickPopupEnabled(true);
+				}
+				@Override
+				public void createPopupMenu(MouseEvent evt) {
+					popup = new JPopupMenu();
+					TextEditor.this.createPopupMenu(this, popup);
+				}
+			};
+		}
 		if (notNullOrEmpty(modeName)) {
 			EditBuffer buffer = new EditBuffer();
 			TokenMarker tokenMarker = new TokenMarker();
 			tokenMarker.addRuleSet(new ParserRuleSet("text","MAIN"));
 			buffer.setTokenMarker(tokenMarker);
-			this.textArea.setBuffer(buffer);
+			textAreas[0].setBuffer(buffer);
 			final Mode mode = new Mode(modeName);
 			modeFileName = BerichtsheftPlugin.getSettingsDirectory() + modeFileName;
 			mode.setProperty("file", modeFileName);
-			BerichtsheftPlugin.suppressErrorLog(new Function<Void>() {
-				public Void apply(Object... params) {
-					mode.loadIfNecessary();
-					return null;
-				}
-			});
+			mode.loadIfNecessary();
 			buffer.setMode(mode);
 		}
-		Dimension size = this.textArea.getPreferredSize();
-		this.textArea.setPreferredSize(new Dimension(size.width, size.height / 2));
+		Dimension size = textAreas[0].getPreferredSize();
+		textAreas[0].setPreferredSize(new Dimension(size.width, size.height / 2));
 		updateUI();
 		return this;
+	}
+	
+	private JMenuItem addMenuItem(final TextArea ta, JPopupMenu popup, String action, String label)
+	{
+		final JEditBeanShellAction shellAction = ta.getActionContext().getAction(action);
+		if (shellAction == null)
+			return null ;
+		JMenuItem item = new JMenuItem();
+		item.setAction(new AbstractAction(label)
+		{
+			public void actionPerformed(ActionEvent e) {
+				shellAction.invoke(ta);
+			}
+		});
+		popup.add(item);
+		return item;
+	}
+
+	private void createPopupMenu(TextArea ta, JPopupMenu popup)
+	{
+		addMenuItem(ta, popup, "undo", "Undo");
+		addMenuItem(ta, popup, "redo", "Redo");
+		popup.addSeparator();
+		addMenuItem(ta, popup, "cut", "Cut");
+		addMenuItem(ta, popup, "copy", "Copy");
+		addMenuItem(ta, popup, "paste", "Paste");
 	}
 	
 	public class EditBuffer extends JEditBuffer
@@ -346,6 +396,7 @@ public class TextEditor extends JTextArea implements ITextComponent
 	
 	private boolean spellchecking = false;
 	
+	@Deprecated
 	public void spellcheck() {
 		TextArea textArea = getTextArea();
 		if (textArea != null) {
@@ -423,6 +474,16 @@ public class TextEditor extends JTextArea implements ITextComponent
 		else
 			super.addKeyListener(l);
 	}
+	
+	private Job<ITextComponent> onTextChanged = null;
+	
+	private void update() {
+		try {
+			onTextChanged.perform(TextEditor.this, objects());
+		} catch (Exception e) {
+			Log.log(Log.ERROR, TextEditor.class, e);
+		}
+	}
 
 	public void setOnTextChanged(final Job<ITextComponent> onTextChanged) {
 		this.onTextChanged = onTextChanged;
@@ -471,16 +532,6 @@ public class TextEditor extends JTextArea implements ITextComponent
 					update();
 				}
 			});
-		}
-	}
-	
-	private Job<ITextComponent> onTextChanged = null;
-	
-	private void update() {
-		try {
-			onTextChanged.perform(TextEditor.this, objects());
-		} catch (Exception e) {
-			Log.log(Log.ERROR, TextEditor.class, e);
 		}
 	}
 }

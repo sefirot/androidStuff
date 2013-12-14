@@ -29,15 +29,13 @@ import org.xml.sax.XMLReader;
 import org.xml.sax.helpers.XMLReaderFactory;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.Context;
-import android.content.Intent;
+import android.content.res.Resources;
 import android.database.Cursor;
 import android.net.Uri;
 import android.util.Log;
 
-import com.applang.BaseDirective;
-import com.applang.Dialogs;
+import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 
 import static com.applang.Util.*;
 import static com.applang.Util1.*;
@@ -47,10 +45,23 @@ import static com.applang.ZipUtil.*;
 
 public class BerichtsheftApp
 {
+	public static String absolutePath(String relPath) {
+		String absPath = BerichtsheftPlugin.insideJEdit() ? 
+				jEdit.getSettingsDirectory() : 
+				Resources.getCodeSourceLocation(BerichtsheftApp.class).getPath();
+		int index = absPath.indexOf(".jedit");
+		absPath = pathCombine(
+				index > -1 ? absPath.substring(0, index) : relativePath(), 
+				relPath);
+//		println(absPath);
+		return absPath;
+	}
+	
 	public static void loadSettings() {
-		System.setProperty("settings.dir", ".jedit/plugins/berichtsheft");
+		System.setProperty("settings.dir", absolutePath(".jedit/plugins/berichtsheft"));
+		System.setProperty("sqlite4java.library.path", absolutePath(".jedit/jars/sqlite4java"));
 		Settings.load();
-		System.setProperty("sqlite4java.library.path", ".jedit/jars/sqlite4java");
+		Log.logConsoleHandling(Log.INFO);
 	}
 	/**
 	 * @param args
@@ -80,18 +91,6 @@ public class BerichtsheftApp
 	private static final String TAG = BerichtsheftApp.class.getSimpleName();
 	
 	public static final String NAME = "berichtsheft";
-	public static final String packageName = "com.applang.berichtsheft";
-
-	
-	private static Activity activity = null;
-
-	public static Activity getActivity() {
-		if (activity == null) {
-			activity = new Activity();
-			activity.setPackageInfo(packageName, "../Berichtsheft");
-		}
-		return activity;
-	}
 	
 	public static View getJEditView() {
 		return (View)Activity.frame;
@@ -100,25 +99,6 @@ public class BerichtsheftApp
 	public static String berichtsheftPath(String...parts) {
 		parts = arrayappend(strings(System.getProperty("settings.dir", "")), parts);
 		return pathCombine(parts);
-	}
-	
-	public static String prompt(int type, String title, String message, String[] values, String...defaults) {
-		switch (type) {
-		case Dialogs.DIALOG_LIST:
-			return AlertDialog.chooser(getActivity(), message, values, defaults);
-
-		default:
-			AlertDialog.modal = type / 100 < 1;
-			Intent intent = new Intent(Dialogs.PROMPT_ACTION)
-					.putExtra(BaseDirective.TYPE, type % 100)
-					.putExtra(BaseDirective.TITLE, title)
-					.putExtra(BaseDirective.PROMPT, message)
-					.putExtra(BaseDirective.VALUES, values)
-					.putExtra(BaseDirective.DEFAULTS, defaults);
-			getActivity().startActivity(intent);
-			String result = intent.getExtras().getString(BaseDirective.RESULT);
-			return "null".equals(String.valueOf(result)) ? null : result;
-		}
 	}
 	
 	public static String parameters(Object... params) {
@@ -303,7 +283,7 @@ public class BerichtsheftApp
 	}
 
 	public static void performQueries(String controlFileName) throws Exception {
-		final Context context = BerichtsheftApp.getActivity();
+		final Context context = new BerichtsheftActivity();
 		File file = new File(controlFileName);
 		Document doc = xmlDocument(file);
 		NodeList nodeList = evaluateXPath(doc.getDocumentElement(), "*[@query]");

@@ -16,9 +16,16 @@
 
 package android.database.sqlite;
 
+import com.applang.Util.Job;
+
+import android.content.ContentValues;
 import android.content.Context;
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase.CursorFactory;
 import android.util.Log;
+
+import static com.applang.Util.*;
+import static com.applang.Util1.*;
 
 /**
  * A helper class to manage database creation and version management.
@@ -98,7 +105,7 @@ public abstract class SQLiteOpenHelper {
                 db = mContext.openOrCreateDatabase(mName, 0, mFactory);
             }
 
-            int version = db.getVersion();
+            int version = getVersion(db);
             if (version != mNewVersion) {
                 db.beginTransaction();
                 try {
@@ -107,7 +114,7 @@ public abstract class SQLiteOpenHelper {
                     } else {
                         onUpgrade(db, version, mNewVersion);
                     }
-                    db.setVersion(mNewVersion);
+                    setVersion(db, mNewVersion);
                     db.setTransactionSuccessful();
                 } finally {
                     db.endTransaction();
@@ -132,7 +139,23 @@ public abstract class SQLiteOpenHelper {
         }
     }
 
-    /**
+    public int getVersion(SQLiteDatabase db) {
+    	String flavor = mContext.getFlavor();
+    	if (flavor == null)
+    		return db.getVersion();
+    	else
+    		return getFlavorVersion(flavor, db);
+    }
+
+    private void setVersion(SQLiteDatabase db, int version) {
+    	String flavor = mContext.getFlavor();
+    	if (flavor == null)
+    		db.setVersion(version);
+    	else
+    		setFlavorVersion(flavor, db, version);
+	}
+
+	/**
      * Create and/or open a database.  This will be the same object returned by
      * {@link #getWritableDatabase} unless some problem, such as a full disk,
      * requires the database to be opened read-only.  In that case, a read-only
@@ -166,9 +189,9 @@ public abstract class SQLiteOpenHelper {
             mIsInitializing = true;
             String path = mContext.getDatabasePath(mName).getPath();
             db = SQLiteDatabase.openDatabase(path, mFactory, SQLiteDatabase.OPEN_READONLY);
-            if (db.getVersion() != mNewVersion) {
+            if (getVersion(db) != mNewVersion) {
                 throw new SQLiteException("Can't upgrade read-only database from version " +
-                        db.getVersion() + " to " + mNewVersion + ": " + path);
+                        getVersion(db) + " to " + mNewVersion + ": " + path);
             }
 
             onOpen(db);
@@ -180,7 +203,7 @@ public abstract class SQLiteOpenHelper {
             if (db != null && db != mDatabase) db.close();
         }
     }
-
+    
     /**
      * Close any open database object.
      */

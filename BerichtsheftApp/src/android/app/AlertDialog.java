@@ -27,6 +27,7 @@ import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.table.AbstractTableModel;
 
+
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.res.Resources;
@@ -107,8 +108,6 @@ public class AlertDialog extends Dialog implements DialogInterface
 		}
 		return null;
 	}
-	
-	public Object result = null;
 
 	public static class Builder
 	{
@@ -385,24 +384,18 @@ public class AlertDialog extends Dialog implements DialogInterface
         
 	}
 	
-	private static AlertDialog dlg = null;
-	
 	@SuppressWarnings("rawtypes")
 	public static String chooser(Context context, String title, String[] values, String...defaults) {
-		dialogResult = -1;
-		dlg = new Builder(context)
+		AlertDialog dlg = new Builder(context)
             .setTitle(title)
             .setItems(values, new DialogInterface.OnClickListener() {
                 public void onClick(DialogInterface dialog, int which) {
-                	if (which < 0)
-                		dialogResult = -which - 1;
-                    dlg.dismiss();
+                	dialog.dismiss();
                 }
             })
             .setOnCancelListener(new DialogInterface.OnCancelListener() {
 				public void onCancel(DialogInterface dialog) {
-					dlg.result = null;
-                    dlg.cancel();
+					dialog.cancel();
 				}
             })
             .create();

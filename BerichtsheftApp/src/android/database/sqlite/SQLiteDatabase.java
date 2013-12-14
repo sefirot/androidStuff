@@ -1,6 +1,9 @@
 package android.database.sqlite;
 
-import com.almworks.sqlite4java.*;
+import com.almworks.sqlite4java.SQLite;
+import com.almworks.sqlite4java.SQLiteConnection;
+import com.almworks.sqlite4java.SQLiteConstants;
+import com.almworks.sqlite4java.SQLiteStatement;
 
 import android.content.ContentResolver;
 import android.content.ContentValues;
@@ -51,13 +54,9 @@ public class SQLiteDatabase {
     }
     
     private CursorFactory mFactory = new CursorFactory() {
-		
-		@Override
 		public Cursor newCursor(SQLiteConnection con, final SQLiteStatement stm) {
-			return new Cursor()
-			{
+			return new Cursor() {
 				int cnt = 0, position = -1;
-				
 				{
 					if (stm != null)
 						try {
@@ -70,18 +69,12 @@ public class SQLiteDatabase {
 							
 						} catch (com.almworks.sqlite4java.SQLiteException e) {}
 				}
-				
-				@Override
 				public int getCount() {
 					return cnt;
 				}
-				
-				@Override
 				public int getPosition() {
 					return position;
 				}
-						
-				@Override
 				public boolean moveToFirst() {
 			    	if (stm == null)
 			    		return false;
@@ -97,8 +90,6 @@ public class SQLiteDatabase {
 						return false;
 					}
 				}
-				
-				@Override
 				public boolean moveToNext() {
 			    	if (stm == null)
 			    		return false;
@@ -111,8 +102,6 @@ public class SQLiteDatabase {
 						return false;
 					}
 				}
-				
-				@Override
 				public boolean moveToPosition(int position) {
 					boolean retval = stm != null && position > -1 && position < cnt;
 					if (position < this.position) {
@@ -123,38 +112,26 @@ public class SQLiteDatabase {
 					}
 					return retval;
 				}
-				
-				@Override
 				public boolean moveToPrevious() {
 					return moveToPosition(position - 1);
 				}
-				
-				@Override
 				public boolean moveToLast() {
 					return moveToPosition(cnt - 1);
 				}
-				
-				@Override
 				public boolean move(int offset) {
 					return moveToPosition(position + offset);
 				}
-				
-				@Override
 				public boolean isClosed() {
 			    	if (stm != null)
 			    		return stm.isDisposed();
 			    	
 					return true;
 				}
-				
-				@Override
 				public void close() {
 			    	if (stm != null) {
 			    		stm.dispose();
 			    	}
 				}
-				
-				@Override
 				public boolean isNull(int columnIndex) {
 					try {
 						if (stm != null && stm.hasRow())
@@ -163,28 +140,18 @@ public class SQLiteDatabase {
 					
 					return true;
 				}
-				
-				@Override
 				public boolean isLast() {
 					throw new UnsupportedOperationException("Not implemented");
 				}
-				
-				@Override
 				public boolean isFirst() {
 					throw new UnsupportedOperationException("Not implemented");
 				}
-				
-				@Override
 				public boolean isBeforeFirst() {
 					throw new UnsupportedOperationException("Not implemented");
 				}
-				
-				@Override
 				public boolean isAfterLast() {
 					throw new UnsupportedOperationException("Not implemented");
 				}
-				
-				@Override
 				public int getType(int columnIndex) {
 					try {
 						if (stm != null && stm.hasRow())
@@ -204,8 +171,6 @@ public class SQLiteDatabase {
 					
 					return -1;
 				}
-				
-				@Override
 				public String getString(int columnIndex) {
 					try {
 						if (stm != null && stm.hasRow())
@@ -214,8 +179,6 @@ public class SQLiteDatabase {
 					
 					return null;
 				}
-				
-				@Override
 				public int getInt(int columnIndex) {
 					try {
 						if (stm != null && stm.hasRow())
@@ -224,8 +187,6 @@ public class SQLiteDatabase {
 					
 					return Integer.MIN_VALUE;
 				}
-				
-				@Override
 				public short getShort(int columnIndex) {
 					try {
 						if (stm != null && stm.hasRow())
@@ -234,8 +195,6 @@ public class SQLiteDatabase {
 					
 					return Short.MIN_VALUE;
 				}
-				
-				@Override
 				public long getLong(int columnIndex) {
 					try {
 						if (stm != null && stm.hasRow())
@@ -244,8 +203,6 @@ public class SQLiteDatabase {
 					
 					return Long.MIN_VALUE;
 				}
-				
-				@Override
 				public float getFloat(int columnIndex) {
 					try {
 						if (stm != null && stm.hasRow())
@@ -254,8 +211,6 @@ public class SQLiteDatabase {
 					
 					return Float.NaN;
 				}
-				
-				@Override
 				public double getDouble(int columnIndex) {
 					try {
 						if (stm != null && stm.hasRow())
@@ -264,8 +219,6 @@ public class SQLiteDatabase {
 					
 					return Double.NaN;
 				}
-				
-				@Override
 				public byte[] getBlob(int columnIndex) {
 					try {
 						if (stm != null && stm.hasRow())
@@ -274,8 +227,6 @@ public class SQLiteDatabase {
 					
 					return null;
 				}
-				
-				@Override
 				public int getColumnCount() {
 					try {
 						if (stm != null)
@@ -284,8 +235,6 @@ public class SQLiteDatabase {
 					
 					return 0;
 				}
-				
-				@Override
 				public String getColumnName(int columnIndex) {
 					try {
 						if (stm != null)
@@ -294,39 +243,26 @@ public class SQLiteDatabase {
 					
 					return null;
 				}
-				
-				@Override
 				public String[] getColumnNames() {
 					String[] names = new String[getColumnCount()];
 					for (int i = 0; i < names.length; i++)
 						names[i] = getColumnName(i);
 					return names;
 				}
-				
-				@Override
 				public int getColumnIndex(String columnName) {
 					return asList(getColumnNames()).indexOf(columnName);
 				}
-				
-				@Override
 				public int getColumnIndexOrThrow(String columnName)	throws IllegalArgumentException {
 					throw new UnsupportedOperationException("Not implemented");
 				}
-				
-				@Override
 				public boolean requery() {
 					throw new UnsupportedOperationException("Not implemented");
 				}
-				
-				@Override
 				public void deactivate() {
 					throw new UnsupportedOperationException("Not implemented");
 				}
-
-				@Override
 				public void setNotificationUri(ContentResolver cr, Uri uri) {
 					// TODO Auto-generated method stub
-					
 				}
 			};
 		}
@@ -483,6 +419,7 @@ public class SQLiteDatabase {
 			stm.step();
 			return true;
 		} catch (com.almworks.sqlite4java.SQLiteException e) {
+    		Log.d(TAG, String.format("%s : %s", stm, e.getMessage()));
 			Log.e(TAG, "execSQL", e);
 		}
     	finally {
@@ -505,6 +442,7 @@ public class SQLiteDatabase {
     		return (cursorFactory != null ? cursorFactory : mFactory)
     				.newCursor(connection, stm);
     	} catch (com.almworks.sqlite4java.SQLiteException e) {
+    		Log.d(TAG, String.format("%s : %s", stm, e.getMessage()));
     		throw new SQLiteException(2, TAG, e);
     	} 
     }

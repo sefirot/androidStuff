@@ -105,5 +105,10 @@
 			<type>1</type>
 			<locationURI>PARENT-1-PROJECT_LOC/Berichtsheft/src/com/applang/provider/WeatherInfoProvider.java</locationURI>
 		</link>
+		<link>
+			<name>src/com/applang/berichtsheft/test/ProviderTests.java</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/Berichtsheft/BerichtsheftTest/src/com/applang/berichtsheft/test/ProviderTests.java</locationURI>
+		</link>
 	</linkedResources>
 </projectDescription>

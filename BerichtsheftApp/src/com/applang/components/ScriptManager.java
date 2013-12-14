@@ -1,10 +1,5 @@
 package com.applang.components;
 
-import static com.applang.Util.*;
-import static com.applang.Util1.*;
-import static com.applang.Util2.*;
-import static com.applang.SwingUtil.*;
-
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Container;
@@ -38,18 +33,17 @@ import org.gjt.sp.jedit.View;
 import org.gjt.sp.jedit.bsh.NameSpace;
 import org.gjt.sp.jedit.gui.RolloverButton;
 import org.gjt.sp.util.Log;
-import org.json.JSONObject;
-import org.json.JSONStringer;
 import org.w3c.dom.CDATASection;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-import com.applang.SwingUtil.Behavior;
-import com.applang.Util.Job;
-import com.applang.Util.ValMap;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
+
+import static com.applang.Util.*;
+import static com.applang.Util2.*;
+import static com.applang.SwingUtil.*;
 
 @SuppressWarnings("rawtypes")
 public class ScriptManager extends ManagerBase<Element>
@@ -58,32 +52,32 @@ public class ScriptManager extends ManagerBase<Element>
 		return String.format("/FLAVOR[@name='%s']", name);
 	}
 	
-	public static boolean setDefaultConversions(Object flavor, String tableName, ValMap conv) {
+	public static String projectionSelector(Object table) {
+		return String.format("/PROJECTION[@table='%s']", table);
+	}
+	
+	public static boolean setDefaultProjection(Object flavor, String tableName, ValMap map) {
 		if (ProfileManager.transportsLoaded()) {
 			String xpath = ProfileManager.transportsSelector + flavorSelector(flavor);
 			Element element = selectElement(ProfileManager.transports, xpath);
 			if (element != null && notNullOrEmpty(tableName)) {
-				ValMap map = getDefaultConversions(flavor, null);
-				map.put(tableName, conv);
-				JSONStringer jsonWriter = new JSONStringer();
+				Element el = ProfileManager.transports.createElement("PROJECTION");
 				try {
-					toJSON(jsonWriter, "", map, null);
+					BidiMultiMap projection = (BidiMultiMap) map.get("projection");
+					xmlSerialize(projection, el, null);
+					el.setAttribute("version", "" + map.get("version"));
+					el.setAttribute("table", tableName);
 				} catch (Exception e) {
 					Log.log(Log.ERROR, ScriptManager.class, e);
 					return false;
 				}
-				String text = jsonWriter.toString();
-				CDATASection cdata = ProfileManager.transports.createCDATASection(text);
-				NodeList nodes = evaluateXPath(element, "./CONVERSIONS/text()");
+				NodeList nodes = evaluateXPath(element, "." + projectionSelector(tableName));
 				if (nodes != null && nodes.getLength() > 0) {
 					Node node = nodes.item(0);
-					node.getParentNode().replaceChild(cdata, node);
+					node.getParentNode().replaceChild(el, node);
 				}
-				else {
-					Element el = ProfileManager.transports.createElement("CONVERSIONS");
-					el.appendChild(cdata);
+				else 
 					element.appendChild(el);
-				}
 				ProfileManager.saveTransports();
 				return true;
 			}
@@ -91,32 +85,26 @@ public class ScriptManager extends ManagerBase<Element>
 		return false;
 	}
 	
-	public static ValMap getDefaultConversions(Object flavor, String tableName) {
+	public static ValMap getDefaultProjection(Object flavor, String tableName) {
+		ValMap map = vmap();
 		if (ProfileManager.transportsLoaded()) {
 			String xpath = ProfileManager.transportsSelector + flavorSelector(flavor);
 			Element element = selectElement(ProfileManager.transports, xpath);
 			if (element != null) {
-				NodeList nodes = evaluateXPath(element, "./CONVERSIONS/text()");
+				NodeList nodes = evaluateXPath(element, "." + projectionSelector(tableName));
 				if (nodes != null && nodes.getLength() > 0) {
-					Node node = nodes.item(0);
+					element = (Element) nodes.item(0);
 					try {
-						String text = node.getTextContent();
-						ValMap map = (ValMap) walkJSON(null, new JSONObject(text), null);
-						if (map != null) {
-							if (notNullOrEmpty(tableName)) {
-								if (map.containsKey(tableName))
-									return (ValMap) map.get(tableName);
-							}
-							else
-								return map;
-						}
+						map.put("table", tableName);
+						map.put("version", toInt(-1, element.getAttribute("version")));
+						map.put("projection", xmlDeserialize(element, null));
 					} catch (Exception e) {
 						Log.log(ERROR, ScriptManager.class, e);
 					}
 				}
 			}
 		}
-		return vmap();
+		return map;
 	}
 
 	public static Object doConversion(Object value, String function, String oper, Object...params) {
@@ -318,7 +306,7 @@ public class ScriptManager extends ManagerBase<Element>
 	
 	private void createUI(final View view, final Container container) {
 		comboBoxes = new JComboBox[] {new JComboBox()};
-		textArea = new TextEditor().createBufferTextArea("beanshell", "/modes/java.xml");
+		textArea = new TextEditor().createBufferedTextArea("beanshell", "/modes/java.xml");
 		
 		JToolBar bar = new JToolBar();
 		container.add(bar, BorderLayout.NORTH);

@@ -4,6 +4,7 @@ import static com.applang.Util.*;
 
 import android.net.Uri;
 
+import com.applang.berichtsheft.BerichtsheftActivity;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.components.DataView;
 
@@ -51,7 +52,7 @@ public class NodeProperties implements NodePropertyProvider {
 		if (isSQLite(file)) {
 			panel.add(new JLabel("SQLite database"));
 			panel.add(DataView.dbTablesComponent(
-					BerichtsheftApp.getActivity(), 
+					new BerichtsheftActivity(), 
 					Uri.fromFile(file), 
 					null), BorderLayout.CENTER);
 		}

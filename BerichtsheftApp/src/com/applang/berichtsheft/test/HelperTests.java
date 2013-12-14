@@ -58,6 +58,7 @@ import javax.swing.UIManager;
 
 import org.apache.commons.lang.StringEscapeUtils;
 import org.gjt.sp.jedit.BeanShell;
+import org.gjt.sp.jedit.bsh.Interpreter;
 import org.gjt.sp.jedit.bsh.NameSpace;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -87,14 +88,15 @@ import android.widget.TextView;
 
 import com.applang.BaseDirective;
 import com.applang.Dialogs;
+import com.applang.PromptDirective;
 import com.applang.UserContext.EvaluationTask;
+import com.applang.berichtsheft.BerichtsheftActivity;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.plugin.DataDockable;
 import com.applang.berichtsheft.plugin.JEditOptionDialog;
 import com.applang.berichtsheft.plugin.DataDockable.TransportBuilder;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 import com.applang.components.AndroidBridge;
-import com.applang.components.DataConfiguration;
 import com.applang.components.DataView;
 import com.applang.components.DataView.DataModel;
 import com.applang.components.DataView.ProjectionModel;
@@ -191,12 +193,14 @@ public class HelperTests extends TestCase
 		File jarsDir = tempDir(true, subDirName, "settings", "jars");
 		symbolicLinks(jarsDir, ".jedit/jars", 
 				"BerichtsheftPlugin.jar",
+				"sqlite4java.jar",
 				"Console.jar",
 				"ProjectViewer.jar",
 				"InfoViewer.jar",
 				"ErrorList.jar",
 				"CommonControls.jar",
 				"kappalayout.jar");
+		symbolicLinks(jarsDir, ".jedit/jars", "sqlite4java");
 		File settingsDir = tempDir(false, subDirName, "settings");
 		symbolicLinks(settingsDir, ".jedit", "keymaps");
 		symbolicLinks(settingsDir, ".jedit", "macros");
@@ -237,16 +241,29 @@ public class HelperTests extends TestCase
 	public void testCommando() {
 		String script = String.format(
 				"com.applang.berichtsheft.plugin.BerichtsheftPlugin.invokeAction(view, \"%s\");\n", 
-				"commando.Dokumente");
+				"commando.Android");
 		scriptTest("testCommando", script);
+	}
+	
+	public void testInquireUri() {
+    	String dbPath = "/tmp/temp.db";
+		Uri uri = fileUri(dbPath + "~", "notes");
+		String uriString = stringValueOf(uri);
+		String script = String.format(
+				"com.applang.berichtsheft.plugin.BerichtsheftPlugin.loadSettings();\n" +
+				"uriString = com.applang.components.DataConfiguration.inquireUri(\"%s\", false);\n" +
+				"com.applang.berichtsheft.plugin.BerichtsheftShell.print(new Object[]{uriString});", 
+				uriString);
+		scriptTest("testInquireUri", script);
 	}
 
 	public void testWetter() {
 		String script = "view.getDockableWindowManager().showDockableWindow(\"datadock\");\n";
 		script += String.format(
+				"com.applang.berichtsheft.plugin.BerichtsheftPlugin.loadSettings();\n" +
 				"com.applang.berichtsheft.plugin.BerichtsheftPlugin.invokeAction(view, \"%s\");\n", 
 				"commando.Wetter");
-		scriptTest("testCommando", script);
+		scriptTest("testWetter", script);
 	}
 
 	public void testAndroidFileChooser() throws Exception {
@@ -268,28 +285,6 @@ public class HelperTests extends TestCase
 				"BerichtsheftPlugin.invokeAction(view, actionName);";
 		scriptTest("testSpellchecking", script);
    }
-
-	public void _testCommands() throws Exception {
-		String path = ".jedit/console/commando/transport.xml";
-		File file = new File(path);
-		assertTrue(fileExists(file));
-		String xml = contentsFromFile(file);
-		org.jsoup.nodes.Document doc = Jsoup.parse(xml, "", Parser.xmlParser());
-		for (org.jsoup.nodes.Element elem : doc.getElementsByTag("COMMAND")) {
-			String script = elem.text();
-			JTextArea textArea = new JTextArea(script);
-			textArea.setLineWrap(true);
-			textArea.setWrapStyleWord(true);
-			textArea.setPreferredSize(new Dimension(200,200));
-			if (JOptionPane.OK_OPTION == showOptionDialog(null, 
-					new JScrollPane(textArea), 
-					path, 
-					JOptionPane.OK_CANCEL_OPTION, 
-					JOptionPane.PLAIN_MESSAGE, 
-					null, null, null))
-				scriptTest("COMMAND", script);
-		}
-	}
 
 	private ValList shellRunTest(String script, String target) throws Exception {
 		println(script.replaceAll(NEWLINE_REGEX, TAB));
@@ -353,6 +348,39 @@ public class HelperTests extends TestCase
 				"Util.formatDate(d, Util.timestampFormat); ";
 		Object value = BeanShell.eval(null, tmp, script);
 		println(value);
+	}
+
+	public void _testBeanShell2() throws Exception {
+		Interpreter i = new Interpreter();
+		i.source(".jedit/macros/scripts/executor.bsh");
+	}
+
+	public void testCommands() throws Exception {
+		String path = ".jedit/console/commando/Android.xml";
+		File file = new File(path);
+		assertTrue(fileExists(file));
+		String xml = contentsFromFile(file);
+		org.jsoup.nodes.Document doc = Jsoup.parse(xml, "", Parser.xmlParser());
+		for (org.jsoup.nodes.Element elem : doc.getElementsByTag("COMMAND")) {
+			String script = elem.text();
+			JTextArea textArea = new JTextArea(script);
+			textArea.setLineWrap(true);
+			textArea.setWrapStyleWord(true);
+			textArea.setPreferredSize(new Dimension(200,200));
+			if (JOptionPane.OK_OPTION == showOptionDialog(null, 
+					new JScrollPane(textArea), 
+					path, 
+					JOptionPane.OK_CANCEL_OPTION, 
+					JOptionPane.PLAIN_MESSAGE, 
+					null, null, null)) {
+				NameSpace tmp = new NameSpace(BeanShell.getNameSpace(), "Android");
+				tmp.setVariable("oper", "pull");
+				tmp.setVariable("androidFile", "/sdcard/result2");
+				tmp.setVariable("pcDir", "/tmp");
+				tmp.setVariable("params", "");
+				println(BeanShell.eval(null, tmp, script));
+			}
+		}
 	}
 
 	public void testTransports() throws Exception {
@@ -438,12 +466,13 @@ public class HelperTests extends TestCase
 	Uri uri = getConstantByName("CONTENT_URI", "com.applang.provider.WeatherInfo", "Weathers");
 	
     private String createNotePad() throws Exception {
-    	BerichtsheftApp.getActivity().deleteDatabase(NotePadProvider.DATABASE_NAME);
+    	BerichtsheftActivity activity = new BerichtsheftActivity();
+    	activity.deleteDatabase(NotePadProvider.DATABASE_NAME);
 		
 		long now = now();
 		String pattern = DatePicker.calendarFormat;
 		long today = toTime(formatDate(now, pattern), pattern);
-		InfraTests.generateNotePadData(BerichtsheftApp.getActivity(), true, 
+		ProviderTests.generateNotePadData(activity, true, 
 				new Object[][] {
 					{ 1L, "kein", "Kein", null, now }, 
 					{ 2L, "fehler", "Fehler", null, now }, 
@@ -457,25 +486,26 @@ public class HelperTests extends TestCase
 				});
 		
     	uri = getConstantByName("CONTENT_URI", "com.applang.provider.NotePad", "NoteColumns");
-    	File dbFile = getDatabaseFile(BerichtsheftApp.getActivity(), uri);
+    	File dbFile = getDatabaseFile(activity, uri);
     	String dbPath = "/tmp/temp.db";
     	copyFile(dbFile, new File(dbPath));
     	return dbPath;
     }
 	
     private String createWeatherInfo() throws Exception {
-    	BerichtsheftApp.getActivity().deleteDatabase(WeatherInfoProvider.DATABASE_NAME);
+    	BerichtsheftActivity activity = new BerichtsheftActivity();
+    	activity.deleteDatabase(WeatherInfoProvider.DATABASE_NAME);
 		
 		long now = now();
 		String pattern = DatePicker.calendarFormat;
 		long today = toTime(formatDate(now, pattern), pattern);
-		ContentResolver contentResolver = BerichtsheftApp.getActivity().getContentResolver();
-		InfraTests.generateData(contentResolver, Weathers.CONTENT_URI, true, new Object[][] {
+		ContentResolver contentResolver = activity.getContentResolver();
+		ProviderTests.generateData(contentResolver, Weathers.CONTENT_URI, true, new Object[][] {
 			{ 1L, "here", "overcast", 11.1f, 1f, -1f, today, now }, 	
 		});
 		
     	uri = getConstantByName("CONTENT_URI", "com.applang.provider.WeatherInfo", "Weathers");
-    	File dbFile = getDatabaseFile(BerichtsheftApp.getActivity(), uri);
+    	File dbFile = getDatabaseFile(activity, uri);
     	String dbPath = "/tmp/temp.db";
     	copyFile(dbFile, new File(dbPath));
     	return dbPath;
@@ -507,7 +537,7 @@ public class HelperTests extends TestCase
 		Provider provider = new Provider(dv);
 		BidiMultiMap projection = new BidiMultiMap(provider.info.getList("name"));
 		projection.removeKey("_id");
-		Context context = BerichtsheftApp.getActivity();
+		Context context = new BerichtsheftActivity();
 		ProjectionModel model = new ProjectionModel(context, uri, flavor, projection);
 		model.injectFlavor();
 		model= dv.askProjection(model);
@@ -548,19 +578,12 @@ public class HelperTests extends TestCase
 				.open();
 	}
 	
-	public void testInquireUri() throws Exception {
-    	String dbPath = createNotePad();
-		Uri uri = fileUri(dbPath + "~", "notes");
-		String uriString = DataConfiguration.inquireUri(stringValueOf(uri));
-		println(uriString);
-	}
-	
 	public void testDataConfig() throws Exception {
     	String dbPath = createNotePad();
 		DataView dv = new DataView();
 		Uri uri = fileUri(dbPath, null);
 		dv.setUri(uri);
-		Context context = BerichtsheftApp.getActivity();
+		Context context = new BerichtsheftActivity();
 		ProjectionModel pmodel = new ProjectionModel(context, uri, null);
 		dv.getDataConfiguration().setProjectionModel(pmodel);
 		while (dv.configureData(null, true)) {
@@ -590,25 +613,14 @@ public class HelperTests extends TestCase
     }
 
     public void testUpdateOrInsert() throws Exception {
-    	String dbPath = createWeatherInfo();
-    	String uriString = fileUri(dbPath, "weathers").toString();
+    	String dbPath = createNotePad();
+    	String uriString = fileUri(dbPath, "notes").toString();
 		Provider provider = new Provider(uriString);
-		println(com.applang.Util2.toString(provider.info));
-		BidiMultiMap projection = new BidiMultiMap(new ValList(provider.info.getList("name")));
-		Object pk = provider.info.get("PRIMARY_KEY");
-		projection.removeKey(pk);
-		Object[] items = objects();
-       	ContentValues values = contentValues(provider.info, projection.getKeys(), items);
-		ValMap profile = ProfileManager.getProfileAsMap("weather", "download");
-   	
-    	dbPath = createNotePad();
-    	uriString = fileUri(dbPath, "notes").toString();
-		provider = new Provider(uriString);
-		projection = builder.elaborateProjection(objects("title", "note", "created"), null, "");
-       	values = contentValues(provider.info, projection.getKeys(), "title", "note", now());
-		profile = ProfileManager.getProfileAsMap("tagesberichte", "pull");
+		BidiMultiMap projection = builder.elaborateProjection(objects("title", "note", "created"), null, "");
+       	ContentValues values = contentValues(provider.info, projection.getKeys(), "title", "note", now());
+		ValMap profile = ProfileManager.getProfileAsMap("tagesberichte", "pull");
        	
-		pk = BaseColumns._ID;
+		String pk = BaseColumns._ID;
 		Object result = provider.updateOrInsert(uriString, profile, projection, pk, values);
 		assertNotNull(result);
 		assertTrue(result instanceof Uri);
@@ -770,8 +782,8 @@ public class HelperTests extends TestCase
 			map.put(uriString, template);
 			putMapSetting("TRANSPORT_MAPPINGS", map);
 			ValMap info = table_info(
-					BerichtsheftApp.getActivity(), 
-					uriString, 
+					new BerichtsheftActivity(), 
+					Uri.parse(uriString), 
 					tableName);
 			Object pk = info.get("PRIMARY_KEY");
 			boolean additionalPk = projection.indexOf(pk) < 1;
@@ -966,7 +978,7 @@ public class HelperTests extends TestCase
 				"#set($key=\"\")\n" +
 				"#prompt(\"label\",$key,\"value\")\n" +
 				"$key";
-		worker = new EvaluationTask(BerichtsheftApp.getActivity(), null, null, null, new Job<Object>() {
+		worker = new EvaluationTask(new BerichtsheftActivity(), null, null, null, new Job<Object>() {
 			public void perform(Object s, Object[] params) throws Exception {
 				textField.setText(s.toString());
 				worker = null;
@@ -978,7 +990,7 @@ public class HelperTests extends TestCase
 		cancel.setEnabled(true);
 	}
 	
-	public void testSwingworker() throws Exception {
+	public void _testSwingworker() throws Exception {
 		showFrame(null, 
 				"test", 
 	    		new UIFunction() {
@@ -1069,7 +1081,7 @@ public class HelperTests extends TestCase
 			Behavior.TIMEOUT);
 	}
 	
-	public void testInputDialog() throws Exception {
+	public void _testInputDialog() throws Exception {
 		String title = "Text ";
 		String prompt = "label";
 		String value = "text";
@@ -1082,7 +1094,7 @@ public class HelperTests extends TestCase
 		}
 	}
 	
-	public void testOptionDialog() throws Exception {
+	public void _testOptionDialog() throws Exception {
 		String title = "Option ";
 		String prompt = "prompt";
 		String value = "text";
@@ -1204,7 +1216,7 @@ public class HelperTests extends TestCase
 	
 	public void testDialogFeed() throws Exception {
 		final int id = 1;
-		final AlertDialog dialog = new AlertDialog.Builder(BerichtsheftApp.getActivity(), false)
+		final AlertDialog dialog = new AlertDialog.Builder(new BerichtsheftActivity(), false)
 				.setView(new TextView(null, true))
 				.setNeutralButton(android.R.string.close, new OnClickListener() {
 					public void onClick(DialogInterface dialog, int which) {
@@ -1251,55 +1263,66 @@ public class HelperTests extends TestCase
 	
 	public void testPrompts() {
 		BaseDirective.setOptions(-1);
-		String result = BerichtsheftApp.prompt(
+		PromptDirective.prompt(new BerichtsheftActivity(
+					new Job<String>() {
+						public void perform(String result, Object[] parms) throws Exception {
+							if (result == null)
+								return;
+							int type = (int) BaseDirective.options.get(result);
+							String prompt = "";
+							ValList values = vlist();
+							switch (type) {
+							case Dialogs.DIALOG_TEXT_ENTRY:
+								prompt = "name";
+								values.add("xxx");
+								break;
+							case Dialogs.DIALOG_TEXT_INFO:
+								prompt = "text";
+								values.add(contentsFromFile(keinFehlerFile));
+								break;
+							case Dialogs.DIALOG_YES_NO_MESSAGE:
+								prompt = "macht nix";
+								values.add("ja");
+								values.add("nein");
+								break;
+							case Dialogs.DIALOG_YES_NO_LONG_MESSAGE:
+								prompt = "macht nix";
+								values.add("nee ... gar nix");
+								values.add("doch, es macht");
+								values.add("schon ein bisschen");
+								values.add("ist egal");
+								break;
+							case Dialogs.DIALOG_LIST:
+							case Dialogs.DIALOG_SINGLE_CHOICE:
+							case Dialogs.DIALOG_MULTIPLE_CHOICE:
+								prompt = "Choice";
+//								String[] array = getStateStrings();
+//								values.addAll(asList(array));
+								ValList list = vlist();
+								for (Object object : UIManager.getLookAndFeelDefaults().keySet()) {
+									list.add(stringValueOf(object));
+								}
+								values.addAll(sortedSet(list));
+								break;
+							default:
+								println("not implemented");
+								return;
+							}
+							PromptDirective.prompt(new BerichtsheftActivity(
+									new Job<String>() {
+										public void perform(String result, Object[] parms) throws Exception {
+											println(String.valueOf(result));
+											testPrompts();
+										}
+									}), 
+									type, result, 
+									prompt, toStrings(values)); 
+						}
+					}
+				),
 				Dialogs.DIALOG_LIST, 
 				"", "Prompts", 
 				toStrings(BaseDirective.options.keySet()));
-		if (result == null)
-			return;
-		
-		int type = (int) BaseDirective.options.get(result);
-		String prompt = "";
-		ValList values = vlist();
-		switch (type) {
-		case Dialogs.DIALOG_TEXT_ENTRY:
-			prompt = "name";
-			values.add("xxx");
-			break;
-		case Dialogs.DIALOG_TEXT_INFO:
-			prompt = "text";
-			values.add(contentsFromFile(keinFehlerFile));
-			break;
-		case Dialogs.DIALOG_YES_NO_MESSAGE:
-			prompt = "macht nix";
-			values.add("ja");
-			values.add("nein");
-			break;
-		case Dialogs.DIALOG_YES_NO_LONG_MESSAGE:
-			prompt = "macht nix";
-			values.add("nee ... gar nix");
-			values.add("doch, es macht");
-			values.add("schon ein bisschen");
-			values.add("ist egal");
-			break;
-		case Dialogs.DIALOG_LIST:
-		case Dialogs.DIALOG_SINGLE_CHOICE:
-		case Dialogs.DIALOG_MULTIPLE_CHOICE:
-			prompt = "Choice";
-//			String[] array = getStateStrings();
-//			values.addAll(asList(array));
-			ValList list = vlist();
-			for (Object object : UIManager.getLookAndFeelDefaults().keySet()) {
-				list.add(stringValueOf(object));
-			}
-			values.addAll(sortedSet(list));
-			break;
-		default:
-			break;
-		}
-		result = BerichtsheftApp.prompt(type, result, prompt, toStrings(values));
-		println(String.valueOf(result));
-		testPrompts();
 	}
 	
 	public void testJEditOptionDialog() {
@@ -1322,7 +1345,7 @@ public class HelperTests extends TestCase
 				new UIFunction() {
 					public Component[] apply(final Component comp, Object[] parms) {
 				        try {
-				        	textEditor.createBufferTextArea("text", "/modes/text.xml");
+//				        	textEditor.createBufferedTextArea("text", "/modes/text.xml");
 							textEditor.setText(
 								new Scanner(new File("/home/lotharla/work/Workshop/Examples/poem.txt"))
 									.useDelimiter("\\Z").next());
@@ -1334,7 +1357,8 @@ public class HelperTests extends TestCase
 				}, 
 				new UIFunction() {
 					public Component[] apply(Component comp, Object[] parms) {
-						textEditor.spellcheck();
+						textEditor.installSpellChecker();
+//						textEditor.spellcheck();
 						return null;
 					}
 				}, 
@@ -1342,7 +1366,7 @@ public class HelperTests extends TestCase
 				Behavior.TIMEOUT);
 	}
 	
-	public void testProgressMonitor() {
+	public void _testProgressMonitor() {
 		startFrame(
 				new AbstractAction("testProgressMonitor") {
 					@Override

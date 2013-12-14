@@ -1,15 +1,12 @@
 package com.applang.components;
 
-import static com.applang.Util.*;
-import static com.applang.SwingUtil.*;
-import static com.applang.VelocityUtil.*;
-
 import com.applang.UserContext;
 import com.applang.Util;
 import com.applang.SwingUtil.Behavior;
 import com.applang.Util.Function;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Point;
 import java.awt.event.ActionEvent;
@@ -47,25 +44,31 @@ import org.apache.velocity.runtime.parser.node.SimpleNode;
 
 import android.util.Log;
 
+import static com.applang.Util.*;
+import static com.applang.SwingUtil.*;
+import static com.applang.VelocityUtil.*;
+
 public class ASTViewer extends ActionPanel
 {
-    private static final String TAG = ASTViewer.class.getSimpleName();
-    
 	public static void main(String[] args) {
 		SwingUtilities.invokeLater(new Runnable() {
 			@Override
 			public void run() {
-				TextEditor textEditor = new TextEditor();
-				textEditor.createBufferTextArea("velocity", "/modes/velocity_pure.xml");
+				final TextEditor textEditor = new TextEditor();
+				textEditor.createBufferedTextArea("velocity", "/modes/velocity_pure.xml");
 				String title = "Velocity AST tool";
-				final ASTViewer viewer = new ASTViewer(textEditor, 
+				ASTViewer viewer = new ASTViewer(textEditor, 
 						null,
 						title);
 				ActionPanel.createAndShowGUI(title, 
-						new Dimension(700, 200), 
+						new Dimension(600, 300), 
+						Behavior.EXIT_ON_CLOSE, 
 						viewer, 
-						textEditor.getUIComponent(), 
-						Behavior.EXIT_ON_CLOSE);
+						new Function<Component>() {
+							public Component apply(Object...params) {
+								return textEditor.getUIComponent();
+							}
+						});
 			}
 		});
 	}
@@ -77,6 +80,7 @@ public class ASTViewer extends ActionPanel
 		MODIFY		(2, "manager.action-MODIFY"), 
 		SET			(3, "set"), 
 		FOREACH		(4, "foreach"), 
+		TOGGLE		(6, "manager.action-TOGGLE"), 
 		STRUCT		(7, "manager.action-STRUCT"), 
 		VMFILE		(8, "manager.action-VMFILE"), 
 		ACTIONS		(9, "Actions"); 		//	needs to stay last !
@@ -101,6 +105,10 @@ public class ASTViewer extends ActionPanel
 		public String description() {
 			return BerichtsheftPlugin.getProperty(resourceName.concat(".label"));
 		}
+		@Override
+		public String name(int state) {
+			return BerichtsheftPlugin.getProperty(resourceName.concat(".label") + "." + state);
+		}
 	}
 
 	public File vmFile;
@@ -109,6 +117,9 @@ public class ASTViewer extends ActionPanel
     {
 		public ManipAction(ActionType type) {
 			super(type);
+			if (type.equals(ActionType.TOGGLE)) {
+				putValue(NAME, type.name(1));
+			}
         }
         
 		public ManipAction(String text) {
@@ -128,6 +139,9 @@ public class ASTViewer extends ActionPanel
 				else
 					setText("");
 				break;
+			case TOGGLE:
+				toggleTextView(this);
+				break;
 			case STRUCT:
 				if (fileExists(vmFile))
 					structure(0);
@@ -141,7 +155,7 @@ public class ASTViewer extends ActionPanel
 					}
 					else if (type.index == DELETE) {
 						setSelection(node, false);
-						textArea.setSelectedText(null);
+						textComponent.setSelectedText(null);
 					}
 					else if (type.index == INSERT) {
 						setSelection(node, true);
@@ -162,11 +176,23 @@ public class ASTViewer extends ActionPanel
         }
     }
     
+	boolean isSciptView() {
+		return getTextEditor().getTextArea2() == null;
+	}
+    
     private void setSelection(Object node, boolean noSpan) {
-    	int[] span = Visitor.span(node);
-    	span = getTextOffsets(textArea.getText(), span);
-    	textArea.setSelection(span[0], noSpan ? -1 : span[1]);
+    	if (isSciptView()) {
+			int[] span = Visitor.span(node);
+			span = getTextOffsets(textComponent.getText(), span);
+			textComponent.setSelection(span[0], noSpan ? -1 : span[1]);
+		}
     }
+	
+	public void structure(int mode) {
+		title = vmFile.getName();
+		script = getText();
+		showAST();
+	}
     
 	class ASTModel extends DefaultTableModel
 	{
@@ -337,7 +363,7 @@ public class ASTViewer extends ActionPanel
 		textArea.setPreferredSize(size);
 		String title = String.format("Evaluation : '%s'", this.title);
 		UserContext.setupVelocity(null, true);
-		textArea.setText(evaluate(new UserContext(), text, TAG));
+		textArea.setText(toText(script));
 		JOptionPane optionPane = new JOptionPane(new JScrollPane(textArea), 
 				JOptionPane.PLAIN_MESSAGE, 
 				JOptionPane.DEFAULT_OPTION, 
@@ -352,11 +378,11 @@ public class ASTViewer extends ActionPanel
 		return value instanceof Integer ? (int) value : JOptionPane.CLOSED_OPTION;
 	}
 	
-	Dimension size = new Dimension(700, 200);
-	String title = null;
-	String text = null;
-	ValMap map = null;
-	int manip = -1;
+	private Dimension size = new Dimension(700, 200);
+	private String title = null;
+	private String script = null;
+	private ValMap map = null;
+	private int manip = -1;
 
 	private int showAST(final Object...params) {
 		manip = param_Integer(0, 0, params);
@@ -381,7 +407,7 @@ public class ASTViewer extends ActionPanel
 					showAST(1, detail, essentials, map);
 				}
 			});
-			ASTModel model = new ASTModel(text, detail, essentials);
+			ASTModel model = new ASTModel(script, detail, essentials);
 			final JTable table = configureTable(model);
 			String title = String.format("AST (%d rows) : '%s' ", model.getDataVector().size(), this.title);
 			int option = showOptionDialog(ASTViewer.this, 
@@ -402,21 +428,21 @@ public class ASTViewer extends ActionPanel
 							switch (dialogResult) {
 							case 0:
 								flag = !model.isDetail();
-								table.setModel(new ASTModel(text, 
+								table.setModel(new ASTModel(script, 
 										flag, 
 										model.isEssentials()));
 								options[0] = flag ? "Info" : "Detail";
 								break;
 							case 1:
 								flag = !model.isEssentials();
-								table.setModel(new ASTModel(text, 
+								table.setModel(new ASTModel(script, 
 										model.isDetail(), 
 										flag));
 								options[1] = flag ? "all" : "essentials";
 								break;
 							case 2:
-								text = Visitor.tail(model.document);
-								table.setModel(new ASTModel(text, 
+								script = Visitor.tail(model.document);
+								table.setModel(new ASTModel(script, 
 										model.isDetail(), 
 										model.isEssentials()));
 								break;
@@ -505,18 +531,13 @@ public class ASTViewer extends ActionPanel
 			});
 		return vm;
 	}
-	
-	public void structure(int mode) {
-		title = vmFile.getName();
-		text = getText();
-		showAST();
-	}
 
 	public ASTViewer(ITextComponent textArea, Object...params) {
 		super(textArea, params);
 		
 		addButton(this, ActionType.VMFILE.index(), new ManipAction(ActionType.VMFILE));
 		addButton(this, ActionType.STRUCT.index(), new ManipAction(ActionType.STRUCT));
+		addToggle(this, ActionType.TOGGLE.index(), new ManipAction(ActionType.TOGGLE));
 		
 		// TODO Auto-generated constructor stub
 	}

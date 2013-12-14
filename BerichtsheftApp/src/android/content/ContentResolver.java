@@ -30,11 +30,12 @@ public class ContentResolver extends Observable
     {
     	Context context = mContext;
     	contentProvider = new ContentProvider();
+    	String flavor = null;
     	if (SCHEME_CONTENT.equals(uri.getScheme())) {
-    		String authority = uri.getAuthority();
-    		if (authority != null) {
+    		flavor = uri.getAuthority();
+    		if (flavor != null) {
     			try {
-    				Class<?> c = Class.forName(authority + "Provider");
+    				Class<?> c = Class.forName(flavor + "Provider");
     				contentProvider = (ContentProvider) c.newInstance();
     			} catch (Exception e) {
     				Log.e(TAG, "acquireProvider", e);
@@ -53,6 +54,7 @@ public class ContentResolver extends Observable
     			}
     		};
     	}
+    	context.setFlavor(flavor);
     	contentProvider.setContext(context);
     	contentProvider.onCreate();
 		return contentProvider;

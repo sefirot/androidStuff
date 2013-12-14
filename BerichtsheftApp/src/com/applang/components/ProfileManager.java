@@ -35,6 +35,7 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 
+import com.applang.berichtsheft.BerichtsheftActivity;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.plugin.DataDockable.TransportBuilder;
 import com.applang.berichtsheft.plugin.BerichtsheftOptionPane;
@@ -128,7 +129,7 @@ public class ProfileManager extends ManagerBase<Element>
 		comboBoxes[1] = new JComboBox();
 		container.add( Box.createVerticalStrut(10) );
 		box = new Box(BoxLayout.LINE_AXIS);
-		container.add(labelFor(box, "Flavors", CENTER_ALIGNMENT));
+		container.add(labelFor(box, "Flavor", CENTER_ALIGNMENT));
 		box.add(comboBoxes[1]);
 		box.add(BerichtsheftPlugin.makeCustomButton("berichtsheft.edit-function", new ActionListener() {
 			public void actionPerformed(ActionEvent evt) {
@@ -148,7 +149,7 @@ public class ProfileManager extends ManagerBase<Element>
 				if (notNullOrEmpty(flavor)) {
 					final Object[] projection = fullProjection(flavor);
 					if (isAvailable(0, projection)) {
-						AlertDialog dialog = new AlertDialog.Builder(BerichtsheftApp.getActivity())
+						AlertDialog dialog = new AlertDialog.Builder(new BerichtsheftActivity())
 								.setTitle(String.format("Columns for '%s'", flavor))
 								.setSingleChoiceItems(
 										arraycast(projection, new CharSequence[0]), 

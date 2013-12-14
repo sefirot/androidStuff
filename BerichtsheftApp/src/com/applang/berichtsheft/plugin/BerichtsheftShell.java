@@ -19,7 +19,7 @@ import static com.applang.Util2.*;
 public class BerichtsheftShell extends Shell
 {
 	public static void print(Object... params) {
-		final String string = format(new StringWriter(), params).toString();
+		final String string = write(new StringWriter(), params).toString();
 		Console console = getConsole(true);
 		if (console != null) {
 			perform(console, false, new Job<Console>() {

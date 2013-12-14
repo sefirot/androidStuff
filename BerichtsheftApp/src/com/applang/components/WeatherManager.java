@@ -32,10 +32,8 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
-import com.applang.SwingUtil.Behavior;
-import com.applang.Util.Job;
+import com.applang.berichtsheft.BerichtsheftActivity;
 import com.applang.berichtsheft.BerichtsheftApp;
-import com.applang.berichtsheft.R;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 import com.applang.berichtsheft.plugin.BerichtsheftShell;
 import com.applang.berichtsheft.plugin.JEditOptionDialog;
@@ -51,7 +49,6 @@ import android.util.Log;
 import android.widget.TextView;
 
 import static com.applang.Util.*;
-import static com.applang.Util1.*;
 import static com.applang.Util2.*;
 import static com.applang.SwingUtil.*;
 
@@ -67,18 +64,23 @@ public class WeatherManager extends ActionPanel
 		SwingUtilities.invokeLater(new Runnable() {
 			@Override
 			public void run() {
-				DataView dataView = new DataView();
-				
+				final DataView dataView = new DataView();
 		        String title = "WeatherInfo database";
-				final WeatherManager weatherManager = new WeatherManager(dataView, 
+				WeatherManager weatherManager = new WeatherManager(dataView, 
 						null,
 						title);
-				
 				ActionPanel.createAndShowGUI(title, 
 						new Dimension(1000, 200), 
+						Behavior.EXIT_ON_CLOSE,
 						weatherManager, 
-						dataView.getUIComponent(), 
-						Behavior.EXIT_ON_CLOSE);
+						new Function<Component>() {
+							public Component apply(Object...params) {
+								Component c = findComponent(dataView, "south");
+								if (c != null)
+									dataView.remove(c);
+								return dataView.getUIComponent();
+							}
+						});
 			}
 		});
 	}
@@ -389,7 +391,7 @@ public class WeatherManager extends ActionPanel
 		AlertDialog dialog;
 		TextView tv = new TextView(null, true);
 		tv.getTextArea().setFont(monoSpaced());
-		dialog = new AlertDialog.Builder(BerichtsheftApp.getActivity(),	false)
+		dialog = new AlertDialog.Builder(new BerichtsheftActivity(), false)
 				.setTitle(title)
 				.setView(tv)
 				.setNeutralButton(android.R.string.close,

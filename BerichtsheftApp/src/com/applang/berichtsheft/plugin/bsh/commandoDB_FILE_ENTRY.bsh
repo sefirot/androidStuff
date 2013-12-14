@@ -26,7 +26,7 @@ commandoDB_FILE_ENTRY(view,pane,ns,label,var,options)
 	{
 		actionPerformed(evt)
 		{
-			text = BerichtsheftPlugin.inquireDbFileName(view, entry.getText());
+			text = com.applang.components.DataConfiguration.inquireUri(entry.getText(), false);
 			if (text != null)
 				entry.setText(text);
 		}

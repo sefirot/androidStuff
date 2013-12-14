@@ -151,7 +151,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 		propertiesChanged();
 	}
 	
-	public DataView dataView = BerichtsheftPlugin.dataView;
+	public DataView dataView = BerichtsheftPlugin.getDataView();
 
 	public void focusOnDefaultComponent() {
 		dataView.requestFocus();
@@ -632,7 +632,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 			final ValMap profile = ProfileManager.getProfileAsMap("_weather", "download");
 			Object[] names = provider.info.getList("name").toArray();
 			ValList conversions = vlist();
-			ValMap map = ScriptManager.getDefaultConversions(profile.get("flavor"), provider.getTableName());
+			ValMap map = ScriptManager.getDefaultProjection(profile.get("flavor"), provider.getTableName());
 			for (int i = 0; i < names.length; i++) {
 				Object conv = map.get(names[i]);
 				conversions.add(conv);

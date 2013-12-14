@@ -55,7 +55,6 @@ public class AndroidBridge
 			BerichtsheftPlugin.consoleMessage("berichtsheft.android-devices.message");
 			return null;
 		}
-		
 		final String title = "Android file";
 		final String sd = "/sdcard/";
 		final JTextField itemField = new JTextField();
@@ -111,13 +110,13 @@ public class AndroidBridge
 			@Override
 			public void add(Component comp, Object constraints) {
 				GridBagConstraints gbc = (GridBagConstraints) constraints;
-				Writer writer = format(new StringWriter(), "[");
-				writer = formatAssociation(writer, "gridx", gbc.gridx, 0);
-				writer = formatAssociation(writer, "gridy", gbc.gridy, 1);
-				writer = formatAssociation(writer, "gridwidth", gbc.gridwidth, 1);
-				writer = formatAssociation(writer, "gridheight", gbc.gridheight, 1);
-				writer = formatAssociation(writer, "anchor", gbc.anchor, 1);
-				noprintln(format(writer, "]").toString());
+				Writer writer = write(new StringWriter(), "[");
+				writer = writeAssoc(writer, "gridx", gbc.gridx);
+				writer = writeAssoc(writer, "gridy", gbc.gridy, 1);
+				writer = writeAssoc(writer, "gridwidth", gbc.gridwidth, 1);
+				writer = writeAssoc(writer, "gridheight", gbc.gridheight, 1);
+				writer = writeAssoc(writer, "anchor", gbc.anchor, 1);
+				noprintln(write(writer, "]").toString());
 				super.add(comp, constraints);
 			}
 		};
@@ -330,7 +329,7 @@ public class AndroidBridge
 			oper = "shell rm";
 		else if (oper.endsWith("-r")) 
 			oper = "shell rm -r";
-		else
+		else if (!oper.startsWith("pu")) 
 			oper = "version";
 		Object device = "";
 		ValList parts = splitAndroidFileName(androidFileName);
