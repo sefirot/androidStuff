@@ -7,8 +7,8 @@
     </string>
     <string name="berichte">Tagesberichte</string>
     <string name="plants">Pflanz d.W.</string>
-    <string name="more">Wetter Info</string>
-    <string name="more2">Import / Export</string>
+    <string name="wetter">Wetter Info</string>
+    <string name="impex">Import / Export</string>
     
     <string name="menu_editor">Editor</string>
     <string name="menu_baustein">Bausteine</string>
@@ -55,8 +55,8 @@
 	<string name="plant_note">Neue Pflanze eingeben</string>
 	<string name="plant_edit">Eingaben zur Pflanze ändern</string>
 		
-	<string name="button_ok">OK</string>  
-	<string name="button_cancel">Cancel</string>
+	<string name="button_more">More</string>  
+	<string name="button_less">Less</string>
 	<string name="button_close">Close</string>
 	<string name="button_plus">+</string>  
 	<string name="button_minus">-</string>

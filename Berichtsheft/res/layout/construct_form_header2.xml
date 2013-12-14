@@ -51,7 +51,7 @@
         android:layout_marginLeft="@dimen/margin_half"
         android:layout_marginRight="@dimen/margin_half"
         android:layout_marginTop="@dimen/margin_half"
-	    android:text="@string/button_cancel" />
+	    android:text="@android:string/cancel" />
     
     <Button
         android:id="@+id/ok"
@@ -64,6 +64,6 @@
         android:layout_marginTop="@dimen/margin_half"
 	    android:paddingLeft="@dimen/padding_half"
 	    android:paddingRight="@dimen/padding_half"
-	    android:text="@string/button_ok" />
+	    android:text="@android:string/ok" />
     
 </RelativeLayout>

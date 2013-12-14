@@ -1,7 +1,5 @@
 package com.applang;
 
-import static com.applang.Util.*;
-
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -21,6 +19,8 @@ import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteException;
 import android.net.Uri;
 import android.util.Log;
 import android.view.View;
@@ -29,21 +29,23 @@ import android.view.ViewGroup.LayoutParams;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 
+import static com.applang.Util.*;
+import static com.applang.Util2.*;
+
 public class Util1
 {
-	public static final String[] BRACKETS = {"[", "]"};
-	public static final String[] PARENS = {"(", ")"};
-	public static final String[] BRACES = {"{", "}"};
-
 	public static boolean traverse(Cursor cursor, Job<Cursor> job, Object...params) {
 		if (cursor == null)
 			return false;
 		try {
+			boolean retval = false;
 	    	if (cursor.moveToFirst()) 
 	    		do {
-					job.perform(cursor, params);
+	    			if (job != null)
+	    				job.perform(cursor, params);
+					retval = true;
 	    		} while (cursor.moveToNext());
-	    	return true;
+	    	return retval;
 		} catch (Exception e) {
             Log.e(TAG, "traversing cursor", e);
             return false;
@@ -151,11 +153,11 @@ public class Util1
 	};
 
 	@SuppressWarnings("rawtypes")
-	public static ValList contentAuthorities(String...packageNames) {
+	public static ValList contentAuthorities(String[] packageNames, Object...params) {
 		ValList list = vlist();
 		try {
 			for (String packageName : packageNames) {
-				Class[] cls = getLocalClasses(packageName);
+				Class[] cls = getLocalClasses(packageName, params);
 				for (Class c : filter(asList(cls), false, new Predicate<Class>() {
 					public boolean apply(Class c) {
 						String name = c.getName();
@@ -245,20 +247,6 @@ public class Util1
 		return dbTableName(Uri.parse(uriString));
 	}
 	
-	public static int version(Context context, Uri uri) {
-    	uri = dbTable(uri, null);
-		Cursor cursor = context.getContentResolver().query(
-				uri, 
-				null, 
-				"pragma user_version", 
-				null, 
-				null);
-        if (cursor != null && cursor.moveToFirst())
-        	return cursor.getInt(0);
-        else
-        	return 0;
-	}
-	
 	public static ValMap schema(Context context, Uri uri) {
     	uri = dbTable(uri, null);
 		Cursor cursor = context.getContentResolver().query(
@@ -274,11 +262,6 @@ public class Util1
 			}
 		});
 		return schema;
-	}
-	
-	public static ValMap table_info(Context context, String uriString, String tableName) {
-		Uri uri = Uri.parse(uriString);
-		return table_info(context, uri, tableName);
 	}
 	
 	public static ValMap table_info(Context context, Uri uri, String tableName) {
@@ -326,9 +309,54 @@ public class Util1
 				return Integer.valueOf(t.toString()) < 0;
 			}
 		});
-		if (indices.size() == 1)
+		if (indices.size() == 1) {
 			info.put("PRIMARY_KEY", fieldNames.get(indices.get(0)));
+		}
 		return info;
+	}
+
+    public static int getFlavorVersion(String flavor, SQLiteDatabase db) {
+    	Object[] params = {00};
+    	traverse(getMetadata(db, flavor), new Job<Cursor>() {
+			public void perform(Cursor c, Object[] parms) throws Exception {
+				int index = c.getColumnIndex("version");
+				parms[0] = c.getInt(index);
+			}
+    	}, params);
+    	Integer version = (Integer) params[0];
+		return version;
+    }
+    
+    private static Cursor getMetadata(SQLiteDatabase db, String flavor) {
+    	db.execSQL("create table if not exists metadata (flavor text, version integer);");
+    	return db.rawQuery("select * from metadata where flavor=?;", strings(flavor));
+    }
+
+    public static void setFlavorVersion(String flavor, SQLiteDatabase db, int version) {
+    	if (flavor == null)
+    		db.setVersion(version);
+    	ContentValues values = new ContentValues();
+    	values.put("version", version);
+    	if (getFlavorVersion(flavor, db) > 0) 
+    		db.update("metadata", values, "flavor=?", strings(flavor));
+    	else {
+    		values.put("flavor", flavor);
+    		db.insert("metadata", null, values);
+    	}
+	}
+	
+	public static int version(Context context, Uri uri) {
+    	uri = dbTable(uri, null);
+		Cursor cursor = context.getContentResolver().query(
+				uri, 
+				null, 
+				"pragma user_version", 
+				null, 
+				null);
+        if (cursor != null && cursor.moveToFirst())
+        	return cursor.getInt(0);
+        else
+        	return 0;
 	}
     
     public static ValList tables(Context context, Uri uri) {
@@ -346,6 +374,59 @@ public class Util1
 		}
 		return tables;
 	}
+    
+    public static boolean table_exists(SQLiteDatabase db, String tableName) {
+    	Object[] params = objects(false, tableName);
+    	traverse(db.rawQuery("select name from sqlite_master where type = 'table'", null), 
+    		new Job<Cursor>() {
+				public void perform(Cursor c, Object[] parms) throws Exception {
+					String name = param_String("", 1, parms);
+	        		if (name.compareToIgnoreCase(c.getString(0)) == 0) {
+	        			parms[0] = true;
+	        		}
+				}
+			}, params);
+	    return param_Boolean(null, 0, params);
+    }
+    
+    public static boolean table_upgrade(final SQLiteDatabase db, final String tableName, 
+    		final Job<Void> creation, final Object...params)
+    {
+    	boolean retval = false;
+        try {
+        	if (table_exists(db, tableName)) {
+        		db.execSQL("ALTER TABLE " + tableName + " RENAME TO temp_" + tableName);
+        		db.execSQL("DROP TABLE " + tableName);
+        		Cursor c = db.rawQuery("select * from temp_" + tableName, null);
+        		Object[] parms = {retval};
+            	traverse(c, new Job<Cursor>() {
+        			public void perform(Cursor c, Object[] parms) throws Exception {
+        				ValList list = vlist();
+        				for (int i = 0; i < c.getColumnCount(); i++) {
+        					list.add(c.getColumnName(i));
+        				}
+        				String cols = join(",", list.toArray());
+        				creation.perform(null, params);
+        				db.execSQL(String.format( 
+        						"INSERT INTO %s (%s) SELECT %s from temp_%s", 
+        						tableName, cols, cols, tableName));
+        				parms[0] = true;
+        			}
+            	}, parms);
+            	retval = (Boolean) parms[0];
+        		db.execSQL("DROP TABLE temp_" + tableName);
+        	}
+        	if (!retval) {
+        		creation.perform(null, params);
+    			retval = true;
+        	}
+	    }
+	    catch (Exception e) {
+	    	Log.e(TAG, "upgrade failed", e);
+	    	retval = false;
+	    }
+        return retval;
+    }
 
     public static int recordCount(Context context, Uri uri) {
 		String tableName = dbTableName(uri);
@@ -365,7 +446,17 @@ public class Util1
 		return (Integer)params[0];
     }
 
-	public static String databaseName(Object flavor) {
+    public static void turnForeignKeys(SQLiteDatabase db, boolean on) {
+    	try {
+			String sql = String.format("pragma foreign_keys = %s", on ? "ON" : "OFF");
+			db.rawQuery(sql, null);
+		} 
+    	catch (SQLiteException e) {
+    		Log.e(TAG, "foreign_keys", e);
+    	}
+	}
+
+	public static String database(Object flavor) {
 		try {
 			Class<?> c = Class.forName(flavor + "Provider");
 			return c.getDeclaredField("DATABASE_NAME").get(null).toString();
@@ -374,13 +465,11 @@ public class Util1
 		}
     }
 
-	public static String[] databases(Context context, String packageName) {
+	public static String[] databases(Activity activity) {
 		ArrayList<String> list = new ArrayList<String>();
-		ValList authorities = vlist();	//	contentAuthorities(providerPackages);
-		String[] strings = strings("com.applang.provider.PlantInfo", "com.applang.provider.NotePad", "com.applang.provider.WeatherInfo");
-		authorities.addAll(asList(strings));
+		ValList authorities = contentAuthorities(providerPackages, activity);
 		for (Object authority : authorities) {
-			String name = databaseName(authority);
+			String name = database(authority);
 			if (notNullOrEmpty(name))
 				list.add(name);
 		}
@@ -390,7 +479,7 @@ public class Util1
 	public static File getDatabaseFile(Context context, Uri uri) {
 		if (hasAuthority(uri)) {
 			try {
-				String name = databaseName(uri.getAuthority());
+				String name = database(uri.getAuthority());
 				return context.getDatabasePath(name).getCanonicalFile();
 			} catch (IOException e) {
 				Log.e(TAG, "getDatabaseFile", e);
@@ -450,13 +539,15 @@ public class Util1
 		return values;
 	}
 
+	public static final String[] PARENS = {"(", ")"};
+	public static final String[] BRACKETS = {"[", "]"};
+	public static final String[] BRACES = {"{", "}"};
+
 	@SuppressWarnings("unchecked")
 	public static Object walkJSON(Object[] path, Object json, Function<Object> filter, Object...params) {
 		Object object = json;
-		
 		if (path == null)
-			path = new Object[0];
-		
+			path = objects();
 		if (json instanceof JSONObject) {
 			JSONObject jo = (JSONObject) json;
 			ValMap map = vmap();
@@ -504,33 +595,36 @@ public class Util1
 		}
 		else if (filter != null)
 			object = filter.apply(path, json, params);
-		
 		return object;
 	}
 
 	@SuppressWarnings("rawtypes")
-	public static void toJSON(JSONStringer stringer, String string, Object object, Function<Object> filter, Object...params) throws Exception {
+	public static void toJSON(Object[] path, JSONStringer stringer, String string, Object object, Function<Object> filter, Object...params) throws Exception {
 		if (notNullOrEmpty(string))
 			stringer.key(string);
-		
+		if (path == null)
+			path = objects();
 		if (object instanceof Map) {
 			stringer.object();
 			Map map = (Map) object;
-			for (Object key : map.keySet()) 
-				toJSON(stringer, key.toString(), map.get(key), filter, params);
+			for (Object key : map.keySet()) {
+				toJSON(arrayappend(path, key), stringer, key.toString(), map.get(key), filter, params);
+			}
 			stringer.endObject();
 		}
 		else if (object instanceof Collection) {
 			stringer.array();
+			int i = 0;
 			Iterator it = ((Collection) object).iterator();
-			while (it.hasNext()) 
-				toJSON(stringer, "", it.next(), filter, params);
+			while (it.hasNext()) {
+				toJSON(arrayappend(path, i), stringer, "", it.next(), filter, params);
+				i++;
+			}
 			stringer.endArray();
 		}
 		else {
 			if (filter != null)
-				object = filter.apply(object, params);
-			
+				object = filter.apply(path, object, params);
 			if (object != null) 
 				stringer.value(object);
 		}

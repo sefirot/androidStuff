@@ -61,7 +61,7 @@
 		    android:layout_weight="1"
 		    android:onClick="showMore"
 		    android:padding="40dp"
-		    android:text="@string/more"
+		    android:text="@string/wetter"
 		    android:textSize="18sp"
 		    android:textStyle="bold" />
 
@@ -72,7 +72,7 @@
 		    android:layout_weight="1"
 		    android:onClick="showEvenMore"
 		    android:padding="40dp"
-		    android:text="@string/more2"
+		    android:text="@string/impex"
 		    android:textSize="18sp"
 		    android:textStyle="bold" />
 	    

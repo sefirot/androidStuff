@@ -315,7 +315,7 @@ public class Glossary extends ExpandableListActivity
 				GlossaryLeaf glossaryLeaf = (GlossaryLeaf) clickInfo;
 				long id = NotePadProvider.getIdOfNote(contentResolver, tableIndex, 
 						NoteColumns.TITLE + "=? and " + NoteColumns.CREATED_DATE + "=?", 
-						new String[]{glossaryLeaf.getGroup(), "" + glossaryLeaf.getRefId()});
+						strings(glossaryLeaf.getGroup(), "" + glossaryLeaf.getRefId()));
 				Uri uri = ContentUris.withAppendedId(mUri, id);
 				startActivity(new Intent()
 						.setClass(this, TitleEditor.class)

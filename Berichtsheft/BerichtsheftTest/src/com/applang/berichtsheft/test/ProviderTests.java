@@ -1,11 +1,11 @@
 package com.applang.berichtsheft.test;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Method;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Map;
 
@@ -22,13 +22,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
 
-import static com.applang.Util.*;
-import static com.applang.Util1.*;
-import static com.applang.Util2.*;
-import static com.applang.VelocityUtil.*;
-
 import com.applang.UserContext;
-import com.applang.Util.ValList;
 import com.applang.berichtsheft.R;
 import com.applang.berichtsheft.BerichtsheftActivity;
 import com.applang.provider.NotePad.NoteColumns;
@@ -39,31 +33,27 @@ import com.applang.provider.PlantInfoProvider;
 import com.applang.provider.WeatherInfo.Weathers;
 import com.applang.provider.WeatherInfoProvider;
 
-public class ProviderTests extends ActivityTests<BerichtsheftActivity>
+import static com.applang.Util.*;
+import static com.applang.Util1.*;
+import static com.applang.Util2.*;
+import static com.applang.VelocityUtil.*;
+
+public class ProviderTests extends InfraTests<BerichtsheftActivity>
 {
     private static final String TAG = ProviderTests.class.getSimpleName();
-
-	public static void setKeepData(Context context, boolean value) {
-        SharedPreferences prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE);
-        SharedPreferences.Editor prefsEditor = prefs.edit();
-        prefsEditor.putBoolean("keepData", value);
-        prefsEditor.commit();
-	}
-
-	public static boolean getKeepData(Context context, boolean defaultValue) {
-        SharedPreferences prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE);
-        return prefs.getBoolean("keepData", defaultValue);
-	}
+    
+    private SharedPreferences prefs = null;
     
 	public ProviderTests() {
-		super("com.applang.berichtsheft", BerichtsheftActivity.class);
+		super(getPackageNameByClass(R.class), BerichtsheftActivity.class);
 	}
 	
     @Override
     protected void setUp() throws Exception {
         super.setUp();
-		setKeepData(mActivity, false);
         assertTrue(mActivity instanceof BerichtsheftActivity);
+        prefs = mActivity.getSharedPreferences(null, Context.MODE_PRIVATE);
+        prefs.edit().putBoolean("keepData", false).commit();
     }
 
     @Override
@@ -83,6 +73,7 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
 
 	private void setContentObserver(ContentResolver contentResolver, final Uri notificationUri) {
 		ContentObserver contentObserver = new ContentObserver(notifyHandler) {
+			@Override
 			public void onChange(boolean selfChange) {
 				contentObservations++;
 			}
@@ -91,12 +82,12 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
 	}
 
     void keepTestData(final String[] fileNames) {
-    	if (getKeepData(mActivity, false)) {
-			ImpexTask.doImpex(mActivity, fileNames, true);
+    	if (prefs.getBoolean("keepData", false)) {
+			impex(mActivity, fileNames, true);
 		}
 	}
 
-	static void generateNotePadData(Context context, boolean clear, Object[][] records) {
+	public static void generateNotePadData(Context context, boolean clear, Object[][] records) {
 		ContentResolver contentResolver = context.getContentResolver();
 		if (clear) {
 			for (int i = 0; i < 3; i++)
@@ -106,24 +97,21 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
 		long id = -1;
 		for (int i = 0; i < records.length; i++) {
 			Object[] record = records[i];
-			
 			int index = Arrays.asList(record).indexOf("ROWID");
 			if (index > -1) 
 				record[index] = id;
-			
 			ContentValues values = NotePadProvider.contentValues(record);
 	        int tableIndex = 
 	    		record[3] == null ? 1 :
 	    		(record[2] == null ? 2 : 0);
 			uri = contentResolver.insert(NotePadProvider.contentUri(tableIndex), values);
 	        assertEquals(NoteColumns.CONTENT_ITEM_TYPE, contentResolver.getType(uri));
-	        
 	        if (index < 0)
 	        	id = toLong(-1L, uri.getPathSegments().get(1));
 		}
 	}
 
-	static void generateData(ContentResolver contentResolver, Uri uri, boolean clear, Object[][] records) {
+	public static void generateData(ContentResolver contentResolver, Uri uri, boolean clear, Object[][] records) {
 		assertTrue(contentResolver.getType(uri).startsWith(ContentResolver.CURSOR_DIR_BASE_TYPE));
 		if (clear) {
 			contentResolver.delete(uri, null, null);
@@ -167,16 +155,18 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
 	}
     
     public void testData() throws Exception {
-		mActivity.deleteDatabase(NotePadProvider.DATABASE_NAME);
+		String dbName = NotePadProvider.DATABASE_NAME;
+		mActivity.deleteDatabase(dbName);
 		generateTestData(mActivity);
-		keepTestData(new String[] { NotePadProvider.DATABASE_NAME });
+		keepTestData(strings(dbName));
     }
     
     public void testData3() throws Exception {
-    	for (String database : databases(mActivity, "com.applang.provider")) 
+    	for (String database : databases(mActivity)) 
     		mActivity.deleteDatabase(database);
     	
     	String helloVm = readAsset(mActivity, "hello.vm");
+    	String[] states = getStateStrings();
 		
 		generateNotePadData(mActivity, true, new Object[][] {
 			{ 1L, "prompt1", "#set($var=\"\")" +
@@ -188,7 +178,7 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
 					"#prompt(\"Mehrfachauswahl\" $var [\"Kein\",\"Fehler\",\"im\",\"System\"] true)#if($var)$var\n#end" +
 					"#prompt(\"Einzelauswahl\",$var,[\"Kein\",\"Fehler\",\"im\",\"System\"])#if($var)$var\n#end", null, now() }, 
 			{ 4L, "spinner", "#spinner(\"states\",$var)" +
-					join("\n", getStateStrings()) +
+					join("\n", states) +
 					"#end\n#if($var)$var\n#end", null, now() }, 
 			{ 5L, "cursor", "#cursor(\"plants\",$var," +
 					quoted(PlantInfo.Plants.CONTENT_URI.toString()) + "," +
@@ -213,26 +203,29 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
 					"$planets", null, now() }, 
 			{ 9L, "hello", helloVm, null, now() }, 
 		});
+		assertEquals(9, recordCount(mActivity, NotePadProvider.contentUri(1)));
 	    	
 		generateData(mActivity.getContentResolver(), Plants.CONTENT_URI, true, new Object[][] {
-				{ 1L, "Paradeiser", "Nachtschattengewächse", "Solanum lycopersicum", "Solanaceae", "xitomatl" }, 	
-				{ 2L, "chili pepper", "nightshade", "Capsicum", "Solanaceae", "xilli" }, 	
-				{ 3L, "Melanzani", "Nachtschattengewächse", "Solanum melongena", "Solanaceae", "ratatouille" }, 	
-				{ 4L, "potato", "nightshade", "Solanum tuberosum", "Solanaceae", "tartufolo" }, 	
-				{ 5L, "Tobak", "Nachtschattengewächse", "Nicotiana tabacum", "Solanaceae", "tobacco" }, 	
-			});
+			{ 1L, "Paradeiser", "Nachtschattengewächse", "Solanum lycopersicum", "Solanaceae", "xitomatl" }, 	
+			{ 2L, "chili pepper", "nightshade", "Capsicum", "Solanaceae", "xilli" }, 	
+			{ 3L, "Melanzani", "Nachtschattengewächse", "Solanum melongena", "Solanaceae", "ratatouille" }, 	
+			{ 4L, "potato", "nightshade", "Solanum tuberosum", "Solanaceae", "tartufolo" }, 	
+			{ 5L, "Tobak", "Nachtschattengewächse", "Nicotiana tabacum", "Solanaceae", "tobacco" }, 	
+		});
+		assertEquals(5, recordCount(mActivity, Plants.CONTENT_URI));
 		
 		generateData(mActivity.getContentResolver(), Weathers.CONTENT_URI, true, new Object[][] {
-				{ 1L, "here", "overcast", 11.1f, 1f, -1f, 0l, now() }, 	
-			});
+			{ 1L, "here", "overcast", 11.1f, 1f, -1f, 0l, now() }, 	
+		});
+		assertEquals(1, recordCount(mActivity, Weathers.CONTENT_URI));
 	        
-		keepTestData(databases(mActivity, "com.applang.provider"));
+		keepTestData(databases(mActivity));
     }
 
     public String[] getStateStrings() {
     	try {
 			InputStream is = mActivity.getResources().openRawResource(R.raw.states);
-			String res = readAll(new BufferedReader(new InputStreamReader(is)));
+			String res = readAll(new BufferedReader(new InputStreamReader(is, Charset.forName("UTF-8"))));
 			return ((ValList) walkJSON(null, new JSONArray(res), null)).toArray(new String[0]);
 		} catch (Exception e) {
 			fail(e.getMessage());
@@ -310,24 +303,29 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
 		CustomContext noteContext = new CustomContext(noteMap(1, ""));
 		assertEquals(6, noteContext.getKeys().length);
 		
-		com.applang.UserContext.setupVelocity(mActivity, true, "com.applang.berichtsheft");
+		com.applang.UserContext.setupVelocity(mActivity, true, getPackageNameByClass(R.class));
 
-		Cursor cursor = notesCursor(0, "title like ?", "Velocity%");
-		assertTrue(cursor.moveToFirst());
-		long id = 0;
-		do {
-			String note = cursor.getString(2);
-			note = evaluate(noteContext, note, "notes");
-			assertFalse(note.contains("$"));
-			if (!note.contains("Fehler")) {
-				long refId = cursor.getLong(0);
-				ContentValues values = NotePadProvider.contentValues(++id, "Fehler", null, refId, null);
-		        Uri uri = contentResolver.insert(NotePadProvider.contentUri(2), values);
-		        assertEquals(NoteColumns.CONTENT_ITEM_TYPE, contentResolver.getType(uri));
-			}
-			System.out.println(note);
-		} while (cursor.moveToNext());
-		cursor.close();
+		ValList list = vlist();
+        Cursor cursor = notesCursor(0, "title like ?", "Velocity%");
+        assertTrue(cursor.moveToFirst());
+        long id = 0;
+        do {
+                String note = cursor.getString(2);
+                note = evaluate(noteContext, note, "notes");
+                assertFalse(note.contains("$"));
+                if (!note.contains("Fehler")) {
+                        long refId = cursor.getLong(0);
+                        ContentValues values = NotePadProvider.contentValues(++id, "Fehler", null, refId, null);
+                        list.add(values);
+                }
+                System.out.println(note);
+        } while (cursor.moveToNext());
+        cursor.close();
+        for (Object item : list) {
+                ContentValues values = (ContentValues) item;
+                Uri uri = contentResolver.insert(NotePadProvider.contentUri(2), values);
+                assertEquals(NoteColumns.CONTENT_ITEM_TYPE, contentResolver.getType(uri));
+        }
 		
 		noteMap(2, "");
 		
@@ -336,9 +334,7 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
 					new int[]{3,6,2}[i], 
 					NotePadProvider.countNotes(contentResolver, i, "", null)[0].intValue());
 		
-    	String[] fileNames = strings(NotePadProvider.DATABASE_NAME);
-		assertTrue(String.format("Export of %s failed", asList(fileNames)),
-    			ImpexTask.doImpex(mActivity, fileNames, true));
+    	keepTestData(strings(NotePadProvider.DATABASE_NAME));
     	
 		assertEquals(1, contentResolver.delete(NotePadProvider.contentUri(0), NoteColumns.TITLE + "=?", new String[]{"Velocity2"}));
 		
@@ -347,7 +343,48 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
 					new int[]{2,6,1}[i], 
 					NotePadProvider.countNotes(contentResolver, i, "", null)[0].intValue());
         
-        assertEquals(5, contentObservations);
+        assertEquals(androidLevel < 1 ? 15 : 5, contentObservations);
+    }
+
+	public void testNotePadProvider2() throws Exception {
+		mActivity.deleteDatabase(NotePadProvider.DATABASE_NAME);
+		long now = now();
+		Object[][] records = new Object[][] {
+			{ 1L, "kein", "Kein", null, now }, 
+			{ 2L, "fehler", "Fehler", null, now }, 
+			{ 3L, "efhler", "eFhler", null, now }, 
+			{ 4L, "ehfler", "ehFler", null, now }, 
+			{ 5L, "im", "im", null, now }, 
+			{ 6L, "system", "System", null, now }, 
+			{ 1L, "Velocity1", "$kein $fehler $im $system", now, now }, 
+			{ 2L, "Velocity2", "$kein $efhler $im $system", now, now }, 	
+			{ 3L, "Velocity3", "$kein $ehfler $im $system", now, now }, 	
+		};
+		generateNotePadData(mActivity, true, records);
+		ContentResolver contentResolver = mActivity.getContentResolver();
+        for (int i = 0; i < 2; i++) 
+        	switch (i) {
+			case 0:
+				assertEquals(3, NotePadProvider.getTitles(contentResolver, i, null, null).length);
+				for (int j = 6; j < 9; j++) {
+					long id = (Long) records[j][0];
+					assertEquals(id, NotePadProvider.getIdOfNote(contentResolver, i, 
+							NoteColumns.CREATED_DATE + "=? and " + NoteColumns.TITLE + "=?", 
+							strings("" + records[j][3], "" + records[j][1])));
+					assertTrue(NotePadProvider.fetchNoteById(id, contentResolver, i, null));
+				}
+				break;
+			case 1:
+				assertEquals(6, NotePadProvider.getTitles(contentResolver, i, null, null).length);
+				for (int j = 0; j < 6; j++) {
+					long id = (Long) records[j][0];
+					assertEquals(id, NotePadProvider.getIdOfNote(contentResolver, i, 
+							NoteColumns.CREATED_DATE + " is null and " + NoteColumns.TITLE + "=?", 
+							strings("" + records[j][1])));
+					assertTrue(NotePadProvider.fetchNoteById(id, contentResolver, i, null));
+				}
+				break;
+			}
     }
 
     public void testWeatherInfoProvider() throws IOException {
@@ -454,36 +491,13 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
 		}
     };
     
-    public void _testImpex() throws InterruptedException {
-		for (boolean flag : new boolean[]{true,false}) {
-			assertTrue(isExternalStorageAvailable());
-			File directory = ImpexTask.directory(ImpexTask.getDatabasesPath(mActivity), !flag);
-			assertTrue(directory.exists());
-			String fileName = "databases/plant_info.db";
-			final File file = new File(directory, fileName);
-			if (file.exists())
-				file.delete();
-			
-			//    	final CountDownLatch signal = new CountDownLatch(1);
-			ImpexTask.AsyncCallback callback = new ImpexTask.AsyncCallback() {
-				public void onTaskCompleted() {
-					assertTrue(file.exists());
-					//				signal.countDown();
-				}
-			};
-			
-			if (!flag)
-				ImpexTask.doImport(mActivity, new String[] { fileName }, callback);
-			else
-				ImpexTask.doExport(mActivity, new String[] { fileName }, callback);
-			
-			//    	signal.await();
-		}
-    }
-    
-    public void testMisc() {
+	public void testMisc() throws Exception {
+    	ValList list = contentAuthorities(providerPackages, mActivity);
+		System.out.println(list);
+		System.out.println(asList(databases(mActivity)));
+		
     	ContentResolver contentResolver = mActivity.getContentResolver();
-    	ValList tables = new ValList();
+    	list = vlist();
 		Uri uri = NotePadProvider.contentUri(null);
 		Cursor cursor = contentResolver.query(uri, 
 				null, 
@@ -492,10 +506,10 @@ public class ProviderTests extends ActivityTests<BerichtsheftActivity>
 				null);
 		if (cursor.moveToFirst())
 			do {
-				tables.add(cursor.getString(0));
+				list.add(cursor.getString(0));
 			} while (cursor.moveToNext());
 		cursor.close();
-		System.out.println(tables.toString());
+		System.out.println(list.toString());
 		
     	Map<String,String> anweisungen = UserContext.directives();
 		for (String key : anweisungen.keySet()) {

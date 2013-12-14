@@ -1,17 +1,18 @@
 package com.applang;
 
-import static com.applang.Util.*;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.channels.FileChannel;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
+import java.util.Enumeration;
 import java.util.Locale;
+
+import com.applang.Util.ValList;
+
+import dalvik.system.DexFile;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -23,9 +24,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.content.pm.ProviderInfo;
 import android.content.res.AssetManager;
-import android.database.Cursor;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
@@ -34,6 +33,8 @@ import android.os.Message;
 import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
+
+import static com.applang.Util.*;
 
 public class Util2
 {
@@ -426,4 +427,17 @@ public class Util2
 		private Object[] params;
     }
 	
+//	NOTE	there is a different method with the same signature in Util2 for Java
+	@SuppressWarnings("rawtypes")
+	public static Class[] getLocalClasses(String packageName, Object...params) throws Exception {
+		Activity activity = param(null, 0, params);
+	   	ValList list = vlist();
+        DexFile df = new DexFile(activity.getPackageCodePath());
+        for (Enumeration<String> iter = df.entries(); iter.hasMoreElements();) {
+        	String entry = iter.nextElement();
+			if (entry.startsWith(packageName))
+				list.add(Class.forName(entry));
+        }
+        return arraycast(list.toArray(), new Class[0]);
+	}
 }

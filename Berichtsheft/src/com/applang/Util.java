@@ -10,6 +10,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Reader;
+import java.io.Serializable;
 import java.io.Writer;
 import java.lang.reflect.Field;
 import java.net.URL;
@@ -25,7 +26,6 @@ import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.UUID;
 import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -821,20 +822,6 @@ public class Util
 		return file;
 	}
 
-	/**
-	 * @param params	optional parameters	
-	 * <table border="1"><tr><th>index</th><th>description</th></tr><tr><td>0</td><td>a path as <code>String</code> to relativize against 'user.dir'</td></tr></table>
-	 * @return	if path is null returns the absolute 'user.dir' system property otherwise the path relative to 'user.dir'.
-	 */
-	public static String relativePath(Object...params) {
-		String base = param_String(System.getProperty("user.dir"), 1, params);
-		String path = param_String(null, 0, params);
-		if (path == null)
-			return base;
-		else
-			return new File(base).toURI().relativize(new File(path).toURI()).getPath();
-	}
-
 	public static boolean fileExists(File file) {
 		return file == null ? 
 				false : 
@@ -936,160 +923,6 @@ public class Util
 	public static String setMapping(String key, String value) {
 		mappings.put(key, value);
 		return "";
-	}
-	
-	public static BidiMultiMap bmap(int count) {
-		return new BidiMultiMap(new ValList[count]);
-	}
-
-	public static class BidiMultiMap
-	{
-		private ValList[] lists;
-		private ValList keys, values;
-
-		public BidiMultiMap(ValList...lists) {
-			int size = 0;
-			for (int i = lists.length - 1; i >= 0; i--) {
-				lists[i] = paramT(vlist(), i, lists);
-				size = Math.max(size, lists[i].size());
-			}
-			while (lists.length < 2)
-				lists = arrayappend(lists, vlist());
-			for (int i = 0; i < lists.length; i++) {
-				values = lists[i];
-				while (values.size() < size)
-					values.add(null);
-			}
-			keys = lists[0];
-			values = lists[1];
-			this.lists = lists;
-		}
-		
-		public boolean setValues(int listIndex) {
-			boolean retval = listIndex > 0 && listIndex < lists.length;
-			if (retval)
-				values = lists[listIndex];
-			return retval;
-		}
-		
-		@Override
-		public String toString() {
-			String separator = "|";
-			StringBuilder sb = new StringBuilder();
-			int size = keys.size();
-			for (int i = 0; i < size; i++) {
-				sb.append(String.format("%s", keys.get(i)));
-				for (int j = 1; j < lists.length; j++) {
-					Object val = lists[j].get(i);
-					sb.append(String.format(separator + "%s", String.valueOf(val)));
-				}
-				if (i < size - 1)
-					sb.append(",\n");
-			}
-			return enclose("{", sb.toString(), "}");
-		}
-
-		public void add(Object...values) {
-			for (int i = 0; i < lists.length; i++) {
-				Object value = param(null, i, values);
-				lists[i].add(value);
-			}
-		}
-
-		public void insert(int index, Object...values) {
-			for (int i = 0; i < lists.length; i++) {
-				Object value = param(null, i, values);
-				lists[i].add(index, value);
-			}
-		}
-		
-		public void remove(int index) {
-			for (int i = 0; i < lists.length; i++) 
-				lists[i].remove(index);
-		}
-		
-		public void removeAll() {
-			for (int i = 0; i < lists.length; i++) 
-				lists[i].clear();
-		}
-		
-		public ValList get(int index) {
-			ValList list = vlist();
-			for (int i = 0; i < lists.length; i++) 
-				list.add(lists[i].get(index));
-			return list;
-		}
-		
-		public Integer[] get(Object key) {
-			ValList list = vlist();
-			List<Object>_keys = keys;
-			int index;
-			do {
-				index = _keys.lastIndexOf(key);
-				if (index > -1) {
-					list.add(index);
-					_keys = _keys.subList(0, index);
-				}
-			}
-			while (index > -1);
-			Collections.reverse(list);
-			return list.toArray(new Integer[0]);
-		}
-
-		public ValList getKeys() {
-			return keys;
-		}
-		
-		public ValList getValues(int...listIndex) {
-			return isAvailable(0, listIndex) ? 
-					(isAvailable(listIndex[0], lists) ? lists[listIndex[0]] : null) : 
-					values;
-		}
-
-		public Object getKey(Object value) {
-			int index = values.indexOf(value);
-			if (index > -1)
-				return keys.get(index);
-			else
-				return null;
-		}
-		
-		public boolean removeKey(Object key) {
-			int index = keys.indexOf(key);
-			boolean retval = index > -1;
-			if (retval)
-				remove(index);
-			return retval;
-		}
-		
-		public Object getValue(Object key, int...listIndex) {
-			ValList list = getValues(listIndex);
-			if (list == null)
-				return null;
-			int index = keys.indexOf(key);
-			if (index > -1)
-				return list.get(index);
-			else
-				return null;
-		}
-		
-		public void putValue(Object key, Object value, int...listIndex) {
-			if (keys.indexOf(key) < 0)
-				add(key);
-			ValList list = getValues(listIndex);
-			if (list != null) {
-				int index = keys.indexOf(key);
-				list.set(index, value);
-			}
-		}
-		
-		public boolean isUnique(Object value, int listIndex) {
-			ValList list = getValues(listIndex);
-			if (list == null) 
-				return false;
-			int index = list.indexOf(value);
-			return index > -1 && index == list.lastIndexOf(value);
-		}
 	}
 	
 	/**
@@ -1264,6 +1097,7 @@ public class Util
 	    }
 	}
 	
+	public static final String PATH_SEP = System.getProperty("file.separator");
 	public static final String TAB = "\t";
 	public static final String NEWLINE = "\n";	//	System.getProperty("line.separator");
 	public static final String TAB_REGEX = "\\t";
@@ -1299,57 +1133,6 @@ public class Util
 		return false;
 	}
 
-	/**
-	 * Recursive method used to find all classes in a given directory and subdirs.
-	 *
-	 * @param directory   The base directory
-	 * @param packageName The package name for classes found inside the base directory
-	 * @return The classes
-	 * @throws ClassNotFoundException
-	 */
-	@SuppressWarnings("rawtypes")
-	public static List<Class> findClasses(File directory, String packageName) throws ClassNotFoundException {
-	    List<Class> classes = new ArrayList<Class>();
-	    if (directory.exists()) {
-	    	File[] files = directory.listFiles();
-	    	for (File file : files) {
-	    		if (file.isDirectory()) {
-	    			assert !file.getName().contains(".");
-	    			classes.addAll(findClasses(file, packageName + "." + file.getName()));
-	    		} else if (file.getName().endsWith(".class")) {
-	    			classes.add(Class.forName(packageName + '.' + file.getName().substring(0, file.getName().length() - 6)));
-	    		}
-	    	}
-	    }
-	    return classes;
-	}
-
-	/**
-	 * Scans all classes accessible from the context class loader which belong to the given package and subpackages.
-	 *
-	 * @param packageName The base package
-	 * @return The classes
-	 * @throws ClassNotFoundException
-	 * @throws IOException
-	 */
-	@SuppressWarnings("rawtypes")
-	public static Class[] getLocalClasses(String packageName) throws ClassNotFoundException, IOException {
-	    ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-	    assert classLoader != null;
-	    String path = packageName.replace('.', '/');
-	    Enumeration<URL> resources = classLoader.getResources(path);
-	    List<File> dirs = new ArrayList<File>();
-	    while (resources.hasMoreElements()) {
-	        URL resource = resources.nextElement();
-	        dirs.add(new File(resource.getFile()));
-	    }
-	    ArrayList<Class> classes = new ArrayList<Class>();
-	    for (File directory : dirs) {
-	        classes.addAll(findClasses(directory, packageName));
-	    }
-	    return classes.toArray(new Class[classes.size()]);
-	}
-
 	@SuppressWarnings("unchecked")
 	public static <T extends Object> T getConstantByName(String name, String className, String innerClassName) {
 		try {
@@ -1371,4 +1154,178 @@ public class Util
 		return null;
 	}
 
+	public static String getPackageNameByClass(Class<?> clazz) {
+		String name = clazz.getName();
+		return name.substring(0, Math.max(0, name.lastIndexOf(".")));
+	}
+
+	public static BidiMultiMap bmap(int count) {
+		return new BidiMultiMap(new ValList[count]);
+	}
+
+	public static class BidiMultiMap implements Serializable
+	{
+		private static final long serialVersionUID =
+				UUID.fromString("fe32a444-91e4-4ad2-8b1e-3d4c2f7a26f3").getLeastSignificantBits();
+	
+		public BidiMultiMap(ValList...lists) {
+			int size = 0;
+			for (int i = lists.length - 1; i >= 0; i--) {
+				lists[i] = paramT(vlist(), i, lists);
+				size = Math.max(size, lists[i].size());
+			}
+			while (lists.length < 2)
+				lists = arrayappend(lists, vlist());
+			for (int i = 0; i < lists.length; i++) {
+				ValList values = lists[i];
+				while (values.size() < size)
+					values.add(null);
+			}
+			this.lists = lists;
+		}
+		
+		private ValList[] lists;
+		
+		public ValList[] getLists() {
+			return lists;
+		}
+
+		private int[] index = new int[] {0,1};
+	
+		public int[] getIndex() {
+			return index;
+		}
+
+		public void setIndex(int...listIndex) {
+			for (int i = 0; i < index.length; i++) {
+				int j = param(index[i], i, listIndex);
+				boolean retval = j > -1 && j < lists.length;
+				if (retval)
+					index[i] = j;
+			}
+		}
+	
+		public ValList getKeys() {
+			return lists[index[0]];
+		}
+		
+		public ValList getValues(int...listIndex) {
+			return isAvailable(0, listIndex) ? 
+					(isAvailable(listIndex[0], lists) ? lists[listIndex[0]] : null) : 
+					lists[index[1]];
+		}
+		
+		@Override
+		public String toString() {
+			String separator = "|";
+			StringBuilder sb = new StringBuilder();
+			int keysIndex = index[0];
+			index[0] = 0;
+			int size = getKeys().size();
+			for (int i = 0; i < size; i++) {
+				sb.append(String.format("%s", getKeys().get(i)));
+				for (int j = 1; j < lists.length; j++) {
+					Object val = lists[j].get(i);
+					sb.append(String.format(separator + "%s", String.valueOf(val)));
+				}
+				if (i < size - 1)
+					sb.append(",\n");
+			}
+			index[0] = keysIndex;
+			return enclose("{", sb.toString(), "}");
+		}
+	
+		public void add(Object...values) {
+			for (int i = 0; i < lists.length; i++) {
+				Object value = param(null, i, values);
+				lists[i].add(value);
+			}
+		}
+	
+		public void insert(int index, Object...values) {
+			for (int i = 0; i < lists.length; i++) {
+				Object value = param(null, i, values);
+				lists[i].add(index, value);
+			}
+		}
+		
+		public void remove(int index) {
+			for (int i = 0; i < lists.length; i++) 
+				lists[i].remove(index);
+		}
+		
+		public void removeAll() {
+			for (int i = 0; i < lists.length; i++) 
+				lists[i].clear();
+		}
+		
+		public ValList get(int index) {
+			ValList list = vlist();
+			for (int i = 0; i < lists.length; i++) 
+				list.add(lists[i].get(index));
+			return list;
+		}
+		
+		public Integer[] get(Object key) {
+			ValList list = vlist();
+			List<Object> keys = getKeys();
+			int index;
+			do {
+				index = keys.lastIndexOf(key);
+				if (index > -1) {
+					list.add(index);
+					keys = keys.subList(0, index);
+				}
+			}
+			while (index > -1);
+			Collections.reverse(list);
+			return list.toArray(new Integer[0]);
+		}
+	
+		public Object getKey(Object value) {
+			int index = getValues().indexOf(value);
+			if (index > -1)
+				return getKeys().get(index);
+			else
+				return null;
+		}
+		
+		public boolean removeKey(Object key) {
+			int index = getKeys().indexOf(key);
+			boolean retval = index > -1;
+			if (retval)
+				remove(index);
+			return retval;
+		}
+		
+		public Object getValue(Object key, int...listIndex) {
+			ValList list = getValues(listIndex);
+			if (list == null)
+				return null;
+			int index = getKeys().indexOf(key);
+			if (index > -1)
+				return list.get(index);
+			else
+				return null;
+		}
+		
+		public void putValue(Object key, Object value, int...listIndex) {
+			if (getKeys().indexOf(key) < 0)
+				add(key);
+			ValList list = getValues(listIndex);
+			if (list != null) {
+				int index = getKeys().indexOf(key);
+				list.set(index, value);
+			}
+		}
+		
+		public boolean isUnique(Object value, int listIndex) {
+			ValList list = getValues(listIndex);
+			if (list == null) 
+				return false;
+			int index = list.indexOf(value);
+			return index > -1 && index == list.lastIndexOf(value);
+		}
+	}
+	
 }

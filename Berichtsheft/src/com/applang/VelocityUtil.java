@@ -1096,7 +1096,7 @@ public class VelocityUtil
 	public static final Pattern ARGUMENT_PATTERN = 
 			Pattern.compile("((" + ARGUMENT_TYPER + ")?" + "(" + VRI_PATTERN + ")?" + 
 					IDENTIFIER_PATTERN + ARGUMENT_TYPER + "(?i)[" + join("", DATA_TYPES) + "](?-i))|" +
-							"(" + UNKNOWN_PATTERN + "(?=\\s*\\" + Util1.PARENS[1] + "))");
+							"(" + UNKNOWN_PATTERN + "(?=\\s*\\)))");
 	
 	public static String firstIdentifierFrom(String particle) {
 		MatchResult mr = findFirstIn(particle, IDENTIFIER_PATTERN);
@@ -1150,7 +1150,7 @@ public class VelocityUtil
 	    }
 	    matcher.appendTail(sb);
 	    String s = sb.toString();
-	    s = s.replaceAll("(" + ARGUMENT_SEPARATORS[sep] + ")+(?=\\s*?\\" + Util1.PARENS[1] + ")", "");
+	    s = s.replaceAll("(" + ARGUMENT_SEPARATORS[sep] + ")+(?=\\s*?\\))", "");
 	    return s;
 	}
 	

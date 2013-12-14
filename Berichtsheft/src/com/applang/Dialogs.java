@@ -143,7 +143,7 @@ public class Dialogs extends Activity
         			sProgressDialog.hide();
         		}
         	});
-        	sProgressDialog.setButton2(getText(R.string.button_cancel), new DialogInterface.OnClickListener() {
+        	sProgressDialog.setButton2(getText(android.R.string.cancel), new DialogInterface.OnClickListener() {
         		public void onClick(DialogInterface dialog, int whichButton) {
         			sProgressDialog.cancel();
         		}
@@ -214,12 +214,12 @@ public class Dialogs extends Activity
                     	checkedItem = whichButton;
                     }
                 })
-                .setPositiveButton(R.string.button_ok, new DialogInterface.OnClickListener() {
+                .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int whichButton) {
                         _finish(RESULT_OK, checkedItem < 0 ? null : values[checkedItem]);
                     }
                 })
-                .setNegativeButton(R.string.button_cancel, new DialogInterface.OnClickListener() {
+                .setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int whichButton) {
                         _finish(RESULT_CANCELED, null);
                     }
@@ -242,7 +242,7 @@ public class Dialogs extends Activity
                             	checkedItems.set(whichButton, isChecked);
                             }
                         })
-                .setPositiveButton(R.string.button_ok, new DialogInterface.OnClickListener() {
+                .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
 					public void onClick(DialogInterface dialog, int whichButton) {
 						ValList list = vlist();
                     	Boolean[] checked = checkedItems.toArray(new Boolean[values.length]);
@@ -253,7 +253,7 @@ public class Dialogs extends Activity
                         _finish(RESULT_OK, list);
                     }
                 })
-                .setNegativeButton(R.string.button_cancel, new DialogInterface.OnClickListener() {
+                .setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int whichButton) {
                         _finish(RESULT_CANCELED, null);
                     }
@@ -282,7 +282,7 @@ public class Dialogs extends Activity
 									checkedItem = which;
 								}
 				            })
-				    .setPositiveButton(R.string.button_ok, new DialogInterface.OnClickListener() {
+				    .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
 				        public void onClick(DialogInterface dialog, int whichButton) {
 				        	Object value = null;
 				        	if (checkedItem > -1 && cursor.moveToFirst()) {
@@ -296,7 +296,7 @@ public class Dialogs extends Activity
 							_finish(RESULT_OK, value);
 				        }
 				    })
-				    .setNegativeButton(R.string.button_cancel, new DialogInterface.OnClickListener() {
+				    .setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
 				        public void onClick(DialogInterface dialog, int whichButton) {
 				            _finish(RESULT_CANCELED, null);
 				        }
@@ -325,7 +325,7 @@ public class Dialogs extends Activity
 				                	checkedItems.set(whichButton, isChecked);
 				                }
 				            })
-				    .setPositiveButton(R.string.button_ok, new DialogInterface.OnClickListener() {
+				    .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
 						public void onClick(DialogInterface dialog, int whichButton) {
 							int i;
 							for (i = 0, cursor.moveToFirst(); i < checkedItems.size(); i++, cursor.moveToNext())
@@ -333,7 +333,7 @@ public class Dialogs extends Activity
 				            _finish(RESULT_OK, null);
 				        }
 				    })
-				    .setNegativeButton(R.string.button_cancel, new DialogInterface.OnClickListener() {
+				    .setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
 				        public void onClick(DialogInterface dialog, int whichButton) {
 				            _finish(RESULT_CANCELED, null);
 				        }
@@ -366,12 +366,12 @@ public class Dialogs extends Activity
 	                .setIcon(R.drawable.ic_launcher)
 	                .setTitle(prompt)
 	                .setView(linearLayout)
-	                .setPositiveButton(R.string.button_ok, new DialogInterface.OnClickListener() {
+	                .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
 	                    public void onClick(DialogInterface dialog, int whichButton) {
 	                        _finish(RESULT_OK, editText.getText().toString());
 	                    }
 	                })
-	                .setNegativeButton(R.string.button_cancel, new DialogInterface.OnClickListener() {
+	                .setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
 	                    public void onClick(DialogInterface dialog, int whichButton) {
 	                    	_finish(RESULT_CANCELED, null);
 	                    }

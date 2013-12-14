@@ -119,7 +119,7 @@ public class BerichtsheftActivity extends Activity
 		}
 	
 	private void impex() {
-		final String[] databases = databases(BerichtsheftActivity.this, "com.applang.provider");
+		final String[] databases = databases(BerichtsheftActivity.this);
 		AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(this);
 		alertDialogBuilder.setTitle("Application data");
 		alertDialogBuilder

@@ -1,19 +1,3 @@
-/*
- * Copyright (C) 2007 The Android Open Source Project
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package com.applang.provider;
 
 import com.applang.provider.NotePad.NoteColumns;
@@ -27,13 +11,11 @@ import android.content.UriMatcher;
 import android.database.Cursor;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
-import android.database.sqlite.SQLiteException;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.database.sqlite.SQLiteQueryBuilder;
 import android.net.Uri;
 import android.util.Log;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -142,32 +124,24 @@ public class NotePadProvider extends ContentProvider
 
         @Override
         public void onCreate(SQLiteDatabase db) {
-        	Cursor cursor = null;
-        	try {
-    			cursor = db.rawQuery("pragma foreign_keys = ON", null);
-    		} 
-        	catch (SQLiteException e) {
-        		Log.e(TAG, "foreign_keys", e);
-        	}
-        	finally {
-    			if (cursor != null)
-    				cursor.close();
-    		}
-        	
+        	turnForeignKeys(db, true);
         	for (int i = 0; i < DATABASE_TABLES.length; i++) {
 				createTable(i, db);
 			}
         }
 
         @Override
-        public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+        public void onUpgrade(final SQLiteDatabase db, int oldVersion, int newVersion) {
             Log.w(TAG, "Upgrading database from version " + oldVersion + " to "
                     + newVersion + ", which will destroy all old data");
         	for (int i = 0; i < DATABASE_TABLES.length; i++)
-				dropTable(i, db);
-            onCreate(db);
+            	table_upgrade(db, DATABASE_TABLES[i], new Job<Void>() {
+					public void perform(Void t, Object[] parms) throws Exception {
+						createTable(param_Integer(null, 0, parms), db);
+					}
+            	}, i);
         }
-    }
+   }
     
     private static void dropTable(int index, SQLiteDatabase db) {
     	db.execSQL("DROP TABLE IF EXISTS " + DATABASE_TABLES[index]);
@@ -275,7 +249,7 @@ public class NotePadProvider extends ContentProvider
             break;
 
         case NOTES_MEMORY:
-        	if (mOpenHelper == null)
+        	if (mOpenHelper != null)
         		mOpenHelper.close();
         	
             mOpenHelper = new DatabaseHelper(getContext(), 
@@ -464,30 +438,32 @@ public class NotePadProvider extends ContentProvider
     }
 
     public static Integer[] countNotes(ContentResolver contentResolver, int tableIndex, String selection, String[] selectionArgs) {
+    	ValList counts = vlist();
 		Cursor cursor = contentResolver.query(contentUri(tableIndex), 
 				strings("count"), 
 				selection, selectionArgs, 
 				NoteColumns.DEFAULT_SORT_ORDER);
-		ArrayList<Integer> counts = new ArrayList<Integer>();
-		if (cursor.moveToFirst())
-			do {
+		traverse(cursor, new Job<Cursor>() {
+			public void perform(Cursor cursor, Object[] parms) throws Exception {
+				ValList counts = (ValList) parms[0];
 				counts.add(cursor.getInt(0));
-			} while (cursor.moveToNext());
-		cursor.close();
+			}
+		}, counts);
 		return counts.toArray(new Integer[0]);
 	}
 
     public static String[] getTitles(ContentResolver contentResolver, int tableIndex, String selection, String[] selectionArgs) {
+    	ValList titles = vlist();
 		Cursor cursor = contentResolver.query(contentUri(tableIndex), 
 				strings(NoteColumns.TITLE), 
 				selection, selectionArgs, 
 				NoteColumns.DEFAULT_SORT_ORDER);
-		ArrayList<String> titles = new ArrayList<String>();
-		if (cursor.moveToFirst())
-			do {
+		traverse(cursor, new Job<Cursor>() {
+			public void perform(Cursor cursor, Object[] parms) throws Exception {
+				ValList titles = (ValList) parms[0];
 				titles.add(cursor.getString(0));
-			} while (cursor.moveToNext());
-		cursor.close();
+			}
+		}, titles);
 		return titles.toArray(new String[0]);
 	}
 
@@ -496,30 +472,26 @@ public class NotePadProvider extends ContentProvider
 				strings(NoteColumns._ID), 
 				selection, selectionArgs, 
 				null);
-		long id = -1;
-		if (cursor.moveToFirst())
-			id = cursor.getLong(0);
-		cursor.close();
-		return id;
+		Object[] parms = {-1L};
+		traverse(cursor, new Job<Cursor>() {
+			public void perform(Cursor cursor, Object[] parms) throws Exception {
+				parms[0] = cursor.getLong(0);
+			}
+		}, parms);
+		return (Long) parms[0];
 	}
 
-	public static boolean fetchNoteById(long id, ContentResolver contentResolver, int tableIndex, Job<Cursor> job, Object... params) {
-		Cursor cursor = contentResolver.query(
+	public static boolean fetchNoteById(long id, ContentResolver contentResolver, int tableIndex, 
+			Job<Cursor> job, Object... params)
+	{
+		return traverse(
+			contentResolver.query(
 				ContentUris.withAppendedId(contentUri(tableIndex), id), 
 				NotePadProvider.FULL_PROJECTION, 
 				"", null, 
-	    		null);
-		
-		boolean retval = cursor.moveToFirst();
-		if (retval)
-			try {
-				job.perform(cursor, params);
-			} catch (Exception e) {
-				Log.e(TAG, "fetching note", e);
-			}
-		
-		cursor.close();
-		return retval;
+	    		null), 
+    		job, 
+    		params);
 	}
 
 	public static Set<String> wordSet(ContentResolver contentResolver, int tableIndex, String selection, String... selectionArgs) {

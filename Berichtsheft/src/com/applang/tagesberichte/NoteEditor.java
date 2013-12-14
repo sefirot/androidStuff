@@ -361,7 +361,7 @@ public class NoteEditor extends Activity
         		uri = ContentUris.withAppendedId(uri, id);
         		id = NotePadProvider.getIdOfNote(getContentResolver(), 2, 
         				NoteColumns.REF_ID + "=? and " + NoteColumns.TITLE + "=?", 
-        				new String[] {"" + id, word});
+        				strings("" + id, word));
         		int state = id < 0 ? NoteEditor.STATE_INSERT : NoteEditor.STATE_EDIT;
 	        	startActivity(new Intent()
 	        			.setClass(this, TitleEditor.class)

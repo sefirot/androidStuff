@@ -45,7 +45,7 @@
 	        android:layout_alignParentRight="true"
 	        android:paddingLeft="@dimen/padding"
 	        android:paddingRight="@dimen/padding"
-	        android:text="@string/button_ok" />
+	        android:text="@android:string/ok" />
         	    		
 	    <Button
 	        android:id="@+id/cancel"
@@ -53,7 +53,7 @@
 	        android:layout_height="wrap_content"
 	        android:layout_alignParentRight="true"
 	        android:layout_below="@id/ok"
-	        android:text="@string/button_cancel" />
+	        android:text="@android:string/cancel" />
 	    
     </RelativeLayout>
    		

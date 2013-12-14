@@ -7,6 +7,9 @@ import org.apache.velocity.exception.TemplateInitException;
 import org.apache.velocity.runtime.RuntimeServices;
 import org.apache.velocity.runtime.parser.node.Node;
 
+import android.app.Activity;
+import android.content.Intent;
+
 import static com.applang.Util.*;
 import static com.applang.VelocityUtil.*;
 
@@ -89,6 +92,19 @@ public class PromptDirective extends BaseDirective
 		setOptions(Math.min(2, values.length - 1));
 		
 		return prompt != null && var != null;
+	}
+
+	public static void prompt(Activity activity, 
+			int type, String title, String message, String[] values, 
+			String...defaults)
+	{
+		Intent intent = new Intent(Dialogs.PROMPT_ACTION)
+				.putExtra(BaseDirective.TYPE, type % 100)
+				.putExtra(BaseDirective.TITLE, title)
+				.putExtra(BaseDirective.PROMPT, message)
+				.putExtra(BaseDirective.VALUES, values)
+				.putExtra(BaseDirective.DEFAULTS, defaults);
+		activity.startActivityForResult(intent, 0);
 	}
 }
 

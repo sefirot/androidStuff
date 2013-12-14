@@ -146,7 +146,7 @@ public class ConstructDialogs extends Dialogs
 		});
 //		Button btn = new Button(this);
 //		btn.setId(R.id.ok);
-//		btn.setText(R.string.button_ok);
+//		btn.setText(android.R.string.ok);
 //		btn.setPadding(halfpadding, 0, halfpadding, 0);
 //    	layoutParams = 
 //    			relativeLayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, 
@@ -169,7 +169,7 @@ public class ConstructDialogs extends Dialogs
 		
 //		btn = new Button(this);
 //		btn.setId(R.id.cancel);
-//		btn.setText(R.string.button_cancel);
+//		btn.setText(android.R.string.cancel);
 //    	layoutParams = 
 //    			relativeLayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, 
 //    					halfMargin, halfMargin, halfMargin, halfMargin);

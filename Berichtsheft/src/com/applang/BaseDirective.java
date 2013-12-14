@@ -5,13 +5,12 @@ import java.io.Writer;
 import org.apache.velocity.context.InternalContextAdapter;
 import org.apache.velocity.runtime.parser.node.Node;
 
-import com.applang.Util.ValList;
+import android.content.Intent;
+import android.os.Bundle;
+import android.util.Log;
 
 import static com.applang.Util.*;
 import static com.applang.VelocityUtil.*;
-
-import android.content.Intent;
-import android.os.Bundle;
 
 /**
  * A directive to prompt the user for a value.

@@ -1,19 +1,3 @@
-/*
- * Copyright (C) 2007 The Android Open Source Project
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package com.applang.provider;
 
 import com.applang.provider.WeatherInfo.Weathers;
@@ -34,13 +18,14 @@ import android.util.Log;
 import java.util.HashMap;
 
 import static com.applang.Util.*;
+import static com.applang.Util1.*;
 
 /**
  * Provides access to a database of weathers. Each note has a title, the note
  * itself, a creation date and a modified data.
  */
-public class WeatherInfoProvider extends ContentProvider {
-
+public class WeatherInfoProvider extends ContentProvider
+{
     private static final String TAG = "WeatherInfoProvider";
 
     public static final String DATABASE_NAME = "weather_info.db";
@@ -82,8 +67,8 @@ public class WeatherInfoProvider extends ContentProvider {
     /**
      * This class helps open, create, and upgrade the database file.
      */
-    public static class DatabaseHelper extends SQLiteOpenHelper {
-
+    public static class DatabaseHelper extends SQLiteOpenHelper
+    {
     	public DatabaseHelper(Context context, String dbName) {
             super(context, dbName, null, DATABASE_VERSION);
         }
@@ -103,11 +88,14 @@ public class WeatherInfoProvider extends ContentProvider {
         }
 
         @Override
-        public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+        public void onUpgrade(final SQLiteDatabase db, int oldVersion, int newVersion) {
             Log.w(TAG, "Upgrading database from version " + oldVersion + " to "
                     + newVersion + ", which will destroy all old data");
-            db.execSQL("DROP TABLE IF EXISTS " + WEATHERS_TABLE_NAME);
-            onCreate(db);
+            table_upgrade(db, WEATHERS_TABLE_NAME, new Job<Void>() {
+            	public void perform(Void t, Object[] parms) throws Exception {
+            		onCreate(db);
+            	}
+            });
         }
     }
 

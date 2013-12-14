@@ -16,6 +16,7 @@ import com.applang.Util.Function;
 import com.applang.Util.Job;
 import com.applang.Util.ValMap;
 import com.applang.VelocityUtil.Visitor;
+import com.applang.berichtsheft.R;
 
 import static com.applang.Util.*;
 import static com.applang.Util1.*;
@@ -81,7 +82,7 @@ public class UserContext extends CustomContext implements Serializable
     		return;
     	
   		if (activity != null && activity.getIntent() != null) {
-  			String packageName = param("com.applang.berichtsheft", 0, params);
+  			String packageName = param(getPackageNameByClass(R.class), 0, params);
 			Velocity.setProperty("packageName", packageName);
 			Velocity.setProperty(Velocity.RUNTIME_LOG_LOGSYSTEM_CLASS,
 					logClassname);
@@ -215,7 +216,8 @@ public class UserContext extends CustomContext implements Serializable
     {
 		public EvaluationTask(Activity activity, ValMap refMap, 
 				Handler progressHandler, Job<Void> progressJob, 
-				Job<Object> followUp, Object... params) {
+				Job<Object> followUp, Object... params)
+		{
 			super(activity, followUp, params);
 			setupVelocity(activity, true);
     		this.progressHandler = progressHandler;
@@ -299,7 +301,8 @@ public class UserContext extends CustomContext implements Serializable
 	
 	public static void buildDirective(final String key, 
 			Activity activity, ValMap refMap, 
-			Job<Object> followUp, Object...params) {
+			Job<Object> followUp, Object...params)
+	{
 		new EvaluationTask(activity, refMap, null, null, followUp, params)
 			.execute(new Function<Object>() {
 				public Object apply(Object... params) {

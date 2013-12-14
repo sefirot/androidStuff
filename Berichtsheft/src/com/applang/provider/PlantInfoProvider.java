@@ -2,8 +2,6 @@ package com.applang.provider;
 
 import com.applang.provider.PlantInfo.Plants;
 
-import static com.applang.Util.*;
-
 import android.content.ContentProvider;
 import android.content.ContentUris;
 import android.content.ContentValues;
@@ -18,6 +16,9 @@ import android.net.Uri;
 import android.util.Log;
 
 import java.util.HashMap;
+
+import static com.applang.Util.*;
+import static com.applang.Util1.*;
 
 /**
  * Provides access to a database of plants.
@@ -80,11 +81,15 @@ public class PlantInfoProvider extends ContentProvider
         }
 
         @Override
-        public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+        public void onUpgrade(final SQLiteDatabase db, int oldVersion, int newVersion) {
             Log.w(TAG, "Upgrading database from version " + oldVersion + " to "
                     + newVersion + ", which will destroy all old data");
-            db.execSQL("DROP TABLE IF EXISTS " + PLANTS_TABLE_NAME);
-            onCreate(db);
+            db.beginTransaction();
+            table_upgrade(db, PLANTS_TABLE_NAME, new Job<Void>() {
+            	public void perform(Void t, Object[] parms) throws Exception {
+            		onCreate(db);
+            	}
+            });
         }
     }
 
