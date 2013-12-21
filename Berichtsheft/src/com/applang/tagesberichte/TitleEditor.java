@@ -19,9 +19,6 @@ package com.applang.tagesberichte;
 import java.util.Calendar;
 import java.util.Set;
 
-import static com.applang.Util.*;
-import static com.applang.Util2.*;
-
 import com.applang.berichtsheft.R;
 import com.applang.provider.NotePad.NoteColumns;
 import com.applang.provider.NotePadProvider;
@@ -38,7 +35,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.view.View.OnClickListener;
-import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
@@ -46,6 +42,9 @@ import android.widget.DatePicker;
 import android.widget.AutoCompleteTextView;
 import android.widget.ImageButton;
 import android.widget.Toast;
+
+import static com.applang.Util.*;
+import static com.applang.Util1.*;
 
 /**
  * An activity that will edit the title of a note. Displays a floating window
@@ -81,7 +80,7 @@ public class TitleEditor extends Activity implements View.OnClickListener
     
     private Cursor mCursor;
     private Uri mUri;
-    private long mId = -1;
+    private Long mId = -1L;
 
     int mState = NoteEditor.STATE_EDIT;
     String header = "";
@@ -97,7 +96,7 @@ public class TitleEditor extends Activity implements View.OnClickListener
         
         mUri = getIntent().getData();
         tableIndex = NotePadProvider.tableIndex(tableIndex, mUri);
-        mId = NotePadProvider.parseId(mId, mUri);
+        mId = parseId(mId, mUri);
         
         Bundle extras = getIntent().getExtras();
         if (extras != null) {

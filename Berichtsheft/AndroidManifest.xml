@@ -9,6 +9,10 @@
 	<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 	<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <permission android:name="android.permission.permRead" />
+    <permission android:name="android.permission.permWrite" />
+    <uses-permission android:name="android.permission.permRead" />
+    <uses-permission android:name="android.permission.permWrite" />
 	
     <application
         android:icon="@drawable/ic_launcher"
@@ -18,8 +22,9 @@
             android:authorities="com.applang.provider.NotePad"
         />
         <provider android:name="com.applang.provider.PlantInfoProvider"
-            android:exported="false"
             android:authorities="com.applang.provider.PlantInfo"
+            android:readPermission="android.permission.permRead"
+            android:writePermission="android.permission.permWrite"
         />
         <provider android:name="com.applang.provider.WeatherInfoProvider"
             android:exported="true"

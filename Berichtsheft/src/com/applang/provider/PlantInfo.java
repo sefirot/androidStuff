@@ -91,4 +91,51 @@ public final class PlantInfo {
          */
         public static final String GROUP = "crop_group";
     }
+    
+    /**
+     * Pictures table
+     */
+    public static final class Pictures implements BaseColumns {
+        // This class cannot be instantiated
+        private Pictures() {}
+
+        /**
+         * The content:// style URL for this table
+         */
+        public static final Uri CONTENT_URI = 
+        		Uri.parse("content://" + AUTHORITY + "/pictures");
+
+        /**
+         * The MIME type of {@link #CONTENT_URI} providing a directory of plants.
+         */
+    	public static final String CONTENT_TYPE = ContentResolver.CURSOR_DIR_BASE_TYPE + "/vnd.applang.picture";
+
+        /**
+         * The MIME type of a {@link #CONTENT_URI} sub-directory of a single plant.
+         */
+    	public static final String CONTENT_ITEM_TYPE = ContentResolver.CURSOR_ITEM_BASE_TYPE + "/vnd.applang.picture";
+
+        /**
+         * The default sort order for this table
+         */
+        public static final String DEFAULT_SORT_ORDER = "name ASC";
+        
+        /**
+         * The local name of the plant
+         * <P>Type: TEXT</P>
+         */
+        public static final String NAME = "name";
+
+        /**
+         * The local family name of the plant
+         * <P>Type: TEXT</P>
+         */
+        public static final String TYPE = "type";
+
+        /**
+         * The botanical name of the plant
+         * <P>Type: TEXT</P>
+         */
+        public static final String BLOB = "blob";
+    }
 }

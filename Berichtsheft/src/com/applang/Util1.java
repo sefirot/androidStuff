@@ -1,7 +1,9 @@
 package com.applang;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -16,11 +18,16 @@ import org.json.JSONStringer;
 
 import android.app.Activity;
 import android.content.ContentResolver;
+import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.res.AssetManager;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Bitmap.CompressFormat;
 import android.net.Uri;
 import android.util.Log;
 import android.view.View;
@@ -209,8 +216,20 @@ public class Util1
 	public static Uri toStringUri(Uri uri) {
 		return Uri.parse(uri.toString());
 	}
+	
+	public static String appendId(String uriString, long id) {
+		return ContentUris.appendId(Uri.parse(uriString).buildUpon(), id).build().toString();
+	}
 
-	public static String encodeUri(String uriString, boolean decode) {
+	public static Long parseId(Long defaultValue, Uri uri) {
+		try {
+			return ContentUris.parseId(uri);
+		} catch (Exception e) {
+			return defaultValue;
+		}
+	}
+
+	public static String codeUri(String uriString, boolean decode) {
 		return decode ? Uri.decode(uriString) : Uri.encode(uriString);
 	}
 
@@ -396,7 +415,6 @@ public class Util1
         try {
         	if (table_exists(db, tableName)) {
         		db.execSQL("ALTER TABLE " + tableName + " RENAME TO temp_" + tableName);
-        		db.execSQL("DROP TABLE " + tableName);
         		Cursor c = db.rawQuery("select * from temp_" + tableName, null);
         		Object[] parms = {retval};
             	traverse(c, new Job<Cursor>() {
@@ -405,8 +423,8 @@ public class Util1
         				for (int i = 0; i < c.getColumnCount(); i++) {
         					list.add(c.getColumnName(i));
         				}
-        				String cols = join(",", list.toArray());
         				creation.perform(null, params);
+        				String cols = join(",", list.toArray());
         				db.execSQL(String.format( 
         						"INSERT INTO %s (%s) SELECT %s from temp_%s", 
         						tableName, cols, cols, tableName));
@@ -628,6 +646,33 @@ public class Util1
 			if (object != null) 
 				stringer.value(object);
 		}
+	}
+
+	public static String readAsset(Activity activity, String fileName) {
+	    StringBuffer sb = new StringBuffer();
+	    try {
+	    	AssetManager am = activity.getResources().getAssets();
+			InputStream is = am.open( fileName );
+			while( true ) {
+			    int c = is.read();
+	            if( c < 0 )
+	                break;
+			    sb.append( (char)c );
+			}
+		} catch (Exception e) {
+			Log.e(TAG, "readAsset", e);
+		}
+	    return sb.toString();
+	}
+	
+	public static byte[] getBytes(Bitmap bitmap) {
+		ByteArrayOutputStream stream = new ByteArrayOutputStream();
+		bitmap.compress(CompressFormat.JPEG, 0, stream);
+		return stream.toByteArray();
+	}
+
+	public static Bitmap getBitmap(byte[] bytes) {
+		return BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
 	}
 
 }

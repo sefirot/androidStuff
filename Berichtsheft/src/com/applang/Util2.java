@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.channels.FileChannel;
 import java.util.Arrays;
 import java.util.Enumeration;
@@ -24,7 +23,6 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.content.res.AssetManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
@@ -48,23 +46,6 @@ public class Util2
         }
         else 
         	return "";
-    }
-	
-	public static String readAsset(Activity activity, String fileName) {
-        StringBuffer sb = new StringBuffer();
-        try {
-        	AssetManager am = activity.getResources().getAssets();
-			InputStream is = am.open( fileName );
-			while( true ) {
-			    int c = is.read();
-	            if( c < 0 )
-	                break;
-			    sb.append( (char)c );
-			}
-		} catch (Exception e) {
-			Log.e(TAG, "readAsset", e);
-		}
-        return sb.toString();
     }
 	
 	public static class WorkerThread extends Thread

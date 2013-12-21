@@ -65,14 +65,6 @@ public class NotePadProvider extends ContentProvider
     		return index < 0 ? defaultValue : index;
     	}
     }
-    
-    public static long parseId(long defaultValue, Uri uri) {
-    	try {
-			return ContentUris.parseId(uri);
-		} catch (Exception e) {
-			return defaultValue;
-		}
-    }
 
     public static ContentValues contentValues(Object... args) {
 		ContentValues values = new ContentValues();
@@ -133,13 +125,15 @@ public class NotePadProvider extends ContentProvider
         @Override
         public void onUpgrade(final SQLiteDatabase db, int oldVersion, int newVersion) {
             Log.w(TAG, "Upgrading database from version " + oldVersion + " to "
-                    + newVersion + ", which will destroy all old data");
+                    + newVersion + ", which will try to loose as few as possible of the old data");
+        	turnForeignKeys(db, false);
         	for (int i = 0; i < DATABASE_TABLES.length; i++)
             	table_upgrade(db, DATABASE_TABLES[i], new Job<Void>() {
 					public void perform(Void t, Object[] parms) throws Exception {
 						createTable(param_Integer(null, 0, parms), db);
 					}
             	}, i);
+        	turnForeignKeys(db, true);
         }
    }
     

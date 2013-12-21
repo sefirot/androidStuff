@@ -1,14 +1,11 @@
 package com.applang.tagesberichte;
 
-import com.applang.Util.ValMap;
 import com.applang.UserContext;
-import com.applang.Util.Job;
 import com.applang.berichtsheft.R;
 import com.applang.provider.NotePadProvider;
 import com.applang.provider.NotePad.NoteColumns;
 
 import android.app.Activity;
-import android.app.Dialog;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
@@ -20,8 +17,7 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import static com.applang.Util.*;
-import static com.applang.Util2.*;
-import static com.applang.VelocityUtil.*;
+import static com.applang.Util1.*;
 
 public class BausteinEvaluator extends Activity
 {
@@ -69,7 +65,7 @@ public class BausteinEvaluator extends Activity
         
 		String selection = "";
 		String[] selectionArgs = null;
-		if (NotePadProvider.parseId(-1, mUri) < 0 && NoteColumns.TITLE.equals(mUri.getPathSegments().get(1))) {
+		if (parseId(-1L, mUri) < 0 && NoteColumns.TITLE.equals(mUri.getPathSegments().get(1))) {
 			selection = NoteColumns.TITLE + "=?";
 			selectionArgs = new String[] {mUri.getPathSegments().get(2)};
 			mUri = NotePadProvider.contentUri(1);

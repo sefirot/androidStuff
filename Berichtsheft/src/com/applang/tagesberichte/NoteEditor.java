@@ -50,6 +50,7 @@ import android.view.ContextMenu.ContextMenuInfo;
 import android.widget.EditText;
 
 import static com.applang.Util.*;
+import static com.applang.Util1.*;
 import static com.applang.Util2.*;
 import static com.applang.VelocityUtil.*;
 
@@ -355,7 +356,7 @@ public class NoteEditor extends Activity
 				break;
 			}
         	if (word.length() > 0) {
-        		long id = NotePadProvider.parseId(-1, mUri);
+        		Long id = parseId(-1L, mUri);
         		String description = getNoteDescription(getContentResolver(), tableIndex, id);
         		Uri uri = NotePadProvider.contentUri(2);
         		uri = ContentUris.withAppendedId(uri, id);
@@ -600,7 +601,7 @@ public class NoteEditor extends Activity
         // Handle all of the possible menu actions.
         switch (item.getItemId()) {
         case DELETE_ID:
-    		long id = NotePadProvider.parseId(-1, mUri);
+    		Long id = parseId(-1L, mUri);
     		String description = getNoteDescription(getContentResolver(), tableIndex, id);
     		description = getResources().getString(R.string.areUsure, description);
     		areUsure(this, description, new Job<Void>() {

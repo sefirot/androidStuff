@@ -90,7 +90,7 @@ public class WeatherInfoProvider extends ContentProvider
         @Override
         public void onUpgrade(final SQLiteDatabase db, int oldVersion, int newVersion) {
             Log.w(TAG, "Upgrading database from version " + oldVersion + " to "
-                    + newVersion + ", which will destroy all old data");
+                    + newVersion + ", which will try to loose as few as possible of the old data");
             table_upgrade(db, WEATHERS_TABLE_NAME, new Job<Void>() {
             	public void perform(Void t, Object[] parms) throws Exception {
             		onCreate(db);

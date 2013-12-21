@@ -1,13 +1,19 @@
 package com.applang.berichtsheft.test;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Method;
 import java.nio.charset.Charset;
 import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.Map;
+import java.util.regex.MatchResult;
+import java.util.regex.Pattern;
 
 import org.json.JSONArray;
 
@@ -23,9 +29,12 @@ import android.os.Message;
 import android.util.Log;
 
 import com.applang.UserContext;
+import com.applang.Util.Function;
+import com.applang.Util.ValMap;
 import com.applang.berichtsheft.R;
 import com.applang.berichtsheft.BerichtsheftActivity;
 import com.applang.provider.NotePad.NoteColumns;
+import com.applang.provider.NotePad;
 import com.applang.provider.NotePadProvider;
 import com.applang.provider.PlantInfo;
 import com.applang.provider.PlantInfo.Plants;
@@ -35,7 +44,6 @@ import com.applang.provider.WeatherInfoProvider;
 
 import static com.applang.Util.*;
 import static com.applang.Util1.*;
-import static com.applang.Util2.*;
 import static com.applang.VelocityUtil.*;
 
 public class ProviderTests extends InfraTests<BerichtsheftActivity>
@@ -85,6 +93,128 @@ public class ProviderTests extends InfraTests<BerichtsheftActivity>
     	if (prefs.getBoolean("keepData", false)) {
 			impex(mActivity, fileNames, true);
 		}
+	}
+    
+	public int generateNotes(boolean clear, 
+			Pattern expat, int grp, 
+			int[][] dates, String[] titles,
+			boolean randomizeTimeOfDay, 
+			Integer... params) throws Exception 
+	{
+		InputStream is = mActivity.getResources().getAssets().open("Kein Fehler im System.txt");
+		MatchResult[] excerpts = excerptsFrom(is, expat);
+		Integer start = param(0, 0, params);
+		Integer length = param(dates != null ? dates.length : 0, 1, params);
+		Uri uri = NotePadProvider.contentUri(0);
+		ContentResolver contentResolver = mActivity.getContentResolver();
+		if (clear) {
+			contentResolver.delete(uri, "", null);
+		}
+		int cnt = 0;
+		long time = dateFromTodayInMillis(0);
+		String title = "";
+		for (int i = start; i < excerpts.length; i++) {
+			MatchResult m = excerpts[i];
+			int j = i - start;
+			if (isAvailable(j, titles))
+				title = titles[j];
+			time = dates != null && j < dates.length ?
+					timeInMillis(dates[j][0], dates[j][1], dates[j][2]) : 
+					dateFromTodayInMillis(1, new Date(time), randomizeTimeOfDay);
+			long[] interval = dayInterval(time, 1);
+			ContentValues values = new ContentValues();
+			values.put("note", m.group(grp));
+			values.put("title", title);
+			values.put("created", time);
+			values.put("modified", now());
+			Cursor c = contentResolver.query(uri, strings("_id"), 
+					"created between ? and ? and title = ?", 
+					strings("" + interval[0], "" + (interval[1] - 1), title),
+					null);
+			boolean update = c != null && c.moveToFirst();
+			if (update)
+				assertEquals(1, contentResolver.update(uri, values, "_id=?", strings("" + c.getLong(0))));
+			else
+				assertTrue(contentResolver.insert(uri, values) instanceof Uri);
+			cnt++;
+			if (j >= length - 1)
+				break;
+		}
+		return cnt;
+	}
+
+	public ValMap results(final int kind) {
+		String sql;
+		switch (kind) {
+		case 1:
+			sql = "select count(*) from notes";
+			break;
+		case 0:
+			sql = "select title,count(_id) from notes group by title";
+			break;
+		default:
+			return null;
+		}
+		ContentResolver contentResolver = mActivity.getContentResolver();
+	    return getResults(contentResolver.query(contentUri(NotePad.AUTHORITY, null), null, sql, null, null), 
+		    	new Function<String>() {
+					public String apply(Object... params) {
+						Cursor cursor = param(null, 0, params);
+						switch (kind) {
+						case 1:
+							return "count";
+						case 0:
+							return cursor.getString(0);
+						default:
+							return null;
+						}
+					}
+		        }, 
+		    	new Function<Object>() {
+					public Object apply(Object... params) {
+						Cursor cursor = param(null, 0, params);
+						switch (kind) {
+						case 1:
+							return cursor.getInt(0);
+						case 0:
+							return cursor.getInt(1);
+						default:
+							return null;
+						}
+					}
+		        }
+		    );
+	}
+		
+	Pattern expat = Pattern.compile("(?s)\\n([^\\{\\}]+?)(?=\\n)");
+	int[] date = ints(2012, -Calendar.DECEMBER, 24);
+	
+	public void keinFehlerImSystemm() throws Exception {
+		int[][] dates = new int[][] {date};
+		
+		int length = 19;
+		assertEquals(length, 
+			generateNotes(true, expat, 1, 
+				dates, 
+				strings("1."), 
+				false, 
+				2, length));
+		length = 7;
+		assertEquals(length, 
+			generateNotes(false, expat, 1, 
+				dates, 
+				strings("2."), 
+				false, 
+				21, length));
+		length = 10;
+		assertEquals(length, 
+			generateNotes(false, expat, 1, 
+				dates, 
+				strings("3."), 
+				false, 
+				28, length));
+		
+		assertEquals(36, results(1).get("count"));
 	}
 
 	public static void generateNotePadData(Context context, boolean clear, Object[][] records) {
@@ -148,9 +278,6 @@ public class ProviderTests extends InfraTests<BerichtsheftActivity>
 			{ 3L, "Velocity3", "$kein $ehfler $im $system", now, now }, 	
 			{ 5L, "Fehler", null, 3L, null }, 
 			{ 6L, "Kein", null, 3L, null }, 
-//			{ 7L, null, null, 1L, 5L }, 
-//			{ 8L, null, null, 2L, 5L }, 
-//			{ 9L, null, null, 3L, 5L }, 
 		});
 	}
     
@@ -164,11 +291,10 @@ public class ProviderTests extends InfraTests<BerichtsheftActivity>
     public void testData3() throws Exception {
     	for (String database : databases(mActivity)) 
     		mActivity.deleteDatabase(database);
-    	
+    	keinFehlerImSystemm();
     	String helloVm = readAsset(mActivity, "hello.vm");
     	String[] states = getStateStrings();
-		
-		generateNotePadData(mActivity, true, new Object[][] {
+		generateNotePadData(mActivity, false, new Object[][] {
 			{ 1L, "prompt1", "#set($var=\"\")" +
 					"#prompt(\"name\" $var \"xxx\")#if($var)$var\n#end", null, now() }, 
 			{ 2L, "prompt2", "#set($var=\"\")" +
@@ -420,14 +546,11 @@ public class ProviderTests extends InfraTests<BerichtsheftActivity>
 
     public void testPlantInfoProvider() throws IOException {
 		mActivity.deleteDatabase(PlantInfoProvider.DATABASE_NAME);
-		
         ContentResolver contentResolver = mActivity.getContentResolver();
-        setContentObserver(contentResolver, Plants.CONTENT_URI);
-        
-		generateData(contentResolver, Plants.CONTENT_URI, true, new Object[][] {
+        setContentObserver(contentResolver, PlantInfoProvider.contentUri(0));
+		generateData(contentResolver, Plants.CONTENT_URI, false, new Object[][] {
 			{ 1L, "Paradeiser", "Nachtschattengewächse", "Solanum lycopersicum", "Solanaceae", "" }, 	
 		});
-        
         ContentValues values = new ContentValues();
         values.put(Plants.GROUP, "xitomatl");
         assertEquals(1, contentResolver.update(Plants.CONTENT_URI, 
@@ -445,7 +568,6 @@ public class ProviderTests extends InfraTests<BerichtsheftActivity>
         assertEquals("Solanum lycopersicum", cursor.getString(3));
         assertEquals("xitomatl", cursor.getString(5));
         cursor.close();
-        
         assertEquals(3, contentObservations);
     };
 
@@ -492,6 +614,14 @@ public class ProviderTests extends InfraTests<BerichtsheftActivity>
     };
     
 	public void testMisc() throws Exception {
+		File filesDir = mActivity.getFilesDir();
+		System.out.printf("filesDir : %s\n", filesDir.getPath());
+		FileOutputStream outStream = mActivity.openFileOutput("hello", Context.MODE_PRIVATE);
+		outStream.write("hello".getBytes());
+		outStream.close();
+		System.out.printf("fileList : %s\n", asList(mActivity.fileList()));
+		System.out.printf("dir 'xxx' : %s\n", mActivity.getDir("xxx", Context.MODE_PRIVATE));
+		
     	ValList list = contentAuthorities(providerPackages, mActivity);
 		System.out.println(list);
 		System.out.println(asList(databases(mActivity)));

@@ -38,6 +38,7 @@ import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
 
 import static com.applang.Util.*;
+import static com.applang.Util1.*;
 import static com.applang.Util2.*;
 
 import com.applang.berichtsheft.R;
@@ -300,7 +301,7 @@ public class NotesList extends ListActivity
             return true;
             
         case R.id.menu_item_delete: 
-    		long id = NotePadProvider.parseId(-1, noteUri);
+    		Long id = parseId(-1L, noteUri);
     		String description = NoteEditor.getNoteDescription(getContentResolver(), tableIndex, id);
     		description = getResources().getString(R.string.areUsure, description);
     		areUsure(this, description, new Job<Void>() {
