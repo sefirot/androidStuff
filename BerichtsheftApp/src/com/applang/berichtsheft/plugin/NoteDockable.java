@@ -17,12 +17,12 @@ import org.gjt.sp.jedit.msg.PropertiesChanged;
 
 import com.applang.components.DataView;
 import com.applang.components.NotePicker;
-import com.applang.components.TextEditor;
+import com.applang.components.DoubleFeature;
 
 public class NoteDockable extends JPanel implements EBComponent, DefaultFocusComponent
 {
 	private boolean floating;
-	private TextEditor textEditor;
+	private DoubleFeature doubleFeature;
 	private NotePicker notePicker;
 
 	public NoteDockable(View view, String position) {
@@ -31,16 +31,16 @@ public class NoteDockable extends JPanel implements EBComponent, DefaultFocusCom
 		if (floating)
 			this.setPreferredSize(new Dimension(500, 250));
 		southStatusBar(this);
-		textEditor = new TextEditor();
-		textEditor.installSpellChecker();
-		add(textEditor.getUIComponent(), BorderLayout.CENTER);
-		notePicker = new NotePicker(BerichtsheftPlugin.getDataView(), textEditor, view);
+		doubleFeature = new DoubleFeature();
+		doubleFeature.installSpellChecker();
+		add(doubleFeature.getUIComponent(), BorderLayout.CENTER);
+		notePicker = new NotePicker(BerichtsheftPlugin.getDataView(), doubleFeature, view);
 		add(notePicker, BorderLayout.NORTH);
 	}
 
 	@Override
 	public void focusOnDefaultComponent() {
-		textEditor.requestFocus();
+		doubleFeature.requestFocus();
 	}
 
     @Override

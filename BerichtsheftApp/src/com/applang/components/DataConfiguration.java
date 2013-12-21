@@ -37,7 +37,6 @@ import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.R;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 import com.applang.components.DataView.ProjectionModel;
-import com.applang.components.DataView.Provider;
 
 import static com.applang.SwingUtil.*;
 import static com.applang.Util.*;

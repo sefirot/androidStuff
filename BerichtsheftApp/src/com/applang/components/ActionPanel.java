@@ -221,8 +221,8 @@ public class ActionPanel extends ManagerBase<Object>
 		return evaluate(new UserContext(), script, TAG);
 	}
 	
-	public TextEditor getTextEditor() {
-		return (TextEditor) textComponent;
+	public DoubleFeature getTextEditor() {
+		return (DoubleFeature) textComponent;
 	}
 
 	protected boolean hasTextArea() {

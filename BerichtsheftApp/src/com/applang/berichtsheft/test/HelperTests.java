@@ -18,12 +18,6 @@ import java.io.StringReader;
 import java.io.Writer;
 import java.net.URL;
 import java.nio.charset.Charset;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.attribute.BasicFileAttributeView;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.nio.file.attribute.FileTime;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -93,8 +87,8 @@ import com.applang.UserContext.EvaluationTask;
 import com.applang.berichtsheft.BerichtsheftActivity;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.plugin.DataDockable;
-import com.applang.berichtsheft.plugin.JEditOptionDialog;
 import com.applang.berichtsheft.plugin.DataDockable.TransportBuilder;
+import com.applang.berichtsheft.plugin.JEditOptionDialog;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 import com.applang.components.AndroidBridge;
 import com.applang.components.DataView;
@@ -102,10 +96,10 @@ import com.applang.components.DataView.DataModel;
 import com.applang.components.DataView.ProjectionModel;
 import com.applang.components.DatePicker;
 import com.applang.components.ProfileManager;
+import com.applang.components.Provider;
 import com.applang.components.ScriptManager;
-import com.applang.components.TextEditor;
+import com.applang.components.DoubleFeature;
 import com.applang.components.WeatherManager;
-import com.applang.components.DataView.Provider;
 import com.applang.provider.NotePadProvider;
 import com.applang.provider.WeatherInfoProvider;
 import com.applang.provider.WeatherInfo.Weathers;
@@ -140,40 +134,8 @@ public class HelperTests extends TestCase
 		}
 	}
 	
-	File keinFehlerFile = new File(relativePath(), "bin/com/applang/berichtsheft/test/Kein Fehler im System.txt");
+	File keinFehlerFile = new File(new BerichtsheftActivity().getDataDirFile(), "../../assets/Kein Fehler im System.txt");
 
-	public static void symbolicLinks(File dir, String targetDir, String...names) throws Exception {
-		for (String name : names) {
-			Path link = Paths.get(new File(dir, name).getPath());
-			link.toFile().delete();
-			Path target = Paths.get(new File(targetDir, name).getCanonicalPath());
-			Files.createSymbolicLink(link, target);
-		}
-	}
-	
-	public static FileTime getFileTime(String filePath, int kind) throws Exception {
-		Path path = Paths.get(filePath);
-	    BasicFileAttributeView view = Files.getFileAttributeView(path, BasicFileAttributeView.class);
-	    BasicFileAttributes attributes = view.readAttributes();
-	    switch (kind) {
-		case 0:
-			return attributes.creationTime();
-		case 1:
-			return attributes.lastModifiedTime();
-		case 2:
-			return attributes.lastAccessTime();
-		default:
-			return null;
-		}
-	}
-	
-	public static long getFileSize(String filePath) throws Exception {
-		Path path = Paths.get(filePath);
-	    BasicFileAttributeView view = Files.getFileAttributeView(path, BasicFileAttributeView.class);
-	    BasicFileAttributes attributes = view.readAttributes();
-	    return attributes.size();
-	}
-	
 	private void setupJEdit(String script, Object...params) throws Throwable {
 		File tempFile = BerichtsheftPlugin.getTempFile("test.bsh");
 		contentsToFile(tempFile, 
@@ -191,7 +153,7 @@ public class HelperTests extends TestCase
 						"doSomethingUseful();", script));
 		String subDirName = BerichtsheftPlugin.NAME;
 		File jarsDir = tempDir(true, subDirName, "settings", "jars");
-		symbolicLinks(jarsDir, ".jedit/jars", 
+		makeLinks(jarsDir, ".jedit/jars", 
 				"BerichtsheftPlugin.jar",
 				"sqlite4java.jar",
 				"Console.jar",
@@ -200,15 +162,15 @@ public class HelperTests extends TestCase
 				"ErrorList.jar",
 				"CommonControls.jar",
 				"kappalayout.jar");
-		symbolicLinks(jarsDir, ".jedit/jars", "sqlite4java");
+		makeLinks(jarsDir, ".jedit/jars", "sqlite4java");
 		File settingsDir = tempDir(false, subDirName, "settings");
-		symbolicLinks(settingsDir, ".jedit", "keymaps");
-		symbolicLinks(settingsDir, ".jedit", "macros");
-		symbolicLinks(settingsDir, ".jedit", "modes");
+		makeLinks(settingsDir, ".jedit", "keymaps");
+		makeLinks(settingsDir, ".jedit", "macros");
+		makeLinks(settingsDir, ".jedit", "modes");
 		settingsDir = tempDir(false, subDirName, "settings", "plugins");
-		symbolicLinks(settingsDir, ".jedit/plugins", "berichtsheft");
+		makeLinks(settingsDir, ".jedit/plugins", "berichtsheft");
 		File commandoDir = tempDir(false, subDirName, "settings", "console");
-		symbolicLinks(commandoDir, ".jedit/console", "commando");
+		makeLinks(commandoDir, ".jedit/console", "commando");
 		copyFile(
 				new File(tempDir(false, subDirName, "settings", "plugins", "berichtsheft"), "jedit.properties"), 
 				new File(tempDir(false, subDirName, "settings"), "properties"));
@@ -429,8 +391,8 @@ public class HelperTests extends TestCase
 
 	public void testEncode() {
 		String uriString = "file:///tmp/temp.db?title=TEXT&note=TEXT&created=INTEGER#notes";
-		println(uriString = encodeUri(uriString, false));
-		println(uriString = encodeUri(uriString, true));
+		println(uriString = codeUri(uriString, false));
+		println(uriString = codeUri(uriString, true));
 		println(uriString = encodeXml(uriString, false));
 		println(uriString = encodeXml(uriString, true));
 	}
@@ -629,7 +591,7 @@ public class HelperTests extends TestCase
 		result = provider.updateOrInsert(uriString, profile, projection, pk, values);
 		assertNotNull(result);
 		assertTrue(result instanceof Integer);
-		assertThat((int)result, is(greaterThan(0)));
+		assertThat((Integer)result, is(greaterThan(0)));
 		
 		projection.insert(0, pk, null);
 		values.putNull(pk.toString());
@@ -692,7 +654,7 @@ public class HelperTests extends TestCase
 		String[] full = toStrings(fullProjection(flavor));
 		println(com.applang.Util2.toString(provider.query(uriString, full)));
 		Object[][] mods = provider.query(uriString, strings("_id","modified","title"));
-//		println(com.applang.Util2.toString(mods));
+//		println(com.applang.toString(mods));
 		String template = stringValueOf(profile.get("template"));
     	ValList list = builder.evaluateTemplate(template, profile);
 		BidiMultiMap projection = builder.elaborateProjection(list.toArray(), provider.info.getList("name"), provider.getTableName());
@@ -728,7 +690,7 @@ public class HelperTests extends TestCase
 		for (int i = 0; i < mods.length; i++) {
 			Object[] mod = mods[i];
 			Object[][] m = provider.query(uriString, strings("modified"), "_id=?", strings(mod[0].toString()));
-			if ((long)m[0][0] > (long)mod[1])
+			if ((Long)m[0][0] > (Long)mod[1])
 				println(String.format("record '%s' updated", mod[2]));
 		}
 	}
@@ -1268,7 +1230,7 @@ public class HelperTests extends TestCase
 						public void perform(String result, Object[] parms) throws Exception {
 							if (result == null)
 								return;
-							int type = (int) BaseDirective.options.get(result);
+							int type = (Integer) BaseDirective.options.get(result);
 							String prompt = "";
 							ValList values = vlist();
 							switch (type) {
@@ -1338,7 +1300,7 @@ public class HelperTests extends TestCase
 	
 	public void testJOrtho() {
 		BerichtsheftPlugin.setupSpellChecker(BerichtsheftApp.berichtsheftPath());
-		final TextEditor textEditor = new TextEditor();
+		final DoubleFeature doubleFeature = new DoubleFeature();
     	Deadline.wait = 2000;
     	showFrame(null, 
 				"Spellchecker",
@@ -1346,18 +1308,18 @@ public class HelperTests extends TestCase
 					public Component[] apply(final Component comp, Object[] parms) {
 				        try {
 //				        	textEditor.createBufferedTextArea("text", "/modes/text.xml");
-							textEditor.setText(
+							doubleFeature.setText(
 								new Scanner(new File("/home/lotharla/work/Workshop/Examples/poem.txt"))
 									.useDelimiter("\\Z").next());
 						} catch (Exception e) {}
-				        Component component = textEditor.getUIComponent();
+				        Component component = doubleFeature.getUIComponent();
 				        component.setPreferredSize(new Dimension(400, 400));
 						return components(component);
 					}
 				}, 
 				new UIFunction() {
 					public Component[] apply(Component comp, Object[] parms) {
-						textEditor.installSpellChecker();
+						doubleFeature.installSpellChecker();
 //						textEditor.spellcheck();
 						return null;
 					}

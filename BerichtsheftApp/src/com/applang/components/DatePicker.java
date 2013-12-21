@@ -614,8 +614,8 @@ public class DatePicker
 		public static long[] getInterval() {
 			if (isAvailable(0, datesInMillis.getKeys())) 
 				return new long[] {
-					(long)datesInMillis.getValues().get(-1),
-					(long)datesInMillis.getValues().get(0)
+					(Long)datesInMillis.getValues().get(-1),
+					(Long)datesInMillis.getValues().get(0)
 				};
 			return null;
 		}

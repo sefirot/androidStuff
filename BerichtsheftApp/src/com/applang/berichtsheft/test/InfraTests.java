@@ -112,12 +112,12 @@ public class InfraTests<T extends Activity> extends TestCase
 			traverse(cursor, new Job<Cursor>() {
 				public void perform(Cursor c, Object[] params) throws Exception {
 					println(getRow(c));
-					params[0] = 1 + (int)params[0];
+					params[0] = 1 + (Integer)params[0];
 				}
 			}, 
 			params));
 		contentProvider.close();
-		assertEquals((int)params[0], recordCount(context, uri));
+		assertEquals((Integer)params[0], (Integer)recordCount(context, uri));
 		
 		uri = contentUri(NotePad.AUTHORITY, null);
 		assertFalse(notNullOrEmpty(uri.getPath()));

@@ -80,6 +80,8 @@ dataview.prompt-update.message=Update this record ?
 berichtsheft.export-document.message.1=document '%s' updated
 berichtsheft.export-document.message.2=problems processing the document, see Utilities->Troubleshooting->Activity log !!!
 dataview.sqlite-required.message=Only SQLite database files are acceptable
+texteditor.no-undo.message=Unable to undo: %s
+texteditor.no-redo.message=Unable to redo: %s
 
 # plugin option pane
 plugin.com.applang.berichtsheft.plugin.BerichtsheftPlugin.option-pane=berichtsheft

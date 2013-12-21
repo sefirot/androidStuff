@@ -42,7 +42,6 @@ import android.net.Uri;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 import com.applang.components.DataView.DataModel;
-import com.applang.components.DataView.Provider;
 import com.applang.provider.NotePad;
 import com.applang.provider.NotePadProvider;
 import com.applang.provider.NotePad.NoteColumns;
@@ -60,11 +59,11 @@ public class NotePicker extends ActionPanel
 				BerichtsheftApp.loadSettings();
 				BerichtsheftPlugin.setupSpellChecker(BerichtsheftApp.berichtsheftPath());
 				final DataView dataView = new DataView();
-				final TextEditor textEditor = new TextEditor();
-				textEditor.createBufferedTextArea("velocity", "/modes/velocity_pure.xml");
-				textEditor.installSpellChecker();
+				final DoubleFeature doubleFeature = new DoubleFeature()
+						.createBufferedTextArea("velocity", "/modes/velocity_pure.xml");
+				doubleFeature.installSpellChecker();
 				String title = "Berichtsheft database";
-				NotePicker notePicker = new NotePicker(dataView, textEditor, 
+				NotePicker notePicker = new NotePicker(dataView, doubleFeature, 
 						null,
 						title, 1);
 				createAndShowGUI(title, 
@@ -76,7 +75,7 @@ public class NotePicker extends ActionPanel
 								JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
 								splitPane.setResizeWeight(0.5);
 								splitPane.setOneTouchExpandable(true);
-								Component target = textEditor.getUIComponent();
+								Component target = doubleFeature.getUIComponent();
 								splitPane.setTopComponent(target);
 								Component c = findComponent(dataView, "south");
 								if (c != null)
@@ -133,7 +132,7 @@ public class NotePicker extends ActionPanel
 	
 	private JTextField date = null;
 	
-	public NotePicker(DataView dataView, TextEditor textArea, Object... params) {
+	public NotePicker(DataView dataView, DoubleFeature textArea, Object... params) {
 		super(textArea, params);
 		textArea.setOnTextChanged(new Job<ITextComponent>() {
 			public void perform(ITextComponent t, Object[] params) throws Exception {
@@ -900,10 +899,10 @@ public class NotePicker extends ActionPanel
 	@Override
 	public Object select(Object...args) {
 		args = reduceDepth(args);
-		boolean rowidGiven = !isAvailable(0, args);
+		boolean pkValue = !isAvailable(0, args);
 		String dateString = param(null, 0, args);
 		String pattern = param(null, 1, args);
-		if (rowidGiven || notNullOrEmpty(dateString) || bausteinEditing())
+		if (pkValue || notNullOrEmpty(dateString) || bausteinEditing())
 			try {
 				Long time = toTime(dateString, DatePicker.calendarFormat);
 				long[] interval = dayInterval(time, 1);
@@ -916,8 +915,8 @@ public class NotePicker extends ActionPanel
 				else {
 					Object[][] result = provider.query(uriString, 
 							strings("created", "title", "note", "_id"), 
-							whereClause(rowidGiven), 
-							rowidGiven ? 
+							whereClause(pkValue), 
+							pkValue ? 
 									strings("" + pkValue()) : 
 									(bausteinEditing() ? 
 											strings(pattern) :
@@ -932,8 +931,8 @@ public class NotePicker extends ActionPanel
 		return null;
 	}
 	
-	private String whereClause(boolean rowidGiven) {
-		if (rowidGiven)
+	private String whereClause(boolean pkValue) {
+		if (pkValue)
 			return pk + "=?";
 		else
 			return bausteinEditing() ? 
@@ -1006,9 +1005,7 @@ public class NotePicker extends ActionPanel
 			}
 			else {
 				rec = (Object[]) select(rec);
-				return provider.update(uriString, values, 
-						whereClause(true), 
-						strings(rec[3].toString()));
+				return provider.update(appendId(uriString, (Long) rec[3]), values);
 			}
 		}
 	}
@@ -1030,11 +1027,8 @@ public class NotePicker extends ActionPanel
 		if (rec != null) {
 			if (usingJdbc())
 				done = remove(false, rec[1].toString(), rec[0].toString());
-			else {
-				done = provider.delete(uriString, 
-						whereClause(true), 
-						strings(rec[3].toString())) > 0;
-			}
+			else 
+				done = 0 < provider.delete(appendId(uriString, (Long) rec[3]));
 		}
 		if (done) {
 			clear();
@@ -1045,7 +1039,7 @@ public class NotePicker extends ActionPanel
 	
 	@Override
 	public void setText(String text) {
-		TextEditor editor = getTextEditor();
+		DoubleFeature editor = getTextEditor();
 		updateText(editor, text);
 		editor.undo.discardAllEdits();
 	}

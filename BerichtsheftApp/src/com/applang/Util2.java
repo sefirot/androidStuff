@@ -21,6 +21,12 @@ import java.io.StringWriter;
 import java.io.Writer;
 import java.lang.reflect.Method;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributeView;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -62,8 +68,6 @@ import org.w3c.dom.CDATASection;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-
-import com.applang.Util.ValMap;
 
 import android.app.Activity;
 import android.content.Context;
@@ -161,10 +165,13 @@ public class Util2
 					properties.load(fis);
 					fis.close();
 				}
-			} catch (FileNotFoundException e) {
-			} catch (Exception e) {
+			} 
+			catch (FileNotFoundException e) {
+			} 
+			catch (Exception e) {
 				Log.e(TAG, "Settings.load", e);
-			} finally {
+			} 
+			finally {
 				if (dec != null)
 					dec.close();
 			}
@@ -1130,22 +1137,42 @@ public class Util2
 	    }
 	    return classes.toArray(new Class[classes.size()]);
 	}
-	
-	public static String readAsset(Activity activity, String fileName) {
-        StringBuffer sb = new StringBuffer();
-        try {
-			String path = pathCombine("/assets", fileName);
-			InputStream is = Resources.class.getResourceAsStream( path );
-			while( true ) {
-			    int c = is.read();
-	            if( c < 0 )
-	                break;
-			    sb.append( (char)c );
-			}
-		} catch (Exception e) {
-			Log.e(TAG, "readAsset", e);
+
+	public static FileTime getFileTime(String filePath, int kind) throws Exception {
+		Path path = Paths.get(filePath);
+	    BasicFileAttributeView view = Files.getFileAttributeView(path, BasicFileAttributeView.class);
+	    BasicFileAttributes attributes = view.readAttributes();
+	    switch (kind) {
+		case 0:
+			return attributes.creationTime();
+		case 1:
+			return attributes.lastModifiedTime();
+		case 2:
+			return attributes.lastAccessTime();
+		default:
+			return null;
 		}
-        return sb.toString();
-    }
+	}
+
+	public static long getFileSize(String filePath) throws Exception {
+		Path path = Paths.get(filePath);
+	    BasicFileAttributeView view = Files.getFileAttributeView(path, BasicFileAttributeView.class);
+	    BasicFileAttributes attributes = view.readAttributes();
+	    return attributes.size();
+	}
+
+	public static byte[] getFileBytes(String filePath) throws Exception {
+		File file = new File(filePath);
+		return Files.readAllBytes(file.toPath());
+	}
+
+	public static void makeLinks(File dir, String targetDir, String...names) throws Exception {
+		for (String name : names) {
+			Path link = Paths.get(new File(dir, name).getPath());
+			link.toFile().delete();
+			Path target = Paths.get(new File(targetDir, name).getCanonicalPath());
+			Files.createSymbolicLink(link, target);
+		}
+	}
 
 }

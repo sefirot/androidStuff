@@ -108,6 +108,7 @@ public class ContentResolver extends Observable
     }
     
 	public final void unregisterContentObserver(ContentObserver observer) {
-		deleteObserver(observer);
+		if (countObservers() > 0)
+			deleteObserver(observer);
 	}
 }

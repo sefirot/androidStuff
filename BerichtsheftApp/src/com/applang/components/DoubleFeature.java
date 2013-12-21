@@ -56,15 +56,15 @@ import static com.applang.Util.*;
 import static com.applang.Util2.*;
 import static com.applang.SwingUtil.*;
 
-class Text_Editor extends JTextArea
+class TextEditor extends JTextArea
 {
-    public Text_Editor() {
+    public TextEditor() {
 		setLineWrap(true);
 		setWrapStyleWord(true);
 		setTabSize(4);
     }
 	
-    public Text_Editor(int rows, int columns) {
+    public TextEditor(int rows, int columns) {
     	super(rows, columns);
 		setTabSize(4);
     }
@@ -75,11 +75,11 @@ class Text_Editor extends JTextArea
 			setEnabled(false);
 		}
 		
-		public void actionPerformed(ActionEvent e) {
+		public void actionPerformed(ActionEvent ev) {
 			try {
 				undo.undo();
-			} catch (CannotUndoException ex) {
-				BerichtsheftPlugin.consoleMessage("Unable to undo: " + ex);
+			} catch (CannotUndoException e) {
+				BerichtsheftPlugin.consoleMessage("texteditor.no-undo.message", e.getMessage());
 			}
 			updateUndoState();
 			redoAction.updateRedoState();
@@ -101,11 +101,11 @@ class Text_Editor extends JTextArea
 			setEnabled(false);
 		}
 		
-		public void actionPerformed(ActionEvent e) {
+		public void actionPerformed(ActionEvent ev) {
 			try {
 				undo.redo();
-			} catch (CannotRedoException ex) {
-				BerichtsheftPlugin.consoleMessage("Unable to redo: " + ex);
+			} catch (CannotRedoException e) {
+				BerichtsheftPlugin.consoleMessage("texteditor.no-redo.message", e.getMessage());
 			}
 			updateRedoState();
 			undoAction.updateUndoState();
@@ -145,7 +145,7 @@ class Text_Editor extends JTextArea
 					menu.insert(new JPopupMenu.Separator(), 2);
 					menuInstalled = true;
 				} catch (Exception e) {
-					Log.log(Log.ERROR, TextEditor.class, e);
+					Log.log(Log.ERROR, DoubleFeature.class, e);
 				}
 			}
 		}
@@ -167,16 +167,16 @@ class Text_Editor extends JTextArea
 	}
 }
 
-public class TextEditor extends Text_Editor implements ITextComponent
+public class DoubleFeature extends TextEditor implements ITextComponent
 {
-	public TextEditor() {
+	public DoubleFeature() {
 	}
 
-    public TextEditor(int rows, int columns) {
+    public DoubleFeature(int rows, int columns) {
     	super(rows, columns);
     }
 
-	public TextEditor(View view) {
+	public DoubleFeature(View view) {
 		setView(view);
 		if (getView() != null) {
 			messRedirection = new Function<String>() {
@@ -249,7 +249,7 @@ public class TextEditor extends Text_Editor implements ITextComponent
 		}
     }
 
-	public TextEditor createBufferedTextArea(String modeName, String modeFileName) {
+	public DoubleFeature createBufferedTextArea(String modeName, String modeFileName) {
 		boolean useEmbedded = false;
 		if (useEmbedded && BerichtsheftPlugin.insideJEdit()) {
 			textAreas[0] = new JEditEmbeddedTextArea() {
@@ -259,7 +259,7 @@ public class TextEditor extends Text_Editor implements ITextComponent
 				@Override
 				public void createPopupMenu(MouseEvent evt) {
 					popup = new JPopupMenu();
-					TextEditor.this.createPopupMenu(this, popup);
+					DoubleFeature.this.createPopupMenu(this, popup);
 				}
 			};
 		}
@@ -292,7 +292,7 @@ public class TextEditor extends Text_Editor implements ITextComponent
 				@Override
 				public void createPopupMenu(MouseEvent evt) {
 					popup = new JPopupMenu();
-					TextEditor.this.createPopupMenu(this, popup);
+					DoubleFeature.this.createPopupMenu(this, popup);
 				}
 			};
 		}
@@ -465,23 +465,14 @@ public class TextEditor extends Text_Editor implements ITextComponent
 		else
 			return super.getSelectedText();
 	}
-
-	@Override
-	public void addKeyListener(KeyListener l) {
-		TextArea textArea = getTextArea();
-		if (textArea != null)
-			textArea.addKeyListener(l);
-		else
-			super.addKeyListener(l);
-	}
 	
 	private Job<ITextComponent> onTextChanged = null;
 	
 	private void update() {
 		try {
-			onTextChanged.perform(TextEditor.this, objects());
+			onTextChanged.perform(DoubleFeature.this, objects());
 		} catch (Exception e) {
-			Log.log(Log.ERROR, TextEditor.class, e);
+			Log.log(Log.ERROR, DoubleFeature.class, e);
 		}
 	}
 
@@ -520,18 +511,24 @@ public class TextEditor extends Text_Editor implements ITextComponent
 				}
 			});
 		}
-		else {
-			super.getDocument().addDocumentListener(new DocumentListener() {
-				public void removeUpdate(DocumentEvent e) {
-					update();
-				}
-				public void insertUpdate(DocumentEvent e) {
-					update();
-				}
-				public void changedUpdate(DocumentEvent e) {
-					update();
-				}
-			});
-		}
+		super.getDocument().addDocumentListener(new DocumentListener() {
+			public void removeUpdate(DocumentEvent e) {
+				update();
+			}
+			public void insertUpdate(DocumentEvent e) {
+				update();
+			}
+			public void changedUpdate(DocumentEvent e) {
+				update();
+			}
+		});
+	}
+
+	@Override
+	public void addKeyListener(KeyListener keyListener) {
+		TextArea textArea = getTextArea();
+		if (textArea != null)
+			textArea.addKeyListener(keyListener);
+		super.addKeyListener(keyListener);
 	}
 }

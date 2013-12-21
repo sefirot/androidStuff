@@ -2,6 +2,8 @@ package android.content;
 
 import java.awt.Point;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.util.Map;
 
 import android.content.res.Resources;
@@ -39,7 +41,6 @@ public class Context
     public static final int MODE_PRIVATE = 0x0000;
     public static final int MODE_WORLD_READABLE = 0x0001;
     public static final int MODE_WORLD_WRITEABLE = 0x0002;
-    public static final int MODE_APPEND = 0x8000;
     
     private final Object mSync = new Object();
     private File mDatabasesDir;
@@ -104,7 +105,8 @@ public class Context
     	return mPackageInfo != null ? mPackageInfo.getPackageName() : "";
     }
     
-    private File getDataDirFile() {
+    //	NOTE	this is NOT Android API
+    public File getDataDirFile() {
         if (mPackageInfo != null) {
             return mPackageInfo.getDataDirFile();
         }
@@ -141,27 +143,32 @@ public class Context
 	
     private String flavor = null;
     
+    //	NOTE	this is NOT Android API
 	public String getFlavor() {
 		return flavor;
 	}
 
+    //	NOTE	this is NOT Android API
 	public void setFlavor(String flavor) {
 		this.flavor = flavor;
 	}
 
 	private BidiMultiMap databasePaths = bmap(2);
 	
+    //	NOTE	this is NOT Android API
 	public void registerFlavor(String flavor, String path) {
 		String name = database(flavor);
 		databasePaths.putValue(name, path);
 		setFlavor(flavor);
 	}
 	
+    //	NOTE	this is NOT Android API
 	public boolean unregisterFlavor(String flavor) {
 		String name = database(flavor);
 		return databasePaths.removeKey(name);
 	}
 
+    //	NOTE	this is NOT Android API
 	public String getDatabasePath(Uri uri) {
 		if (uri == null)
 			return "";
@@ -209,13 +216,24 @@ public class Context
 	}
 
 	public String[] fileList() {
-		// TODO Auto-generated method stub
-		return null;
+		File[] files = getFilesDir().listFiles();
+		String[] names = new String[files.length];
+		for (int i = 0; i < names.length; i++) {
+			names[i] = files[i].getName();
+		}
+		return names;
+	}
+	
+	public FileOutputStream openFileOutput(String name, int mode) throws FileNotFoundException {
+		return new FileOutputStream(new File(getFilesDir(), name));
+	}
+
+	public File getFilesDir() {
+		return new File(getDataDirFile(), "files");
 	}
 
 	public File getDir(String name, int mode) {
-		// TODO Auto-generated method stub
-		return null;
+		return new File(getDataDirFile(), String.format("app_%s", name));
 	}
 
 	public Resources getResources() {
@@ -244,7 +262,9 @@ public class Context
      * @see #MODE_WORLD_WRITEABLE
      */
     public SharedPreferences getSharedPreferences(final String path, int mode) {
-    	Settings.load(path);
+    	if (Settings.properties == null) {
+    		Settings.load(path);
+    	}
     	return new SharedPreferences() {
 			public Map<Object, ?> getAll() {
 				return Settings.properties;

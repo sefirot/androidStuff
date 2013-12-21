@@ -40,9 +40,9 @@ import android.net.Uri;
 import com.applang.Util.Job;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.components.DataView;
-import com.applang.components.DataView.Provider;
 import com.applang.components.DatePicker;
 import com.applang.components.ProfileManager;
+import com.applang.components.Provider;
 import com.applang.components.ScriptManager;
 import com.applang.components.WeatherManager;
 import com.applang.provider.WeatherInfo;
@@ -513,7 +513,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 		boolean retval = true;
 		try {
 			if (dockable != null)
-				dockable.dataView.wireObserver(true);
+				dockable.dataView.wireObserver(dockable.dataView.getContext().getContentResolver(), true);
 			final TransportBuilder builder = new TransportBuilder();
 			if ("push".equals(oper)) {
 				ValMap profile = ProfileManager.getProfileAsMap();
@@ -667,7 +667,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 					else if (result instanceof Uri)
 						results[0]++;
 					else if (result != null)
-						results[1] += (int) result;
+						results[1] += (Integer) result;
 					return result;
 				}
 			};

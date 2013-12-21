@@ -40,7 +40,7 @@ import org.gjt.sp.util.Log;
 
 import com.applang.components.AndroidBridge;
 import com.applang.components.DataView;
-import com.applang.components.TextEditor;
+import com.applang.components.DoubleFeature;
 import com.inet.jortho.FileUserDictionary;
 import com.inet.jortho.SpellChecker;
 
@@ -157,22 +157,22 @@ public class BerichtsheftPlugin extends EditPlugin {
 	}
 	
 	public static void spellcheckSelection(View view) {
-		final TextEditor jEditor = getJEditor();
+		final DoubleFeature jEditor = getJEditor();
 		String text = jEditor.getSelectedText();
 		if (nullOrEmpty(text)) {
 			consoleMessage("berichtsheft.no-text-selection.message");
 			return; 
 		}
-		final TextEditor textEditor = new TextEditor();
-		textEditor.setText(text);
+		final DoubleFeature doubleFeature = new DoubleFeature();
+		doubleFeature.setText(text);
 		Job<Void> takeThis = new Job<Void>() {
 			public void perform(Void t, Object[] params) throws Exception {
-				String text = textEditor.getText();
+				String text = doubleFeature.getText();
 				jEditor.setSelectedText(text);
 			}
 		};
-		textEditor.installSpellChecker();
-		Component component = textEditor.getUIComponent();
+		doubleFeature.installSpellChecker();
+		Component component = doubleFeature.getUIComponent();
 		component.setPreferredSize(new Dimension(400,300));
 		new JEditOptionDialog(view, 
 				getProperty("berichtsheft.spellcheck-selection.title"), 
@@ -182,7 +182,7 @@ public class BerichtsheftPlugin extends EditPlugin {
 				Behavior.MODAL, 
 				getProperty("manager.action-SPELLCHECK.icon"), 
 				takeThis);
-		textEditor.uninstallSpellChecker();
+		doubleFeature.uninstallSpellChecker();
 	}
 	
 	//	NOTE	leaves standard-out going to log
@@ -279,8 +279,8 @@ public class BerichtsheftPlugin extends EditPlugin {
 		BerichtsheftShell.print(msg, NEWLINE);
 	}
 	
-	public static TextEditor getJEditor() {
-		return new TextEditor(jEdit.getActiveView());
+	public static DoubleFeature getJEditor() {
+		return new DoubleFeature(jEdit.getActiveView());
 	}
 	
 	public static JComponent getDockable(View view, String name, boolean add) {

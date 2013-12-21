@@ -57,6 +57,7 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
 
+import com.applang.Util2;
 import com.applang.berichtsheft.BerichtsheftActivity;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
@@ -68,7 +69,7 @@ import com.applang.components.DatePicker.Period;
 import com.applang.components.DatePicker;
 import com.applang.components.FormEditor;
 import com.applang.components.NotePicker;
-import com.applang.components.TextEditor;
+import com.applang.components.DoubleFeature;
 import com.applang.components.WeatherManager;
 import com.applang.components.NotePicker.NoteFinder;
 import com.applang.provider.NotePad;
@@ -92,8 +93,8 @@ public class MiscTests extends XMLTestCase
 		super.setUp();
 		underTest = true;
 		BerichtsheftApp.loadSettings();
-		textEditor = new TextEditor();
-		np = new NotePicker(null, textEditor);
+		doubleFeature = new DoubleFeature();
+		np = new NotePicker(null, doubleFeature);
 		if (tempfile.exists())
 			tempfile.delete();
 		contentfile = new File(getSetting("content.xml", BerichtsheftApp.berichtsheftPath("Skripte/content.xml")));
@@ -125,7 +126,7 @@ public class MiscTests extends XMLTestCase
 	    return suite;
 	}
 
-	TextEditor textEditor;
+	DoubleFeature doubleFeature;
 	NotePicker np;
 	
 	public void testDateTime() throws Exception {
@@ -217,7 +218,7 @@ public class MiscTests extends XMLTestCase
 			int[][] dates, String[] categories, 
 			Integer... params) throws Exception 
 	{
-		InputStream is = MiscTests.class.getResourceAsStream("Kein Fehler im System.txt");
+		InputStream is = new BerichtsheftActivity().getResources().getAssets().open("Kein Fehler im System.txt");
 		MatchResult[] excerpts = excerptsFrom(is, expat);
 		
 		Integer start = param(0, 0, params);
@@ -486,7 +487,7 @@ public class MiscTests extends XMLTestCase
 		assertThat(np.comboBoxes[0].getItemAt(3).toString(), is(equalTo("4.")));
 		assertEquals(36, np.lastRow());
 		assertFalse(np.isDirty());
-		textEditor.insert("k", 0);
+		doubleFeature.insert("k", 0);
 		assertTrue(np.isDirty());
 		np.setDate(record[0].toString());
 		np.setTitle(record[1].toString());
@@ -550,7 +551,7 @@ public class MiscTests extends XMLTestCase
                     int[][] dates, String[] categories,
                     Integer... params) throws Exception
     {
-        InputStream is = MiscTests.class.getResourceAsStream("Kein Fehler im System.txt");
+		InputStream is = new BerichtsheftActivity().getResources().getAssets().open("Kein Fehler im System.txt");
         MatchResult[] excerpts = excerptsFrom(is, expat);
         
         Integer start = param(0, 0, params);
@@ -1356,8 +1357,8 @@ public class MiscTests extends XMLTestCase
 		BidiMultiMap bidi = getResultMultiMap(ps, (Object) null);
 		ValList list = bidi.getKeys();
 		boolean retval = list.size() > 0 && 
-				Long.compare((long) list.get(0), interval[0]) >= 0 && 
-				Long.compare((long) list.get(-1), interval[1]) <= 0;
+				Long.compare((Long) list.get(0), interval[0]) >= 0 && 
+				Long.compare((Long) list.get(-1), interval[1]) <= 0;
 		wm.closeConnection();
 		return retval;
 	}
@@ -1377,12 +1378,12 @@ public class MiscTests extends XMLTestCase
 		int[] weekDate = DatePicker.parseWeekDate(dateString);
 		String dokumentPath = BerichtsheftApp.odtDokumentPath("Tagesberichte", weekDate);
 		assertTrue(fileExists(dokumentPath));
-		long docTime = HelperTests.getFileTime(dokumentPath, 1).toMillis();
+		long docTime = Util2.getFileTime(dokumentPath, 1).toMillis();
 		assertThat(docTime/1000, is(greaterThanOrEqualTo(time/1000)));
 		File tempDir = tempDir(false, BerichtsheftApp.NAME, "odt");
     	String content = pathCombine(tempDir.getPath(), "content.xml");
 		String _content = pathCombine(tempDir.getParentFile().getPath(), "_content.xml");
-		assertThat(HelperTests.getFileSize(content), is(greaterThan(HelperTests.getFileSize(_content))));
+		assertThat(Util2.getFileSize(content), is(greaterThan(Util2.getFileSize(_content))));
 		String report = check_transform(2, _content, content);
 		System.out.println(report);
 	}

@@ -447,8 +447,8 @@ public class WeatherManager extends ActionPanel
 		int n = 0;
 		float avg = 0;
 		for (Object val : list)
-			if (-1 < (int)val) {
-				avg += (int)val;
+			if (-1 < (Integer)val) {
+				avg += (Integer)val;
 				n++;
 			}
 		if (n < 1)
@@ -551,7 +551,7 @@ public class WeatherManager extends ActionPanel
 		for (int i = index[1]; i < index[0]; i++) {
 			ValList rec = precip.get(i);
 			long[] ival = interval(rec);
-			double precipitation = (double)rec.get(2);
+			double precipitation = (Double)rec.get(2);
 			double contrib = contribution(interval, ival, precipitation);
 			double isect = old == null ? 0.0 :  
 				intersection(ival, old);
@@ -573,7 +573,7 @@ public class WeatherManager extends ActionPanel
 	
 	private long[] interval(ValList rec) {
 		return new long[]{
-			(long)rec.get(1), (long)rec.get(0)
+			(Long)rec.get(1), (Long)rec.get(0)
 		};
 	}
 	

@@ -130,7 +130,7 @@ public class ScriptManager extends ManagerBase<Element>
 	
 	private static final String ACCEPT_BUTTON_KEY = stringValueOf(defaultOptions(13).get(0));
 	
-	private TextEditor textArea;
+	private DoubleFeature textArea;
 	private JLabel mess;
 
 	public ScriptManager(final View view, Component relative, Object...params) {
@@ -306,7 +306,7 @@ public class ScriptManager extends ManagerBase<Element>
 	
 	private void createUI(final View view, final Container container) {
 		comboBoxes = new JComboBox[] {new JComboBox()};
-		textArea = new TextEditor().createBufferedTextArea("beanshell", "/modes/java.xml");
+		textArea = new DoubleFeature().createBufferedTextArea("beanshell", "/modes/java.xml");
 		
 		JToolBar bar = new JToolBar();
 		container.add(bar, BorderLayout.NORTH);

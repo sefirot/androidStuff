@@ -1,6 +1,7 @@
 package com.applang.components;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Point;
@@ -29,6 +30,7 @@ import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
+import javax.swing.border.MatteBorder;
 import javax.swing.event.CellEditorListener;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ListSelectionListener;
@@ -41,16 +43,10 @@ import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
 import javax.swing.table.TableModel;
 
-import org.gjt.sp.jedit.BeanShell;
 import org.gjt.sp.jedit.View;
-import org.gjt.sp.jedit.bsh.NameSpace;
-import org.gjt.sp.jedit.bsh.UtilEvalError;
-import org.w3c.dom.Element;
 
 import android.app.AlertDialog;
 import android.content.ContentResolver;
-import android.content.ContentUris;
-import android.content.ContentValues;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
@@ -63,7 +59,6 @@ import android.widget.Toast;
 import com.applang.berichtsheft.BerichtsheftActivity;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
-import com.applang.berichtsheft.plugin.JEditOptionDialog;
 
 import static com.applang.Util.*;
 import static com.applang.Util1.*;
@@ -75,7 +70,11 @@ public class DataView extends JPanel implements IComponent
 {
 	public static final String TAG = DataView.class.getSimpleName();
 	
-	Context context = new BerichtsheftActivity();
+	private Context context = new BerichtsheftActivity();
+	public Context getContext() {
+		return context;
+	}
+
 	ContentResolver contentResolver = context.getContentResolver();
 	
 	public DataView() {
@@ -248,18 +247,19 @@ public class DataView extends JPanel implements IComponent
 	}
 	
 	public boolean reload(Object...params) {
+		provider = null;
 		final String sql = param(null, 0, params);
 		return populate(new Job<Void>() {
 			public void perform(Void t, Object[] params) throws Exception {
-				wireObserver(true);
+				wireObserver(contentResolver, true);
 				Uri uri = getUri();
-				String tableName = dbTableName(uri);
 				DataModel model = new DataModel();
 				String s = sql;
 				ProjectionModel projectionModel = dc.getProjectionModel();
 				if (projectionModel != null) {
 					BidiMultiMap projection = projectionModel.getProjection();
 					model.setProjection(projection);
+					String tableName = dbTableName(uri);
 					s = "select " + join(",", projection.getKeys().toArray()) + " from " + tableName;
 				}
 				if (nullOrEmpty(s) && sqlBox.isEnabled())
@@ -273,7 +273,7 @@ public class DataView extends JPanel implements IComponent
 					comboEdit(sqlBox).setText(getSql());
 				else
 					comboEdit(sqlBox).setText("");
-				wireObserver(false);
+				wireObserver(contentResolver, false);
 			}
 		});
     }
@@ -284,14 +284,37 @@ public class DataView extends JPanel implements IComponent
 	
 	private ContentObserver contentObserver = new ContentObserver(null) {
 		public void onChange(Object arg) {
-			DataConfiguration dc = getDataConfiguration();
-			String path = dc.getContext().getDatabasePath((Uri)arg);
-			if (path.startsWith(dc.getPath()))
+			table.borderedRowid = null;
+			if (sqlBox.isVisible())
 				reload();
+			else {
+				Uri uri = (Uri) arg;
+				Long id = parseId(null, uri);
+				if (id != null) {
+					DataModel model = (DataModel) table.getModel();
+					Object pk = provider.info.get("PRIMARY_KEY");
+					table.rowidColumn = model.columns.indexOf(pk);
+					int row = model.findRowAt(table.rowidColumn, id);
+					ProjectionModel projectionModel = dc.getProjectionModel();
+					Object[] columns = projectionModel.getExpandedProjection().getKeys().toArray();
+					Object[][] result = provider.query(getUriString(), toStrings(columns), pk + "=?", strings("" + id));
+					if (isAvailable(0, result)) {
+						if (row > -1)
+							model.setValues(false, row, result[0]);
+						else
+							model.addValues(false, result[0]);
+					}
+					else if (row > -1) {
+						model.setValues(false, row, null);
+					}
+					table.borderedRowid = id;
+					model.fireTableDataChanged();
+				}
+			}
 		}
 	};
 
-	public void wireObserver(boolean unwire) {
+	public void wireObserver(ContentResolver contentResolver, boolean unwire) {
 		table.setAutoCreateRowSorter(!unwire);
 		if (unwire) 
 			contentResolver.unregisterContentObserver(contentObserver);
@@ -303,6 +326,8 @@ public class DataView extends JPanel implements IComponent
 		resetDataConfiguration();
 		table.setModel(new DataModel());
 	}
+	
+	private Provider provider = null;
 	
 	private boolean populate(Job<Void> populate) {
 		boolean retval = true;
@@ -322,18 +347,20 @@ public class DataView extends JPanel implements IComponent
 		return retval;
     }
 	
-	public boolean populate(final Provider provider, final Object...params) {
-//		dc = new DataConfiguration(provider);
+	public boolean populate(Provider provider, final Object...params) {
+		this.provider = provider;
+		wireObserver(contentResolver, true);
 		return populate(new Job<Void>() {
 			public void perform(Void t, Object[] parms) throws Exception {
-				table.setAutoCreateRowSorter(false);
+				Provider provider = DataView.this.provider;
+				wireObserver(provider.getContext().getContentResolver(), true);
 				ProjectionModel projectionModel = dc.getProjectionModel();
 				BidiMultiMap projection = projectionModel.getExpandedProjection();
 				DataModel model = provider.query(getUriString(), 
 						projection, 
 						params);
 				table.setModel(valueOrElse(new DataModel(), model));
-				table.setAutoCreateRowSorter(true);
+				wireObserver(provider.getContext().getContentResolver(), false);
 			}
 		});
 	}
@@ -634,7 +661,7 @@ public class DataView extends JPanel implements IComponent
 
 		public ProjectionModel(Provider provider) {
 			setFlavor(provider.getFlavor());
-			tableName = provider.tableName;
+			tableName = provider.getTableName();
 			initialize(provider.info);
 			int pkColumn = info.getList("name").indexOf(info.get("PRIMARY_KEY"));
 			if (pkColumn > -1)
@@ -955,6 +982,28 @@ public class DataView extends JPanel implements IComponent
 			return values;
 		}
 		
+		public int findRowAt(int columnIndex, Object value) {
+			if (columnIndex > -1)
+				for (int i = 0; i < getRowCount(); i++) 
+					if (data.get(i).get(columnIndex).equals(value))
+						return i;
+			return -1;
+		}
+	    
+		public void setValues(boolean convert, int rowIndex, Object[] values) {
+			if (values != null) {
+				Vector<Object> rec = data.get(rowIndex);
+				for (int i = 0; i < values.length; i++) {
+					Object value = values[i];
+					if (convert && hasConversion(i)) 
+						value = ScriptManager.doConversion(value, conversions[i], "pull");
+					rec.set(i, value);
+				}
+			}
+			else
+				data.remove(rowIndex);
+		}
+		
 		@Override
 		public Object getValueAt(int rowIndex, int columnIndex) {
 			return data.get(rowIndex).get(index(columnIndex));
@@ -1000,6 +1049,9 @@ public class DataView extends JPanel implements IComponent
 			super(cm);
 		}
 		
+		public int rowidColumn = -1;
+		public Long borderedRowid = null;
+		
 		@Override
 	    public Component prepareRenderer(TableCellRenderer renderer, int row, int column) {
 	        Component c;
@@ -1008,8 +1060,8 @@ public class DataView extends JPanel implements IComponent
 			} catch (Exception e) {
 				c = new DefaultTableCellRenderer();
 			}
+			DataModel model = (DataModel) getModel();
 			if (c instanceof JLabel) {
-				DataModel model = (DataModel) getModel();
 				String string = model.renderCellValue(
 						getValueAt(row, column), 
 						convertColumnIndexToModel(column));
@@ -1017,303 +1069,21 @@ public class DataView extends JPanel implements IComponent
 				lbl.setText(string);
 				lbl.setToolTipText(string);
 	        }
+			if (borderedRowid != null) {
+				Object value = model.getValues(false, row)[rowidColumn];
+				if (borderedRowid.equals(value)) {
+					JComponent jc = (JComponent)c;
+					jc.setBorder(new MatteBorder(1, 
+							column < 1 ? 1 : 0, 
+							1, 
+							column > model.getColumnCount() - 2 ? 1 : 0, 
+							Color.RED));
+				}
+			}
 	        return c;
 	    }
 	}
 
-	public static class Provider
-	{
-		private Context context;
-		public Context getContext() {
-			return context;
-		}
-
-		public ContentResolver contentResolver;
-		
-		public Provider(DataView dv) {
-			this(dv.getUriString());
-		}
-		
-		public Provider(String uriString) {
-			this(new BerichtsheftActivity(), uriString);
-		}
-		
-		public Provider(String flavor, final File dbFile, String uriString) {
-			this(Context.contextForFlavor(BerichtsheftActivity.packageName, flavor, dbFile), uriString);
-		}
-		
-		private Provider(Context context, String uriString) {
-			this.context = context;
-			contentResolver = context.getContentResolver();
-			tableName = dbTableName(uriString);
-			info = table_info2(
-					context, 
-					Uri.parse(uriString), 
-					tableName, 
-					context.getFlavor());
-		}
-		
-		private String tableName;
-		public String getTableName() {
-			return tableName;
-		}
-
-		public ValMap info;
-		
-		public String getFlavor() {
-			return context.getFlavor();
-		}
-
-		public Uri makeUri(String uriString) {
-			uriString = valueOrElse("", uriString);
-			String flavor = getFlavor();
-			if (flavor == null)
-				return Uri.parse(uriString);
-			else
-				return contentUri(flavor, tableName);
-		}
-		
-		public Object[][] query(String uriString, String[] columns, Object...params) {
-			Uri uri = makeUri(uriString);
-			String selection = param(null, 0, params);
-			String[] selectionArgs = param(null, 1, params);
-			String sortOrder = param(null, 2, params);
-			try {
-				final ArrayList<Object[]> rows = new ArrayList<Object[]>();
-				Cursor cursor = contentResolver.query(uri, 
-						columns, 
-						selection, selectionArgs, 
-						sortOrder);
-				traverse(cursor, new Job<Cursor>() {
-					public void perform(Cursor c, Object[] params) throws Exception {
-						rows.add(getRow(c).toArray());
-					}
-				});
-				return rows.toArray(new Object[0][]);
-			} catch (Exception e) {
-				BerichtsheftPlugin.consoleMessage("dataview.query.message", stringValueOf(uri), e.getMessage());
-				return null;
-			}
-		}
-		
-		public DataModel query(String uriString, BidiMultiMap projection, Object...params) {
-			String selection = param(null, 0, params);
-			String[] selectionArgs = param(null, 1, params);
-			String sortOrder = param(null, 2, params);
-			Uri uri = makeUri(uriString);
-			try {
-				Cursor cursor = contentResolver.query(uri, 
-						projection.getKeys().toArray(strings()), 
-						selection, selectionArgs, 
-						sortOrder);
-				return new DataModel()
-						.setProjection(projection)
-						.traverse(cursor);
-			} catch (Exception e) {
-				BerichtsheftPlugin.consoleMessage("dataview.query.message", stringValueOf(uri), e.getMessage());
-				return null;
-			}
-		}
-		
-		private Object updateOrInsert_query(Uri uri, 
-				ValMap profile, 
-				BidiMultiMap projection, 
-				String pk, 
-				ContentValues values,
-				Function<Integer> skipThis) throws UtilEvalError
-		{
-			boolean found = false;
-			if (ProfileManager.transportsLoaded() && profile != null) {
-				Object name = profile.get("name");
-				Object flavor = profile.get("flavor");
-				String xpath = "//FLAVOR[@name='" + flavor + "']";
-				xpath += "/FUNCTION[@name='updateOrInsert-clause' and @profile='" + name + "']";
-				Element el = selectElement(ProfileManager.transports, xpath);
-				if (el != null) {
-					String script = el.getTextContent();
-					NameSpace tmp = new NameSpace(BeanShell.getNameSpace(), "transport");
-					tmp.setVariable("values", values);
-					String clause = (String) BeanShell.eval(null, tmp, script);
-					Cursor cursor = null;
-					try {
-						projection.insert(0, pk, null);
-						cursor = contentResolver.query(uri, 
-								projection.getKeys().toArray(strings()), 
-								clause, 
-								null, null);
-						if (cursor.moveToFirst()) {
-							if (skipThis != null) {
-								ValList rec = getRow(cursor);
-								switch (skipThis.apply(projection, rec.toArray())) {
-								case 2:		//	no
-								case 3:		//	no all
-									return 0;
-								case 4:		//	cancel
-									return null;
-								}
-							}
-							else
-								decision = -1;
-							values.put(pk, cursor.getLong(0));
-							found = true;
-						}
-					} 
-					finally {
-						projection.remove(0);
-						if (cursor != null)
-							cursor.close();
-					}
-				}
-			}
-			return found;
-		}
-		
-		private int decision = -1;
-		
-		public Function<Integer> skipThis(final View view, final Object[] items) {
-			return new Function<Integer>() {
-				public Integer apply(Object... params) {
-					switch (decision) {
-					case 1:
-						return 0;
-					case 3:
-						return 2;
-					default:
-						BidiMultiMap projection = param(null, 0, params);
-						DataModel model = 
-								new DataModel().setProjection(projection);
-						model.addValues(false, (Object[])param(null, 1, params));
-						ValList row = vlist();
-						row.add(null);
-						row.addAll(asList(items));
-						model.addValues(false, row.toArray());
-						JTable table = model.makeTable();
-						table.setPreferredScrollableViewportSize(new Dimension(800,100));
-						table.getSelectionModel().setSelectionInterval(1, 1);
-						return decision = new JEditOptionDialog(view, 
-								BerichtsheftPlugin.getProperty("dataview.prompt-update.message"), 
-								"", 
-								new JScrollPane(table), 
-								5, 
-								Behavior.MODAL, 
-								null, null).getResult();
-					}
-				}
-			};
-		}
-		
-		public Object updateOrInsert(String uriString, 
-				ValMap profile, 
-				BidiMultiMap projection, 
-				Object primaryKeyColumnName, 
-				ContentValues values,
-				Object...params) 
-		{
-			Uri uri = makeUri(uriString);
-			try {
-				boolean primaryKey = notNullOrEmpty(primaryKeyColumnName);
-				boolean primaryKeyExtraColumn = primaryKey && 
-						!projection.getKeys().contains(primaryKeyColumnName.toString());
-				if (primaryKeyExtraColumn) {
-					boolean found;
-					Object retval = updateOrInsert_query(uri, 
-							profile, 
-							projection, 
-							primaryKeyColumnName.toString(), 
-							values,
-							param((Function<Integer>)null, 0, params));
-					if (retval instanceof Boolean)
-						found = (boolean) retval;
-					else if (retval instanceof Integer)
-						return retval;
-					else 
-						return null;
-					primaryKeyExtraColumn = !found;
-				}
-				Object retval = null;
-				if (primaryKeyExtraColumn) {
-					values.putNull(primaryKeyColumnName.toString());
-					retval = contentResolver.insert(uri, values);
-				}
-				else if (primaryKey) {
-					String pk = primaryKeyColumnName.toString();
-					Object pkval = values.get(pk);
-					values.remove(pk);
-					retval = contentResolver.update(uri, values, pk + "=?", strings(pkval.toString()));
-				} else 
-					retval = contentResolver.insert(uri, values);
-				return retval;
-			} catch (Exception e) {
-				BerichtsheftPlugin.consoleMessage("dataview.updateOrInsert.message.1", stringValueOf(uri), e.getMessage());
-				return null;
-			}
-		}
-		
-		public int[] pickRecords(View view, JTable table, String uriString, ValMap profile) {
-			DataModel model = (DataModel) table.getModel();
-			BidiMultiMap projection = model.getProjection();
-			Object pk = info.get("PRIMARY_KEY");
-			int[] results = ints(0,0,0);
-			for (int i = 0; i < model.getRowCount(); i++) {
-				int row = table.convertRowIndexToView(i);
-				if (table.isRowSelected(row)) {
-					Object[] items = model.getValues(false, i);
-					ContentValues values = contentValues(info, projection.getKeys(), items);
-					Object result = updateOrInsert(uriString, profile,
-							projection, pk, values, 
-							skipThis(view, items));
-					if (!checkResult(result, ++results[2])) {
-						results = null;
-						break;
-					} 
-					else if (result instanceof Uri)
-						results[0]++;
-					else
-						results[1] += (int) result;
-				}
-			}
-			return results;
-		}
-		
-		public boolean checkResult(Object result, int recno) {
-			if (result != null) {
-				if (result instanceof Uri) {
-					long id = ContentUris.parseId((Uri) result);
-					if (id < 0)
-						BerichtsheftPlugin.consoleMessage("dataview.updateOrInsert.message.3", recno);
-				}
-				else if (result instanceof Integer) {
-					if ((int)result < 1)
-						BerichtsheftPlugin.consoleMessage("dataview.updateOrInsert.message.4", recno);
-				}
-			}
-			else if (decision == 4) {
-				BerichtsheftPlugin.consoleMessage("dataview.updateOrInsert.message.2", recno);
-				return false;
-			}
-			return true;
-		}
-
-		public Uri insert(String uriString, ContentValues values) {
-			Uri uri = makeUri(uriString);
-			return contentResolver.insert(uri, values);
-		}
-
-		public int update(String uriString, ContentValues values, Object...params) {
-			Uri uri = makeUri(uriString);
-			String where = param(null, 0, params);
-			String[] whereArgs = param(null, 1, params);
-			return contentResolver.update(uri, values, where, whereArgs);
-		}
-
-		public int delete(String uriString, Object...params) {
-			Uri uri = makeUri(uriString);
-			String where = param(null, 0, params);
-			String[] whereArgs = param(null, 1, params);
-			return contentResolver.delete(uri, where, whereArgs);
-		}
-	}
-	
 	public static void main(String...args) {
 		BerichtsheftApp.loadSettings();
     	underTest = param("true", 0, args).equals("true");

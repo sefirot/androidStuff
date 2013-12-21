@@ -219,7 +219,6 @@ public class Resources
 	}
 
 	private static void iterateEntry(File p, ResourceURLFilter f, Set<URL> s) throws MalformedURLException, IOException {
-//		com.applang.Util2.println(p);
 		if (p.isDirectory()) {
 			iterateFileSystem(p, f, s);
 		} else if (p.isFile() && p.getName().toLowerCase().endsWith(".jar")) {
@@ -278,5 +277,9 @@ public class Resources
 					Log.e(TAG, "list", e);
 				}
 		}
+	}
+	
+	public AssetManager getAssets() {
+		return new AssetManager();
 	}
 }

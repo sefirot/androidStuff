@@ -67,4 +67,13 @@ push = "push".equals(oper);
 //if (value == void)
 //	return push ? "" : null;
 //else
-//	value;]]></BODY></FUNCTION><PROFILE flavor="com.applang.provider.WeatherInfo" name="wetter" oper="download" recordDecoration="none" recordSeparator="newline"><URL><![CDATA[http://openweathermap.org/city/2931361]]></URL></PROFILE><PROFILE flavor="com.applang.provider.WeatherInfo" name="wetter 4886" oper="download" recordDecoration="none" recordSeparator="newline"><URL><![CDATA[http://openweathermap.org/station/4886]]></URL></PROFILE><PROFILE flavor="com.applang.provider.NotePad" name="file:/tmp/temp.db#notes" oper="pull" recordDecoration="none" recordSeparator="whitespace"><TEMPLATE><![CDATA[`_id`	`title`	`note`	`created|unixepoch`	`modified`]]></TEMPLATE></PROFILE></TRANSPORTS>
+//	value;]]></BODY></FUNCTION><PROFILE flavor="com.applang.provider.WeatherInfo" name="wetter" oper="download" recordDecoration="none" recordSeparator="newline"><URL><![CDATA[http://openweathermap.org/city/2931361]]></URL></PROFILE><PROFILE flavor="com.applang.provider.WeatherInfo" name="wetter 4886" oper="download" recordDecoration="none" recordSeparator="newline"><URL><![CDATA[http://openweathermap.org/station/4886]]></URL></PROFILE><PROFILE flavor="com.applang.provider.NotePad" name="file:/tmp/temp.db#notes" oper="pull" recordDecoration="none" recordSeparator="whitespace"><TEMPLATE><![CDATA[`_id`	`title`	`note`	`created|unixepoch`	`modified`]]></TEMPLATE></PROFILE><FUNCTION name="unixepoch2"><BODY><![CDATA[import com.applang.*;
+push = "push".equals(oper);
+if (value == void)
+	return push ? "" : null;
+pattern = Util.timestampFormat;
+if (push)
+	result = Util.formatDate(value, new Object[]{pattern});
+else 
+	result = Util.toTime(value, new Object[]{pattern});
+result]]></BODY></FUNCTION></TRANSPORTS>

@@ -54,10 +54,10 @@ public class ASTViewer extends ActionPanel
 		SwingUtilities.invokeLater(new Runnable() {
 			@Override
 			public void run() {
-				final TextEditor textEditor = new TextEditor();
-				textEditor.createBufferedTextArea("velocity", "/modes/velocity_pure.xml");
+				final DoubleFeature doubleFeature = new DoubleFeature();
+				doubleFeature.createBufferedTextArea("velocity", "/modes/velocity_pure.xml");
 				String title = "Velocity AST tool";
-				ASTViewer viewer = new ASTViewer(textEditor, 
+				ASTViewer viewer = new ASTViewer(doubleFeature, 
 						null,
 						title);
 				ActionPanel.createAndShowGUI(title, 
@@ -66,7 +66,7 @@ public class ASTViewer extends ActionPanel
 						viewer, 
 						new Function<Component>() {
 							public Component apply(Object...params) {
-								return textEditor.getUIComponent();
+								return doubleFeature.getUIComponent();
 							}
 						});
 			}
@@ -201,7 +201,7 @@ public class ASTViewer extends ActionPanel
 		
 		Job<Object[]> checkout = new Job<Object[]>() {
 			public void perform(Object[] objects, Object[] params) throws Exception {
-				int indents = (int) objects[0];
+				int indents = (Integer) objects[0];
 				Node node = (Node) objects[1];
 				int blocks = Visitor.blockDepth(node);
     			Token t = (Token) objects[2];
@@ -375,7 +375,7 @@ public class ASTViewer extends ActionPanel
         dialog.setResizable(true);
         dialog.setVisible(true);
 		Object value = optionPane.getValue();
-		return value instanceof Integer ? (int) value : JOptionPane.CLOSED_OPTION;
+		return value instanceof Integer ? (Integer) value : JOptionPane.CLOSED_OPTION;
 	}
 	
 	private Dimension size = new Dimension(700, 200);
