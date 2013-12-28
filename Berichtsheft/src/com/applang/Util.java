@@ -9,9 +9,11 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.io.PrintStream;
 import java.io.Reader;
 import java.io.Serializable;
 import java.io.Writer;
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.net.URL;
 import java.nio.channels.FileChannel;
@@ -428,8 +430,7 @@ public class Util
 			return defaultParam;
 	}
 	
-	@SuppressWarnings("unchecked")
-	public static <P extends Object, T extends P> T paramT(T defaultParam, int index, P...params) {
+	public static <P extends Object, T extends P> T param_T(T defaultParam, int index, P...params) {
 		T param = param(defaultParam, index, params);
 		if (isType(defaultParam, param))
 			return param;
@@ -477,6 +478,30 @@ public class Util
 				return new File((String)params[index]);
 		}
 		return defaultParam;
+	}
+
+	public static String toString(Object[][] o) {
+		ValList list = vlist();
+		for (Object object : (Object[])o) 
+			list.add(Arrays.toString((Object[])object));
+		String s = Arrays.toString(list.toArray());
+		return strip(true, strip(false, s , "]") , "[")
+				.replaceAll("(\\],) (\\[)", "$1\n\n$2");
+	}
+
+	public static String toString(ValMap o) {
+		return String.valueOf(o).replaceAll("\\], ", "\\],\n");
+	}
+
+	public static String toString(Object o) {
+		String name = o.getClass().getName();
+		if (name.startsWith("[") && name.endsWith(";")) {
+			String s = "";
+			for (int i = 0; i < Array.getLength(o); i++) 
+				s += (s.length() > 0 ? NEWLINE : "") + toString(Array.get(o, i));
+			return enclose("[", s, "]");
+		}
+		return String.valueOf(o);
 	}
 	
 	public static Object[] objects(Object...params) {
@@ -1171,7 +1196,7 @@ public class Util
 		public BidiMultiMap(ValList...lists) {
 			int size = 0;
 			for (int i = lists.length - 1; i >= 0; i--) {
-				lists[i] = paramT(vlist(), i, lists);
+				lists[i] = param_T(vlist(), i, lists);
 				size = Math.max(size, lists[i].size());
 			}
 			while (lists.length < 2)
@@ -1325,6 +1350,18 @@ public class Util
 				return false;
 			int index = list.indexOf(value);
 			return index > -1 && index == list.lastIndexOf(value);
+		}
+	}
+
+	public static void redirectOutputToFile(String filename, boolean append)
+	{
+		try {
+			PrintStream pout = new PrintStream(
+				new FileOutputStream( filename, append ) );
+			System.setOut( pout );
+			System.setErr( pout );
+		} catch ( IOException e ) {
+			System.err.println("Can't redirect output to file: "+filename );
 		}
 	}
 	

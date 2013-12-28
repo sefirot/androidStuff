@@ -66,7 +66,7 @@ public class NotePadProvider extends ContentProvider
     	}
     }
 
-    public static ContentValues contentValues(Object... args) {
+    public static ContentValues contentValues(int tableIndex, Object... args) {
 		ContentValues values = new ContentValues();
 		if (args.length > 0) values.put(NoteColumns._ID, (Long)args[0]);
 		if (args.length > 1) values.put(NoteColumns.TITLE, (String)args[1]);
@@ -334,7 +334,7 @@ public class NotePadProvider extends ContentProvider
             return noteUri;
         }
 
-        throw new SQLException("Failed to insert row into " + uri);
+        throw new SQLException(String.format("Failed to insert row %s into %s", values, uri));
     }
 
     @Override

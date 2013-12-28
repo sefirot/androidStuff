@@ -40,7 +40,7 @@ public class WeatherInfoProvider extends ContentProvider
 
     private static final UriMatcher sUriMatcher;
 
-    public static ContentValues contentValues(Object... args) {
+    public static ContentValues contentValues(int tableIndex, Object... args) {
 		ContentValues values = new ContentValues();
 		if (args.length > 0) values.put(Weathers._ID, (Long)args[0]);
 		if (args.length > 1) values.put(Weathers.LOCATION, (String)args[1]);

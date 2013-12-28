@@ -29,8 +29,6 @@ import android.os.Message;
 import android.util.Log;
 
 import com.applang.UserContext;
-import com.applang.Util.Function;
-import com.applang.Util.ValMap;
 import com.applang.berichtsheft.R;
 import com.applang.berichtsheft.BerichtsheftActivity;
 import com.applang.provider.NotePad.NoteColumns;
@@ -44,6 +42,7 @@ import com.applang.provider.WeatherInfoProvider;
 
 import static com.applang.Util.*;
 import static com.applang.Util1.*;
+import static com.applang.Util2.*;
 import static com.applang.VelocityUtil.*;
 
 public class ProviderTests extends InfraTests<BerichtsheftActivity>
@@ -230,10 +229,10 @@ public class ProviderTests extends InfraTests<BerichtsheftActivity>
 			int index = Arrays.asList(record).indexOf("ROWID");
 			if (index > -1) 
 				record[index] = id;
-			ContentValues values = NotePadProvider.contentValues(record);
 	        int tableIndex = 
 	    		record[3] == null ? 1 :
 	    		(record[2] == null ? 2 : 0);
+	        ContentValues values = NotePadProvider.contentValues(tableIndex, record);
 			uri = contentResolver.insert(NotePadProvider.contentUri(tableIndex), values);
 	        assertEquals(NoteColumns.CONTENT_ITEM_TYPE, contentResolver.getType(uri));
 	        if (index < 0)
@@ -248,7 +247,7 @@ public class ProviderTests extends InfraTests<BerichtsheftActivity>
 		}
 		try {
 			Class<?> c = Class.forName(uri.getAuthority() + "Provider");
-			Method contentValues = c.getDeclaredMethod("contentValues", Object[].class);
+			Method contentValues = c.getDeclaredMethod("contentValues", Integer.TYPE, Object[].class);
 			for (int i = 0; i < records.length; i++) {
 				Object[] record = records[i];
 				ContentValues values = (ContentValues) contentValues.invoke(null, new Object[]{record});
@@ -294,7 +293,7 @@ public class ProviderTests extends InfraTests<BerichtsheftActivity>
     	keinFehlerImSystemm();
     	String helloVm = readAsset(mActivity, "hello.vm");
     	String[] states = getStateStrings();
-		generateNotePadData(mActivity, false, new Object[][] {
+		generateNotePadData(mActivity, true, new Object[][] {
 			{ 1L, "prompt1", "#set($var=\"\")" +
 					"#prompt(\"name\" $var \"xxx\")#if($var)$var\n#end", null, now() }, 
 			{ 2L, "prompt2", "#set($var=\"\")" +
@@ -441,7 +440,7 @@ public class ProviderTests extends InfraTests<BerichtsheftActivity>
                 assertFalse(note.contains("$"));
                 if (!note.contains("Fehler")) {
                         long refId = cursor.getLong(0);
-                        ContentValues values = NotePadProvider.contentValues(++id, "Fehler", null, refId, null);
+                        ContentValues values = NotePadProvider.contentValues(0, ++id, "Fehler", null, refId, null);
                         list.add(values);
                 }
                 System.out.println(note);
@@ -548,7 +547,7 @@ public class ProviderTests extends InfraTests<BerichtsheftActivity>
 		mActivity.deleteDatabase(PlantInfoProvider.DATABASE_NAME);
         ContentResolver contentResolver = mActivity.getContentResolver();
         setContentObserver(contentResolver, PlantInfoProvider.contentUri(0));
-		generateData(contentResolver, Plants.CONTENT_URI, false, new Object[][] {
+		generateData(contentResolver, PlantInfoProvider.contentUri(0), false, new Object[][] {
 			{ 1L, "Paradeiser", "Nachtschattengewächse", "Solanum lycopersicum", "Solanaceae", "" }, 	
 		});
         ContentValues values = new ContentValues();
@@ -568,7 +567,7 @@ public class ProviderTests extends InfraTests<BerichtsheftActivity>
         assertEquals("Solanum lycopersicum", cursor.getString(3));
         assertEquals("xitomatl", cursor.getString(5));
         cursor.close();
-        assertEquals(3, contentObservations);
+        assertEquals(2, contentObservations);	//	1 insert, 1 update
     };
 
     private String[] PROJECTION_ID = new String[] {
@@ -613,6 +612,7 @@ public class ProviderTests extends InfraTests<BerichtsheftActivity>
 		}
     };
     
+	@SuppressWarnings("rawtypes")
 	public void testMisc() throws Exception {
 		File filesDir = mActivity.getFilesDir();
 		System.out.printf("filesDir : %s\n", filesDir.getPath());
@@ -622,6 +622,17 @@ public class ProviderTests extends InfraTests<BerichtsheftActivity>
 		System.out.printf("fileList : %s\n", asList(mActivity.fileList()));
 		System.out.printf("dir 'xxx' : %s\n", mActivity.getDir("xxx", Context.MODE_PRIVATE));
 		
+		for (String pkg : providerPackages) {
+			Class[] cls = getLocalClasses(pkg, mActivity);
+			System.out.println(com.applang.Util.toString(cls));
+			for (Class cl : filter(asList(cls), false, new Predicate<Class>() {
+				public boolean apply(Class c) {
+					String name = c.getName();
+					return !name.contains("$") && !name.endsWith("Provider");
+				}
+			}))
+				System.out.println(cl.toString());
+		}
     	ValList list = contentAuthorities(providerPackages, mActivity);
 		System.out.println(list);
 		System.out.println(asList(databases(mActivity)));

@@ -36,18 +36,6 @@ import static com.applang.Util.*;
 
 public class Util2
 {
-    public static String resourcePackageName(Activity activity) {
-    	//	needs : android.permission.GET_TASKS
-    	String permission = "android.permission.GET_TASKS";
-        int res = activity.checkCallingOrSelfPermission(permission);
-        if (res == PackageManager.PERMISSION_GRANTED) {
-	        ActivityManager actMngr = (ActivityManager) activity.getSystemService(Context.ACTIVITY_SERVICE);
-	        return actMngr.getRunningTasks(1).get(0).topActivity.getPackageName();
-        }
-        else 
-        	return "";
-    }
-	
 	public static class WorkerThread extends Thread
 	{	
 		public final static int DONE = 0, RUNNING = 1;
@@ -406,6 +394,18 @@ public class Util2
 		
 		private Job<Result> followUp;
 		private Object[] params;
+    }
+	
+    public static String resourcePackageName(Activity activity) {
+    	//	needs : android.permission.GET_TASKS
+    	String permission = "android.permission.GET_TASKS";
+        int res = activity.checkCallingOrSelfPermission(permission);
+        if (res == PackageManager.PERMISSION_GRANTED) {
+	        ActivityManager actMngr = (ActivityManager) activity.getSystemService(Context.ACTIVITY_SERVICE);
+	        return actMngr.getRunningTasks(1).get(0).topActivity.getPackageName();
+        }
+        else 
+        	return "";
     }
 	
 //	NOTE	there is a different method with the same signature in Util2 for Java

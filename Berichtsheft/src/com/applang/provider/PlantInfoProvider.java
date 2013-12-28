@@ -76,14 +76,24 @@ public class PlantInfoProvider extends ContentProvider
 
     private static final UriMatcher sUriMatcher;
 
-    public static ContentValues contentValues(Object... args) {
+    public static ContentValues contentValues(int tableIndex, Object... args) {
 		ContentValues values = new ContentValues();
-		if (args.length > 0) values.put(Plants._ID, (Long)args[0]);
-		if (args.length > 1) values.put(Plants.NAME, (String)args[1]);
-		if (args.length > 2) values.put(Plants.FAMILY, (String)args[2]);
-		if (args.length > 3) values.put(Plants.BOTNAME, (String)args[3]);
-		if (args.length > 4) values.put(Plants.BOTFAMILY, (String)args[4]);
-		if (args.length > 5) values.put(Plants.GROUP, (String)args[5]);
+		switch (tableIndex) {
+		case 0:
+			if (args.length > 0) values.put(Plants._ID, (Long)args[0]);
+			if (args.length > 1) values.put(Plants.NAME, (String)args[1]);
+			if (args.length > 2) values.put(Plants.FAMILY, (String)args[2]);
+			if (args.length > 3) values.put(Plants.BOTNAME, (String)args[3]);
+			if (args.length > 4) values.put(Plants.BOTFAMILY, (String)args[4]);
+			if (args.length > 5) values.put(Plants.GROUP, (String)args[5]);
+			break;
+		case 1:
+			if (args.length > 0) values.put(Pictures._ID, (Long)args[0]);
+			if (args.length > 1) values.put(Pictures.NAME, (String)args[1]);
+			if (args.length > 2) values.put(Pictures.TYPE, (String)args[2]);
+			if (args.length > 5) values.put(Pictures.BLOB, (String)args[3]);
+			break;
+		}
 		return values;
     }
 
