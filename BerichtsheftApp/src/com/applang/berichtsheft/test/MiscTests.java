@@ -487,7 +487,7 @@ public class MiscTests extends XMLTestCase
 		assertThat(np.comboBoxes[0].getItemAt(3).toString(), is(equalTo("4.")));
 		assertEquals(36, np.lastRow());
 		assertFalse(np.isDirty());
-		doubleFeature.insert("k", 0);
+		doubleFeature.getTextEditor().insert("k", 0);
 		assertTrue(np.isDirty());
 		np.setDate(record[0].toString());
 		np.setTitle(record[1].toString());
@@ -1490,22 +1490,5 @@ public class MiscTests extends XMLTestCase
 				}
 			}
 		));
-	}
-	
-	@SuppressWarnings("rawtypes")
-	public void testClasses() throws Exception {
-		for (String pkg : providerPackages) {
-			Class[] cls = getLocalClasses(pkg);
-			for (Class cl : filter(asList(cls), false, new Predicate<Class>() {
-				@Override
-				public boolean apply(Class c) {
-					String name = c.getName();
-					return !name.contains("$") && !name.endsWith("Provider");
-				}
-			}))
-				println(cl);
-		}
-		println(contentAuthorities(providerPackages));
-		println((Object)databases(new BerichtsheftActivity()));
 	}
 }

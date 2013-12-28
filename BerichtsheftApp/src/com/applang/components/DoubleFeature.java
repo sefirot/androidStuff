@@ -1,32 +1,26 @@
 package com.applang.components;
 
-import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
-import java.lang.reflect.Field;
+import java.io.StringWriter;
+import java.io.Writer;
 import java.util.Properties;
 
 import javax.swing.AbstractAction;
-import javax.swing.Action;
+import javax.swing.JComponent;
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-import javax.swing.event.UndoableEditEvent;
-import javax.swing.event.UndoableEditListener;
 import javax.swing.text.Segment;
 import javax.swing.text.Highlighter.Highlight;
-import javax.swing.undo.CannotRedoException;
-import javax.swing.undo.CannotUndoException;
-import javax.swing.undo.UndoManager;
 
+import org.gjt.sp.jedit.EditPane;
 import org.gjt.sp.jedit.IPropertyManager;
 import org.gjt.sp.jedit.JEditBeanShellAction;
 import org.gjt.sp.jedit.Mode;
@@ -42,141 +36,45 @@ import org.gjt.sp.jedit.textarea.JEditEmbeddedTextArea;
 import org.gjt.sp.jedit.textarea.Selection;
 import org.gjt.sp.jedit.textarea.StandaloneTextArea;
 import org.gjt.sp.jedit.textarea.TextArea;
-import org.gjt.sp.util.Log;
 
 import android.app.Activity;
+import android.util.Log;
 
-import com.applang.SwingUtil.PopupAdapter;
-import com.applang.Util.Function;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
-import com.inet.jortho.PopupListener;
 import com.inet.jortho.SpellChecker;
 
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
 import static com.applang.SwingUtil.*;
 
-class TextEditor extends JTextArea
+public class DoubleFeature implements ITextComponent
 {
-    public TextEditor() {
-		setLineWrap(true);
-		setWrapStyleWord(true);
-		setTabSize(4);
-    }
-	
-    public TextEditor(int rows, int columns) {
-    	super(rows, columns);
-		setTabSize(4);
-    }
+    private static final String TAG = DoubleFeature.class.getSimpleName();
 
-	class UndoAction extends AbstractAction {
-		public UndoAction() {
-			super("Undo");
-			setEnabled(false);
-		}
-		
-		public void actionPerformed(ActionEvent ev) {
-			try {
-				undo.undo();
-			} catch (CannotUndoException e) {
-				BerichtsheftPlugin.consoleMessage("texteditor.no-undo.message", e.getMessage());
-			}
-			updateUndoState();
-			redoAction.updateRedoState();
-		}
-		
-		protected void updateUndoState() {
-			if (undo.canUndo()) {
-				putValue(Action.NAME, undo.getUndoPresentationName());
-			} else {
-				putValue(Action.NAME, "Undo");
-			}
-			setEnabled(undo.canUndo());
-		}
-	}
+	JComponent widget = new TextEditor();
 	
-	class RedoAction extends AbstractAction {
-		public RedoAction() {
-			super("Redo");
-			setEnabled(false);
-		}
-		
-		public void actionPerformed(ActionEvent ev) {
-			try {
-				undo.redo();
-			} catch (CannotRedoException e) {
-				BerichtsheftPlugin.consoleMessage("texteditor.no-redo.message", e.getMessage());
-			}
-			updateRedoState();
-			undoAction.updateUndoState();
-		}
-		
-		protected void updateRedoState() {
-			if (undo.canRedo()) {
-				putValue(Action.NAME, undo.getRedoPresentationName());
-			} else {
-				putValue(Action.NAME, "Redo");
-			}
-			setEnabled(undo.canRedo());
-		}
+	public void setWidget(JComponent widget) {
+		this.widget = widget;
+		scrollPane = null;
 	}
-	
-	protected UndoAction undoAction = new UndoAction();
-	protected RedoAction redoAction = new RedoAction();
-	public UndoManager undo = new UndoManager();
-	
-	public void installUndoRedo() {
-		getDocument().addUndoableEditListener(new UndoableEditListener() {
-			public void undoableEditHappened(UndoableEditEvent e) {
-				undo.addEdit(e.getEdit());
-				undoAction.updateUndoState();
-				redoAction.updateRedoState();
-			}
-		});
-		boolean menuInstalled = false;
-		for(MouseListener listener : getMouseListeners()){
-			if (listener instanceof PopupListener) {
-				try {
-					Field f = listener.getClass().getDeclaredField("menu");
-					f.setAccessible(true);
-					JPopupMenu menu = (JPopupMenu) f.get(listener);
-					menu.insert(undoAction, 0);
-					menu.insert(redoAction, 1);
-					menu.insert(new JPopupMenu.Separator(), 2);
-					menuInstalled = true;
-				} catch (Exception e) {
-					Log.log(Log.ERROR, DoubleFeature.class, e);
-				}
-			}
-		}
-		if (!menuInstalled) {
-			JPopupMenu menu = (JPopupMenu) new JPopupMenu();
-			menu.insert(undoAction, 0);
-			menu.insert(redoAction, 1);
-			addMouseListener(new PopupAdapter(menu));
-		}
-	}
-	
-	public void installSpellChecker() {
-		SpellChecker.register(this);
-		installUndoRedo();
-	}
-	
-	public void uninstallSpellChecker() {
-		SpellChecker.unregister(this);
-	}
-}
 
-public class DoubleFeature extends TextEditor implements ITextComponent
-{
+	public JComponent getWidget() {
+		return widget;
+	}
+	
+	public TextEditor getTextEditor() {
+		return widget instanceof TextEditor ? (TextEditor) widget : null;
+	}
+	
 	public DoubleFeature() {
 	}
 
-    public DoubleFeature(int rows, int columns) {
-    	super(rows, columns);
+	public DoubleFeature(int rows, int columns) {
+    	widget = new TextEditor(rows, columns);
     }
 
 	public DoubleFeature(View view) {
+		widget = new TextEditor();
 		setView(view);
 		if (getView() != null) {
 			messRedirection = new Function<String>() {
@@ -189,9 +87,27 @@ public class DoubleFeature extends TextEditor implements ITextComponent
 		}
 	}
 
-	View view = null;
+    @Override
+	public String toString() {
+		Writer writer = write(new StringWriter(), 
+				"DoubleFeature" + "@" + Integer.toHexString(hashCode()));
+//		writer = writeAssoc(writer, "hasView", hasView());
+		String t = "";
+		for (int i = 0; i < textAreas.length; i++) {
+			t += textAreas[i] == null ? "-" : "+";
+		}
+		writer = writeAssoc(writer, "textAreas", t, 1);
+		writer = writeAssoc(writer, "widget", widget.getClass().getSimpleName(), 1);
+		Container container = getUIComponent().getParent();
+		if (container instanceof EditPane) {
+			writer = writeAssoc(writer, "buffer", ((EditPane)container).getBuffer(), 1);
+		}
+		return writer.toString();
+	}
 
-	private View getView() {
+	private View view = null;
+
+	public View getView() {
 		return view;
 	}
 	
@@ -201,7 +117,7 @@ public class DoubleFeature extends TextEditor implements ITextComponent
 			Activity.frame = view;
 	}
 	
-	public boolean hasJEditTextArea() {
+	public boolean hasView() {
 		View view = getView();
 		return view != null && view.getTextArea() != null;
 	}
@@ -213,42 +129,64 @@ public class DoubleFeature extends TextEditor implements ITextComponent
 	}
 	
 	public TextArea getTextArea() {
-		return hasJEditTextArea() ? getView().getTextArea() : textAreas[0];
+		return hasView() ? getView().getTextArea() : textAreas[0];
 	}
 	
 	public TextArea getTextArea2() {
 		return textAreas[1];
 	}
 	
-	JScrollPane scrollPane = null;
+	private JScrollPane scrollPane = null;
 	
 	@Override
 	public Component getUIComponent() {
-		return textAreas[0] != null ? textAreas[0] : (scrollPane == null ? scrollPane = new JScrollPane(this) : scrollPane);
+		return textAreas[0] != null ? 
+				textAreas[0] : 
+				(scrollPane == null ? 
+						scrollPane = new JScrollPane(widget) : 
+						scrollPane);
 	}
-
-	public void toggle(boolean unbuffered) {
+	
+	private Container container = null;
+	
+	private boolean isolate() {
 		Component target = getUIComponent();
-		Container container = target.getParent();
+		container = target.getParent();
+		if (container == null) 
+			return false;
+		container.remove(target);
+		scrollPane = null;
+		return true;
+	}
+	
+	private void integrate(boolean featured) {
 		if (container != null) {
-			container.remove(target);
-			if (unbuffered) {
+			if (featured) {
 				textAreas[1] = textAreas[0];
 				setTextArea(null);
 			} else if (textAreas[1] != null) {
 				setTextArea(textAreas[1]);
 				textAreas[1] = null;
 			}
-			target = getUIComponent();
-			if (container.getLayout() instanceof BorderLayout)
-				container.add(target, BorderLayout.CENTER);
-			else
-				container.add(target);
+			addCenterComponent(getUIComponent(), container);
 			container.validate();
 			container.repaint();
+			container = null;
+		}
+	}
+
+	public void toggle(boolean featured, Job<Void> inIsolation, Object...params) {
+		if (isolate()) {
+			if (inIsolation != null)
+				try {
+					inIsolation.perform(null, params);
+				} catch (Exception e) {
+					Log.e(TAG, "toggle", e);
+				}
+			integrate(featured);
 		}
     }
-
+	
 	public DoubleFeature createBufferedTextArea(String modeName, String modeFileName) {
 		boolean useEmbedded = false;
 		if (useEmbedded && BerichtsheftPlugin.insideJEdit()) {
@@ -310,7 +248,7 @@ public class DoubleFeature extends TextEditor implements ITextComponent
 		}
 		Dimension size = textAreas[0].getPreferredSize();
 		textAreas[0].setPreferredSize(new Dimension(size.width, size.height / 2));
-		updateUI();
+		widget.updateUI();
 		return this;
 	}
 	
@@ -349,8 +287,9 @@ public class DoubleFeature extends TextEditor implements ITextComponent
 		{
 			TokenMarker.LineContext context = tokenMarker.markTokens(prevContext, new TokenHandler() {
 				public void handleToken(Segment seg, byte id, int offset, int length, LineContext context) {
-					Highlight[] hilites = getHighlighter().getHighlights();
-					if (spellchecking && id == 0) {
+					TextEditor textEditor = getTextEditor();
+					if (textEditor != null && spellchecking && id == 0) {
+						Highlight[] hilites = textEditor.getHighlighter().getHighlights();
 						int offset2 = offset + length, len;
 						for (int i = 0; i < hilites.length; i++) {
 							Highlight hilite = hilites[i];
@@ -399,14 +338,23 @@ public class DoubleFeature extends TextEditor implements ITextComponent
 	@Deprecated
 	public void spellcheck() {
 		TextArea textArea = getTextArea();
-		if (textArea != null) {
-	        SpellChecker.register(this);
-			super.setText(textArea.getText());
+		TextEditor textEditor = getTextEditor();
+		if (textEditor != null && textArea != null) {
+	        SpellChecker.register(textEditor);
+	        textEditor.setText(textArea.getText());
 			spellchecking = true;
-			textArea.setText(super.getText());
+			textArea.setText(textEditor.getText());
 			spellchecking = false;
-	        SpellChecker.unregister(this);
+	        SpellChecker.unregister(textEditor);
 		}
+	}
+
+	public void requestFocus() {
+		TextArea textArea = getTextArea();
+		if (textArea != null)
+			textArea.requestFocus();
+		else if (widget != null)
+			widget.requestFocus();
 	}
 	
 	@Override
@@ -414,8 +362,13 @@ public class DoubleFeature extends TextEditor implements ITextComponent
 		TextArea textArea = getTextArea();
 		if (textArea != null)
 			textArea.setText(text);
-		else
-			super.setText(text);
+		else {
+			TextEditor textEditor = getTextEditor();
+			if (textEditor != null)
+				textEditor.setText(text);
+			else
+				Log.w(TAG, "setText not possible");
+		}
 	}
 
 	@Override
@@ -423,8 +376,13 @@ public class DoubleFeature extends TextEditor implements ITextComponent
 		TextArea textArea = getTextArea();
 		if (textArea != null)
 			return textArea.getText();
-		else
-			return super.getText();
+		else {
+			TextEditor textEditor = getTextEditor();
+			if (textEditor != null)
+				return textEditor.getText();
+			Log.w(TAG, "getText not possible, returning null");
+			return null;
+		}
 	}
 
 	@Override
@@ -433,11 +391,15 @@ public class DoubleFeature extends TextEditor implements ITextComponent
 		if (textArea != null) {
 			textArea.setSelection(new Selection.Range(start, end));
 			textArea.requestFocus();
-		}
-		else {
-			super.setSelectionStart(start);
-			super.setSelectionEnd(end);
-			super.requestFocus();
+		} else {
+			TextEditor textEditor = getTextEditor();
+			if (textEditor != null) {
+				textEditor.setSelectionStart(start);
+				textEditor.setSelectionEnd(end);
+				textEditor.requestFocus();
+			}
+			else
+				Log.w(TAG, "setSelection not possible");
 		}
 	}
 
@@ -449,11 +411,15 @@ public class DoubleFeature extends TextEditor implements ITextComponent
 			textArea.setSelectedText(text);
 			if (notNullOrEmpty(text))
 				setSelection(start, start + text.length());
-		}
-		else {
-			int start = super.getSelectionStart();
-			super.replaceRange(text, start, super.getSelectionEnd());
-			setSelection(start, start + (notNullOrEmpty(text) ? 0 : text.length()));
+		} else {
+			TextEditor textEditor = getTextEditor();
+			if (textEditor != null) {
+				int start = textEditor.getSelectionStart();
+				textEditor.replaceRange(text, start, textEditor.getSelectionEnd());
+				setSelection(start, start + (notNullOrEmpty(text) ? 0 : text.length()));
+			}
+			else
+				Log.w(TAG, "setSelectedText not possible");
 		}
 	}
 
@@ -462,17 +428,23 @@ public class DoubleFeature extends TextEditor implements ITextComponent
 		TextArea textArea = getTextArea();
 		if (textArea != null)
 			return textArea.getSelectedText();
-		else
-			return super.getSelectedText();
+		else {
+			TextEditor textEditor = getTextEditor();
+			if (textEditor != null)
+				return textEditor.getSelectedText();
+			Log.w(TAG, "getSelectedText not possible, returning null");
+			return null;
+		}
 	}
 	
 	private Job<ITextComponent> onTextChanged = null;
 	
 	private void update() {
 		try {
-			onTextChanged.perform(DoubleFeature.this, objects());
+			if (onTextChanged != null)
+				onTextChanged.perform(DoubleFeature.this, objects());
 		} catch (Exception e) {
-			Log.log(Log.ERROR, DoubleFeature.class, e);
+			Log.e(TAG, "update", e);
 		}
 	}
 
@@ -510,18 +482,27 @@ public class DoubleFeature extends TextEditor implements ITextComponent
 					update();
 				}
 			});
+		} else {
+			TextEditor textEditor = getTextEditor();
+			if (textEditor != null) {
+				textEditor.getDocument().addDocumentListener(
+					new DocumentListener() {
+						public void removeUpdate(DocumentEvent e) {
+							update();
+						}
+
+						public void insertUpdate(DocumentEvent e) {
+							update();
+						}
+
+						public void changedUpdate(DocumentEvent e) {
+							update();
+						}
+					});
+			}
+			else
+				Log.w(TAG, "setOnTextChanged not possible");
 		}
-		super.getDocument().addDocumentListener(new DocumentListener() {
-			public void removeUpdate(DocumentEvent e) {
-				update();
-			}
-			public void insertUpdate(DocumentEvent e) {
-				update();
-			}
-			public void changedUpdate(DocumentEvent e) {
-				update();
-			}
-		});
 	}
 
 	@Override
@@ -529,6 +510,9 @@ public class DoubleFeature extends TextEditor implements ITextComponent
 		TextArea textArea = getTextArea();
 		if (textArea != null)
 			textArea.addKeyListener(keyListener);
-		super.addKeyListener(keyListener);
+		else if (widget != null)
+			widget.addKeyListener(keyListener);
+		else
+			Log.w(TAG, "addKeyListener not possible");
 	}
 }

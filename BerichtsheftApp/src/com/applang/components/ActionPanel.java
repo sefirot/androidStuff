@@ -211,7 +211,7 @@ public class ActionPanel extends ManagerBase<Object>
 			toggleAction.putValue(Action.NAME, name1);
 		boolean textView = toggleAction.getValue(Action.NAME).equals(name2);
     	String script = getText();
-		getTextEditor().toggle(textView);
+		getDoubleFeature().toggle(textView, null);
     	if (textView) {
 			setText(toText(script));
     	}
@@ -221,7 +221,7 @@ public class ActionPanel extends ManagerBase<Object>
 		return evaluate(new UserContext(), script, TAG);
 	}
 	
-	public DoubleFeature getTextEditor() {
+	public DoubleFeature getDoubleFeature() {
 		return (DoubleFeature) textComponent;
 	}
 

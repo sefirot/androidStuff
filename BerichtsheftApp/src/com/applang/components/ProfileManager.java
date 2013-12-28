@@ -67,7 +67,7 @@ public class ProfileManager extends ManagerBase<Element>
 	protected void createUI(final View view, final Container container) {
 		comboBoxes = new JComboBox[5];
 		textArea = new DoubleFeature(4,20);
-		textArea.installUndoRedo();
+		textArea.getTextEditor().installUndoRedo();
 		radioButtons = new JRadioButton[] {new JRadioButton(),new JRadioButton(),new JRadioButton()};
 		ButtonGroup group = new ButtonGroup();
 		for (AbstractButton btn : radioButtons) 

@@ -17,9 +17,11 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.lang.reflect.Method;
+import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -69,6 +71,8 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+import com.applang.Util.ValList;
+
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
@@ -99,16 +103,28 @@ public class Util2
 			return new File(base).toURI().relativize(new File(path).toURI()).getPath();
 	}
 	
-	public static String absolutePath(String className) throws Exception {
-		final String name = className.replaceAll("\\.", "/") + ".class";
-		Set<URL> res = Resources.getResourceURLs(
-			new ResourceURLFilter() {
-				public boolean accept(URL resourceUrl) {
-					String url = resourceUrl.getFile();
-					return url.endsWith(name);
-				}
-			});
-		return res.iterator().next().getFile();
+	public static String absolutePathOf(final String part, final int inStartMiddleOrEnd) {
+		try {
+			Set<URL> res = Resources.getResourceURLs(
+				new ResourceURLFilter() {
+					public boolean accept(URL resourceUrl) {
+						String url = resourceUrl.getFile();
+						switch (inStartMiddleOrEnd) {
+						case 1:
+							return url.startsWith(part);
+						case -1:
+							return url.endsWith(part);
+						default:
+							return url.contains(part);
+						}
+					}
+				});
+			if (res.size() > 0)
+				return res.iterator().next().getFile();
+		} catch (Exception e) {
+			Log.e(TAG, "", e);
+		}
+		return null;
 	}
 	
 	public static class Settings 
@@ -460,28 +476,22 @@ public class Util2
 			System.out.print(NEWLINE);
 	}
 
+	public static void debug_out(Object... params) {
+		String filePath = "/tmp/debug.out";
+		if (fileExists(filePath))
+			try {
+				PrintWriter dout = new PrintWriter( new FileOutputStream( filePath, true ) );
+				println(dout, params);
+				dout.close();
+			} 
+			catch ( Exception e ) {
+				System.err.println("Can't print output to file: "+filePath );
+			}
+	}
+
 	public static void noprint(Object... params) {}
 
 	public static void noprintln(Object... params) {}
-
-	public static String toString(Object[][] o) {
-		ValList list = vlist();
-		for (Object object : (Object[])o) 
-			list.add(Arrays.toString((Object[])object));
-		String s = Arrays.toString(list.toArray());
-		return strip(true, strip(false, s , "]") , "[")
-				.replaceAll("(\\],) (\\[)", "$1\n\n$2");
-	}
-
-	public static String toString(ValMap o) {
-		return String.valueOf(o).replaceAll("\\], ", "\\],\n");
-	}
-
-	public static String toString(Object o) {
-		String value = String.valueOf(o);
-		int brac = value.indexOf('[');
-		return value.substring(brac > -1 ? brac : 0);
-	}
 
 	public static void printMatchResults(String string, Pattern pattern) {
 		MatchResult[] mr = findAllIn(string, pattern);
@@ -1119,11 +1129,8 @@ public class Util2
 	 * @throws ClassNotFoundException
 	 * @throws IOException
 	 */
-//	NOTE	there is a different method with the same signature in Util2 for Android
 	@SuppressWarnings("rawtypes")
-	public static Class[] getLocalClasses(String packageName, Object...params) throws Exception {
-	    ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-	    assert classLoader != null;
+	public static Class[] findLocalClasses(String packageName, Object...params) throws Exception {
 	    String path = packageName.replace('.', '/');
 	    Enumeration<URL> resources = ClassLoader.getSystemResources(path);
 	    List<File> dirs = new ArrayList<File>();
@@ -1136,6 +1143,19 @@ public class Util2
 	        classes.addAll(findClasses(directory, packageName));
 	    }
 	    return classes.toArray(new Class[classes.size()]);
+	}
+
+//	NOTE	there is a different method with the same signature in Util2 for Android
+	@SuppressWarnings("rawtypes")
+	public static Class[] getLocalClasses(String packageName, Object...params) throws Exception {
+		URI location = Resources.getCodeSourceLocation(Resources.class);
+	   	ValList list = vlist();
+	    for (URL u: Resources.getResourceURLs(packageName, null)) {
+	        String fileName = location.relativize(u.toURI()).toString();
+	        fileName = fileName.substring(0, fileName.lastIndexOf(".")).replace('/', '.');
+			list.add(Class.forName(fileName));
+	    }
+        return arraycast(list.toArray(), new Class[0]);
 	}
 
 	public static FileTime getFileTime(String filePath, int kind) throws Exception {

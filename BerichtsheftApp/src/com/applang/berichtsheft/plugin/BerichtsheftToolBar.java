@@ -18,16 +18,15 @@ import org.gjt.sp.jedit.View;
 import org.gjt.sp.jedit.jEdit;
 import org.gjt.sp.jedit.EditBus.EBHandler;
 import org.gjt.sp.jedit.msg.DynamicMenuChanged;
-import org.gjt.sp.util.Log;
-
-import com.applang.components.ActionPanel;
-
-import static com.applang.Util.*;
 
 import console.ConsolePlugin;
 import console.commando.CommandoButton;
 import console.commando.CommandoCommand;
 import console.commando.CommandoDialog;
+
+import com.applang.components.ActionPanel;
+
+import static com.applang.Util.*;
 
 public class BerichtsheftToolBar extends JToolBar
 {
@@ -127,7 +126,6 @@ public class BerichtsheftToolBar extends JToolBar
 		scanDirectory(userCommandDirectory);
 		redoKeyboardBindings(commands);
 		jEdit.addActionSet(commands);
-		Log.log(Log.DEBUG, BerichtsheftToolBar.class, "Loaded " + commands.size() + " actions");
 	}
 	
 	private BerichtsheftToolBar(View dockable)
@@ -172,6 +170,9 @@ public class BerichtsheftToolBar extends JToolBar
 
 //			add(BerichtsheftPlugin.makeCustomButton("berichtsheft.export-document", new ActionListener() {
 //				public void actionPerformed(ActionEvent evt) {
+//					jEdit.openTemporary(view, "", "Notes", true, null);
+//					BufferSetManager.createUntitledBuffer();
+//					BerichtsheftPlugin.installDoubleBuffer();
 //				}
 //			}, false));
 			

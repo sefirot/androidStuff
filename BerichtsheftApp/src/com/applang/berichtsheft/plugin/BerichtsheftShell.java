@@ -5,7 +5,6 @@ import java.io.StringWriter;
 
 import org.gjt.sp.jedit.View;
 import org.gjt.sp.jedit.jEdit;
-import org.gjt.sp.util.Log;
 
 import console.Console;
 import console.ConsolePane;
@@ -13,11 +12,15 @@ import console.ConsolePlugin;
 import console.Output;
 import console.Shell;
 
+import android.util.Log;
+
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
 
 public class BerichtsheftShell extends Shell
 {
+    private static final String TAG = BerichtsheftShell.class.getSimpleName();
+
 	public static void print(Object... params) {
 		final String string = write(new StringWriter(), params).toString();
 		Console console = getConsole(true);
@@ -41,7 +44,7 @@ public class BerichtsheftShell extends Shell
 				consoleWait(console, true);
 			job.perform(console, params);
 		} catch (Exception e) {
-			Log.log(Log.ERROR, BerichtsheftShell.class, e);
+			Log.e(TAG, "perform", e);
 		}
 		finally {
 			if (animated)

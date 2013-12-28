@@ -186,6 +186,13 @@ public class SwingUtil
 		
 		return null;
 	}
+
+	public static void addCenterComponent(Component target, Container container) {
+		if (container.getLayout() instanceof BorderLayout)
+			container.add(target, BorderLayout.CENTER);
+		else
+			container.add(target);
+	}
 	
 	public static Container getRootContainer(Container container) {
 		if (container == null)
@@ -392,7 +399,7 @@ public class SwingUtil
 		
 		public static Rectangle load(Window window, 
 				String category, String title,
-				Object... params)
+				Object...params)
 		{
 			String key = key(category, title);
 			Bounds rect = new Bounds(null, params);
@@ -431,10 +438,12 @@ public class SwingUtil
 		
 		public static void save(Window window, 
 				String category, String title,
-				Object... params)
+				Object...params)
 		{
 			String key = key(category, title);
-			putSetting(key, Util2.toString(new Bounds(window, params)));
+			String value = stringValueOf(new Bounds(window, params));
+			int brac = value.indexOf('[');
+			putSetting(key, value.substring(brac > -1 ? brac : 0));
 		}
 	}
 

@@ -652,7 +652,7 @@ public class HelperTests extends TestCase
 		ValMap profile = ProfileManager.getProfileAsMap(name, "push");
 		Object flavor = profile.get("flavor");
 		String[] full = toStrings(fullProjection(flavor));
-		println(com.applang.Util2.toString(provider.query(uriString, full)));
+		println(com.applang.Util.toString(provider.query(uriString, full)));
 		Object[][] mods = provider.query(uriString, strings("_id","modified","title"));
 //		println(com.applang.toString(mods));
 		String template = stringValueOf(profile.get("template"));
@@ -686,7 +686,7 @@ public class HelperTests extends TestCase
     	int[] results = provider.pickRecords(null, table, uriString, profile);
 		assertNotNull("process canceled", results);
 		println("results", results);
-		println(com.applang.Util2.toString(provider.query(uriString, full)));
+		println(com.applang.Util.toString(provider.query(uriString, full)));
 		for (int i = 0; i < mods.length; i++) {
 			Object[] mod = mods[i];
 			Object[][] m = provider.query(uriString, strings("modified"), "_id=?", strings(mod[0].toString()));
@@ -1319,7 +1319,7 @@ public class HelperTests extends TestCase
 				}, 
 				new UIFunction() {
 					public Component[] apply(Component comp, Object[] parms) {
-						doubleFeature.installSpellChecker();
+						doubleFeature.getTextEditor().installSpellChecker();
 //						textEditor.spellcheck();
 						return null;
 					}

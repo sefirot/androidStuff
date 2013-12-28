@@ -32,11 +32,12 @@ import org.gjt.sp.jedit.BeanShell;
 import org.gjt.sp.jedit.View;
 import org.gjt.sp.jedit.bsh.NameSpace;
 import org.gjt.sp.jedit.gui.RolloverButton;
-import org.gjt.sp.util.Log;
 import org.w3c.dom.CDATASection;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+
+import android.util.Log;
 
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
@@ -48,6 +49,8 @@ import static com.applang.SwingUtil.*;
 @SuppressWarnings("rawtypes")
 public class ScriptManager extends ManagerBase<Element>
 {
+    private static final String TAG = ScriptManager.class.getSimpleName();
+
 	public static String flavorSelector(Object name) {
 		return String.format("/FLAVOR[@name='%s']", name);
 	}
@@ -68,7 +71,7 @@ public class ScriptManager extends ManagerBase<Element>
 					el.setAttribute("version", "" + map.get("version"));
 					el.setAttribute("table", tableName);
 				} catch (Exception e) {
-					Log.log(Log.ERROR, ScriptManager.class, e);
+					Log.e(TAG, "setDefaultProjection", e);
 					return false;
 				}
 				NodeList nodes = evaluateXPath(element, "." + projectionSelector(tableName));
@@ -99,7 +102,7 @@ public class ScriptManager extends ManagerBase<Element>
 						map.put("version", toInt(-1, element.getAttribute("version")));
 						map.put("projection", xmlDeserialize(element, null));
 					} catch (Exception e) {
-						Log.log(ERROR, ScriptManager.class, e);
+						Log.e(TAG, "getDefaultProjection", e);
 					}
 				}
 			}

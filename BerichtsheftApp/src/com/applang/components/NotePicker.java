@@ -61,7 +61,7 @@ public class NotePicker extends ActionPanel
 				final DataView dataView = new DataView();
 				final DoubleFeature doubleFeature = new DoubleFeature()
 						.createBufferedTextArea("velocity", "/modes/velocity_pure.xml");
-				doubleFeature.installSpellChecker();
+				doubleFeature.getTextEditor().installSpellChecker();
 				String title = "Berichtsheft database";
 				NotePicker notePicker = new NotePicker(dataView, doubleFeature, 
 						null,
@@ -107,7 +107,7 @@ public class NotePicker extends ActionPanel
 	public void finish(Object... params) {
 		if (!usingJdbc())
 			dataView.nosync();
-		getTextEditor().uninstallSpellChecker();
+		getDoubleFeature().getTextEditor().uninstallSpellChecker();
 		try {
 			if (getCon() != null)
 				getCon().close();
@@ -372,11 +372,11 @@ public class NotePicker extends ActionPanel
 			switch (NotePadProvider.tableIndex(tableName)) {
 			case 1:
 				installBausteinEditing(this);
-				getTextEditor().toggle(false);
+				getDoubleFeature().toggle(false, null);
 				break;
 			default:
 				installNotePicking(this);
-				getTextEditor().toggle(true);
+				getDoubleFeature().toggle(true, null);
 				break;
 			}
 			uriString = NotePadProvider.contentUri(tableName).toString();
@@ -1039,9 +1039,9 @@ public class NotePicker extends ActionPanel
 	
 	@Override
 	public void setText(String text) {
-		DoubleFeature editor = getTextEditor();
-		updateText(editor, text);
-		editor.undo.discardAllEdits();
+		DoubleFeature feature = getDoubleFeature();
+		updateText(feature, text);
+		feature.getTextEditor().undo.discardAllEdits();
 	}
 
 	public static String formatDate(int kind, long time) {

@@ -28,7 +28,6 @@ import org.gjt.sp.jedit.View;
 import org.gjt.sp.jedit.gui.DefaultFocusComponent;
 import org.gjt.sp.jedit.gui.DockableWindowManager;
 import org.gjt.sp.jedit.msg.PropertiesChanged;
-import org.gjt.sp.util.Log;
 
 import static com.applang.Util.*;
 import static com.applang.Util1.*;
@@ -36,8 +35,8 @@ import static com.applang.SwingUtil.*;
 
 import android.content.ContentValues;
 import android.net.Uri;
+import android.util.Log;
 
-import com.applang.Util.Job;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.components.DataView;
 import com.applang.components.DatePicker;
@@ -57,6 +56,8 @@ import console.Console;
  */
 public class DataDockable extends JPanel implements EBComponent, BerichtsheftActions, DefaultFocusComponent
 {
+    private static final String TAG = DataDockable.class.getSimpleName();
+
 	private static final long serialVersionUID = 6415522692894321789L;
 
 	private boolean floating;
@@ -610,7 +611,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 					pushThis.perform(null, null);
 		   	}
 		} catch (Exception e) {
-			Log.log(Log.ERROR, DataDockable.class, e);
+			Log.e(TAG, "doTransport", e);
 		}
 		finally {
 			if (dockable != null)

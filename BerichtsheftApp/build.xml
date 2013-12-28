@@ -104,7 +104,14 @@ rm $0
 		</java>
 	</target>
 
-	<target name="testSpecial" depends="build">
+	<target name="run-special">
+        <java jvm="/usr/lib/jvm/jre1.7.0_45-i586/bin/java" fork="true" 
+			classname="com.applang.components.DataConfiguration"
+            classpathref="run.class.path">
+        </java>
+	</target>
+
+	<target name="test-special" depends="build">
 		<junit printsummary="yes" fork="yes" haltonfailure="yes">
 			<formatter type="plain"/>
 			<test name="com.applang.berichtsheft.test.ProviderTests"/>

@@ -177,7 +177,7 @@ public class ASTViewer extends ActionPanel
     }
     
 	boolean isSciptView() {
-		return getTextEditor().getTextArea2() == null;
+		return getDoubleFeature().getTextArea2() == null;
 	}
     
     private void setSelection(Object node, boolean noSpan) {

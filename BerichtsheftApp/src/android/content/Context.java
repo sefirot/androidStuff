@@ -41,6 +41,7 @@ public class Context
     public static final int MODE_PRIVATE = 0x0000;
     public static final int MODE_WORLD_READABLE = 0x0001;
     public static final int MODE_WORLD_WRITEABLE = 0x0002;
+    public static final int MODE_APPEND = 32768;
     
     private final Object mSync = new Object();
     private File mDatabasesDir;
@@ -225,15 +226,21 @@ public class Context
 	}
 	
 	public FileOutputStream openFileOutput(String name, int mode) throws FileNotFoundException {
-		return new FileOutputStream(new File(getFilesDir(), name));
+		return new FileOutputStream(new File(getFilesDir(), name), mode == MODE_APPEND);
 	}
 
 	public File getFilesDir() {
-		return new File(getDataDirFile(), "files");
+		File dir = new File(getDataDirFile(), "files");
+		if (!fileExists(dir))
+			dir.mkdir();
+		return dir;
 	}
 
 	public File getDir(String name, int mode) {
-		return new File(getDataDirFile(), String.format("app_%s", name));
+		File dir = new File(getDataDirFile(), String.format("app_%s", name));
+		if (!fileExists(dir))
+			dir.mkdir();
+		return dir;
 	}
 
 	public Resources getResources() {

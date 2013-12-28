@@ -13,7 +13,6 @@
 			dockable.chooseUri();
 		</CODE>
 	</ACTION>
-
 	<ACTION NAME="datadock.update-uri">
 		<CODE>
 			import com.applang.berichtsheft.plugin.*;
@@ -21,11 +20,16 @@
 			dockable.updateUri();
 		</CODE>
 	</ACTION>
-
 	<ACTION NAME="berichtsheft.spellcheck-selection">
 		<CODE>
 			import com.applang.berichtsheft.plugin.*;
 			BerichtsheftPlugin.spellcheckSelection(view);
+		</CODE>
+	</ACTION>
+	<ACTION NAME="magic.buffer">
+		<CODE>
+			import com.applang.berichtsheft.plugin.*;
+			BerichtsheftPlugin.installMagicBuffer();
 		</CODE>
 	</ACTION>
 </ACTIONS>

@@ -5,14 +5,18 @@ import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Image;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 import java.awt.image.BufferedImage;
 import java.io.Closeable;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.HashSet;
+import java.util.Hashtable;
 import java.util.Properties;
 
 import javax.swing.AbstractButton;
@@ -21,26 +25,40 @@ import javax.swing.ImageIcon;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileFilter;
 
 import org.gjt.sp.jedit.BeanShell;
+import org.gjt.sp.jedit.Buffer;
 import org.gjt.sp.jedit.EditAction;
 import org.gjt.sp.jedit.EditBus;
+import org.gjt.sp.jedit.EditPane;
 import org.gjt.sp.jedit.EditPlugin;
 import org.gjt.sp.jedit.GUIUtilities;
 import org.gjt.sp.jedit.MiscUtilities;
 import org.gjt.sp.jedit.View;
 import org.gjt.sp.jedit.jEdit;
 import org.gjt.sp.jedit.EditBus.EBHandler;
+import org.gjt.sp.jedit.bufferset.BufferSet;
+import org.gjt.sp.jedit.bufferset.BufferSetManager;
 import org.gjt.sp.jedit.gui.DockableWindowManager;
 import org.gjt.sp.jedit.gui.RolloverButton;
+import org.gjt.sp.jedit.io.VFS;
+import org.gjt.sp.jedit.io.VFSManager;
+import org.gjt.sp.jedit.msg.BufferChanging;
+import org.gjt.sp.jedit.msg.BufferUpdate;
+import org.gjt.sp.jedit.msg.EditPaneUpdate;
 import org.gjt.sp.jedit.msg.ViewUpdate;
+import org.gjt.sp.jedit.visitors.JEditVisitorAdapter;
 import org.gjt.sp.util.IOUtilities;
-import org.gjt.sp.util.Log;
 
+import android.util.Log;
+
+import com.applang.Util.Job;
 import com.applang.components.AndroidBridge;
 import com.applang.components.DataView;
 import com.applang.components.DoubleFeature;
+import com.applang.components.TextEditor;
 import com.inet.jortho.FileUserDictionary;
 import com.inet.jortho.SpellChecker;
 
@@ -52,12 +70,15 @@ import static com.applang.SwingUtil.*;
  * The Berichtsheft Plugin
  * 
  */
-public class BerichtsheftPlugin extends EditPlugin {
+public class BerichtsheftPlugin extends EditPlugin
+{
+    private static final String TAG = BerichtsheftPlugin.class.getSimpleName();
+
 	public static final String NAME = "berichtsheft";
 	public static final String OPTION_PREFIX = join(".", "options", NAME, "");
 	public static final String MENU = "plugin.com.applang.berichtsheft.plugin.BerichtsheftPlugin.menu";
 	public static final String CMD_PATH = "/com/applang/berichtsheft/plugin/bsh/";
-
+	
 	@Override
 	public void start() {
 		loadSettings();
@@ -82,44 +103,299 @@ public class BerichtsheftPlugin extends EditPlugin {
 	}
 	
 	@EBHandler
-	public void handleViewUpdate(ViewUpdate vmsg)
+	public void handleViewUpdate(ViewUpdate msg)
 	{
-		if (vmsg.getWhat() == ViewUpdate.CREATED)
+		if (msg.getWhat() == ViewUpdate.CREATED)
 		{
-			View v = vmsg.getView();
+			View v = msg.getView();
 			BerichtsheftToolBar.create(v);
 		}
-		if (vmsg.getWhat() == ViewUpdate.CLOSED) {
-			View v = vmsg.getView();
+		if (msg.getWhat() == ViewUpdate.CLOSED) {
+			View v = msg.getView();
 			BerichtsheftToolBar.remove(v);
 		}
 	}
-
-	public static Properties loadProperties(String fileName)
-	{
-		Properties props = new Properties();
-		File file = new File(fileName);
 	
-		InputStream in = null;
-		try
-		{
-			if (file.isFile())
-			{
-				in = new FileInputStream(file);
+	@EBHandler
+	public void handleBufferChanging(BufferChanging msg)
+	{
+		EditPane editPane = msg.getEditPane();
+		if (msg.getWhat() == EditPaneUpdate.BUFFER_CHANGING) {
+			final DoubleFeature doubleFeature = registerEditPane(editPane);
+			final Buffer buffer = msg.getBuffer();
+			if (magicBuffers.containsKey(buffer)) {
+				doubleFeature.toggle(true, new Job<Void>() {
+					public void perform(Void t, Object[] parms) throws Exception {
+						doMagic(doubleFeature, buffer);
+					}
+				});
+				debug_out("featured", doubleFeature);
 			}
-			else
-			{
-				in = BerichtsheftPlugin.class.getResourceAsStream(fileName);
+			else if (pendingBuffers.contains(buffer)) {
+				pendingFeatures.put(doubleFeature, buffer);
+				debug_out("pending", doubleFeature);
+				return;
 			}
-			props.load(in);
+			else {
+				doubleFeature.toggle(false, null);
+				debug_out("reduced", doubleFeature);
+			}
+			printContainer("editPane", editPane);
+			focusRequest(editPane);
 		}
-		catch (IOException e)
-		{
-			Log.log(Log.ERROR, BerichtsheftPlugin.class, e);
+	}
+	
+	private void focusRequest(EditPane editPane) {
+		if (editPane.getView().getEditPane() == editPane) {
+			final DoubleFeature doubleFeature = (DoubleFeature) editPanes.getValue(editPane);
+			SwingUtilities.invokeLater(new Runnable() {
+				public void run() {
+					doubleFeature.requestFocus();
+				}
+			});
 		}
-		finally
+	}
+	
+	private Hashtable<DoubleFeature,Buffer> pendingFeatures = new Hashtable<DoubleFeature,Buffer>();
+	private HashSet<Buffer> pendingBuffers = new HashSet<Buffer>();
+	private EditPane editPane;
+	
+	@EBHandler
+	public void handleBufferUpdate(BufferUpdate msg)
+	{
+		final Buffer buffer = msg.getBuffer();
+		if (msg.getWhat() == BufferUpdate.CREATED) {
+			pendingBuffers.add(buffer);
+		}
+		else if (msg.getWhat() == BufferUpdate.LOADED) {
+			pendingBuffers.remove(buffer);
+			String magic = buffer.getStringProperty("magic");
+			if (notNullOrEmpty(magic)) {
+				addMagic(buffer);
+			}
+			editPane = null;
+			if (pendingFeatures.containsValue(buffer)) {
+				for (DoubleFeature doubleFeature : pendingFeatures.keySet()) 
+					if (buffer.equals(pendingFeatures.get(doubleFeature))) {
+						pendingFeatures.remove(doubleFeature);
+						editPane = (EditPane) editPanes.getKey(doubleFeature);
+					}
+			}
+			else if (magicBuffers.containsKey(buffer)) {
+				jEdit.visit(new JEditVisitorAdapter()
+				{
+					@Override
+					public void visit(EditPane editPane) {
+						if (buffer.equals(editPane.getBuffer()))
+							BerichtsheftPlugin.this.editPane = editPane;
+					}
+				});
+			}
+			if (editPane != null)
+				EditBus.send(new BufferChanging(editPane, buffer));
+		}
+		else if (msg.getWhat() == BufferUpdate.CLOSED) {
+			if (magicBuffers.containsKey(buffer)) 
+				removeMagic(buffer);
+		}
+	}
+	
+	@EBHandler
+	public void handleEditPaneUpdate(EditPaneUpdate msg)
+	{
+		EditPane editPane = msg.getEditPane();
+		if (msg.getWhat() == EditPaneUpdate.CREATED) {
+			registerEditPane(editPane);
+		}
+		else if (msg.getWhat() == EditPaneUpdate.DESTROYED) {
+			DoubleFeature doubleFeature = (DoubleFeature) editPanes.getValue(editPane);
+			editPanes.removeKey(editPane);
+			debug_out("unregistered", doubleFeature);
+		}
+	}
+	
+	private BidiMultiMap editPanes = bmap(2);
+
+	private DoubleFeature registerEditPane(EditPane editPane) {
+		DoubleFeature doubleFeature = (DoubleFeature) editPanes.getValue(editPane);
+		if (doubleFeature == null) {
+			doubleFeature = new DoubleFeature();
+			doubleFeature.setTextArea(editPane.getTextArea());
+			editPanes.add(editPane, doubleFeature);
+			debug_out("registered", doubleFeature);
+		}
+		return doubleFeature;
+	}
+	
+	private EditPane getEditPaneFromDescendant(Component comp) {
+		while(!(comp instanceof EditPane)) {
+			if(comp == null)
+				return null;
+			comp = comp.getParent();
+		}
+		return (EditPane)comp;
+	}
+	
+	private class DummyWidget extends JComponent implements MouseListener
+	{
+		public DummyWidget(Buffer buffer) {
+			this.buffer = buffer;
+			addMouseListener(this);
+		}
+		
+		Buffer buffer;
+		
+		public void mouseClicked(MouseEvent e) {
+			Component source = (Component)e.getSource();
+			EditPane editPane = getEditPaneFromDescendant(source);
+			if (editPane != null) {
+				EditBus.send(new BufferChanging(editPane, buffer));
+			}
+		}
+		public void mousePressed(MouseEvent e) {
+		}
+		public void mouseReleased(MouseEvent e) {
+		}
+		public void mouseEntered(MouseEvent e) {
+		}
+		public void mouseExited(MouseEvent e) {
+		}
+	}
+
+	private Hashtable<Buffer,JComponent> magicBuffers = new Hashtable<Buffer,JComponent>();
+	
+	private void addMagic(Buffer buffer) {
+		String magic = buffer.getStringProperty("magic");
+		if ("spell".equals(magic)) {
+			TextEditor textEditor = new TextEditor();
+			textEditor.installSpellChecker();
+			magicBuffers.put(buffer, textEditor);
+		}
+		else
+			magicBuffers.put(buffer, new DummyWidget(buffer));
+		debug_out("addMagic", buffer);
+	}
+	
+	private void removeMagic(Buffer buffer) {
+		String magic = buffer.getStringProperty("magic");
+		if ("spell".equals(magic)) {
+			TextEditor textEditor = (TextEditor) magicBuffers.get(buffer);
+			textEditor.uninstallSpellChecker();
+		}
+		magicBuffers.remove(buffer);
+		debug_out("removeMagic", buffer);
+	}
+	
+	private void doMagic(DoubleFeature doubleFeature, Buffer buffer) {
+		JComponent widget = magicBuffers.get(buffer);
+		Container container = widget.getParent();
+		if (container != null) {
+			container.remove(widget);
+			addCenterComponent(new DummyWidget(buffer), container);
+		}
+		doubleFeature.setWidget(widget);
+		TextEditor textEditor = doubleFeature.getTextEditor();
+		if (textEditor != null) {
+			textEditor.setText(buffer.getText());
+		}
+	}
+
+	@SuppressWarnings("unused")
+	private void parseBufferLocalProperties(Buffer buffer) {
+		try {
+			Class<?> cl = Class.forName("org.gjt.sp.jedit.buffer.JEditBuffer");
+			Method method = cl.getDeclaredMethod("parseBufferLocalProperties");
+			method.setAccessible(true);
+			method.invoke(buffer);
+		} 
+		catch (Exception e) {
+			Log.e(TAG, "parseBufferLocalProperties", e);
+		}
+	}
+	
+	private static final String MAGIC_TITLE = "Magic-";
+
+	public void installMagicBuffer() {
+		BufferSetManager bufferSetManager = jEdit.getBufferSetManager();
+		Buffer currentBuffer = jEdit.getActiveView().getEditPane().getBuffer();
+		for (BufferSet bufferSet : bufferSetManager.getOwners(currentBuffer)) {
+			Buffer newBuffer = createMagicBuffer();
+			View[] views = jEdit.getViews();
+			for (View view : views) {
+				EditPane[] editPanes = view.getEditPanes();
+				for (EditPane editPane : editPanes) {
+					if (editPane.getBufferSet() == bufferSet) {
+						bufferSetManager.addBuffer(editPane, newBuffer);
+						addMagic(newBuffer);
+						editPane.setBuffer(newBuffer, false);
+					}
+				}
+			}
+		}
+	}
+
+	private Buffer createMagicBuffer() {
+		int magicCount = getNextMagicBufferId();
+
+		View view = jEdit.getActiveView();
+		String parent = null;
+
+		if (view != null)
 		{
-			IOUtilities.closeQuietly((Closeable)in);
+			Buffer buffer = view.getBuffer();
+			parent = buffer.getDirectory();
+		}
+		if (parent == null)
+		{
+			parent = System.getProperty("user.home");
+		}
+		VFS vfs = VFSManager.getVFSForPath(parent);
+		if ((vfs.getCapabilities() & VFS.WRITE_CAP) == 0)
+		{
+			// cannot write on that VFS, creating untitled buffer in home directory
+			parent = System.getProperty("user.home");
+		}
+		Buffer newEmptyBuffer = jEdit.openTemporary(view, "/tmp",
+							    MAGIC_TITLE + magicCount,true, null);
+		jEdit.commitTemporary(newEmptyBuffer);
+		return newEmptyBuffer;
+	}
+	
+	private int getNextMagicBufferId() {
+		int magicTitledCount = 0;
+		Buffer buffer = jEdit.getFirstBuffer();
+		while(buffer != null) {
+			if(buffer.getName().startsWith(MAGIC_TITLE)) {
+				try {
+					magicTitledCount = Math.max(
+							magicTitledCount,
+							Integer.parseInt(buffer.getName()
+									.substring(MAGIC_TITLE.length())));
+				}
+				catch(NumberFormatException nf) {}
+			}
+			buffer = buffer.getNext();
+		}
+		return magicTitledCount + 1;
+	}
+
+	public static Properties loadProperties(String fileName) {
+		Properties props = new Properties();
+		if (notNullOrEmpty(fileName)) {
+			File file = new File(fileName);
+			InputStream in = null;
+			try {
+				if (file.isFile()) {
+					in = new FileInputStream(file);
+				} else {
+					in = BerichtsheftPlugin.class.getResourceAsStream(fileName);
+				}
+				props.load(in);
+			} catch (Exception e) {
+				Log.e(TAG, "loadProperties", e);
+			} finally {
+				IOUtilities.closeQuietly((Closeable) in);
+			}
 		}
 		return props;
 	}
@@ -152,7 +428,7 @@ public class BerichtsheftPlugin extends EditPlugin {
 		try {
 			SpellChecker.registerDictionaries( new URL("file", null, path + "/"), null );
 		} catch (MalformedURLException e) {
-			Log.log(Log.ERROR, BerichtsheftPlugin.class, e);
+			Log.e(TAG, "setupSpellChecker", e);
 		}
 	}
 	
@@ -171,7 +447,7 @@ public class BerichtsheftPlugin extends EditPlugin {
 				jEditor.setSelectedText(text);
 			}
 		};
-		doubleFeature.installSpellChecker();
+		doubleFeature.getTextEditor().installSpellChecker();
 		Component component = doubleFeature.getUIComponent();
 		component.setPreferredSize(new Dimension(400,300));
 		new JEditOptionDialog(view, 
@@ -182,22 +458,22 @@ public class BerichtsheftPlugin extends EditPlugin {
 				Behavior.MODAL, 
 				getProperty("manager.action-SPELLCHECK.icon"), 
 				takeThis);
-		doubleFeature.uninstallSpellChecker();
+		doubleFeature.getTextEditor().uninstallSpellChecker();
 	}
 	
 	//	NOTE	leaves standard-out going to log
-	public static <T> T suppressErrorLog(Function<T> func, Object...params) {
+	public static <T> T suppressJEditErrorLog(Function<T> func, Object...params) {
 		try {
-			Log.init(true,Log.ERROR + 1);
+			org.gjt.sp.util.Log.init(true,org.gjt.sp.util.Log.ERROR + 1);
 			return func.apply(params);
 		} 
 		finally {
-			Log.init(false,Log.WARNING);
+			org.gjt.sp.util.Log.init(false,org.gjt.sp.util.Log.WARNING);
 		}
 	}
 	
-	public static void logDebug() {
-		Log.init(true,Log.DEBUG);
+	public static void jEditDebugLogging() {
+		org.gjt.sp.util.Log.init(true,org.gjt.sp.util.Log.DEBUG);
 		org.gjt.sp.jedit.Debug.TOKEN_MARKER_DEBUG = true;
 		org.gjt.sp.jedit.Debug.CHUNK_CACHE_DEBUG = true;
 	}
@@ -237,6 +513,8 @@ public class BerichtsheftPlugin extends EditPlugin {
 	static {
 		if (!insideJEdit()) {
 			String fileName = pathCombine(relativePath(), "BerichtsheftPlugin.props");
+			if (!fileExists(fileName))
+				fileName = absolutePathOf(fileName, -1);
 			props = loadProperties(fileName);
 		}
 	}
@@ -275,7 +553,7 @@ public class BerichtsheftPlugin extends EditPlugin {
 		String format = getProperty(key);
 		String msg = notNullOrEmpty(format) ? 
 				String.format(format, params) : 
-				"<<< message missing >>>";
+				"<<< message format missing >>>" + com.applang.Util.toString(params);
 		BerichtsheftShell.print(msg, NEWLINE);
 	}
 	

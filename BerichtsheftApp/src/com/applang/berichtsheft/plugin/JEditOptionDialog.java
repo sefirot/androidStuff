@@ -21,13 +21,16 @@ import javax.swing.border.EmptyBorder;
 import org.gjt.sp.jedit.GUIUtilities;
 import org.gjt.sp.jedit.View;
 import org.gjt.sp.jedit.gui.EnhancedDialog;
-import org.gjt.sp.util.Log;
+
+import android.util.Log;
 
 import static com.applang.Util.*;
 import static com.applang.SwingUtil.*;
 
 public class JEditOptionDialog extends EnhancedDialog	
 {
+    private static final String TAG = JEditOptionDialog.class.getSimpleName();
+
 	public JEditOptionDialog(View view, 
 			String title, String caption, Object message, 
 			int optionType, int behavior, 
@@ -119,7 +122,7 @@ public class JEditOptionDialog extends EnhancedDialog
 			try {
 				followUp.perform(null, params);
 			} catch (Exception e) {
-				Log.log(Log.ERROR, JEditOptionDialog.class, e.getMessage());
+				Log.e(TAG, "ok", e);
 			}
 		cancel();
 	}

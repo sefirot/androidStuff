@@ -1,7 +1,5 @@
 package com.applang.berichtsheft.plugin;
 
-import static com.applang.SwingUtil.*;
-
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 
@@ -15,9 +13,10 @@ import org.gjt.sp.jedit.gui.DefaultFocusComponent;
 import org.gjt.sp.jedit.gui.DockableWindowManager;
 import org.gjt.sp.jedit.msg.PropertiesChanged;
 
-import com.applang.components.DataView;
 import com.applang.components.NotePicker;
 import com.applang.components.DoubleFeature;
+
+import static com.applang.SwingUtil.*;
 
 public class NoteDockable extends JPanel implements EBComponent, DefaultFocusComponent
 {
@@ -32,7 +31,7 @@ public class NoteDockable extends JPanel implements EBComponent, DefaultFocusCom
 			this.setPreferredSize(new Dimension(500, 250));
 		southStatusBar(this);
 		doubleFeature = new DoubleFeature();
-		doubleFeature.installSpellChecker();
+		doubleFeature.getTextEditor().installSpellChecker();
 		add(doubleFeature.getUIComponent(), BorderLayout.CENTER);
 		notePicker = new NotePicker(BerichtsheftPlugin.getDataView(), doubleFeature, view);
 		add(notePicker, BorderLayout.NORTH);

@@ -1,9 +1,9 @@
 package android.content.res;
 
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Writer;
 import java.lang.reflect.Field;
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -239,13 +239,17 @@ public class Resources
 		return collectedURLs;
 	}
 	
-	public static Set<URL> getResourceURLs(Class<?> rootClass) throws IOException {
-		return getResourceURLs(rootClass, (ResourceURLFilter)null);
+	public static Set<URL> getResourceURLs(Class<?> rootClass) throws Exception {
+		String packageName = rootClass.getName();
+		packageName = packageName.substring(0, packageName.lastIndexOf("."));
+		return getResourceURLs(packageName, (ResourceURLFilter)null);
 	}
 	
-	public static Set<URL> getResourceURLs(Class<?> rootClass, ResourceURLFilter filter) throws IOException {
+	public static Set<URL> getResourceURLs(String packageName, ResourceURLFilter filter) throws Exception {
 		Set<URL> collectedURLs = new HashSet<URL>();
-		iterateEntry(new File(getCodeSourceLocation(rootClass)), filter, collectedURLs);
+		URI location = getCodeSourceLocation(Resources.class);
+		location = location.resolve(packageName.replace('.', '/'));
+		iterateEntry(new File(location), filter, collectedURLs);
 		return collectedURLs;
 	}
 	
@@ -259,23 +263,13 @@ public class Resources
 		}
 	}
 	
-	public static void list(File file) {
-		FileWriter fw = null;
+	public static void list(Writer writer, String packageName, ResourceURLFilter filter) {
 		try {
-			fw = new FileWriter(file);
-			for (URL u: getResourceURLs(Resources.class)) {
-				fw.append(u + NEWLINE);
+			for (URL u: getResourceURLs(packageName, filter)) {
+				writer.append(u + NEWLINE);
 			}
 		} catch (Exception e) {
 			Log.e(TAG, "list", e);
-		}
-		finally {
-			if (fw != null)
-				try {
-					fw.close();
-				} catch (IOException e) {
-					Log.e(TAG, "list", e);
-				}
 		}
 	}
 	
