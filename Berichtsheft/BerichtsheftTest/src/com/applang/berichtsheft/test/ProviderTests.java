@@ -250,7 +250,7 @@ public class ProviderTests extends InfraTests<BerichtsheftActivity>
 			Method contentValues = c.getDeclaredMethod("contentValues", Integer.TYPE, Object[].class);
 			for (int i = 0; i < records.length; i++) {
 				Object[] record = records[i];
-				ContentValues values = (ContentValues) contentValues.invoke(null, new Object[]{record});
+				ContentValues values = (ContentValues) contentValues.invoke(null, 0, record);
 				Uri urItem = contentResolver.insert(uri, values);
 				assertTrue(contentResolver.getType(urItem).startsWith(ContentResolver.CURSOR_ITEM_BASE_TYPE));
 			}
@@ -290,7 +290,6 @@ public class ProviderTests extends InfraTests<BerichtsheftActivity>
     public void testData3() throws Exception {
     	for (String database : databases(mActivity)) 
     		mActivity.deleteDatabase(database);
-    	keinFehlerImSystemm();
     	String helloVm = readAsset(mActivity, "hello.vm");
     	String[] states = getStateStrings();
 		generateNotePadData(mActivity, true, new Object[][] {
@@ -329,6 +328,8 @@ public class ProviderTests extends InfraTests<BerichtsheftActivity>
 			{ 9L, "hello", helloVm, null, now() }, 
 		});
 		assertEquals(9, recordCount(mActivity, NotePadProvider.contentUri(1)));
+		
+		keinFehlerImSystemm();
 	    	
 		generateData(mActivity.getContentResolver(), Plants.CONTENT_URI, true, new Object[][] {
 			{ 1L, "Paradeiser", "Nachtschattengewächse", "Solanum lycopersicum", "Solanaceae", "xitomatl" }, 	

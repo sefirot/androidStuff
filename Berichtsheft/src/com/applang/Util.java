@@ -284,6 +284,10 @@ public class Util
 			return prototype.getClass().getName().equals(o.getClass().getName());
 	}
 	
+	public static String identity(Object o) {
+		return o == null ? "null" : o.getClass().getSimpleName() + "@" + Integer.toHexString(o.hashCode());
+	}
+	
 	public static String stringValueOf(Object value) {
 		return value == null ? "" : String.valueOf(value);
 	}
@@ -398,6 +402,14 @@ public class Util
 		if (value != null)
 			try {
 				return (T)value;
+			} catch (Exception e) {}
+		return elseValue;
+	}
+
+	public static <T extends Object> T functionValueOrElse(T elseValue, Function<T> value, Object...params) {
+		if (value != null)
+			try {
+				return value.apply(params);
 			} catch (Exception e) {}
 		return elseValue;
 	}
@@ -634,14 +646,12 @@ public class Util
 	}
 
     public static String enclose(String decor, String string, Object...params) {
-    	decor = valueOrElse("", decor);
-    	string = decor.concat(valueOrElse("", string));
+    	decor = stringValueOf(decor);
+    	string = decor.concat(stringValueOf(string));
     	if (params.length < 1)
     		return string.concat(decor);
-    	
     	for (int i = 0; i < params.length; i++) 
     		string = string.concat(param("", i, params));
-		
     	return string;
 	}
 
