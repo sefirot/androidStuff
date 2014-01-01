@@ -60,13 +60,13 @@ public class ProfileManager extends ManagerBase<Element>
 		});
 	}
 
-	protected DoubleFeature textArea;
+	protected TextEditor2 textArea;
 	private JRadioButton[] radioButtons;
 	
 	@SuppressWarnings("unchecked")
 	protected void createUI(final View view, final Container container) {
 		comboBoxes = new JComboBox[5];
-		textArea = new DoubleFeature(4,20);
+		textArea = new TextEditor2(4,20);
 		textArea.getTextEditor().installUndoRedo();
 		radioButtons = new JRadioButton[] {new JRadioButton(),new JRadioButton(),new JRadioButton()};
 		ButtonGroup group = new ButtonGroup();

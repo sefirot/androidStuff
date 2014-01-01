@@ -98,7 +98,7 @@ import com.applang.components.DatePicker;
 import com.applang.components.ProfileManager;
 import com.applang.components.Provider;
 import com.applang.components.ScriptManager;
-import com.applang.components.DoubleFeature;
+import com.applang.components.TextEditor2;
 import com.applang.components.WeatherManager;
 import com.applang.provider.NotePadProvider;
 import com.applang.provider.WeatherInfoProvider;
@@ -1300,7 +1300,7 @@ public class HelperTests extends TestCase
 	
 	public void testJOrtho() {
 		BerichtsheftPlugin.setupSpellChecker(BerichtsheftApp.berichtsheftPath());
-		final DoubleFeature doubleFeature = new DoubleFeature();
+		final TextEditor2 textEditor2 = new TextEditor2();
     	Deadline.wait = 2000;
     	showFrame(null, 
 				"Spellchecker",
@@ -1308,18 +1308,18 @@ public class HelperTests extends TestCase
 					public Component[] apply(final Component comp, Object[] parms) {
 				        try {
 //				        	textEditor.createBufferedTextArea("text", "/modes/text.xml");
-							doubleFeature.setText(
+							textEditor2.setText(
 								new Scanner(new File("/home/lotharla/work/Workshop/Examples/poem.txt"))
 									.useDelimiter("\\Z").next());
 						} catch (Exception e) {}
-				        Component component = doubleFeature.getUIComponent();
+				        Component component = textEditor2.getUIComponent();
 				        component.setPreferredSize(new Dimension(400, 400));
 						return components(component);
 					}
 				}, 
 				new UIFunction() {
 					public Component[] apply(Component comp, Object[] parms) {
-						doubleFeature.getTextEditor().installSpellChecker();
+						textEditor2.getTextEditor().installSpellChecker();
 //						textEditor.spellcheck();
 						return null;
 					}

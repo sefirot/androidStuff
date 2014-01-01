@@ -1,8 +1,5 @@
 package com.applang.components;
 
-import static com.applang.SwingUtil.*;
-import static com.applang.Util.*;
-
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.event.ActionEvent;
@@ -18,13 +15,28 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JTextField;
 
-import com.applang.SwingUtil.Behavior;
+import org.gjt.sp.jedit.gui.RolloverButton;
+
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 import com.applang.berichtsheft.plugin.JEditOptionDialog;
 
+import static com.applang.SwingUtil.*;
+import static com.applang.Util.*;
+
 @SuppressWarnings("rawtypes")
-public abstract class ManagerBase<T extends Object> extends JComponent
+public class ManagerBase<T extends Object> extends JComponent
 {
+	protected static final String ACCEPT_BUTTON_KEY = stringValueOf(defaultOptions(13).get(0));
+	protected static final String REJECT_BUTTON_KEY = stringValueOf(defaultOptions(13).get(1));
+	
+	protected RolloverButton installButton(Container container, String text, ActionListener al) {
+		RolloverButton btn = new RolloverButton();
+		btn.setName(text);
+		btn.setText(text);
+		btn.addActionListener(al);
+		return (RolloverButton) container.add(btn);
+	}
+	
 	public JComboBox[] comboBoxes;
 	
 	public JTextField comboEdit(int index) {
@@ -257,11 +269,18 @@ public abstract class ManagerBase<T extends Object> extends JComponent
 		setDirty(false);
 	}
 
-	protected abstract T select(Object...args);
-	
-	protected abstract void updateItem(boolean update, Object...args);
-	
-	protected abstract boolean addItem(boolean refresh, Object item);
-	
-	protected abstract boolean removeItem(Object item);
+	protected Object select(Object... args) {
+		return null;
+	}
+
+	protected boolean addItem(boolean refresh, Object item) {
+		return false;
+	}
+
+	protected boolean removeItem(Object item) {
+		return false;
+	}
+
+	protected void updateItem(boolean update, Object... args) {
+	}
 }

@@ -59,11 +59,11 @@ public class NotePicker extends ActionPanel
 				BerichtsheftApp.loadSettings();
 				BerichtsheftPlugin.setupSpellChecker(BerichtsheftApp.berichtsheftPath());
 				final DataView dataView = new DataView();
-				final DoubleFeature doubleFeature = new DoubleFeature()
+				final TextEditor2 textEditor2 = new TextEditor2()
 						.createBufferedTextArea("velocity", "/modes/velocity_pure.xml");
-				doubleFeature.getTextEditor().installSpellChecker();
+				textEditor2.getTextEditor().installSpellChecker();
 				String title = "Berichtsheft database";
-				NotePicker notePicker = new NotePicker(dataView, doubleFeature, 
+				NotePicker notePicker = new NotePicker(dataView, textEditor2, 
 						null,
 						title, 1);
 				createAndShowGUI(title, 
@@ -75,7 +75,7 @@ public class NotePicker extends ActionPanel
 								JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
 								splitPane.setResizeWeight(0.5);
 								splitPane.setOneTouchExpandable(true);
-								Component target = doubleFeature.getUIComponent();
+								Component target = textEditor2.getUIComponent();
 								splitPane.setTopComponent(target);
 								Component c = findComponent(dataView, "south");
 								if (c != null)
@@ -132,7 +132,7 @@ public class NotePicker extends ActionPanel
 	
 	private JTextField date = null;
 	
-	public NotePicker(DataView dataView, DoubleFeature textArea, Object... params) {
+	public NotePicker(DataView dataView, TextEditor2 textArea, Object... params) {
 		super(textArea, params);
 		textArea.setOnTextChanged(new Job<ITextComponent>() {
 			public void perform(ITextComponent t, Object[] params) throws Exception {
@@ -1039,7 +1039,7 @@ public class NotePicker extends ActionPanel
 	
 	@Override
 	public void setText(String text) {
-		DoubleFeature feature = getDoubleFeature();
+		TextEditor2 feature = getDoubleFeature();
 		updateText(feature, text);
 		feature.getTextEditor().undo.discardAllEdits();
 	}

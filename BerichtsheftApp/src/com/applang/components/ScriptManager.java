@@ -131,9 +131,7 @@ public class ScriptManager extends ManagerBase<Element>
 		}
 	}
 	
-	private static final String ACCEPT_BUTTON_KEY = stringValueOf(defaultOptions(13).get(0));
-	
-	private DoubleFeature textArea;
+	private TextEditor2 textArea;
 	private JLabel mess;
 
 	public ScriptManager(final View view, Component relative, Object...params) {
@@ -309,14 +307,20 @@ public class ScriptManager extends ManagerBase<Element>
 	
 	private void createUI(final View view, final Container container) {
 		comboBoxes = new JComboBox[] {new JComboBox()};
-		textArea = new DoubleFeature().createBufferedTextArea("beanshell", "/modes/java.xml");
+		textArea = new TextEditor2().createBufferedTextArea("beanshell", "/modes/java.xml");
 		
 		JToolBar bar = new JToolBar();
 		container.add(bar, BorderLayout.NORTH);
-		final RolloverButton btn = new RolloverButton();
-		btn.setName(ACCEPT_BUTTON_KEY);
-		btn.setText(ACCEPT_BUTTON_KEY);
-		bar.add(btn);
+		final RolloverButton btn = installButton(bar, 
+				ACCEPT_BUTTON_KEY, 
+				new ActionListener() {
+					public void actionPerformed(ActionEvent e) {
+						save(getItem(), false);
+						Window window = SwingUtilities.getWindowAncestor(container);
+						if (window != null)
+							window.dispose();
+					}
+				});
 		comboBoxes[0].addItemListener(new ItemListener() {
 			public void itemStateChanged(ItemEvent ev) {
 				if (ev.getStateChange() == ItemEvent.SELECTED) {
@@ -335,14 +339,6 @@ public class ScriptManager extends ManagerBase<Element>
 		comboBoxes[0].setEditable(true);
 		comboEdit(0).setHorizontalAlignment(JTextField.CENTER);
 		bar.add(comboBoxes[0]);
-		btn.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				save(getItem(), false);
-				Window window = SwingUtilities.getWindowAncestor(container);
-				if (window != null)
-					window.dispose();
-			}
-		});
 		comboEdit(0).addKeyListener(new KeyAdapter() {
 			@Override
 			public void keyPressed(KeyEvent e) {

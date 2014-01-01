@@ -443,7 +443,7 @@ public class Util2
 	}
 
 	@SuppressWarnings("resource")
-	public static Writer writeAssoc(Writer writer, String key, Object value, int...pos) {
+	public static Writer write_assoc(Writer writer, String key, Object value, int...pos) {
 		String commaString = ", ";
 		int commaPos = param(0,0,pos);
 		if (commaPos > 0)
@@ -476,17 +476,34 @@ public class Util2
 			System.out.print(NEWLINE);
 	}
 
-	public static void debug_out(Object... params) {
-		String filePath = "/tmp/debug.out";
-		if (fileExists(filePath))
+	public static String debugFilePath = "/tmp/debug.out";
+	
+	public static void debug_out(Job<PrintWriter> job, Object... params) {
+		if (fileExists(debugFilePath))
 			try {
-				PrintWriter dout = new PrintWriter( new FileOutputStream( filePath, true ) );
-				println(dout, params);
+				PrintWriter dout = new PrintWriter( new FileOutputStream( debugFilePath, true ) );
+				job.perform(dout, params);
 				dout.close();
 			} 
 			catch ( Exception e ) {
-				System.err.println("Can't print output to file: "+filePath );
+				System.err.println("Can't print output to file: " + debugFilePath);
 			}
+	}
+
+	public static void debug_println(final Object... params) {
+		debug_out(new Job<PrintWriter>() {
+			public void perform(PrintWriter pw, Object[] parms) throws Exception {
+				println(pw, params);
+			}
+		});
+	}
+
+	public static void debug_print(final Object... params) {
+		debug_out(new Job<PrintWriter>() {
+			public void perform(PrintWriter pw, Object[] parms) throws Exception {
+				print(pw, params);
+			}
+		});
 	}
 
 	public static void noprint(Object... params) {}

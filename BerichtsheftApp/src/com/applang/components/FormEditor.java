@@ -673,8 +673,8 @@ public class FormEditor extends JSplitPane
 
 			public String toString() {
 				Writer writer = write(new StringWriter(), "[");
-				writer = writeAssoc(writer, "width", dim.getWidth());
-				writer = writeAssoc(writer, "height", dim.getHeight(), 1);
+				writer = write_assoc(writer, "width", dim.getWidth());
+				writer = write_assoc(writer, "height", dim.getHeight(), 1);
 				return write(writer, "]").toString();
 			}
 		}
@@ -712,8 +712,8 @@ public class FormEditor extends JSplitPane
 
 			public String toString() {
 				Writer writer = write(new StringWriter(), "[");
-				writer = writeAssoc(writer, "x", point.getX());
-				writer = writeAssoc(writer, "y", point.getY(), 1);
+				writer = write_assoc(writer, "x", point.getX());
+				writer = write_assoc(writer, "y", point.getY(), 1);
 				return write(writer, "]").toString();
 			}
 		}

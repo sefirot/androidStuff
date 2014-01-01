@@ -74,7 +74,7 @@ public class Provider
 	}
 
 	public Uri makeUri(String uriString) {
-		uriString = valueOrElse("", uriString);
+		uriString = stringValueOf(uriString);
 		String flavor = getFlavor();
 		Uri uri = Uri.parse(uriString);
 		if (flavor == null)

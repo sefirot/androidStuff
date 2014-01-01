@@ -29,7 +29,7 @@
 	<ACTION NAME="magic.buffer">
 		<CODE>
 			import com.applang.berichtsheft.plugin.*;
-			BerichtsheftPlugin.installMagicBuffer();
+			BerichtsheftPlugin.spellcheckBuffer(buffer);
 		</CODE>
 	</ACTION>
 </ACTIONS>

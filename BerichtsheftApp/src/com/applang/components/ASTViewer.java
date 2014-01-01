@@ -54,10 +54,10 @@ public class ASTViewer extends ActionPanel
 		SwingUtilities.invokeLater(new Runnable() {
 			@Override
 			public void run() {
-				final DoubleFeature doubleFeature = new DoubleFeature();
-				doubleFeature.createBufferedTextArea("velocity", "/modes/velocity_pure.xml");
+				final TextEditor2 textEditor2 = new TextEditor2();
+				textEditor2.createBufferedTextArea("velocity", "/modes/velocity_pure.xml");
 				String title = "Velocity AST tool";
-				ASTViewer viewer = new ASTViewer(doubleFeature, 
+				ASTViewer viewer = new ASTViewer(textEditor2, 
 						null,
 						title);
 				ActionPanel.createAndShowGUI(title, 
@@ -66,7 +66,7 @@ public class ASTViewer extends ActionPanel
 						viewer, 
 						new Function<Component>() {
 							public Component apply(Object...params) {
-								return doubleFeature.getUIComponent();
+								return textEditor2.getUIComponent();
 							}
 						});
 			}

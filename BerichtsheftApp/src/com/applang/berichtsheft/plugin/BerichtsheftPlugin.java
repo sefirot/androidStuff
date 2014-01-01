@@ -1,9 +1,11 @@
 package com.applang.berichtsheft.plugin;
 
+import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Image;
+import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
@@ -25,6 +27,9 @@ import javax.swing.ImageIcon;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JToolBar;
 import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileFilter;
 
@@ -54,10 +59,11 @@ import org.gjt.sp.util.IOUtilities;
 
 import android.util.Log;
 
-import com.applang.Util.Job;
 import com.applang.components.AndroidBridge;
 import com.applang.components.DataView;
 import com.applang.components.DoubleFeature;
+import com.applang.components.TextEditor2;
+import com.applang.components.ManagerBase;
 import com.applang.components.TextEditor;
 import com.inet.jortho.FileUserDictionary;
 import com.inet.jortho.SpellChecker;
@@ -79,26 +85,24 @@ public class BerichtsheftPlugin extends EditPlugin
 	public static final String MENU = "plugin.com.applang.berichtsheft.plugin.BerichtsheftPlugin.menu";
 	public static final String CMD_PATH = "/com/applang/berichtsheft/plugin/bsh/";
 	
+	public static BerichtsheftPlugin self = null;
+	
 	@Override
 	public void start() {
+		self = this;
 		loadSettings();
 		setupSpellChecker(System.getProperty("settings.dir"));
 		BeanShell.getNameSpace().addCommandPath(CMD_PATH, getClass());
-		
 		BerichtsheftToolBar.init();
-		
-		EditBus.addToBus(this);
-		
+		EditBus.addToBus(self);
 //		checkAvailabilityOfTools();
 	}
 
 	@Override
 	public void stop() {
-		EditBus.removeFromBus(this);
-		
+		EditBus.removeFromBus(self);
 		BeanShell.getNameSpace().removeCommandPath(CMD_PATH, getClass());
 		BerichtsheftToolBar.remove();
-		
 		Settings.save();
 	}
 	
@@ -123,42 +127,67 @@ public class BerichtsheftPlugin extends EditPlugin
 		if (msg.getWhat() == EditPaneUpdate.BUFFER_CHANGING) {
 			final DoubleFeature doubleFeature = registerEditPane(editPane);
 			final Buffer buffer = msg.getBuffer();
+			if (pendingBuffers.contains(buffer)) {
+				pendingFeatures.put(doubleFeature, buffer);
+				debug_println("pending", doubleFeature);
+				if (fileExists(buffer.getPath()))
+					return;
+			}
 			if (magicBuffers.containsKey(buffer)) {
-				doubleFeature.toggle(true, new Job<Void>() {
-					public void perform(Void t, Object[] parms) throws Exception {
+				doubleFeature.toggle(true, new Job<Container>() {
+					public void perform(Container c, Object[] parms) throws Exception {
 						doMagic(doubleFeature, buffer);
 					}
 				});
-				debug_out("featured", doubleFeature);
-			}
-			else if (pendingBuffers.contains(buffer)) {
-				pendingFeatures.put(doubleFeature, buffer);
-				debug_out("pending", doubleFeature);
-				return;
+				debug_println("featured", doubleFeature);
 			}
 			else {
 				doubleFeature.toggle(false, null);
-				debug_out("reduced", doubleFeature);
+				debug_println("reduced", doubleFeature);
 			}
-			printContainer("editPane", editPane);
 			focusRequest(editPane);
+			Container container = editPane.getParent();
+			if (container != null)
+				printContainer(identity(container), container, false, true);
 		}
 	}
 	
-	private void focusRequest(EditPane editPane) {
-		if (editPane.getView().getEditPane() == editPane) {
-			final DoubleFeature doubleFeature = (DoubleFeature) editPanes.getValue(editPane);
-			SwingUtilities.invokeLater(new Runnable() {
-				public void run() {
-					doubleFeature.requestFocus();
-				}
-			});
+	private void focusRequest(final EditPane editPane) {
+		final DoubleFeature doubleFeature = (DoubleFeature) doubleFeatures.getValue(editPane);
+		SwingUtilities.invokeLater(new Runnable() {
+			public void run() {
+				setEditPane(editPane);
+				doubleFeature.requestFocus();
+			}
+		});
+	}
+
+	private void setEditPane(EditPane editPane) {
+		try {
+			Class<?> cl = Class.forName("org.gjt.sp.jedit.View");
+			Method method = cl.getDeclaredMethod("setEditPane", EditPane.class);
+			method.setAccessible(true);
+			method.invoke(editPane.getView(), editPane);
+		} 
+		catch (Exception e) {
+			Log.e(TAG, "setEditPane", e);
 		}
+	}
+	
+	@SuppressWarnings("unused")
+	private void debugFocusedEditPane() {
+		jEdit.visit(new JEditVisitorAdapter() {
+			@Override
+			public void visit(final EditPane editPane) {
+				Component magic = findComponent(container, "magic");
+				if (magic != null && magic.hasFocus())
+					debug_println("contains focus", identity(editPane));
+			}
+		});
 	}
 	
 	private Hashtable<DoubleFeature,Buffer> pendingFeatures = new Hashtable<DoubleFeature,Buffer>();
 	private HashSet<Buffer> pendingBuffers = new HashSet<Buffer>();
-	private EditPane editPane;
 	
 	@EBHandler
 	public void handleBufferUpdate(BufferUpdate msg)
@@ -171,28 +200,22 @@ public class BerichtsheftPlugin extends EditPlugin
 			pendingBuffers.remove(buffer);
 			String magic = buffer.getStringProperty("magic");
 			if (notNullOrEmpty(magic)) {
-				addMagic(buffer);
+				addMagic(buffer, magic);
 			}
-			editPane = null;
+			EditPane editPane = null;
 			if (pendingFeatures.containsValue(buffer)) {
 				for (DoubleFeature doubleFeature : pendingFeatures.keySet()) 
 					if (buffer.equals(pendingFeatures.get(doubleFeature))) {
 						pendingFeatures.remove(doubleFeature);
-						editPane = (EditPane) editPanes.getKey(doubleFeature);
+						editPane = (EditPane) doubleFeatures.getKey(doubleFeature);
 					}
 			}
 			else if (magicBuffers.containsKey(buffer)) {
-				jEdit.visit(new JEditVisitorAdapter()
-				{
-					@Override
-					public void visit(EditPane editPane) {
-						if (buffer.equals(editPane.getBuffer()))
-							BerichtsheftPlugin.this.editPane = editPane;
-					}
-				});
+				editPane = getEditPaneByBuffer(buffer);
 			}
-			if (editPane != null)
+			if (editPane != null) {
 				EditBus.send(new BufferChanging(editPane, buffer));
+			}
 		}
 		else if (msg.getWhat() == BufferUpdate.CLOSED) {
 			if (magicBuffers.containsKey(buffer)) 
@@ -208,32 +231,48 @@ public class BerichtsheftPlugin extends EditPlugin
 			registerEditPane(editPane);
 		}
 		else if (msg.getWhat() == EditPaneUpdate.DESTROYED) {
-			DoubleFeature doubleFeature = (DoubleFeature) editPanes.getValue(editPane);
-			editPanes.removeKey(editPane);
-			debug_out("unregistered", doubleFeature);
+			DoubleFeature doubleFeature = (DoubleFeature) doubleFeatures.getValue(editPane);
+			doubleFeatures.removeKey(editPane);
+			debug_println("unregistered", doubleFeature);
 		}
 	}
 	
-	private BidiMultiMap editPanes = bmap(2);
+	private BidiMultiMap doubleFeatures = bmap(2);
 
 	private DoubleFeature registerEditPane(EditPane editPane) {
-		DoubleFeature doubleFeature = (DoubleFeature) editPanes.getValue(editPane);
+		DoubleFeature doubleFeature = (DoubleFeature) doubleFeatures.getValue(editPane);
 		if (doubleFeature == null) {
 			doubleFeature = new DoubleFeature();
 			doubleFeature.setTextArea(editPane.getTextArea());
-			editPanes.add(editPane, doubleFeature);
-			debug_out("registered", doubleFeature);
+			doubleFeatures.add(editPane, doubleFeature);
+			debug_println("registered", doubleFeature);
 		}
 		return doubleFeature;
 	}
 	
-	private EditPane getEditPaneFromDescendant(Component comp) {
-		while(!(comp instanceof EditPane)) {
-			if(comp == null)
-				return null;
-			comp = comp.getParent();
+	private EditPane getEditPaneByBuffer(final Buffer buffer) {
+		try {
+			JEditVisitorAdapter visitor = new JEditVisitorAdapter() {
+				@SuppressWarnings("unused")
+				public EditPane editPane = null;
+				
+				@Override
+				public void visit(EditPane editPane) {
+					if (buffer.equals(editPane.getBuffer()))
+						this.editPane = editPane;
+				}
+			};
+			jEdit.visit(visitor);
+			return (EditPane) visitor.getClass().getField("editPane").get(visitor);
+		} catch (Exception e) {
+			return null;
 		}
-		return (EditPane)comp;
+	}
+	
+	private void changeBuffer(Buffer buffer) {
+		EditPane editPane = getEditPaneByBuffer(buffer);
+		if (editPane != null)
+			EditBus.send(new BufferChanging(editPane, buffer));
 	}
 	
 	private class DummyWidget extends JComponent implements MouseListener
@@ -246,11 +285,13 @@ public class BerichtsheftPlugin extends EditPlugin
 		Buffer buffer;
 		
 		public void mouseClicked(MouseEvent e) {
-			Component source = (Component)e.getSource();
-			EditPane editPane = getEditPaneFromDescendant(source);
-			if (editPane != null) {
-				EditBus.send(new BufferChanging(editPane, buffer));
+			Component comp = (Component)e.getSource();
+			while(!(comp instanceof EditPane)) {
+				if(comp == null)
+					return;
+				comp = comp.getParent();
 			}
+			EditBus.send(new BufferChanging((EditPane)comp, buffer));
 		}
 		public void mousePressed(MouseEvent e) {
 		}
@@ -264,40 +305,72 @@ public class BerichtsheftPlugin extends EditPlugin
 
 	private Hashtable<Buffer,JComponent> magicBuffers = new Hashtable<Buffer,JComponent>();
 	
-	private void addMagic(Buffer buffer) {
-		String magic = buffer.getStringProperty("magic");
-		if ("spell".equals(magic)) {
+	private void addMagic(final Buffer buffer, String magic) {
+		JComponent component = new DummyWidget(buffer);
+		if (magic.startsWith("spell")) {
 			TextEditor textEditor = new TextEditor();
+			textEditor.setName("magic");
 			textEditor.installSpellChecker();
-			magicBuffers.put(buffer, textEditor);
-		}
-		else
-			magicBuffers.put(buffer, new DummyWidget(buffer));
-		debug_out("addMagic", buffer);
+			textEditor.setText(buffer.getText());
+			component = new JPanel(new BorderLayout());
+			addCenterComponent(new JScrollPane(textEditor), component);
+			if (magic.equals("spellcheck")) {
+				final JToolBar bar = northToolBar(component, BorderLayout.SOUTH);
+				bar.add(new ManagerBase<Object>() {
+					{
+						installButton(bar, 
+								ACCEPT_BUTTON_KEY, 
+								new ActionListener() {
+									public void actionPerformed(ActionEvent e) {
+										EditPane editPane = getEditPaneByBuffer(buffer);
+										if (editPane != null) {
+											DoubleFeature df = (DoubleFeature) doubleFeatures.getValue(editPane);
+											TextEditor textEditor = (TextEditor) findComponent(df.getWidget(), "magic");
+											df.getTextArea2().setText(textEditor.getText());
+										}
+										removeMagic(buffer);
+										changeBuffer(buffer);
+									}
+								});
+						installButton(bar, 
+								REJECT_BUTTON_KEY, 
+								new ActionListener() {
+									public void actionPerformed(ActionEvent e) {
+										removeMagic(buffer);
+										changeBuffer(buffer);
+									}
+								});
+					}
+				});
+			}
+		} 
+		buffer.setStringProperty("magic", magic);
+		magicBuffers.put(buffer, component);
+		debug_println("addMagic", buffer);
 	}
 	
 	private void removeMagic(Buffer buffer) {
+		JComponent container = magicBuffers.get(buffer);
 		String magic = buffer.getStringProperty("magic");
-		if ("spell".equals(magic)) {
-			TextEditor textEditor = (TextEditor) magicBuffers.get(buffer);
+		if (magic.startsWith("spell")) {
+			TextEditor textEditor = (TextEditor) findComponent(container, "magic");
 			textEditor.uninstallSpellChecker();
 		}
+		buffer.setStringProperty("magic", "");
 		magicBuffers.remove(buffer);
-		debug_out("removeMagic", buffer);
+		debug_println("removeMagic", buffer);
 	}
 	
 	private void doMagic(DoubleFeature doubleFeature, Buffer buffer) {
 		JComponent widget = magicBuffers.get(buffer);
-		Container container = widget.getParent();
-		if (container != null) {
-			container.remove(widget);
-			addCenterComponent(new DummyWidget(buffer), container);
+		Container parent = widget.getParent();
+		if (parent instanceof EditPane) {
+			parent.remove(widget);
+			DoubleFeature df = (DoubleFeature) doubleFeatures.getValue(parent);
+			df.setWidget(new DummyWidget(buffer));
+			df.setUIComponent(parent);
 		}
 		doubleFeature.setWidget(widget);
-		TextEditor textEditor = doubleFeature.getTextEditor();
-		if (textEditor != null) {
-			textEditor.setText(buffer.getText());
-		}
 	}
 
 	@SuppressWarnings("unused")
@@ -315,18 +388,18 @@ public class BerichtsheftPlugin extends EditPlugin
 	
 	private static final String MAGIC_TITLE = "Magic-";
 
-	public void installMagicBuffer() {
+	public void newMagicBuffer(String magic) {
 		BufferSetManager bufferSetManager = jEdit.getBufferSetManager();
 		Buffer currentBuffer = jEdit.getActiveView().getEditPane().getBuffer();
+		Buffer newBuffer = createMagicBuffer();
+		addMagic(newBuffer, magic);
 		for (BufferSet bufferSet : bufferSetManager.getOwners(currentBuffer)) {
-			Buffer newBuffer = createMagicBuffer();
 			View[] views = jEdit.getViews();
 			for (View view : views) {
 				EditPane[] editPanes = view.getEditPanes();
 				for (EditPane editPane : editPanes) {
 					if (editPane.getBufferSet() == bufferSet) {
 						bufferSetManager.addBuffer(editPane, newBuffer);
-						addMagic(newBuffer);
 						editPane.setBuffer(newBuffer, false);
 					}
 				}
@@ -336,22 +409,17 @@ public class BerichtsheftPlugin extends EditPlugin
 
 	private Buffer createMagicBuffer() {
 		int magicCount = getNextMagicBufferId();
-
 		View view = jEdit.getActiveView();
 		String parent = null;
-
-		if (view != null)
-		{
+		if (view != null) {
 			Buffer buffer = view.getBuffer();
 			parent = buffer.getDirectory();
 		}
-		if (parent == null)
-		{
+		if (parent == null) {
 			parent = System.getProperty("user.home");
 		}
 		VFS vfs = VFSManager.getVFSForPath(parent);
-		if ((vfs.getCapabilities() & VFS.WRITE_CAP) == 0)
-		{
+		if ((vfs.getCapabilities() & VFS.WRITE_CAP) == 0) {
 			// cannot write on that VFS, creating untitled buffer in home directory
 			parent = System.getProperty("user.home");
 		}
@@ -406,14 +474,12 @@ public class BerichtsheftPlugin extends EditPlugin
 			settingsDir = tempPath();
 		File dir = fileOf(settingsDir, "plugins", NAME);
 		dir.mkdirs();
-		
 		String path = MiscUtilities.constructPath(settingsDir, "console");
 		path = MiscUtilities.constructPath(path, "commando");
 		File file = new File(path);
 		if (!file.exists())
 			file.mkdirs();
 		BerichtsheftToolBar.userCommandDirectory = path;
-		
 		path = dir.getPath();
 		System.setProperty("settings.dir", path);
 		Settings.load();
@@ -433,22 +499,22 @@ public class BerichtsheftPlugin extends EditPlugin
 	}
 	
 	public static void spellcheckSelection(View view) {
-		final DoubleFeature jEditor = getJEditor();
+		final TextEditor2 jEditor = getJEditor();
 		String text = jEditor.getSelectedText();
 		if (nullOrEmpty(text)) {
 			consoleMessage("berichtsheft.no-text-selection.message");
 			return; 
 		}
-		final DoubleFeature doubleFeature = new DoubleFeature();
-		doubleFeature.setText(text);
+		final TextEditor2 textEditor2 = new TextEditor2();
+		textEditor2.setText(text);
 		Job<Void> takeThis = new Job<Void>() {
 			public void perform(Void t, Object[] params) throws Exception {
-				String text = doubleFeature.getText();
+				String text = textEditor2.getText();
 				jEditor.setSelectedText(text);
 			}
 		};
-		doubleFeature.getTextEditor().installSpellChecker();
-		Component component = doubleFeature.getUIComponent();
+		textEditor2.getTextEditor().installSpellChecker();
+		Component component = textEditor2.getUIComponent();
 		component.setPreferredSize(new Dimension(400,300));
 		new JEditOptionDialog(view, 
 				getProperty("berichtsheft.spellcheck-selection.title"), 
@@ -458,7 +524,14 @@ public class BerichtsheftPlugin extends EditPlugin
 				Behavior.MODAL, 
 				getProperty("manager.action-SPELLCHECK.icon"), 
 				takeThis);
-		doubleFeature.getTextEditor().uninstallSpellChecker();
+		textEditor2.getTextEditor().uninstallSpellChecker();
+	}
+	
+	public static void spellcheckBuffer(Buffer buffer) {
+		if (!self.magicBuffers.containsKey(buffer)) {
+			self.addMagic(buffer, "spellcheck");
+			self.changeBuffer(buffer);
+		}
 	}
 	
 	//	NOTE	leaves standard-out going to log
@@ -557,8 +630,8 @@ public class BerichtsheftPlugin extends EditPlugin
 		BerichtsheftShell.print(msg, NEWLINE);
 	}
 	
-	public static DoubleFeature getJEditor() {
-		return new DoubleFeature(jEdit.getActiveView());
+	public static TextEditor2 getJEditor() {
+		return new TextEditor2(jEdit.getActiveView());
 	}
 	
 	public static JComponent getDockable(View view, String name, boolean add) {

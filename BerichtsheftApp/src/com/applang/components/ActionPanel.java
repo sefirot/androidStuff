@@ -221,8 +221,8 @@ public class ActionPanel extends ManagerBase<Object>
 		return evaluate(new UserContext(), script, TAG);
 	}
 	
-	public DoubleFeature getDoubleFeature() {
-		return (DoubleFeature) textComponent;
+	public TextEditor2 getDoubleFeature() {
+		return (TextEditor2) textComponent;
 	}
 
 	protected boolean hasTextArea() {
@@ -312,29 +312,4 @@ public class ActionPanel extends ManagerBase<Object>
 	
 	protected void updateOnRequest() {
 	}
-
-	@Override
-	protected Object select(Object... args) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	protected void updateItem(boolean update, Object... args) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	protected boolean addItem(boolean refresh, Object item) {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
-	@Override
-	protected boolean removeItem(Object item) {
-		// TODO Auto-generated method stub
-		return false;
-	}
-
 }

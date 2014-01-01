@@ -132,20 +132,16 @@ public class SwingUtil
 	
 	public static <T> Object[] iterateComponents(Container container, ComponentFunction<T> func, Object...params) {
 		params = reduceDepth(params);
-		
 		if (container != null) {
 			Component[] components = params.length > 0 ? 
 				container.getComponents() : 
 				components(container);
-				
 			for (Component comp : components) {
 				T t = func.apply(comp, params);
-				
 				if (comp instanceof Container)
 					iterateComponents((Container)comp, func, t);
 			}
 		}
-		
 		return params;
 	}
     
@@ -156,17 +152,14 @@ public class SwingUtil
 	 */
 	public static Component[] findComponents(Container container, final String regex) {
 		final ArrayList<Component> al = new ArrayList<Component>();
-		
 		iterateComponents(container, new ComponentFunction<Object[]>() {
 			public Object[] apply(Component comp, Object[] parms) {
 				String name = comp.getName();
 				if (name != null && name.matches(regex))
 					al.add(comp);
-				
 				return parms;
 			}
 		}, null, null);
-		
 		return al.toArray(new Component[al.size()]);
 	}
     
@@ -183,7 +176,28 @@ public class SwingUtil
 			try {
 				return (C)comps[0];
 			} catch (Exception e) {}
-		
+		return null;
+	}
+    
+	public static Component[] findComponents(Container container, final Class<?> cl) {
+		final ArrayList<Component> al = new ArrayList<Component>();
+		iterateComponents(container, new ComponentFunction<Object[]>() {
+			public Object[] apply(Component comp, Object[] parms) {
+				if (cl != null && cl.equals(comp.getClass()))
+					al.add(comp);
+				return parms;
+			}
+		}, null, null);
+		return al.toArray(new Component[al.size()]);
+	}
+
+	@SuppressWarnings("unchecked")
+	public static <C extends Component> C findComponent(Container container, Class<?> cl) {
+		Component[] comps = findComponents(container, cl);
+		if (comps.length > 0) 
+			try {
+				return (C)comps[0];
+			} catch (Exception e) {}
 		return null;
 	}
 
@@ -249,7 +263,6 @@ public class SwingUtil
 			Object... params)
 	{
         final Timing timing = new Timing(component);
-        
 		try {
 			func.apply(component, arrayextend(params, true, timing));
 			long current = timing.current();
@@ -716,7 +729,7 @@ public class SwingUtil
     		array = objects("OK","Save","Cancel","Save");
         	break;
     	case 13:
-    		array = objects("Accept","Deny","Accept");
+    		array = objects("Accept","Reject","Accept");
         	break;
     	default:
     		return list;
@@ -1085,20 +1098,20 @@ public class SwingUtil
 	public static Container container = null;
 	public static boolean underTest = false;
 	
-	public static JToolBar northToolBar(Container container) {
+	public static JToolBar northToolBar(Container container, Object...params) {
 		JToolBar bar = new JToolBar();
 		bar.setName("north");
 		bar.setFloatable(true);
-		container.add(bar, BorderLayout.NORTH);
+		container.add(bar, param(BorderLayout.NORTH, 0, params));
 		return bar;
 	}
 	
-	public static JToolBar southStatusBar(Container container) {
+	public static JToolBar southStatusBar(Container container, Object...params) {
 		JToolBar bar = new JToolBar();
 		bar.setName("south");
 		bar.setFloatable(false);
 		messageBox(bar);
-		container.add(bar, BorderLayout.SOUTH);
+		container.add(bar, param(BorderLayout.SOUTH, 0, params));
 		return bar;
 	}
 
@@ -1575,17 +1588,33 @@ public class SwingUtil
 	}
 	
 	public static void printContainer(String message, Container container, Object... params) {
-		if (param_Boolean(true, 0, params)) {
-			print(message + " : ");
-			iterateComponents(container, new ComponentFunction<String>() {
-				public String apply(Component comp, Object[] parms) {
-					String indent = param_String("", 0, parms);
-					println("%s%s%s", indent, comp.getName() == null ? "" : comp.getName() + " : ", comp.getClass());
-					return indent + "    ";
-				}
-			});
-			println();
+		Boolean print = param_Boolean(true, 0, params);
+		Boolean debug = param_Boolean(false, 1, params);
+		if (print && (!debug || fileExists(debugFilePath))) {
+			StringBuilder sb = new StringBuilder();
+			sb.append(message + " :\n");
+			iterateContainer(container, sb, 1);
+			if (debug)
+				debug_print(sb.toString());
+			else 
+				print(sb.toString());
 		}
+	}
+
+	public static void iterateContainer(Container container, final StringBuilder sb, int indent) {
+		iterateComponents(container, new ComponentFunction<Integer>() {
+			public Integer apply(Component comp, Object[] parms) {
+				Integer indent = param_Integer(0, 0, parms);
+				String indentString = "";
+				for (int i = 0; i < indent; i++) 
+					indentString += "    ";
+				sb.append(String.format("%s%s%s\n", 
+						indentString, 
+						comp.getName() == null ? "" : comp.getName() + " : ", 
+						comp.getClass()));
+				return ++indent;
+			}
+		}, indent);
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
@@ -1829,9 +1858,9 @@ public class SwingUtil
 		@Override
 		public String toString() {
 			Writer writer = write(new StringWriter(), "[");
-			writer = writeAssoc(writer, "name", this.name);
-			writer = writeAssoc(writer, "capacity", this.capacity, 1);
-			writer = writeAssoc(writer, "deque", this.deque, 1);
+			writer = write_assoc(writer, "name", this.name);
+			writer = write_assoc(writer, "capacity", this.capacity, 1);
+			writer = write_assoc(writer, "deque", this.deque, 1);
 			return write(writer, "]").toString();
 		}
 		

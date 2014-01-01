@@ -111,11 +111,11 @@ public class AndroidBridge
 			public void add(Component comp, Object constraints) {
 				GridBagConstraints gbc = (GridBagConstraints) constraints;
 				Writer writer = write(new StringWriter(), "[");
-				writer = writeAssoc(writer, "gridx", gbc.gridx);
-				writer = writeAssoc(writer, "gridy", gbc.gridy, 1);
-				writer = writeAssoc(writer, "gridwidth", gbc.gridwidth, 1);
-				writer = writeAssoc(writer, "gridheight", gbc.gridheight, 1);
-				writer = writeAssoc(writer, "anchor", gbc.anchor, 1);
+				writer = write_assoc(writer, "gridx", gbc.gridx);
+				writer = write_assoc(writer, "gridy", gbc.gridy, 1);
+				writer = write_assoc(writer, "gridwidth", gbc.gridwidth, 1);
+				writer = write_assoc(writer, "gridheight", gbc.gridheight, 1);
+				writer = write_assoc(writer, "anchor", gbc.anchor, 1);
 				noprintln(write(writer, "]").toString());
 				super.add(comp, constraints);
 			}

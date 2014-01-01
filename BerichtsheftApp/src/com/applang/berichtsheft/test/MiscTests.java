@@ -69,7 +69,7 @@ import com.applang.components.DatePicker.Period;
 import com.applang.components.DatePicker;
 import com.applang.components.FormEditor;
 import com.applang.components.NotePicker;
-import com.applang.components.DoubleFeature;
+import com.applang.components.TextEditor2;
 import com.applang.components.WeatherManager;
 import com.applang.components.NotePicker.NoteFinder;
 import com.applang.provider.NotePad;
@@ -93,8 +93,8 @@ public class MiscTests extends XMLTestCase
 		super.setUp();
 		underTest = true;
 		BerichtsheftApp.loadSettings();
-		doubleFeature = new DoubleFeature();
-		np = new NotePicker(null, doubleFeature);
+		textEditor2 = new TextEditor2();
+		np = new NotePicker(null, textEditor2);
 		if (tempfile.exists())
 			tempfile.delete();
 		contentfile = new File(getSetting("content.xml", BerichtsheftApp.berichtsheftPath("Skripte/content.xml")));
@@ -126,7 +126,7 @@ public class MiscTests extends XMLTestCase
 	    return suite;
 	}
 
-	DoubleFeature doubleFeature;
+	TextEditor2 textEditor2;
 	NotePicker np;
 	
 	public void testDateTime() throws Exception {
@@ -487,7 +487,7 @@ public class MiscTests extends XMLTestCase
 		assertThat(np.comboBoxes[0].getItemAt(3).toString(), is(equalTo("4.")));
 		assertEquals(36, np.lastRow());
 		assertFalse(np.isDirty());
-		doubleFeature.getTextEditor().insert("k", 0);
+		textEditor2.getTextEditor().insert("k", 0);
 		assertTrue(np.isDirty());
 		np.setDate(record[0].toString());
 		np.setTitle(record[1].toString());
@@ -1428,7 +1428,7 @@ public class MiscTests extends XMLTestCase
 	}
 	
 	public void testMimicry() throws Exception {
-		new File("/tmp/debug.out").delete();
+		new File(debugFilePath).delete();
 		File dir = tempDir(true, BerichtsheftApp.NAME);
 
 		String content = getSetting("content.xml", BerichtsheftApp.berichtsheftPath("Skripte/content.xml"));
