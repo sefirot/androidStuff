@@ -1,4 +1,4 @@
-:magic=spell:folding=explicit:
+:magic=spell:wrap=none:folding=explicit:
 3 Variationen zu "Kein Fehler im System" 
 von Eugen Gomringer
 {{{ 1.

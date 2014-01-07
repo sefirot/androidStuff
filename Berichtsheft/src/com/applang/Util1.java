@@ -205,6 +205,10 @@ public class Util1
     		.build();
     	return toStringUri(uri);
     }
+	
+	public static boolean isContentUri(String uriString) {
+		return uriString.toLowerCase().startsWith(ContentResolver.SCHEME_CONTENT);
+	}
 
 	public static Uri fileUri(String path, String fragment) {
     	return Uri.parse(path).buildUpon()
@@ -212,6 +216,10 @@ public class Util1
     		.fragment(fragment)
     		.build();
     }
+	
+	public static boolean isFileUri(String uriString) {
+		return uriString.toLowerCase().startsWith(ContentResolver.SCHEME_FILE);
+	}
 	
 	public static Uri toStringUri(Uri uri) {
 		return Uri.parse(uri.toString());
@@ -380,7 +388,7 @@ public class Util1
     
     public static ValList tables(Context context, Uri uri) {
     	final ValList tables = vlist();
-    	if (uri != null) {
+    	if (uri != null && (!isFileUri(uri.toString()) || notNullOrEmpty(uri.getPath()))) {
 			uri = dbTable(uri, null);
 			Cursor cursor = context.getContentResolver().query(uri, null,
 					"select name from sqlite_master where type = 'table'",
@@ -474,7 +482,7 @@ public class Util1
     	}
 	}
 
-	public static String database(Object flavor) {
+	public static String databaseName(Object flavor) {
 		try {
 			Class<?> c = Class.forName(flavor + "Provider");
 			return c.getDeclaredField("DATABASE_NAME").get(null).toString();
@@ -487,7 +495,7 @@ public class Util1
 		ArrayList<String> list = new ArrayList<String>();
 		ValList authorities = contentAuthorities(providerPackages, activity);
 		for (Object authority : authorities) {
-			String name = database(authority);
+			String name = databaseName(authority);
 			if (notNullOrEmpty(name))
 				list.add(name);
 		}
@@ -497,7 +505,7 @@ public class Util1
 	public static File getDatabaseFile(Context context, Uri uri) {
 		if (hasAuthority(uri)) {
 			try {
-				String name = database(uri.getAuthority());
+				String name = databaseName(uri.getAuthority());
 				return context.getDatabasePath(name).getCanonicalFile();
 			} catch (IOException e) {
 				Log.e(TAG, "getDatabaseFile", e);

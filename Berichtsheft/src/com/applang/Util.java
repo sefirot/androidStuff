@@ -325,57 +325,46 @@ public class Util
 		for (int i = 0; i < s.length(); i++) 
 			if (!Character.isWhitespace(s.charAt(i)))
 				return false;
-		
 		return true;
 	}
 
     public static Boolean toBool(Boolean defaultValue, String value) {
     	Boolean result;
-        
         try {
         	result = Boolean.parseBoolean(value);
         } catch(NumberFormatException e) { result = defaultValue; }
-        
         return result;
     }
 
     public static Integer toInt(Integer defaultValue, String value) {
     	Integer result;
-        
         try {
         	result = Integer.parseInt(value);
         } catch(NumberFormatException e) { result = defaultValue; }
-        
         return result;
     }
 
     public static Long toLong(Long defaultValue, String value) {
     	Long result;
-        
         try {
         	result = Long.parseLong(value);
         } catch(NumberFormatException e) { result = defaultValue; }
-        
         return result;
     }
 
     public static Float toFloat(Float defaultValue, String value) {
     	Float result;
-        
         try {
         	result = Float.parseFloat(value);
         } catch(NumberFormatException e) { result = defaultValue; }
-        
         return result;
     }
 
     public static Double toDouble(Double defaultValue, String value) {
     	Double result;
-        
         try {
         	result = Double.parseDouble(value);
         } catch(NumberFormatException e) { result = defaultValue; }
-        
         return result;
     }
 	
@@ -610,7 +599,6 @@ public class Util
      */
     public static File fileOf(String...parts) {
     	File file = null;
-    	
     	for (int i = 0; i < parts.length; i++) {
     		String part = parts[i];
     		if (i == 0)
@@ -620,7 +608,6 @@ public class Util
     			file = new File(file, part);
     		}
     	}
-    	
     	return file;
     }
 
@@ -645,9 +632,9 @@ public class Util
     	return enclose("\"", string, "\"");
 	}
 
-    public static String enclose(String decor, String string, Object...params) {
+    public static String enclose(String decor, Object o, Object...params) {
     	decor = stringValueOf(decor);
-    	string = decor.concat(stringValueOf(string));
+    	String string = decor.concat(stringValueOf(o));
     	if (params.length < 1)
     		return string.concat(decor);
     	for (int i = 0; i < params.length; i++) 
@@ -691,7 +678,6 @@ public class Util
     
     public static void copyContents(InputStream in, OutputStream out, Object...params) throws IOException {
 		byte scoop[] = new byte[param_Integer(4096, 0, params).intValue()];
-		
 		int n;
 		while ((n = in.read(scoop, 0, scoop.length)) > -1) 
 			out.write(scoop, 0, n);
@@ -701,7 +687,6 @@ public class Util
 	public static void copyFile(File sourceFile, File destFile) throws IOException {
 		if(!destFile.exists()) 
 			destFile.createNewFile();
-		
 		FileChannel source = null;
 		FileChannel destination = null;
 		try {
