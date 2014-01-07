@@ -5,16 +5,17 @@ import com.applang.Util.Job;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.os.Environment;
 import android.util.Log;
 
 import static com.applang.Util.*;
+import static com.applang.Util2.*;
 
 public class BerichtsheftActivity extends Activity
 {
 	public static final String packageName = getPackageNameByClass(R.class);
 
 	{
+		debug_println("packageName", packageName);
 		setPackageInfo(BerichtsheftActivity.packageName);
 	}
 	

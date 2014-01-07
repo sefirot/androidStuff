@@ -94,6 +94,7 @@ public class DataConfiguration
 	}
 
 	public DataConfiguration(Context context, Uri uri, ProjectionModel model) {
+		debug_println("DataConfiguration.context", context);
 		setContext(context);
 		if (nullOrEmpty(uri))
 			load();
