@@ -74,6 +74,7 @@ public class Context
             mPackageName = name;
             mDataDir = param_String("", 0, params);
             File dataDir = getDataDirFile();
+			debug_println("dataDir", dataDir);
 			if (dataDir.mkdirs())
 				debug_println("mkdirs", dataDir);
         }

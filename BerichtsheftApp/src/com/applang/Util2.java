@@ -164,6 +164,7 @@ public class Util2
 		 */
 		public static void load(Object... params) {
 			String fileName = param_String(defaultFilename(), 0, params);
+			debug_println("Settings.load", fileName);
 			boolean decoding = param_Boolean(false, 1, params);
 			
 			if (properties == null)
@@ -186,6 +187,7 @@ public class Util2
 			catch (FileNotFoundException e) {
 			} 
 			catch (Exception e) {
+				debug_println("error.load", e.getMessage());
 				Log.e(TAG, "Settings.load", e);
 			} 
 			finally {
