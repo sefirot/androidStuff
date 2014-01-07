@@ -272,7 +272,6 @@ public class SQLiteDatabase {
     	SQLiteDatabase db = new SQLiteDatabase();
         db.mFlags = flags;
 		try {
-//			com.applang.Util2.debug_println("openDatabase", path);
 			db.connection = new SQLiteConnection(path == null ? null : new File(path));
 			db.connection.open((flags & CREATE_IF_NECESSARY) > 0);
 			String libPath = System.getProperty("sqlite4java.library.path");
@@ -285,6 +284,7 @@ public class SQLiteDatabase {
 				db.connection.loadExtension(extensionFile, "sqlite3_regexp_init");
 			}
 		} catch (com.almworks.sqlite4java.SQLiteException e) {
+			com.applang.Util2.debug_println("openDatabase", path);
 			Log.e(TAG, "openDatabase", e);
 			return null;
 		}

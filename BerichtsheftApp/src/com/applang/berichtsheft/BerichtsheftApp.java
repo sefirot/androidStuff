@@ -58,10 +58,10 @@ public class BerichtsheftApp
 	}
 	
 	public static void loadSettings() {
-		System.setProperty("settings.dir",
-				absolutePath(".jedit/plugins/berichtsheft"));
-		System.setProperty("sqlite4java.library.path",
-				absolutePath(".jedit/jars/sqlite4java"));
+		String absPath = new File(".jedit/plugins/berichtsheft").getAbsolutePath();
+		System.setProperty("settings.dir", absPath);
+		absPath = new File(".jedit/jars/sqlite4java").getAbsolutePath();
+		System.setProperty("sqlite4java.library.path", absPath);
 		Settings.load();
 		Log.logConsoleHandling(Log.INFO);
 	}

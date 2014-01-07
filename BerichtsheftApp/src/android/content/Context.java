@@ -73,7 +73,9 @@ public class Context
         public PackageInfo(String name, Object...params) {
             mPackageName = name;
             mDataDir = param_String("", 0, params);
-            getDataDirFile().mkdirs();
+            File dataDir = getDataDirFile();
+			if (dataDir.mkdirs())
+				debug_println("mkdirs", dataDir);
         }
 
         private final String mDataDir;
