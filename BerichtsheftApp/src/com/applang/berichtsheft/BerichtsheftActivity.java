@@ -5,6 +5,7 @@ import com.applang.Util.Job;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.os.Environment;
 import android.util.Log;
 
 import static com.applang.Util.*;
@@ -14,9 +15,7 @@ public class BerichtsheftActivity extends Activity
 	public static final String packageName = getPackageNameByClass(R.class);
 
 	{
-		setPackageInfo(
-				BerichtsheftActivity.packageName, 
-				BerichtsheftApp.absolutePath("../Berichtsheft"));
+		setPackageInfo(BerichtsheftActivity.packageName);
 	}
 	
 	Job<String> followUp = null;

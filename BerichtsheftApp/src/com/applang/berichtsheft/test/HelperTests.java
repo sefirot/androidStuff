@@ -75,6 +75,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 import android.net.Uri;
+import android.os.Environment;
 import android.provider.BaseColumns;
 import android.util.Log;
 import android.view.View;
@@ -135,7 +136,7 @@ public class HelperTests extends TestCase
 		}
 	}
 	
-	File keinFehlerFile = new File(new BerichtsheftActivity().getDataDirFile(), "../../assets/Kein Fehler im System.txt");
+	File keinFehlerFile = new File(new BerichtsheftActivity().getDataDirectory(), "../../assets/Kein Fehler im System.txt");
 
 	private void setupJEdit(String script, Object...params) throws Throwable {
 		File tempFile = BerichtsheftPlugin.getTempFile("test.bsh");
@@ -318,7 +319,7 @@ public class HelperTests extends TestCase
 		i.source(".jedit/macros/scripts/executor.bsh");
 	}
 
-	public void testCommands() throws Exception {
+	public void _testCommands() throws Exception {
 		String path = ".jedit/console/commando/Android.xml";
 		File file = new File(path);
 		assertTrue(fileExists(file));

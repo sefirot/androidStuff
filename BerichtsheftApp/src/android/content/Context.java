@@ -24,7 +24,7 @@ public class Context
 		return new Context() {
 			{
 				if (dbFile != null) {
-					setPackageInfo(packageName, dbFile.getParent());
+					setPackageInfo(packageName);
 					registerFlavor(flavor, dbFile.getPath());
 				}
 			}};
@@ -32,7 +32,7 @@ public class Context
 	
 	@Override
 	public String toString() {
-		return String.format("Context : '%s' %s", getPackageName(), getDataDirFile().getPath());
+		return String.format("Context : '%s' %s", getPackageName(), getDataDirectory().getPath());
 	}
 
 	private final static String TAG = Context.class.getSimpleName();
@@ -43,9 +43,6 @@ public class Context
     public static final int MODE_WORLD_WRITEABLE = 0x0002;
     public static final int MODE_APPEND = 32768;
     
-    private final Object mSync = new Object();
-    private File mDatabasesDir;
-
     private File makeFilename(File base, String name) {
         if (name.indexOf(File.separatorChar) < 0) {
             return new File(base, name);
@@ -76,6 +73,7 @@ public class Context
         public PackageInfo(String name, Object...params) {
             mPackageName = name;
             mDataDir = param_String("", 0, params);
+            getDataDirFile().mkdirs();
         }
 
         private final String mDataDir;
@@ -89,7 +87,9 @@ public class Context
         	File dataDir = notNullOrEmpty(mDataDir) ? 
         			new File(mDataDir) : 
         			Environment.getDataDirectory();
-            return new File(dataDir, "data/" + getPackageName());
+            return nullOrEmpty(mPackageName) ?
+            		dataDir :
+            		new File(dataDir, "data/" + mPackageName);
         }
     }
     
@@ -107,21 +107,27 @@ public class Context
     }
     
     //	NOTE	this is NOT Android API
-    public File getDataDirFile() {
+    public File getDataDirectory() {
         if (mPackageInfo != null) {
             return mPackageInfo.getDataDirFile();
         }
         throw new RuntimeException("Not supported in system context");
     }
     
+    private final Object mSync = new Object();
+    private File mDatabasesDir;
+
     private File getDatabasesDir() {
         synchronized (mSync) {
             if (mDatabasesDir == null) {
-                mDatabasesDir = new File(getDataDirFile(), "databases");
+                mDatabasesDir = new File(getDataDirectory(), "databases");
             }
             if (mDatabasesDir.getPath().equals("databases")) {
                 mDatabasesDir = new File("/data/system");
             }
+	    	if (!mDatabasesDir.isDirectory() && mDatabasesDir.mkdir()) {
+	    		setPermissions(mDatabasesDir.getPath(), S_IRWXU|S_IRWXG|S_IXOTH);
+	    	}
             return mDatabasesDir;
         }
     }
@@ -190,9 +196,6 @@ public class Context
 			return new File(flavorPaths.getValue(name).toString());
 		else {
 	    	File dir = getDatabasesDir();
-	    	if (!dir.isDirectory() && dir.mkdir()) {
-	    		setPermissions(dir.getPath(), S_IRWXU|S_IRWXG|S_IXOTH);
-	    	}
 	    	return makeFilename(dir, name);
 	 	}
  	}
@@ -232,14 +235,14 @@ public class Context
 	}
 
 	public File getFilesDir() {
-		File dir = new File(getDataDirFile(), "files");
+		File dir = new File(getDataDirectory(), "files");
 		if (!fileExists(dir))
 			dir.mkdir();
 		return dir;
 	}
 
 	public File getDir(String name, int mode) {
-		File dir = new File(getDataDirFile(), String.format("app_%s", name));
+		File dir = new File(getDataDirectory(), String.format("app_%s", name));
 		if (!fileExists(dir))
 			dir.mkdir();
 		return dir;

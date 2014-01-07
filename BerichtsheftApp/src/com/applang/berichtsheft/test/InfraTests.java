@@ -16,6 +16,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Environment;
 
 import static com.applang.Util.*;
 import static com.applang.Util1.*;
@@ -40,7 +41,7 @@ public class InfraTests<T extends Activity> extends TestCase
 
     @Override
     protected void setUp() throws Exception {
-        mDataDir = BerichtsheftApp.absolutePath("../Berichtsheft");
+        mDataDir = Environment.getDataDirectory().getPath();
         BerichtsheftApp.loadSettings();
         mActivity = getActivity();
     }
@@ -68,12 +69,22 @@ public class InfraTests<T extends Activity> extends TestCase
     };
 
 	public void testContext() throws Exception {
+		File dir = Environment.getDataDirectory();
+		println(dir);
+		assertTrue(dir.exists());
 		Context context = new Context();
 		context.setPackageInfo(mPackage, mDataDir);
+		dir = context.getDataDirectory();
+		assertTrue(dir.exists());
+		
 		assertEquals("Berichtsheft", context.getResources().getString(R.string.app_name));
 
+		String flavor = NotePad.AUTHORITY;
+		String dbName = databaseName(flavor);
+		File dbFile = context.getDatabasePath(dbName);
+		makeSureExists(flavor, dbFile);
 		String[] databaseList = context.databaseList();
-		File dbFile = context.getDatabasePath(databaseList[0]);
+		assertTrue(asList(databaseList).contains(dbName));
 		String dbPath = dbFile.getPath();
 		assertEquals(fileOf(mDataDir, 
 				"data",
@@ -119,14 +130,14 @@ public class InfraTests<T extends Activity> extends TestCase
 		contentProvider.close();
 		assertEquals((Integer)params[0], (Integer)recordCount(context, uri));
 		
-		uri = contentUri(NotePad.AUTHORITY, null);
+		uri = contentUri(flavor, null);
 		assertFalse(notNullOrEmpty(uri.getPath()));
 		assertTrue(notNullOrEmpty(uri.getAuthority()));
-		assertEquals("content://" + NotePad.AUTHORITY, uri.toString());
-		uri2 = contentUri(NotePad.AUTHORITY, NotePadProvider.tableName(NotePadProvider.NOTES));
+		assertEquals("content://" + flavor, uri.toString());
+		uri2 = contentUri(flavor, NotePadProvider.tableName(NotePadProvider.NOTES));
 		assertEquals(NoteColumns.CONTENT_URI.toString(), uri2.toString());
 		
-		uri2 = Uri.parse(NotePad.AUTHORITY);
+		uri2 = Uri.parse(flavor);
 		assertTrue(notNullOrEmpty(uri2.getPath()));
 		assertFalse(notNullOrEmpty(uri2.getAuthority()));
 		assertEquals(uri.toString(), "content://" + uri2.toString());
