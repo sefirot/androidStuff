@@ -129,7 +129,7 @@ public class Context
     public SQLiteDatabase openOrCreateDatabase(String name, int mode, CursorFactory factory) {
     	File dbFile = getDatabasePath(name);
         SQLiteDatabase db = SQLiteDatabase.openOrCreateDatabase(dbFile, factory);
-        setFilePermissionsFromMode(dbFile.getPath(), mode, 0);
+//		setFilePermissionsFromMode(dbFile.getPath(), mode, 0);
         return db;
     }
     
@@ -154,19 +154,20 @@ public class Context
 		this.flavor = flavor;
 	}
 
-	private BidiMultiMap databasePaths = bmap(2);
+	private BidiMultiMap flavorPaths = bmap(2);
 	
     //	NOTE	this is NOT Android API
 	public void registerFlavor(String flavor, String path) {
-		String name = database(flavor);
-		databasePaths.putValue(name, path);
+		String name = databaseName(flavor);
+		flavorPaths.putValue(name, path);
 		setFlavor(flavor);
+//    	com.applang.Util2.debug_println("registerFlavor", name, path);
 	}
 	
     //	NOTE	this is NOT Android API
 	public boolean unregisterFlavor(String flavor) {
-		String name = database(flavor);
-		return databasePaths.removeKey(name);
+		String name = databaseName(flavor);
+		return flavorPaths.removeKey(name);
 	}
 
     //	NOTE	this is NOT Android API
@@ -175,17 +176,18 @@ public class Context
 			return "";
 		else if (hasAuthority(uri)) {
 			String flavor = uri.getAuthority();
-			String dbName = database(flavor);
-			File file = getDatabasePath(dbName);
-			return file.getPath();
+			String dbName = databaseName(flavor);
+			File dbFile = getDatabasePath(dbName);
+			return dbFile.getPath();
 		}
 		else
 			return uri.getPath();
 	}
 	
     public File getDatabasePath(String name) {
-		if (databasePaths.getKeys().contains(name))
-			return new File(databasePaths.getValue(name).toString());
+//    	com.applang.Util2.debug_println("flavorPaths", flavorPaths);
+		if (flavorPaths.getKeys().contains(name))
+			return new File(flavorPaths.getValue(name).toString());
 		else {
 	    	File dir = getDatabasesDir();
 	    	if (!dir.isDirectory() && dir.mkdir()) {
@@ -339,7 +341,8 @@ public class Context
     	};
     }
 	
-	public Point location;
+	public Point location = new Point(0,0);
+	
 	public Context setLocation(Point location) {
 		this.location = location;
 		return this;

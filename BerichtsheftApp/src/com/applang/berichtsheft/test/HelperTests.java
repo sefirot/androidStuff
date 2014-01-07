@@ -91,6 +91,7 @@ import com.applang.berichtsheft.plugin.DataDockable.TransportBuilder;
 import com.applang.berichtsheft.plugin.JEditOptionDialog;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 import com.applang.components.AndroidBridge;
+import com.applang.components.DataConfiguration;
 import com.applang.components.DataView;
 import com.applang.components.DataView.DataModel;
 import com.applang.components.DataView.ProjectionModel;
@@ -174,7 +175,7 @@ public class HelperTests extends TestCase
 		copyFile(
 				new File(tempDir(false, subDirName, "settings", "plugins", "berichtsheft"), "jedit.properties"), 
 				new File(tempDir(false, subDirName, "settings"), "properties"));
-		BerichtsheftPlugin.props = null;
+		BerichtsheftPlugin.properties = null;
         String[] args = strings(
 				"-nosplash",
 				"-noserver",
@@ -541,21 +542,48 @@ public class HelperTests extends TestCase
 	}
 	
 	public void testDataConfig() throws Exception {
+		String orig_uriString = getSetting("uri", null);
+		String orig_database = getSetting("database", null);
+		try {
+			putSetting("uri", "");
+			putSetting("database", "");
+			DataConfiguration dc = new DataConfiguration(new BerichtsheftActivity(), null, null);
+			while (dc.display(null))
+				println("data configuration\n\turi\t%s\n\tpath\t%s\n\ttable\t%s\n\tflavor\t%s\n%s", 
+						dc.getUri(), 
+						dc.getPath(), 
+						dc.getTableName(), 
+						dc.getProjectionModel().getFlavor(), 
+						dc.getProjectionModel().getExpandedProjection());
+		}
+		finally {
+			putSetting("uri", orig_uriString);
+			putSetting("database", orig_database);
+		}
+	}
+	
+	public void testDataConfig2() throws Exception {
     	String dbPath = createNotePad();
+    	String tableName = "notes";
 		DataView dv = new DataView();
-		Uri uri = fileUri(dbPath, null);
+		Uri uri = fileUri(dbPath, tableName);
+		assertTrue(isFileUri(stringValueOf(uri)));
 		dv.setUri(uri);
 		Context context = new BerichtsheftActivity();
-		ProjectionModel pmodel = new ProjectionModel(context, uri, null);
-		dv.getDataConfiguration().setProjectionModel(pmodel);
+		DataConfiguration dataConfig = dv.getDataConfiguration();
+		if (dataConfig.getProjectionModel() == null) {
+			ProjectionModel pmodel = new ProjectionModel(context, uri, null);
+			dataConfig.setProjectionModel(pmodel);
+		}
 		while (dv.configureData(null, true)) {
 			println(dv.getUri());
 			println(dv.getFlavor());
 			BidiMultiMap projection = 
-					dv.getDataConfiguration().getProjectionModel().getExpandedProjection();
+					dataConfig.getProjectionModel().getExpandedProjection();
 			DataModel model = new DataModel().setProjection(projection);
 			println(model.columns);
 			println(model.getProjection());
+			dataConfig.save();
 		}
 	}
 

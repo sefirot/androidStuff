@@ -388,7 +388,7 @@ public class MiscTests extends XMLTestCase
 			info = table_info2(context, curi, tableName, flavor);
 			assertTrue(info.containsKey("PRIMARY_KEY"));
 			assertTrue(info.containsKey("VERSION"));
-			assertEquals(database(flavor), getDatabaseFile(context, curi).getName());
+			assertEquals(databaseName(flavor), getDatabaseFile(context, curi).getName());
 			context.registerFlavor(flavor, dbFileName);
 			assertEquals(dbFileName, getDatabaseFile(context, curi).getPath());
 			info = table_info2(context, curi, tableName, flavor);

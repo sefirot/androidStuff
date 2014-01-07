@@ -30,7 +30,7 @@
          "compile" task is called.                          -->
     <selector id="compileFiles">
 		<or>
-        	<filename name="com/applang/**/*.java" />
+        	<filename name="**/*.java" />
 		</or>
     </selector>
 	
@@ -42,12 +42,30 @@
     </path>
     
     <target name="build.prepare">
+<!--        <delete dir="${build.classes}/com/applang"/>
+        <mkdir dir="${build.classes}/com/applang"/>
+        <copy todir="${build.classes}/com/applang" includeEmptyDirs="false">
+            <fileset dir="${basedir}/bin/com/applang">
+            	<or>
+	            	<filename name="Util.class" />
+	            	<filename name="Util$*.class" />
+	            	<filename name="Util1*.class" />
+	            	<filename name="VelocityUtil*.class" />
+	            	<filename name="UserContext*.class" />
+	    			<filename name="BaseDirective*.class" />
+	    			<filename name="PromptDirective*.class" />
+	    			<filename name="CursorDirective*.class" />
+	    			<filename name="SpinnerDirective*.class" />
+	    			<filename name="Dialogs*.class" />
+            	</or>
+            </fileset>
+        </copy>
         <mkdir dir="${build.classes}/images"/>
         <copy todir="${build.classes}/images" includeEmptyDirs="false">
             <fileset dir="${basedir}/${src.dir}/images">
         		<filename name="*" />
             </fileset>
-        </copy>
+        </copy> -->
     </target>
     
     <target name="build.post">
@@ -66,7 +84,8 @@
 	<tempfile property="temp.sh" prefix="link" suffix=".sh"/>
     
     <target name="compile">
-    	<echo file="${temp.sh}" append="false">#!/bin/bash
+    	<echo file="${temp.sh}" append="false">#!/bin/sh
+mkdir ${abs.build.dir}
 cd ${abs.build.dir}
 rm -rf classes
 ln -s ../bin classes
@@ -95,7 +114,7 @@ rm $0
 	</target>
 	
 	<target name="run-debug" depends="build">
-		<java classname="com.applang.berichtsheft.BerichtsheftApp"
+		<java classname="com.applang.components.DataConfiguration"
 		      fork="true" spawn="true"
 		      classpathref="run.class.path">
 			<jvmarg value="-agentlib:jdwp=transport=dt_socket,server=y,address=localhost:5005,timeout=60000"/>
@@ -114,7 +133,7 @@ rm $0
 	<target name="test-special" depends="build">
 		<junit printsummary="yes" fork="yes" haltonfailure="yes">
 			<formatter type="plain"/>
-			<test name="com.applang.berichtsheft.test.ProviderTests"/>
+			<test todir="reports" name="com.applang.berichtsheft.test.ProviderTests"/>
 			<classpath>
 				<path refid="run.class.path" />
 			</classpath>

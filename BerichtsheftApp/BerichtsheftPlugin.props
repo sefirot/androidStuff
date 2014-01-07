@@ -33,7 +33,7 @@ plugin.com.applang.berichtsheft.plugin.BerichtsheftPlugin.menu=datadock \
 	datadock.choose-uri \
 	datadock.update-uri \
 	berichtsheft.spellcheck-selection \
-	magic.buffer
+	magic.data-manage
 
 # action labels for actions supplied by dockables.xml
 datadock.label=Data
@@ -175,8 +175,10 @@ manager.action-VMFILE.icon=/images/book_open_16x16.png
 manager.action-VMFILE.label=choose vm-file
 manager.action-STRUCT.icon=/images/structure_16x16.png
 manager.action-STRUCT.label=show structure
-manager.action-TOGGLE.label.1=Text
-manager.action-TOGGLE.label.2=Script
+manager.action-TOGGLE1.label.1=Table
+manager.action-TOGGLE1.label.2=Form
+manager.action-TOGGLE2.label.1=Text
+manager.action-TOGGLE2.label.2=Script
 
 # action labels for actions supplied by actions.xml
 datadock.choose-db.label=Choose database file
@@ -186,7 +188,7 @@ datadock.transport-from-buffer.label=Pull selected text from current buffer into
 datadock.transport-to-buffer.label=Push selected items to current buffer
 datadock.download-to-buffer.label=Download content to current buffer
 berichtsheft.spellcheck-selection.label=Spellcheck selection
-magic.buffer.label=Spellcheck buffer
+magic.data-manage.label=Manage data
 manager.add.label=add new item
 manager.remove.label=remove old item
 berichtsheft.insert-enter.label=insert 'new line' character into template at current position

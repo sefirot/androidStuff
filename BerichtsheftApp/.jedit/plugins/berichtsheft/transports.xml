@@ -27,7 +27,7 @@ long created = values.getAsLong("created");
 long[] interval = Util.dayInterval(created, 1);
 title = values.getAsString("title");
 String.format("created between %d and %d and title = '%s'", new Object[]{interval[0], interval[1] - 1, title})]]></BODY>
-		</FUNCTION><PROJECTION table="bausteine" version="4"><![CDATA[[["_id","title","note","created","modified"],["","","","","unixepoch"],["INTEGER","TEXT","TEXT","INTEGER","INTEGER"],[false,true,true,true,true]]]]></PROJECTION><PROJECTION table="notes" version="4"><![CDATA[[["_id","title","note","created","modified"],["","","","unixepoch","unixepoch"],["INTEGER","TEXT","TEXT","INTEGER","INTEGER"],[false,true,true,true,true]]]]></PROJECTION><PROJECTION table="weathers" version="4"><![CDATA[[["_id","description","location","precipitation","maxtemp","mintemp","created","modified"],["","","","","","","unixepoch","unixepoch"],["INTEGER","TEXT","TEXT","FLOAT","FLOAT","FLOAT","INTEGER","INTEGER"],[false,true,true,true,true,true,true,true]]]]></PROJECTION></FLAVOR>
+		</FUNCTION><PROJECTION table="bausteine" version="4"><![CDATA[[["_id","title","note","created","modified"],["","","","","unixepoch"],["INTEGER","TEXT","TEXT","INTEGER","INTEGER"],[false,true,true,true,true]]]]></PROJECTION><PROJECTION table="notes" version="4"><![CDATA[[["_id","title","note","created","modified"],["","","","unixepoch","unixepoch"],["INTEGER","TEXT","TEXT","INTEGER","INTEGER"],[false,true,true,true,true]]]]></PROJECTION></FLAVOR>
 	<FLAVOR name="com.applang.provider.WeatherInfo">
 		<FUNCTION name="updateOrInsert-clause" profile="_weather">
 <BODY><![CDATA[import com.applang.*;

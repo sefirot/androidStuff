@@ -8,6 +8,7 @@ import java.awt.event.ComponentEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.io.File;
+import java.util.Properties;
 
 import javax.swing.AbstractCellEditor;
 import javax.swing.Box;
@@ -26,6 +27,7 @@ import javax.swing.table.TableModel;
 import org.gjt.sp.jedit.View;
 
 import android.app.AlertDialog;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
@@ -46,8 +48,6 @@ import static com.applang.Util2.*;
 @SuppressWarnings("rawtypes")
 public class DataConfiguration
 {
-	private static final String FLAVOR_PARAMETER_NAME = "[]";
-
 	public static final String TAG = DataConfiguration.class.getSimpleName();
 	
 	private Context context;
@@ -69,6 +69,9 @@ public class DataConfiguration
 		this.uri = uri;
 		tableName = dbTableName(uri);
 		path = context.getDatabasePath(uri);
+		if (projectionModel != null && projectionModel.hasFlavor()) {
+			getContext().registerFlavor(projectionModel.getFlavor(), path);
+		}
 	}
 
 	private String path, tableName;
@@ -99,7 +102,7 @@ public class DataConfiguration
 		if (model != null)
 			setProjectionModel(model);
 		else if (projectionModel == null)
-			setProjectionModel(new ProjectionModel(context, getUri(), ""));
+			setProjectionModel(new ProjectionModel(context, getUri(), context.getFlavor()));
 	}
 	
 	public DataConfiguration(Provider provider) {
@@ -140,6 +143,9 @@ public class DataConfiguration
 				File dbFile = DataView.chooseDb(BerichtsheftPlugin.fileChooser(view), true, path, true);
 				if (dbFile != null) {
 					setLongText(entry, dbFile.getPath());
+					String flavor = stringValueOf(comboBox.getSelectedItem());
+					if (notNullOrEmpty(flavor))
+						makeSureExists(flavor, dbFile);
 					setDbFile(dbFile, null);
 				}
 				else
@@ -157,10 +163,18 @@ public class DataConfiguration
 			DataView.fillFlavorCombo(comboBox);
 			comboBox.addActionListener(new ActionListener() {
 				public void actionPerformed(ActionEvent e) {
+					if (projectionModel.hasFlavor())
+						getContext().unregisterFlavor(projectionModel.getFlavor());
 					String flavor = stringValueOf(comboBox.getSelectedItem());
 					projectionModel.setFlavor(flavor);
 					projectionModel.injectFlavor();
-					setDbFile(new File(entry.getText()), tableName);
+					path = entry.getText();
+					if (projectionModel.hasFlavor()) {
+						if (nullOrEmpty(path))
+							path = context.getDatabasePath(databaseName(flavor)).getPath();
+						getContext().registerFlavor(flavor, path);
+					}
+					setDbFile(new File(path), tableName);
 				}
 			});
 			box.add(comboBox);
@@ -179,7 +193,7 @@ public class DataConfiguration
 			tables[1].setPreferredScrollableViewportSize(scaledDimension(size, 1.0, 1.2));
 			panel.add(component);
 		}
-		setDbFile(null, tableName);
+//		setDbFile(null, tableName);
 		tables[0].getSelectionModel().addListSelectionListener(
 			new ListSelectionListener() {
 				public void valueChanged(ListSelectionEvent e) {
@@ -252,7 +266,7 @@ public class DataConfiguration
 			entry.setText("");
 			tables[0].setModel(DataView.dbTablesModel(context, uri));
 		}
-		else if (dbFile != null) {
+		else {
 			setUri(null);
 			tables[0].setModel(new DefaultTableModel());
 		}
@@ -302,61 +316,78 @@ public class DataConfiguration
 
 	public void load() {
 		String uriString = stringValueOf(prefs.getString("uri", ""));
-		projectionFromUri(Uri.parse(uriString));
+		String database = stringValueOf(prefs.getString("database", ""));
+		debug_println("loaded", uriString, database);
+		if (isFileUri(uriString))
+			database = Uri.parse(uriString).getPath();
+		if (!fileExists(database)) {
+			database = null;
+		}
+		projectionFromUri(Uri.parse(uriString), database);
 	}
 
-	private void projectionFromUri(Uri uri) {
+	public void projectionFromUri(Uri uri, String database) {
+		String flavor = null;
+		if (ContentResolver.SCHEME_CONTENT.equals(uri.getScheme())) {
+			flavor = uri.getAuthority();
+			if (notNullOrEmpty(database))
+				context.registerFlavor(flavor, database);
+		}
 		String query = uri.getQuery();
 		if (query != null) {
-			String flavor = null;
 			ValList names = vlist();
-			ValList convs = vlist();
 			ValList types = vlist();
+			ValList conversions = vlist();
+			ValList checks = vlist();
 			ValList list = split(query, "&");
 			for (int i = 0; i < list.size(); i++) {
 				String[] parts = list.get(i).toString().split("=", 2);
-				if (FLAVOR_PARAMETER_NAME.equals(parts[0]))
-					flavor = parts[1];
-				else {
-					names.add(parts[0]);
-					parts = parts[1].split("\\|", 2);
-					types.add(parts[0]);
-					convs.add(parts[1]);
-				}
+				names.add(parts[0]);
+				parts = parts[1].split("\\|", 3);
+				types.add(parts[0]);
+				conversions.add(parts[1]);
+				checks.add(parts.length > 2 ? Boolean.parseBoolean(parts[2]) : true);
 			}
-			setUri(uri.buildUpon().query(null).build());
-			BidiMultiMap projection = new BidiMultiMap(names, convs, types);
+			BidiMultiMap projection = new BidiMultiMap(names, conversions, types, checks);
 			setProjectionModel(new ProjectionModel(context, uri, flavor, projection));
 		}
-		else
-			setUri(uri);
+		setUri(uri.buildUpon().query(null).build());
 	}
 
 	public void save() {
 		Uri uri = getUri();
+		String database = context.getDatabasePath(uri);
 		if (notNullOrEmpty(tableName)) {
 			uri = dbTable(uri, tableName);
 			if (projectionModel != null) 
 				uri = projectionToUri(uri);
 		}
 		String uriString = uri != null ? Uri.decode(uri.toString()) : null;
-		prefs.edit().putString("uri", uriString).commit();
+		prefs.edit().putString("uri", uriString).putString("database", database).commit();
+		debug_println("saved", uriString, database);
 	}
 
-	private Uri projectionToUri(Uri uri) {
+	public Uri projectionToUri(Uri uri) {
 		Uri.Builder builder = uri.buildUpon().query("");
-		if (projectionModel.hasFlavor())
-			builder.appendQueryParameter(
-					FLAVOR_PARAMETER_NAME,
-					stringValueOf(projectionModel.getFlavor()));
-		BidiMultiMap projection = projectionModel.getProjection();
+		if (projectionModel.hasFlavor()) {
+			builder
+				.scheme(ContentResolver.SCHEME_CONTENT)
+    			.authority(projectionModel.getFlavor())
+    			.path(dbTableName(uri));
+		}
+		BidiMultiMap projection = projectionModel.getExpandedProjection();
 		ValList names = projection.getKeys();
-		ValList convs = projection.getValues(1);
+		ValList conversions = projection.getValues(1);
 		ValList types = projection.getValues(2);
+		ValList checks = projection.getValues(3);
 		for (int i = 0; i < names.size(); i++) {
 			builder.appendQueryParameter(
 					stringValueOf(names.get(i)),
-					join("|", objects(types.get(i), stringValueOf(convs.get(i)))));
+					join("|", objects(
+							types.get(i), 
+							stringValueOf(conversions.get(i)), 
+							stringValueOf(checks.get(i))
+							)));
 		}
 		uri = builder.build();
 		return uri;
@@ -372,6 +403,16 @@ public class DataConfiguration
 			return stringValueOf(dc.getUri());
 		else
 			return null;
+	}
+	
+	public static boolean dataProperties(View view, Properties props) {
+		Uri uri = Uri.parse(props.getProperty("uri", ""));
+		DataConfiguration dc = new DataConfiguration(new BerichtsheftActivity(), uri, null);
+		if (dc.display(view, true)) {
+			props.setProperty("uri", stringValueOf(dc.getUri()));
+			return true;
+		}
+		return false;
 	}
 	/**
 	 * @param args

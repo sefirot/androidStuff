@@ -272,6 +272,7 @@ public class SQLiteDatabase {
     	SQLiteDatabase db = new SQLiteDatabase();
         db.mFlags = flags;
 		try {
+//			com.applang.Util2.debug_println("openDatabase", path);
 			db.connection = new SQLiteConnection(path == null ? null : new File(path));
 			db.connection.open((flags & CREATE_IF_NECESSARY) > 0);
 			String libPath = System.getProperty("sqlite4java.library.path");

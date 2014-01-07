@@ -16,14 +16,16 @@ import javax.swing.BoxLayout;
 import javax.swing.JPanel;
 import javax.swing.JToggleButton;
 
+import android.util.Log;
+
 import com.applang.UserContext;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
-import static com.applang.VelocityUtil.evaluate;
 import static com.applang.SwingUtil.*;
+import static com.applang.VelocityUtil.*;
 
 public class ActionPanel extends ManagerBase<Object>
 {
@@ -87,10 +89,11 @@ public class ActionPanel extends ManagerBase<Object>
 		TITLE		(11, "manager.action-TITLE"), 
 		IMPORT		(12, "manager.action-IMPORT"), 
 		TEXT		(13, "manager.action-TEXT"), 
-		TOGGLE		(14, "manager.action-TOGGLE"), 
-		STRUCT		(15, "manager.action-STRUCT"), 
-		ANDROID		(16, "manager.action-ANDROID"), 
-		ACTIONS		(17, "Actions"); 		//	needs to stay last !
+		TOGGLE1		(14, "manager.action-TOGGLE1"), 
+		TOGGLE2		(15, "manager.action-TOGGLE2"), 
+		STRUCT		(16, "manager.action-STRUCT"), 
+		ANDROID		(17, "manager.action-ANDROID"), 
+		ACTIONS		(18, "Actions"); 		//	needs to stay last !
 		
 		private final int index;   
 	    private final String resourceName;
@@ -182,60 +185,72 @@ public class ActionPanel extends ManagerBase<Object>
 	}
 	
 	public void enableAction(int index, boolean enabled) {
-		buttons[index].getAction().setEnabled(enabled);
+		if (buttons[index] != null)
+			buttons[index].getAction().setEnabled(enabled);
 	}
 	
 	public boolean isActionEnabled(int index) {
 		return buttons[index].getAction().isEnabled();
 	}
-
-	protected IComponent iComponent = null;
-	protected ITextComponent textComponent = null;
 	
-	protected void setupTextArea(ITextComponent iTextComponent) {
-		textComponent = iTextComponent;
-		textComponent.addKeyListener(new KeyAdapter() {
-			@Override
-			public void keyTyped(KeyEvent e) {
-				setDirty(true);
-			}
-		});
-	}
-	
-	protected void toggleTextView(CustomAction toggleAction) {
+	protected void toggle(CustomAction toggleAction, Job<Boolean> job, Object...params) {
 		String name1 = toggleAction.getType().name(1);
 		String name2 = toggleAction.getType().name(2);
-		if (toggleAction.getValue(Action.NAME).equals(name1))
-			toggleAction.putValue(Action.NAME, name2);
-		else
-			toggleAction.putValue(Action.NAME, name1);
-		boolean textView = toggleAction.getValue(Action.NAME).equals(name2);
-    	String script = getText();
-		getDoubleFeature().toggle(textView, null);
-    	if (textView) {
-			setText(toText(script));
-    	}
+		String n = Action.NAME;
+		Object name = toggleAction.getValue(n);
+		name = name.equals(name1) ? name2 : name1;
+		toggleAction.putValue(n, name);
+    	try {
+    		boolean toggle = name.equals(name2);
+			job.perform(toggle, params);
+		} 
+    	catch (Exception e) {
+			Log.e(TAG, "", e);
+		}
+	}
+	
+	protected Job<Boolean> textViewToggler = new Job<Boolean>() {
+		public void perform(Boolean textView, Object[] parms) throws Exception {
+	    	String script = getText();
+			getTextComponent().toggle(textView, null);
+	    	if (textView) {
+				setText(toText(script));
+	    	}
+		}
+	};
+
+	protected IComponent iComponent = null;
+
+	protected boolean hasTextComponent() {
+		return iComponent instanceof ITextComponent;
+	}
+	
+	public TextEditor2 getTextComponent() {
+		return hasTextComponent() ? (TextEditor2) iComponent : null;
+	}
+	
+	protected void setupTextArea(ITextComponent iTextComponent) {
+		if (hasTextComponent()) {
+			getTextComponent().addKeyListener(new KeyAdapter() {
+				@Override
+				public void keyTyped(KeyEvent e) {
+					setDirty(true);
+				}
+			});
+		}
 	}
 
 	protected String toText(String script) {
 		return evaluate(new UserContext(), script, TAG);
 	}
-	
-	public TextEditor2 getDoubleFeature() {
-		return (TextEditor2) textComponent;
-	}
-
-	protected boolean hasTextArea() {
-		return textComponent != null;
-	}
 
 	public void setText(String text) {
-		if (hasTextArea()) 
-			textComponent.setText(text);
+		if (hasTextComponent()) 
+			getTextComponent().setText(text);
 	}
 
 	public String getText() {
-		return hasTextArea() ? textComponent.getText() : null;
+		return hasTextComponent() ? getTextComponent().getText() : null;
 	}
 
 	protected String chooseDatabase(String dbName) {

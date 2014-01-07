@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry excluding="com/applang/Prompt.java|com/applang/_Dialogs.java|com/applang/berichtsheft/plugin/JEditTextEditor.java|com/inet/jortho/|com/inet/" kind="src" path="src"/>
+	<classpathentry excluding="com/applang/Prompt.java|com/applang/_Dialogs.java|com/applang/berichtsheft/plugin/JEditTextEditor.java|com/inet/jortho/|com/inet/|echo/" kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/3"/>
 	<classpathentry kind="lib" path=".jedit/jedit.jar" sourcepath="/home/lotharla/work/jEdit/jEdit">

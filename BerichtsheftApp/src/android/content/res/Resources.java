@@ -248,7 +248,7 @@ public class Resources
 	public static Set<URL> getResourceURLs(String packageName, ResourceURLFilter filter) throws Exception {
 		Set<URL> collectedURLs = new HashSet<URL>();
 		URI location = getCodeSourceLocation(Resources.class);
-		location = location.resolve(packageName.replace('.', '/'));
+//		location = location.resolve(packageName.replace('.', '/'));
 		iterateEntry(new File(location), filter, collectedURLs);
 		return collectedURLs;
 	}
@@ -261,6 +261,10 @@ public class Resources
 			Log.e(TAG, "getCodeSourceLocation", e);
 			throw new RuntimeException("code source not available");
 		}
+	}
+	
+	public static String className(String resourceClassFileName, String sourceLocation) {
+		return strip(true, resourceClassFileName.substring(sourceLocation.length()), "!/").replace('/', '.');
 	}
 	
 	public static void list(Writer writer, String packageName, ResourceURLFilter filter) {

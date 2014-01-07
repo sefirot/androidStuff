@@ -31,32 +31,33 @@ public class ContentResolver extends Observable
     	Context context = mContext;
     	contentProvider = new ContentProvider();
     	String flavor = null;
-    	if (SCHEME_CONTENT.equals(uri.getScheme())) {
-    		flavor = uri.getAuthority();
-    		if (flavor != null) {
-    			try {
+    	try {
+    		if (SCHEME_CONTENT.equals(uri.getScheme())) {
+    			flavor = uri.getAuthority();
+    			if (flavor != null) {
     				Class<?> c = Class.forName(flavor + "Provider");
     				contentProvider = (ContentProvider) c.newInstance();
-    			} catch (Exception e) {
-    				Log.e(TAG, "acquireProvider", e);
     			}
+    		} else if (SCHEME_FILE.equals(uri.getScheme())) {
+    			final File file = new File(uri.getPath());
+    			context = new Context() {
+    				{
+    					setPackageInfo("", file.getParent());
+    				}
+    				
+    				@Override
+    				public ContentResolver getContentResolver() {
+    					return ContentResolver.this;
+    				}
+    			};
     		}
-    	} else if (SCHEME_FILE.equals(uri.getScheme())) {
-    		final File file = new File(uri.getPath());
-    		context = new Context() {
-    			{
-    				setPackageInfo("", file.getParent());
-    			}
-    			
-    			@Override
-    			public ContentResolver getContentResolver() {
-    				return ContentResolver.this;
-    			}
-    		};
+    	} catch (Exception e) {
+    		Log.e(TAG, "acquireProvider", e);
     	}
     	context.setFlavor(flavor);
     	contentProvider.setContext(context);
     	contentProvider.onCreate();
+		com.applang.Util2.debug_println("contentProvider", contentProvider.getClass());
 		return contentProvider;
     }
 

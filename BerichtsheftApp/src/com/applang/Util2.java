@@ -22,6 +22,7 @@ import java.io.StringWriter;
 import java.io.Writer;
 import java.lang.reflect.Method;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -380,19 +381,17 @@ public class Util2
 	 * @throws IOException
 	 */
 	public static Writer write(Writer writer, Object... params) {
-		String separator = "\t";
-		
+		if (writer == null)
+			writer = new StringWriter();
+		String separator = TAB;
 	    try {
 			for (int i = 0; i < params.length; i++) {
 				if (i > 0)
 					writer.write(separator);
-					
 				Object o = params[i];
 				String s = String.valueOf(o);
-				
 				MatchResult[] specifiers = findAllIn(s, FORMAT_SPECIFIER_PATTERN);
 				int specs = specifiers.length;
-				
 				boolean useSpecifiers = specs > 0 && specs <= params.length - i - 1;
 				if (useSpecifiers) {
 					Object[] args = arrayreduce(params, i + 1, specs);
@@ -406,11 +405,9 @@ public class Util2
 				}
 				else
 					s = stringify(o, true).toString();
-				
 				writer.write(s);
 			}
 		} catch (Exception e) {}
-		
 		return writer;
 	}
 
@@ -444,6 +441,8 @@ public class Util2
 
 	@SuppressWarnings("resource")
 	public static Writer write_assoc(Writer writer, String key, Object value, int...pos) {
+		if (writer == null)
+			writer = new StringWriter();
 		String commaString = ", ";
 		int commaPos = param(0,0,pos);
 		if (commaPos > 0)
@@ -1079,7 +1078,7 @@ public class Util2
 
 	public static ValMap table_info2(Context context, Uri uri, String tableName, String flavor) {
 		ValMap info = table_info(context, uri, tableName);
-		if (flavor != null) {
+		if (notNullOrEmpty(flavor)) {
 			SQLiteDatabase db = SQLiteDatabase.openDatabase(
 					getDatabaseFile(context, uri).getPath(), 
 					null,
@@ -1164,13 +1163,23 @@ public class Util2
 
 //	NOTE	there is a different method with the same signature in Util2 for Android
 	@SuppressWarnings("rawtypes")
-	public static Class[] getLocalClasses(String packageName, Object...params) throws Exception {
-		URI location = Resources.getCodeSourceLocation(Resources.class);
+	public static Class[] getLocalClasses(final String packageName, Object...params) throws Exception {
+		final String location = 
+				strip(true, Resources.getCodeSourceLocation(Resources.class).toString(), "file:");
 	   	ValList list = vlist();
-	    for (URL u: Resources.getResourceURLs(packageName, null)) {
-	        String fileName = location.relativize(u.toURI()).toString();
-	        fileName = fileName.substring(0, fileName.lastIndexOf(".")).replace('/', '.');
-			list.add(Class.forName(fileName));
+	    for (URL url: Resources.getResourceURLs(packageName, new ResourceURLFilter() {
+			public boolean accept(URL resourceUrl) {
+				String fileName = strip(true, resourceUrl.getFile(), "file:");
+				if (fileName.endsWith(".class") && fileName.startsWith(location)) {
+					fileName = Resources.className(fileName, location);
+					return fileName.startsWith(packageName);
+				}
+				return false;
+			}})) 
+	    {
+	        String fileName = Resources.className(strip(true, url.getFile(), "file:"), location);
+	        if (!fileName.contains("$"))
+	        	list.add(Class.forName(strip(false, fileName, ".class")));
 	    }
         return arraycast(list.toArray(), new Class[0]);
 	}

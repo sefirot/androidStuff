@@ -39,6 +39,7 @@ import android.content.ContentUris;
 import android.content.ContentValues;
 import android.net.Uri;
 
+import com.applang.Util.Job;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 import com.applang.components.DataView.DataModel;
@@ -107,7 +108,7 @@ public class NotePicker extends ActionPanel
 	public void finish(Object... params) {
 		if (!usingJdbc())
 			dataView.nosync();
-		getDoubleFeature().getTextEditor().uninstallSpellChecker();
+		getTextComponent().getTextEditor().uninstallSpellChecker();
 		try {
 			if (getCon() != null)
 				getCon().close();
@@ -175,9 +176,10 @@ public class NotePicker extends ActionPanel
 	public void installBrowsing(Container container) {
 		comboBoxes = new JComboBox[] {new JComboBox()};
 		comboBoxes[0].setEditable(true);
-		addFocusObserver(comboEdit(0));
 		container.add(comboBoxes[0]);
-		comboEdit(0).addKeyListener(new KeyAdapter() {
+		JTextField textField = comboEdit(0);
+		addFocusObserver(textField);
+		textField.addKeyListener(new KeyAdapter() {
 			@Override
 			public void keyPressed(KeyEvent e) {
 				if (e.getKeyCode() == KeyEvent.VK_ENTER)
@@ -197,7 +199,7 @@ public class NotePicker extends ActionPanel
 		addButton(container, ActionType.DATABASE.index(), new NoteAction(ActionType.DATABASE));
 		addButton(this, ActionType.STRUCT.index(), new NoteAction(ActionType.STRUCT));
 		container.add( Box.createHorizontalStrut(3) );
-		addToggle(this, ActionType.TOGGLE.index(), new NoteAction(ActionType.TOGGLE));
+		addToggle(this, ActionType.TOGGLE2.index(), new NoteAction(ActionType.TOGGLE2));
 		container.add( Box.createHorizontalStrut(3) );
 		installBrowsing(container);
 		installAddRemove(container, "baustein");
@@ -209,7 +211,7 @@ public class NotePicker extends ActionPanel
     {
 		public NoteAction(ActionType type) {
 			super(type);
-			if (type.equals(ActionType.TOGGLE)) {
+			if (type.equals(ActionType.TOGGLE2)) {
 				putValue(NAME, type.name(1));
 			}
         }
@@ -263,8 +265,8 @@ public class NotePicker extends ActionPanel
 			case DELETE:
 				deleteSelection();
 				break;
-			case TOGGLE:
-				toggleTextView(this);
+			case TOGGLE2:
+				toggle(this, textViewToggler);
 				break;
 			case STRUCT:
 				break;
@@ -372,11 +374,11 @@ public class NotePicker extends ActionPanel
 			switch (NotePadProvider.tableIndex(tableName)) {
 			case 1:
 				installBausteinEditing(this);
-				getDoubleFeature().toggle(false, null);
+				getTextComponent().toggle(false, null);
 				break;
 			default:
 				installNotePicking(this);
-				getDoubleFeature().toggle(true, null);
+				getTextComponent().toggle(true, null);
 				break;
 			}
 			uriString = NotePadProvider.contentUri(tableName).toString();
@@ -1039,9 +1041,9 @@ public class NotePicker extends ActionPanel
 	
 	@Override
 	public void setText(String text) {
-		TextEditor2 feature = getDoubleFeature();
-		updateText(feature, text);
-		feature.getTextEditor().undo.discardAllEdits();
+		TextEditor2 textBums = getTextComponent();
+		updateText(textBums, text);
+		textBums.getTextEditor().undo.discardAllEdits();
 	}
 
 	public static String formatDate(int kind, long time) {

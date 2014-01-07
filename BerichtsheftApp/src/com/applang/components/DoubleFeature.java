@@ -11,6 +11,7 @@ import org.gjt.sp.jedit.Buffer;
 import org.gjt.sp.jedit.EditPane;
 import org.gjt.sp.jedit.textarea.TextArea;
 
+
 import android.util.Log;
 
 import static com.applang.Util.*;
@@ -20,6 +21,8 @@ import static com.applang.SwingUtil.*;
 public class DoubleFeature implements IComponent
 {
     protected static final String TAG = DoubleFeature.class.getSimpleName();
+
+	public static final String FOCUS = "focus";
 
 	private JComponent widget = null;
 	
@@ -80,7 +83,7 @@ public class DoubleFeature implements IComponent
 		return textAreas[0] != null ? textAreas[0] : widget;
 	}
 	
-	public void setUIComponent(Container container) {
+	public void addUIComponentTo(Container container) {
 		addCenterComponent(getUIComponent(), container);
 		container.validate();
 		container.repaint();
@@ -89,8 +92,10 @@ public class DoubleFeature implements IComponent
 	protected boolean isolate(Object...params) {
 		Component target = getUIComponent();
 		Container container = target.getParent();
-		if (container == null) 
+		if (container == null) {
+			Log.w(TAG, String.format("%s cannot be isolated", identity(target)));
 			return false;
+		}
 		container.remove(target);
 		if (params.length > 0)
 			params[0] = container;
@@ -111,7 +116,7 @@ public class DoubleFeature implements IComponent
 					textAreas[1] = null;
 				}
 			}
-			setUIComponent(container);
+			addUIComponentTo(container);
 			container = null;
 		}
 	}
@@ -135,9 +140,11 @@ public class DoubleFeature implements IComponent
 		if (textArea != null)
 			textArea.requestFocus();
 		else if (widget != null) {
-			Component magic = findComponent(widget, "magic");
-			magic.requestFocus();
-			debug_println("requestFocus", identity(magic));
+			Component component = findComponent(widget, FOCUS);
+			if (component != null) {
+				component.requestFocus();
+				debug_println("requestFocus", identity(component));
+			}
 		}
 	}
 }

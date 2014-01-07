@@ -26,10 +26,10 @@
 			BerichtsheftPlugin.spellcheckSelection(view);
 		</CODE>
 	</ACTION>
-	<ACTION NAME="magic.buffer">
+	<ACTION NAME="magic.data-manage">
 		<CODE>
 			import com.applang.berichtsheft.plugin.*;
-			BerichtsheftPlugin.spellcheckBuffer(buffer);
+			BerichtsheftPlugin.installDataManager(editPane);
 		</CODE>
 	</ACTION>
 </ACTIONS>

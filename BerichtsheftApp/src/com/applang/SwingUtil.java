@@ -111,8 +111,6 @@ import javax.swing.table.TableColumn;
 import javax.swing.table.TableColumnModel;
 import javax.swing.text.JTextComponent;
 
-import com.applang.Util.Job;
-
 import android.util.Log;
 
 import static com.applang.Util.*;
@@ -206,6 +204,18 @@ public class SwingUtil
 			container.add(target, BorderLayout.CENTER);
 		else
 			container.add(target);
+	}
+	
+	public static boolean replaceCenterComponent(Component target, Container container) {
+		if (container.getLayout() instanceof BorderLayout) {
+			BorderLayout borderLayout = (BorderLayout) container.getLayout();
+			for (Component c : container.getComponents()) 
+				if (BorderLayout.CENTER.equals(borderLayout.getConstraints(c))) {
+					container.remove(c);
+				}
+			container.add(target, BorderLayout.CENTER);
+		}
+		return false;
 	}
 	
 	public static Container getRootContainer(Container container) {
@@ -1095,23 +1105,22 @@ public class SwingUtil
 		return (JTextField)combo.getEditor().getEditorComponent();
 	}
 	
-	public static Container container = null;
 	public static boolean underTest = false;
 	
 	public static JToolBar northToolBar(Container container, Object...params) {
 		JToolBar bar = new JToolBar();
-		bar.setName("north");
 		bar.setFloatable(true);
 		container.add(bar, param(BorderLayout.NORTH, 0, params));
+		bar.setName(param(BorderLayout.NORTH, 1, params));
 		return bar;
 	}
 	
 	public static JToolBar southStatusBar(Container container, Object...params) {
 		JToolBar bar = new JToolBar();
-		bar.setName("south");
 		bar.setFloatable(false);
 		messageBox(bar);
 		container.add(bar, param(BorderLayout.SOUTH, 0, params));
+		bar.setName(param(BorderLayout.SOUTH, 1, params));
 		return bar;
 	}
 
@@ -1123,6 +1132,7 @@ public class SwingUtil
 		return label;
 	}
 
+	private static Container container = null;
 	public static Function<String> messRedirection = null;
 	
 	public static void message(String text) {
@@ -1236,10 +1246,8 @@ public class SwingUtil
         public void actionPerformed(ActionEvent ae) {
         	if (actionBlocked || (getType() == null && getValue(CustomAction.NAME) == null))
         		return;
-        	
         	message("");
         	Log.d(TAG, type == null ? ae.getActionCommand() : type.toString());
-        	
         	action_Performed(ae);
         }
         
@@ -1944,6 +1952,15 @@ public class SwingUtil
 		box.add( contents );
 		box.add( Box.createVerticalStrut(10) );
 		return box;
+	}
+	
+	public static Dimension sizeOfScreen() {
+		return Toolkit.getDefaultToolkit().getScreenSize();
+	}
+	
+	public static Point centerOfScreen() {
+		Dimension screenSize = sizeOfScreen();
+		return new Point(screenSize.width / 2, screenSize.height / 2);
 	}
 	
 	public static String readFromUrlWithProgress(String url, String encoding) throws IOException {

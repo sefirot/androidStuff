@@ -24,7 +24,7 @@ import static com.applang.SwingUtil.*;
 import static com.applang.Util.*;
 
 @SuppressWarnings("rawtypes")
-public class ManagerBase<T extends Object> extends JComponent
+public class ManagerBase<T extends Object> extends JComponent implements IComponent
 {
 	protected static final String ACCEPT_BUTTON_KEY = stringValueOf(defaultOptions(13).get(0));
 	protected static final String REJECT_BUTTON_KEY = stringValueOf(defaultOptions(13).get(1));
@@ -108,8 +108,8 @@ public class ManagerBase<T extends Object> extends JComponent
 		return null;
 	}
 	
-	int decision = -1;
-    boolean noRefresh = false;
+	public boolean noRefresh = false;
+	private int decision = -1;
 	
 	private boolean _question(Object...params) throws Throwable {
 		switch (decision) {
@@ -236,14 +236,14 @@ public class ManagerBase<T extends Object> extends JComponent
 	}
 	
 	public boolean isDirty() {
-		if (changePossible.peek()) 
+		if (abuttons[0] != null && changePossible.peek()) 
 			return abuttons[0].isEnabled();
 		else
 			return false;
 	}
 	
 	public void setDirty(boolean dirty) {
-		if (changePossible.peek()) 
+		if (abuttons[0] != null && abuttons[1] != null && changePossible.peek()) 
 			for (AbstractButton button : abuttons) 
 				button.setEnabled(dirty);
 	}
@@ -282,5 +282,9 @@ public class ManagerBase<T extends Object> extends JComponent
 	}
 
 	protected void updateItem(boolean update, Object... args) {
+	}
+
+	public Component getUIComponent() {
+		return null;
 	}
 }

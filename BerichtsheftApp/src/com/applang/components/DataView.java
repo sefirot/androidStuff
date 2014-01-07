@@ -192,6 +192,10 @@ public class DataView extends JPanel implements IComponent
 		return dc.getUri();
 	}
 	
+	public void setUriString(String uriString) {
+		setUri(Uri.parse(uriString));
+	}
+	
 	public String getUriString() {
 		return stringValueOf(getUri());
 	}
@@ -653,10 +657,11 @@ public class DataView extends JPanel implements IComponent
 			if (projection != null && isAvailable(0, projection.getKeys())) {
 				for (int i = 0; i < length; i++) {
 					Object name = names[i];
-					checks.set(i, projection.getKeys().contains(name));
+					checks.set(i, projection.getValue(name, 3));
 					conversions.set(i, stringValueOf(projection.getValue(name)));
 				}
 			}
+			debug_println("projection", getExpandedProjection());
 		}
 
 		public ProjectionModel(Provider provider) {

@@ -4,6 +4,7 @@ import com.applang.UserContext;
 import com.applang.Util;
 import com.applang.SwingUtil.Behavior;
 import com.applang.Util.Function;
+import com.applang.Util.Job;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 
 import java.awt.Component;
@@ -140,7 +141,7 @@ public class ASTViewer extends ActionPanel
 					setText("");
 				break;
 			case TOGGLE:
-				toggleTextView(this);
+				toggle(this, textViewToggler);
 				break;
 			case STRUCT:
 				if (fileExists(vmFile))
@@ -155,7 +156,7 @@ public class ASTViewer extends ActionPanel
 					}
 					else if (type.index == DELETE) {
 						setSelection(node, false);
-						textComponent.setSelectedText(null);
+						getTextComponent().setSelectedText(null);
 					}
 					else if (type.index == INSERT) {
 						setSelection(node, true);
@@ -177,14 +178,14 @@ public class ASTViewer extends ActionPanel
     }
     
 	boolean isSciptView() {
-		return getDoubleFeature().getTextArea2() == null;
+		return getTextComponent().getTextArea2() == null;
 	}
     
     private void setSelection(Object node, boolean noSpan) {
     	if (isSciptView()) {
 			int[] span = Visitor.span(node);
-			span = getTextOffsets(textComponent.getText(), span);
-			textComponent.setSelection(span[0], noSpan ? -1 : span[1]);
+			span = getTextOffsets(getTextComponent().getText(), span);
+			getTextComponent().setSelection(span[0], noSpan ? -1 : span[1]);
 		}
     }
 	
