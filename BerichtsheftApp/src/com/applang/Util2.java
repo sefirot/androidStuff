@@ -22,7 +22,6 @@ import java.io.StringWriter;
 import java.io.Writer;
 import java.lang.reflect.Method;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -148,7 +147,7 @@ public class Util2
 			String dir = System.getProperty("settings.dir", "");
 			if (nullOrEmpty(dir))
 				dir = relativePath();
-			debug_println("settings.dir", dir);
+			debug_println("settings.default.dir", dir);
 			File[] array = new File(dir).listFiles();
 	    	for (File file : array) {
 	    		String path = file.getPath();
@@ -1166,8 +1165,9 @@ public class Util2
 //	NOTE	there is a different method with the same signature in Util2 for Android
 	@SuppressWarnings("rawtypes")
 	public static Class[] getLocalClasses(final String packageName, Object...params) throws Exception {
+		URI codeSourceLocation = Resources.getCodeSourceLocation(Resources.class);
 		final String location = 
-				strip(true, Resources.getCodeSourceLocation(Resources.class).toString(), "file:");
+				strip(true, codeSourceLocation.toString(), "file:");
 	   	ValList list = vlist();
 	    for (URL url: Resources.getResourceURLs(packageName, new ResourceURLFilter() {
 			public boolean accept(URL resourceUrl) {

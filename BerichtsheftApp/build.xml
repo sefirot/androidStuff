@@ -114,6 +114,16 @@ rm $0
 	</target>
 	
 	<target name="run-debug" depends="build">
+		<java jar=".jedit/jedit.jar"
+		      fork="true" spawn="true"
+		      classpathref="run.class.path">
+			<jvmarg value="-agentlib:jdwp=transport=dt_socket,server=y,address=localhost:5005,timeout=60000"/>
+			<arg value="-nosplash"/>
+			<arg value="-settings=/home/lotharla/work/Niklas/androidStuff/BerichtsheftApp/.jedit"/>
+		</java>
+	</target>
+	
+	<target name="run-debug-special" depends="build">
 		<java classname="com.applang.components.DataConfiguration"
 		      fork="true" spawn="true"
 		      classpathref="run.class.path">
