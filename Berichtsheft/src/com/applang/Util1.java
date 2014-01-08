@@ -179,6 +179,10 @@ public class Util1
 			}
 		} catch (Exception e) {
 			Log.e(TAG, "contentAuthorities", e);
+			list.addAll(asList(strings(
+					"com.applang.provider.NotePad", 
+					"com.applang.provider.WeatherInfo", 
+					"com.applang.provider.PlantInfo")));
 		}
 	    return list;
 	}
