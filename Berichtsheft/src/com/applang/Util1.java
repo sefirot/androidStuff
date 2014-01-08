@@ -506,7 +506,8 @@ public class Util1
 		if (hasAuthority(uri)) {
 			try {
 				String name = databaseName(uri.getAuthority());
-				return context.getDatabasePath(name).getCanonicalFile();
+				File path = context.getDatabasePath(name);
+				return path.getCanonicalFile();
 			} catch (IOException e) {
 				Log.e(TAG, "getDatabaseFile", e);
 				return null;
