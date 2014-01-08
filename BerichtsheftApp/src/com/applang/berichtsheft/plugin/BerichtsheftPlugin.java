@@ -25,6 +25,7 @@ import java.util.Properties;
 
 import javax.swing.AbstractButton;
 import javax.swing.Action;
+import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
@@ -33,6 +34,8 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JToolBar;
 import javax.swing.SwingUtilities;
+import javax.swing.border.BevelBorder;
+import javax.swing.border.Border;
 import javax.swing.filechooser.FileFilter;
 
 import org.gjt.sp.jedit.BeanShell;
@@ -181,10 +184,10 @@ public class BerichtsheftPlugin extends EditPlugin
 				doubleFeature.toggle(false, null);
 				debug_println("reduced", doubleFeature);
 			}
-			focusRequest(editPane);
-			Container container = editPane.getParent();
-			if (container != null)
-				printContainer(identity(container), container, false, true);
+//			focusRequest(editPane);
+			Container parent = editPane.getParent();
+			if (parent != null)
+				printContainer(identity(parent), parent, false, true);
 		}
 	}
 	
@@ -192,11 +195,22 @@ public class BerichtsheftPlugin extends EditPlugin
 		SwingUtilities.invokeLater(new Runnable() {
 			public void run() {
 				setEditPane(editPane);
+				updateBorders(editPane);
 				DoubleFeature doubleFeature = (DoubleFeature) doubleFeatures.getValue(editPane);
 				if (doubleFeature != null)
 					doubleFeature.requestFocus();
 			}
 		});
+	}
+	
+	private Border focusBorder = new BevelBorder(BevelBorder.LOWERED);
+	private Border nofocusBorder = BorderFactory.createEmptyBorder();
+	
+	private void updateBorders(EditPane focusPane)
+	{
+		EditPane[] editPanes = view.getEditPanes();
+		for(int i = 0; i < editPanes.length; i++)
+			editPanes[i].setBorder(editPanes[i].equals(focusPane) ? focusBorder : nofocusBorder);
 	}
 
 	private void setEditPane(EditPane editPane) {
@@ -238,7 +252,7 @@ public class BerichtsheftPlugin extends EditPlugin
 			pendingBuffers.remove(buffer);
 			if (!noMagic) {
 				String magic = buffer.getStringProperty(MAGIC);
-				if (notNullOrEmpty(magic)) {
+				if (notNullOrEmpty(magic) && !magicBuffers.containsKey(buffer)) {
 					addMagic(buffer, magic);
 				}
 				EditPane editPane = null;

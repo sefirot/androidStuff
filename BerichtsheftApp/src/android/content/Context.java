@@ -74,7 +74,6 @@ public class Context
             mPackageName = name;
             mDataDir = param_String("", 0, params);
             File dataDir = getDataDirFile();
-			debug_println("dataDir", dataDir);
 			if (dataDir.mkdirs())
 				debug_println("mkdirs", dataDir);
         }
@@ -170,7 +169,6 @@ public class Context
 		String name = databaseName(flavor);
 		flavorPaths.putValue(name, path);
 		setFlavor(flavor);
-//    	com.applang.Util2.debug_println("registerFlavor", name, path);
 	}
 	
     //	NOTE	this is NOT Android API
@@ -194,7 +192,6 @@ public class Context
 	}
 	
     public File getDatabasePath(String name) {
-//    	com.applang.Util2.debug_println("flavorPaths", flavorPaths);
 		if (flavorPaths.getKeys().contains(name))
 			return new File(flavorPaths.getValue(name).toString());
 		else {

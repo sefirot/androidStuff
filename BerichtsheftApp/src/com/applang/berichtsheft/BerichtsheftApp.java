@@ -53,15 +53,14 @@ public class BerichtsheftApp
 		absPath = pathCombine(
 				index > -1 ? absPath.substring(0, index) : relativePath(), 
 				relPath);
-//		println(absPath);
 		return absPath;
 	}
 	
 	public static void loadSettings() {
-		String absPath = new File(".jedit/plugins/berichtsheft").getAbsolutePath();
-		System.setProperty("settings.dir", absPath);
-		absPath = new File(".jedit/jars/sqlite4java").getAbsolutePath();
-		System.setProperty("sqlite4java.library.path", absPath);
+		String path = absolutePath(".jedit/plugins/berichtsheft");
+		System.setProperty("settings.dir", path);
+		path = absolutePath(".jedit/jars/sqlite4java");
+		System.setProperty("sqlite4java.library.path", path);
 		Settings.load();
 		Log.logConsoleHandling(Log.INFO);
 	}

@@ -1091,7 +1091,6 @@ public class DataView extends JPanel implements IComponent
 
 	public static void main(String...args) {
 		BerichtsheftApp.loadSettings();
-    	underTest = param("true", 0, args).equals("true");
     	final DataView dv = new DataView();
 		dv.load();
 		if (dv.configureData(null, true)) {

@@ -148,6 +148,7 @@ public class Util2
 			String dir = System.getProperty("settings.dir", "");
 			if (nullOrEmpty(dir))
 				dir = relativePath();
+			debug_println("settings.dir", dir);
 			File[] array = new File(dir).listFiles();
 	    	for (File file : array) {
 	    		String path = file.getPath();
@@ -164,7 +165,6 @@ public class Util2
 		 */
 		public static void load(Object... params) {
 			String fileName = param_String(defaultFilename(), 0, params);
-			debug_println("Settings.load", fileName);
 			boolean decoding = param_Boolean(false, 1, params);
 			
 			if (properties == null)
@@ -187,7 +187,6 @@ public class Util2
 			catch (FileNotFoundException e) {
 			} 
 			catch (Exception e) {
-				debug_println("error.load", e.getMessage());
 				Log.e(TAG, "Settings.load", e);
 			} 
 			finally {
@@ -1081,13 +1080,14 @@ public class Util2
 	public static ValMap table_info2(Context context, Uri uri, String tableName, String flavor) {
 		ValMap info = table_info(context, uri, tableName);
 		if (notNullOrEmpty(flavor)) {
-			SQLiteDatabase db = SQLiteDatabase.openDatabase(
-					getDatabaseFile(context, uri).getPath(), 
-					null,
-					SQLiteDatabase.OPEN_READONLY);
-			if (db != null) {
-				info.put("VERSION", getFlavorVersion(flavor, db));
-				db.close();
+			File file = getDatabaseFile(context, uri);
+			if (fileExists(file)) {
+				SQLiteDatabase db = SQLiteDatabase.openDatabase(file.getPath(),
+						null, SQLiteDatabase.OPEN_READONLY);
+				if (db != null) {
+					info.put("VERSION", getFlavorVersion(flavor, db));
+					db.close();
+				}
 			}
 		}
 		return info;

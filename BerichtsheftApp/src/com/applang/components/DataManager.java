@@ -3,7 +3,10 @@ package com.applang.components;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Container;
+import java.awt.Dimension;
 import java.awt.event.ActionEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.StringWriter;
@@ -12,16 +15,22 @@ import java.util.Date;
 import java.util.Properties;
 
 import javax.swing.JComponent;
+import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
+import javax.swing.JTable;
+import javax.swing.JToolBar;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
 import org.gjt.sp.jedit.View;
 
+import com.applang.SwingUtil.Behavior;
+import com.applang.SwingUtil.UIFunction;
 import com.applang.Util.BidiMultiMap;
 import com.applang.Util.Job;
 import com.applang.Util.ValMap;
+import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 import com.applang.components.DataView.DataModel;
 import com.applang.provider.NotePad;
@@ -66,19 +75,25 @@ public class DataManager extends ActionPanel
 	private Properties props;
 	private String name;
 	
+	public String getName() {
+		return name;
+	}
+
 	public DataManager(View view, Properties props, String name) {
 		super(createTextComponent(), view);
 		this.props = props;
 		this.name = name;
 		container = new JPanel(new BorderLayout());
-		joinContainer(northToolBar(container, BorderLayout.SOUTH, this.name));
+		JToolBar bar = northToolBar(container, BorderLayout.SOUTH, this.name);
+		bar.setName(DoubleFeature.FOCUS);
+		joinContainer(bar);
 		try {
 			layoutToggler.perform(_layout() == TABLE, objects());
 		} 
 		catch(Exception e) {
 			Log.e(TAG, "DataManager", e);
 		};
-		dataView.setUriString(props.getProperty("uri", ""));
+		dataView.setUriString(this.props.getProperty("uri", ""));
 		initialize(dataView.getUriString());
 	}
 	
@@ -87,6 +102,7 @@ public class DataManager extends ActionPanel
 			Component component = findComponent(this, BorderLayout.SOUTH);
 			if (component != null)
 				remove(component);
+			getTable().setName(DoubleFeature.FOCUS);
 		}
 	};
 	
@@ -617,4 +633,34 @@ public class DataManager extends ActionPanel
 			return null;
 		}
 	}
+
+	public static void main(String...args) {
+		BerichtsheftApp.loadSettings();
+		Properties props = new Properties();
+    	final DataManager dm = new DataManager(null, props, "DataManager");
+		showFrame(null, dm.getName(), 
+			new UIFunction() {
+				public Component[] apply(final Component comp, Object[] parms) {
+					JTable table = dm.dataView.getTable();
+					table.setPreferredScrollableViewportSize(new Dimension(600,300));
+					return components(dm.getUIComponent());
+				}
+			}, 
+			new UIFunction() {
+				public Component[] apply(Component comp, Object[] parms) {
+					JFrame frame = (JFrame) comp;
+					final Component focus = findComponent(frame, DoubleFeature.FOCUS);
+					focus.addMouseListener(new MouseAdapter() {
+						@Override
+						public void mouseClicked(MouseEvent e) {
+							println("mouse clicked on", focus);
+						}
+					});
+					return null;
+				}
+			}, 
+			null, 
+			Behavior.EXIT_ON_CLOSE);
+	}
+	
 }
