@@ -51,7 +51,8 @@ public class Context
             "File " + name + " contains a path separator");
     }
 
-    private static void setFilePermissionsFromMode(String name, int mode, int extraPermissions) {
+    @SuppressWarnings("unused")
+	private static void setFilePermissionsFromMode(String name, int mode, int extraPermissions) {
         int perms = S_IRUSR|S_IWUSR
             |S_IRGRP|S_IWGRP
             |extraPermissions;
@@ -75,7 +76,7 @@ public class Context
             mDataDir = param_String("", 0, params);
             File dataDir = getDataDirFile();
 			if (dataDir.mkdirs())
-				debug_println("mkdirs", dataDir);
+				no_println("mkdirs", dataDir);
         }
 
         private final String mDataDir;
@@ -108,7 +109,7 @@ public class Context
     	return mPackageInfo != null ? mPackageInfo.getPackageName() : "";
     }
     
-    //	NOTE	this is NOT Android API
+    //	NOTE	this does NOT correspond to an Android API
     public File getDataDirectory() {
         if (mPackageInfo != null) {
             return mPackageInfo.getDataDirFile();
@@ -152,32 +153,33 @@ public class Context
 	
     private String flavor = null;
     
-    //	NOTE	this is NOT Android API
+    //	NOTE	this does NOT correspond to an Android API
 	public String getFlavor() {
 		return flavor;
 	}
 
-    //	NOTE	this is NOT Android API
+    //	NOTE	this does NOT correspond to an Android API
 	public void setFlavor(String flavor) {
 		this.flavor = flavor;
 	}
 
 	private BidiMultiMap flavorPaths = bmap(2);
 	
-    //	NOTE	this is NOT Android API
+    //	NOTE	this does NOT correspond to an Android API
 	public void registerFlavor(String flavor, String path) {
 		String name = databaseName(flavor);
-		flavorPaths.putValue(name, path);
+		if (name != null)
+			flavorPaths.putValue(name, path);
 		setFlavor(flavor);
 	}
 	
-    //	NOTE	this is NOT Android API
+    //	NOTE	this does NOT correspond to an Android API
 	public boolean unregisterFlavor(String flavor) {
 		String name = databaseName(flavor);
-		return flavorPaths.removeKey(name);
+		return name != null ? flavorPaths.removeKey(name) : false;
 	}
 
-    //	NOTE	this is NOT Android API
+    //	NOTE	this does NOT correspond to an Android API
 	public String getDatabasePath(Uri uri) {
 		if (uri == null)
 			return "";
@@ -344,8 +346,10 @@ public class Context
     	};
     }
 	
+    //	NOTE	this does NOT correspond to an Android API
 	public Point location = new Point(0,0);
 	
+    //	NOTE	this does NOT correspond to an Android API
 	public Context setLocation(Point location) {
 		this.location = location;
 		return this;

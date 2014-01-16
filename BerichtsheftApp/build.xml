@@ -150,4 +150,25 @@ rm $0
 		</junit>
 	</target>
 
+	<property name="test" value="HelperTests" />
+	<property name="tests" value="testResources" />
+	
+	<target name="ensure-test-name" unless="test">
+	    <fail message="You must run this target with -Dtest=TestName"/>
+	</target>
+
+	<target name="run-test" description="Runs the test you specify on the command line with -Dtest=" 
+		depends="build, ensure-test-name">
+	    <junit printsummary="withOutAndErr" fork="yes"> 
+	    	<sysproperty key="tests" value="${tests}"/>
+	        <classpath refid="run.class.path" />
+	        <formatter type="plain" usefile="false"/>
+	        <batchtest>
+	            <fileset dir="src">
+	                <include name="**/${test}.java"/>
+	            </fileset>
+	        </batchtest>
+	    </junit>
+	</target>
+	
 </project>

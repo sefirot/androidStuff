@@ -57,7 +57,7 @@ public class ContentResolver extends Observable
     	context.setFlavor(flavor);
     	contentProvider.setContext(context);
     	contentProvider.onCreate();
-		com.applang.Util2.debug_println("contentProvider", contentProvider.getClass());
+		com.applang.Util2.no_println("contentProvider", contentProvider.getClass());
 		return contentProvider;
     }
 

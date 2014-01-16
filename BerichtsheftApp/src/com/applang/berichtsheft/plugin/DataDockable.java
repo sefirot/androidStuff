@@ -41,7 +41,7 @@ import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.components.DataView;
 import com.applang.components.DatePicker;
 import com.applang.components.ProfileManager;
-import com.applang.components.Provider;
+import com.applang.components.DataAdapter;
 import com.applang.components.ScriptManager;
 import com.applang.components.WeatherManager;
 import com.applang.provider.WeatherInfo;
@@ -262,7 +262,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 			}
 			getTemplateOptions(profile, 0);
 			ValList projection = vlist();
-			ArrayList<String> list = new ArrayList<String>();
+			ArrayList<String> list = alist();
 			int pos = 0;
 			for (int i = 0; i < mr.length; i++) {
 				MatchResult m = mr[i];
@@ -379,7 +379,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 		private void getTemplateOptions(ValMap profile, int length) {
 			Object key = BerichtsheftPlugin.getOptionProperty("field-separator");
 			fieldSeparator = (String[]) BerichtsheftOptionPane.separators.get(key);
-			ArrayList<String> list = new ArrayList<String>();
+			ArrayList<String> list = alist();
 			list.add("");
 			for (int i = 0; i < length - 1; i++) {
 				list.add(fieldSeparator[0]);
@@ -510,7 +510,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 			BerichtsheftPlugin.consoleMessage("datadock.transport-uri.message");
 			return false;
 		}
-		Provider provider = new Provider(uriString);
+		DataAdapter dataAdapter = new DataAdapter(uriString);
 		boolean retval = true;
 		try {
 			if (dockable != null)
@@ -523,11 +523,11 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 				retval = isAvailable(0, list);
 				if (retval) {
 					BidiMultiMap projection = builder.elaborateProjection(list.toArray(), 
-							provider.info.getList("name"), 
-							provider.getTableName());
+							dataAdapter.info.getList("name"), 
+							dataAdapter.getTableName());
 					if (projection == null)
 						return false;
-					DataView.DataModel model = provider.query(uriString, projection, profile.get("filter"));
+					DataView.DataModel model = dataAdapter.query(uriString, projection, profile.get("filter"));
 					if (model == null)
 						return false;
 					final JTable table = model.makeTable();
@@ -562,8 +562,8 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 				retval = isAvailable(0, list);
 				if (retval) {
 					BidiMultiMap projection = builder.elaborateProjection(list.toArray(), 
-							provider.info.getList("name"), 
-							provider.getTableName());
+							dataAdapter.info.getList("name"), 
+							dataAdapter.getTableName());
 					if (projection == null)
 						return false;
 					DataView.DataModel model = builder.scan(new StringReader(text), projection);
@@ -582,7 +582,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 								null, -1);
 					}
 					if (retval) {
-						int[] results = provider.pickRecords(view, table, uriString, profile);
+						int[] results = dataAdapter.pickRecords(view, table, uriString, profile);
 						retval = results != null;
 						if (retval)
 							BerichtsheftPlugin.consoleMessage("dataview.updateOrInsert.message", 
@@ -628,18 +628,18 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 		boolean retval = true;
 		if ("period".equals(oper)) {
 			final String uriString = Weathers.CONTENT_URI.toString();
-			final Provider provider = new Provider(WeatherInfo.AUTHORITY, new File(dbPath), uriString);
+			final DataAdapter dataAdapter = new DataAdapter(WeatherInfo.AUTHORITY, new File(dbPath), uriString);
 			final int[] results = ints(0,0,0);
 			final ValMap profile = ProfileManager.getProfileAsMap("_weather", "download");
-			Object[] names = provider.info.getList("name").toArray();
+			Object[] names = dataAdapter.info.getList("name").toArray();
 			ValList conversions = vlist();
-			ValMap map = ScriptManager.getDefaultProjection(profile.get("flavor"), provider.getTableName());
+			ValMap map = ScriptManager.getDefaultProjection(profile.get("flavor"), dataAdapter.getTableName());
 			for (int i = 0; i < names.length; i++) {
 				Object conv = map.get(names[i]);
 				conversions.add(conv);
 			}
 			final BidiMultiMap projection = new BidiMultiMap(new ValList(asList(names)), conversions);
-			final Object pk = provider.info.get("PRIMARY_KEY");
+			final Object pk = dataAdapter.info.get("PRIMARY_KEY");
 			projection.removeKey(pk);
 			WeatherManager wm = new WeatherManager() {
 				@Override
@@ -656,14 +656,14 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 							list.add(values.get(key));
 					}
 					Object[] items = list.toArray();
-					ContentValues contentValues = contentValues(provider.info, projection.getKeys(), items);
-					Object result = provider.updateOrInsert(uriString, 
+					ContentValues contentValues = contentValues(dataAdapter.info, projection.getKeys(), items);
+					Object result = dataAdapter.updateOrInsert(uriString, 
 							profile, 
 							projection, 
 							pk, 
 							contentValues,
-							provider.skipThis(view, items));
-					if (!provider.checkResult(result, ++results[2])) 
+							dataAdapter.skipThis(view, items));
+					if (!dataAdapter.checkResult(result, ++results[2])) 
 						result = null;
 					else if (result instanceof Uri)
 						results[0]++;

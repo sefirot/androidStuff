@@ -98,8 +98,8 @@ public class DatePicker
 		final JButton[] buttons = new JButton[rows*cols];
 		
 		String[] header = { "", "S", "M", "T", "W", "T", "F", "S" };
-		ArrayList<JButton> w = new ArrayList<JButton>();
-		ArrayList<JButton> d = new ArrayList<JButton>();
+		ArrayList<JButton> w = alist();
+		ArrayList<JButton> d = alist();
 		for (int x = 0; x < buttons.length; x++) {
 			final int selection = x;
 			buttons[x] = new JButton();

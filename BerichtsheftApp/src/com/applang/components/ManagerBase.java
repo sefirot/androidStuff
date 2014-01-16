@@ -26,6 +26,10 @@ import static com.applang.Util.*;
 @SuppressWarnings("rawtypes")
 public class ManagerBase<T extends Object> extends JComponent implements IComponent
 {
+	public Component getUIComponent() {
+		return this;
+	}
+	
 	protected static final String ACCEPT_BUTTON_KEY = stringValueOf(defaultOptions(13).get(0));
 	protected static final String REJECT_BUTTON_KEY = stringValueOf(defaultOptions(13).get(1));
 	
@@ -282,9 +286,5 @@ public class ManagerBase<T extends Object> extends JComponent implements ICompon
 	}
 
 	protected void updateItem(boolean update, Object... args) {
-	}
-
-	public Component getUIComponent() {
-		return null;
 	}
 }

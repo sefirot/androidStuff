@@ -76,8 +76,6 @@ public class InfraTests<T extends Activity> extends TestCase
 		context.setPackageInfo(mPackage, mDataDir);
 		dir = context.getDataDirectory();
 		assertTrue(dir.exists());
-		
-		assertEquals("Berichtsheft", context.getResources().getString(R.string.app_name));
 
 		String flavor = NotePad.AUTHORITY;
 		String dbName = databaseName(flavor);

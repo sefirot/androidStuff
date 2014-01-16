@@ -58,7 +58,7 @@ public class NotePicker extends ActionPanel
 		SwingUtilities.invokeLater(new Runnable() {
 			public void run() {
 				BerichtsheftApp.loadSettings();
-				BerichtsheftPlugin.setupSpellChecker(BerichtsheftApp.berichtsheftPath());
+				BerichtsheftPlugin.setupSpellChecker(BerichtsheftApp.applicationDataPath());
 				final DataView dataView = new DataView();
 				final TextEditor2 textEditor2 = new TextEditor2()
 						.createBufferedTextArea("velocity", "/modes/velocity_pure.xml");
@@ -73,19 +73,19 @@ public class NotePicker extends ActionPanel
 						notePicker, 
 						new Function<Component>() {
 							public Component apply(Object...params) {
-								JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
+								JSplitPane splitPane = splitPane(JSplitPane.VERTICAL_SPLIT,
+									new PropertyChangeListener() {
+										public void propertyChange(PropertyChangeEvent evt) {
+										}
+									});
 								splitPane.setResizeWeight(0.5);
 								splitPane.setOneTouchExpandable(true);
 								Component target = textEditor2.getUIComponent();
 								splitPane.setTopComponent(target);
-								Component c = findComponent(dataView, "south");
+								Component c = findFirstComponent(dataView, "south");
 								if (c != null)
 									dataView.remove(c);
 								splitPane.setBottomComponent(dataView);
-								splitPane.addPropertyChangeListener("dividerLocation", new PropertyChangeListener() {
-									public void propertyChange(PropertyChangeEvent evt) {
-									}
-								});
 								return splitPane;
 							}
 						});
@@ -150,7 +150,7 @@ public class NotePicker extends ActionPanel
 		addButton(container, ActionType.DATABASE.index(), new NoteAction(ActionType.DATABASE));
 		date = new JTextField(20);
 		date.setHorizontalAlignment(JTextField.CENTER);
-		addFocusObserver(date);
+		addSelectAllObserver(date);
 		container.add(date);
 		date.addKeyListener(new KeyAdapter() {
 			@Override
@@ -178,7 +178,7 @@ public class NotePicker extends ActionPanel
 		comboBoxes[0].setEditable(true);
 		container.add(comboBoxes[0]);
 		JTextField textField = comboEdit(0);
-		addFocusObserver(textField);
+		addSelectAllObserver(textField);
 		textField.addKeyListener(new KeyAdapter() {
 			@Override
 			public void keyPressed(KeyEvent e) {
@@ -304,15 +304,15 @@ public class NotePicker extends ActionPanel
 		return dataView.getTable().convertRowIndexToModel(rowIndex);
 	}
 
-	private Provider provider = null;
+	private DataAdapter dataAdapter = null;
 	private String uriString = NoteColumns.CONTENT_URI.toString();
 	private Object pk = null;
 	public int pkColumn = -1, pkRow = -1;
 	
 	private boolean createProvider() {
 		String dbPath = dataView.getDataConfiguration().getPath();
-		provider = new Provider(NotePad.AUTHORITY, new File(dbPath), uriString);
-		ValMap info = provider.info;
+		dataAdapter = new DataAdapter(NotePad.AUTHORITY, new File(dbPath), uriString);
+		ValMap info = dataAdapter.info;
 		if (info.size() > 0) {
 			pk = info.get("PRIMARY_KEY");
 			pkColumn = info.getList("name").indexOf(pk);
@@ -321,7 +321,7 @@ public class NotePicker extends ActionPanel
 			}
 		}
 		else {
-			BerichtsheftPlugin.consoleMessage("dataview.no-info-for-table.message", provider.getTableName());
+			BerichtsheftPlugin.consoleMessage("dataview.no-info-for-table.message", dataAdapter.getTableName());
 			pkColumn = -1;
 		}
 		return pkColumn > -1;
@@ -400,7 +400,7 @@ public class NotePicker extends ActionPanel
 		else if (!noRefresh) {
 			clear();
 			if (createProvider()) {
-				dataView.populate(provider, null, null, DEFAULT_SORT_ORDER);
+				dataView.populate(dataAdapter, null, null, DEFAULT_SORT_ORDER);
 				retrieveTitles();
 				browse(ActionType.PICK);
 			}
@@ -496,9 +496,9 @@ public class NotePicker extends ActionPanel
 				comboBoxes[0].addItem(itemBAndB);
 			}
 			else {
-				Object[][] res = provider.query(uriString, 
+				Object[][] res = dataAdapter.query(uriString, 
 						(String[])null, 
-						String.format("select distinct title from %s order by title", provider.getTableName()));
+						String.format("select distinct title from %s order by title", dataAdapter.getTableName()));
 				for (Object[] row : res) {
 					comboBoxes[0].addItem(row[0]);
 				}
@@ -548,7 +548,7 @@ public class NotePicker extends ActionPanel
 	}
 	
 	public Long[] timeLine(Object... params) {
-		ArrayList<Long> timelist = new ArrayList<Long>();
+		ArrayList<Long> timelist = alist();
 		try {
 			if (usingJdbc()) {
 				String pattern = param(allTitles, 0, params);
@@ -563,9 +563,9 @@ public class NotePicker extends ActionPanel
 				rs.close();
 			}
 			else {
-				Object[][] res = provider.query(uriString, 
+				Object[][] res = dataAdapter.query(uriString, 
 						(String[])null, 
-						String.format("select distinct created FROM %s order by created", provider.getTableName()));
+						String.format("select distinct created FROM %s order by created", dataAdapter.getTableName()));
 				for (Object[] row : res) {
 					timelist.add((Long) row[0]);
 				}
@@ -604,7 +604,7 @@ public class NotePicker extends ActionPanel
 					rs.close();
 				}
 				else if (isAvailable(0, pattern)){
-					Object[][] result = provider.query(uriString, 
+					Object[][] result = dataAdapter.query(uriString, 
 							strings("created", "title"), 
 							"title like ?", 
 							strings(pattern[0]),
@@ -671,9 +671,9 @@ public class NotePicker extends ActionPanel
 		private int criterion(long epoch, String pattern) {
 			String value = keyValue(epoch, pattern);
 			if (specialPatterns.getValues().contains(pattern)) {
-				ArrayList<Integer> a = new ArrayList<Integer>();
-				ArrayList<Integer> b = new ArrayList<Integer>();
-				ArrayList<Integer> c = new ArrayList<Integer>();
+				ArrayList<Integer> a = alist();
+				ArrayList<Integer> b = alist();
+				ArrayList<Integer> c = alist();
 				int comp = 0;
 				for (int i = 0; i < this.keys.length; i++) {
 					String key = this.keys[i];
@@ -915,7 +915,7 @@ public class NotePicker extends ActionPanel
 					}
 				}
 				else {
-					Object[][] result = provider.query(uriString, 
+					Object[][] result = dataAdapter.query(uriString, 
 							strings("created", "title", "note", "_id"), 
 							whereClause(pkValue), 
 							pkValue ? 
@@ -993,7 +993,7 @@ public class NotePicker extends ActionPanel
 			return updateOrInsert(rec[0].toString(), rec[1].toString(), text, add);
 		else {
 			long time = toTime(rec[0].toString(), DatePicker.calendarFormat);
-	       	ValMap info = provider.info;
+	       	ValMap info = dataAdapter.info;
 	       	BidiMultiMap map = new BidiMultiMap();
 	       	map.putValue("note", text);
 	       	map.putValue("modified", now());
@@ -1002,12 +1002,12 @@ public class NotePicker extends ActionPanel
 				values.putNull(pk.toString());
 				values.put("created", time);
 				values.put("title", rec[1].toString());
-				Uri uri = provider.insert(uriString, values);
+				Uri uri = dataAdapter.insert(uriString, values);
 				return ContentUris.parseId(uri);
 			}
 			else {
 				rec = (Object[]) select(rec);
-				return provider.update(appendId(uriString, (Long) rec[3]), values);
+				return dataAdapter.update(appendId(uriString, (Long) rec[3]), values);
 			}
 		}
 	}
@@ -1030,7 +1030,7 @@ public class NotePicker extends ActionPanel
 			if (usingJdbc())
 				done = remove(false, rec[1].toString(), rec[0].toString());
 			else 
-				done = 0 < provider.delete(appendId(uriString, (Long) rec[3]));
+				done = 0 < dataAdapter.delete(appendId(uriString, (Long) rec[3]));
 		}
 		if (done) {
 			clear();
@@ -1254,8 +1254,8 @@ public class NotePicker extends ActionPanel
 	public Object[][] records = null;
 	
 	public int registerNotes(ResultSet rs) throws SQLException {
-		ArrayList<Long> idlist = new ArrayList<Long>();
-		ArrayList<Object[]> reclist = new ArrayList<Object[]>();
+		ArrayList<Long> idlist = alist();
+		ArrayList<Object[]> reclist = alist();
 		
 		ResultSetMetaData rsmd = rs.getMetaData();
 		int cols = rsmd.getColumnCount();
@@ -1355,7 +1355,7 @@ public class NotePicker extends ActionPanel
 	}
 
 	public String[][] listRecords(String text) {
-		ArrayList<String[]> list = new ArrayList<String[]>();
+		ArrayList<String[]> list = alist();
 		
 		for (MatchResult m : findAllIn(text, notePattern2)) 
 			list.add(strings(m.group(1), m.group(2), m.group(3)));

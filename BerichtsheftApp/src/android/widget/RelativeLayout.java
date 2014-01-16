@@ -11,15 +11,14 @@ public class RelativeLayout extends ViewGroup {
 		super(context);
 	}
 
-	public static class LayoutParams {
+	public static class LayoutParams extends ViewGroup.MarginLayoutParams {
 
 		public LayoutParams(int width, int height) {
-			// TODO Auto-generated constructor stub
+            super(width, height);
 		}
 
 		public void setMargins(int left, int top, int right, int bottom) {
-			// TODO Auto-generated method stub
-			
+			super.setMargins(left, top, right, bottom);
 		}
 
 	}
@@ -30,8 +29,8 @@ public class RelativeLayout extends ViewGroup {
 	}
     
 	@Override
-    public Container getLayout() {
-		Container container = super.getLayout();
+    public Container getContainer() {
+		Container container = super.getContainer();
     	return container;
     }
 

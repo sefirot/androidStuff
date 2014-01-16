@@ -161,7 +161,7 @@ public class ScriptManager extends ManagerBase<Element>
 	    		new UIFunction() {
 					public Component[] apply(Component comp, Object[] parms) {
 						JDialog wnd = (JDialog) comp;
-						JButton btn = findComponent(wnd.getContentPane(), ACCEPT_BUTTON_KEY);
+						JButton btn = findFirstComponent(wnd.getContentPane(), ACCEPT_BUTTON_KEY);
 						btn.getRootPane().setDefaultButton(btn);
 						if (function != null)
 							setFunction(function);

@@ -90,7 +90,7 @@ public class BerichtsheftOptionPane extends AbstractOptionPane implements Action
 						if (isAvailable(0, paths)) {
 							sdk.setText(paths[0]);
 							for (String cmd : strings("ADB", "SQLITE")) {
-								JTextField tf = findComponent(BerichtsheftOptionPane.this, cmd);
+								JTextField tf = findFirstComponent(BerichtsheftOptionPane.this, cmd);
 								if (tf != null) {
 									String t = pathCombine(paths[0], getSetting(cmd + "_COMMAND", ""));
 									tf.setText(t);
@@ -176,7 +176,7 @@ public class BerichtsheftOptionPane extends AbstractOptionPane implements Action
 
 	// begin ActionListener implementation
 	public void actionPerformed(ActionEvent evt) {
-		JTextField cmd = findComponent(this, evt.getActionCommand());
+		JTextField cmd = findFirstComponent(this, evt.getActionCommand());
 		if (cmd != null) {
 			String fileName = cmd.getText();
 			String[] paths = underTest ? 

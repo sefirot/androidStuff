@@ -7,6 +7,7 @@ import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.StringWriter;
@@ -14,31 +15,35 @@ import java.io.Writer;
 import java.util.Date;
 import java.util.Properties;
 
+import javax.swing.AbstractButton;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
+import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.JToolBar;
+import javax.swing.SwingUtilities;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
 import org.gjt.sp.jedit.View;
+import org.gjt.sp.jedit.textarea.TextArea;
 
-import com.applang.SwingUtil.Behavior;
-import com.applang.SwingUtil.UIFunction;
-import com.applang.Util.BidiMultiMap;
-import com.applang.Util.Job;
-import com.applang.Util.ValMap;
+import com.applang.Dialogs;
+import com.applang.PromptDirective;
+import com.applang.berichtsheft.BerichtsheftActivity;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 import com.applang.components.DataView.DataModel;
+import com.applang.components.DataView.ProjectionModel;
 import com.applang.provider.NotePad;
 import com.applang.provider.NotePadProvider;
 import com.applang.provider.NotePad.NoteColumns;
 
 import android.content.ContentUris;
 import android.content.ContentValues;
+import android.database.Cursor;
 import android.net.Uri;
 import android.util.Log;
 
@@ -49,10 +54,12 @@ import static com.applang.SwingUtil.*;
 
 public class DataManager extends ActionPanel
 {
-	public static final int TABLE = 1;
-	public static final int FORM = 2;
-	public static final int TEXT = 1;
-	public static final int SCRIPT = 2;
+    protected static final String TAG = DataManager.class.getSimpleName();
+    
+	public static final int TABLE = 0;
+	public static final int FORM = 1;
+	public static final int TEXT = 2;
+	public static final int SCRIPT = 3;
 	
 	public static String propsToFile(Properties props, String name) {
 		String path = "/tmp/" + name;
@@ -79,32 +86,207 @@ public class DataManager extends ActionPanel
 		return name;
 	}
 
-	public DataManager(View view, Properties props, String name) {
-		super(createTextComponent(), view);
+	public DataManager(View view, Properties props, String name, MouseListener clickListener) {
+		super(createTextComponent(), view, name, 2);
 		this.props = props;
 		this.name = name;
-		container = new JPanel(new BorderLayout());
-		JToolBar bar = northToolBar(container, BorderLayout.SOUTH, this.name);
-		bar.setName(DoubleFeature.FOCUS);
-		joinContainer(bar);
-		try {
-			layoutToggler.perform(_layout() == TABLE, objects());
-		} 
-		catch(Exception e) {
-			Log.e(TAG, "DataManager", e);
-		};
-		dataView.setUriString(this.props.getProperty("uri", ""));
+		if (clickListener != null)
+			this.clickListener = clickListener;
+		uriString = this.props.getProperty("uri", "");
+		setDataView();
+		dataView.setUriString(uriString);
 		initialize(dataView.getUriString());
+		setFormComponent();
 	}
 	
-	private DataView dataView = new DataView() {
-		{
-			Component component = findComponent(this, BorderLayout.SOUTH);
-			if (component != null)
-				remove(component);
-			getTable().setName(DoubleFeature.FOCUS);
+	public static class DataPanel extends JPanel
+	{
+		@Override
+		public String toString() {
+			Writer writer = write(new StringWriter(), identity(this));
+			return writer.toString();
+		}
+
+		private DataManager dataManager;
+		
+		public DataManager getDataManager() {
+			return dataManager;
+		}
+
+		public DataPanel(DataManager dataManager) {
+			super(new BorderLayout());
+			this.dataManager = dataManager;
+			JPanel gutter = new JPanel();
+			gutter.setName("gutter");
+			add(gutter, BorderLayout.WEST);
+		}
+	}
+	
+	public JComponent getGutter(DataPanel dp) {
+		return findFirstComponent(dp, "gutter");
+	}
+
+	public void installConstellation(String config) {
+		index = -1;
+		panes = new DataPanel[0];
+		String[] constellation = config.split(",");
+		for (String s : constellation) {
+			int star = toInt(-1, s);
+			if (star > -1) 
+				createAnotherPane(++index, star);
+		}
+		props.getProperty("constellation", config);
+		propsToFile(props, name);
+	}
+	
+	public void modifyConstellation(final Component component) {
+		JSplitPane splitPane = (JSplitPane)SwingUtilities.getAncestorOfClass(JSplitPane.class, component);
+		switch (panes.length) {
+		case 1:
+			JComponent uiComponent = getUIComponent(1);
+			if (splitPane.getTopComponent() == null)
+				splitPane.setTopComponent(uiComponent);
+			else
+				splitPane.setBottomComponent(uiComponent);
+			break;
+		case 2:
+			Component c = null;
+			if (containsComponent((Container)splitPane.getTopComponent(), component)) {
+				c = splitPane.getTopComponent();
+				splitPane.setTopComponent(null);
+			}
+			else if (containsComponent((Container)splitPane.getBottomComponent(), component)) {
+				c = splitPane.getBottomComponent();
+				splitPane.setBottomComponent(null);
+			}
+			if (c != null) {
+				onMouseClickIn((Container) c, clickListener, false);
+				panes = arrayreduce(panes, panes[0].equals(c) ? 1 : 0, 1);
+				index = 0;
+				JToolBar bar = findFirstComponent(panes[index], getName());
+				for (int i = 0; i < bar.getComponentCount(); i++) {
+					AbstractButton btn = (AbstractButton) bar.getComponent(i);
+					CustomAction act = (CustomAction) btn.getAction();
+					ActionType type = (ActionType)act.getType();
+					if (ActionType.DATABASE.equals(type)) {
+						addButton(bar, 
+								ActionType.TOGGLE1.index(), 
+								new ManagerAction(ActionType.TOGGLE1, isTableView(index)), 
+								0, 
+								i + 1);
+						break;
+					}
+				}
+			}
+			break;
+		}
+		splitPane.validate();
+		splitPane.repaint();
+	}
+
+	private MouseListener clickListener = new MouseAdapter() {
+		@Override
+		public void mouseClicked(MouseEvent e) {
+			final Component component = (Component) e.getSource();
+			boolean controlKeyPressed = (e.getModifiers() & ActionEvent.CTRL_MASK) == ActionEvent.CTRL_MASK;
+			println((controlKeyPressed ? "C + " : "") + "mouseClick", identity(component));
+			if (controlKeyPressed) {
+				modifyConstellation(component);
+			}
 		}
 	};
+	
+	private DataPanel[] panes = new DataPanel[0];
+	
+	public int numberOfPanes() {
+		return panes.length;
+	}
+	
+	public JComponent getUIComponent(int index) {
+		while (panes.length <= index) {
+			boolean tableLayout = index > 0 ? isTableView(index - 1) : true;
+			createAnotherPane(panes.length, tableLayout ? FORM : TABLE);
+		}
+		return panes[index];
+	}
+
+	private void createAnotherPane(int index, int layout) {
+		panes = arrayextend(panes, false, new DataPanel(this));
+		JToolBar bar = northToolBar(panes[index], BorderLayout.SOUTH);
+		bar.setName(getName());
+		this.index = index;
+		toggleView(layout == TABLE);
+		if (panes.length > 1) {
+			bar = findFirstComponent(panes[0], getName());
+			removeButton(bar, ActionType.TOGGLE1.index());
+		}
+	}
+	
+	private int index = -1;
+	
+	public int getIndex() {
+		return index;
+	}
+
+	public void setIndex(int index) {
+		this.index = index;
+	}
+
+	public boolean setIndexBy(Component component) {
+		component = findAncestor(component, new Predicate<Component>() {
+			public boolean apply(Component c) {
+				if (c instanceof DataPanel) {
+					for (index = 0; index < panes.length; index++)
+						if (panes[index].equals(c))
+							return true;
+				}
+				return false;
+			}
+		});
+		return component != null;
+	}
+
+	public boolean isTableView(int index) {
+		return containsComponent(panes[index], tableView());
+	}
+	
+	private void onMouseClickIn(Container container, MouseListener mouseListener, boolean addRemove) {
+		for (final Component c : DoubleFeature.focusRequestComponents(container)) {
+			JComponent jc = (JComponent) (c instanceof TextArea ? ((TextArea) c).getPainter() : c);
+			if (addRemove)
+				jc.addMouseListener(mouseListener);
+			else 
+				jc.removeMouseListener(mouseListener);
+		}
+	}
+
+	private void viewSwitch(Function<Void> func, Object...params) {
+		try {
+			onMouseClickIn(panes[index], clickListener, false);
+			func.apply(params);
+		}
+		finally {
+			onMouseClickIn(panes[index], clickListener, true);
+		}
+	}
+	
+	private void setDataView() {
+		dataView = new DataView();
+		Component component = findFirstComponent(dataView, BorderLayout.SOUTH);
+		if (component != null)
+			remove(component);
+		JTable table = dataView.getTable();
+		table.getTableHeader().setName(DoubleFeature.REQUEST);
+		table.setFillsViewportHeight(true);
+		table.setName(DoubleFeature.FOCUS);
+		dataView.showSqlBox(false);
+	}
+	
+	private DataView dataView = null;
+	
+	public JComponent tableView() {
+		return (JComponent) dataView;
+	}
 	
 	private static ITextComponent createTextComponent() {
 		TextEditor2 textEditor2 = new TextEditor2().createBufferedTextArea(null, null);
@@ -112,52 +294,108 @@ public class DataManager extends ActionPanel
 		return textEditor2;
 	}
 	
-	private void reinstallTools(Container bar) {
+	private void setFormComponent() {
+		final BerichtsheftActivity context = BerichtsheftActivity.getInstance((JFrame) getView());
+		iComponent = new IComponent() {
+			public Component getUIComponent() {
+				if (panel == null) {
+					String layout = props.getProperty("layout");
+					boolean standardLayout = nullOrEmpty(layout);
+					if (standardLayout) 
+						layout = "linearlayout.xml";
+					LayoutBuilder layoutBuilder = new LayoutBuilder(context, layout);
+					ProjectionModel projectionModel = dataView.getDataConfiguration().getProjectionModel();
+					if (standardLayout && projectionModel != null) {
+						BidiMultiMap projection = projectionModel.getProjection();
+						for (Object name : projection.getKeys()) {
+							String type = stringValueOf(projection.getValue(name, 2));
+							switch (fieldTypeAffinity(type)) {
+							case Cursor.FIELD_TYPE_STRING:
+								layoutBuilder.addStringField(name);
+								break;
+							case Cursor.FIELD_TYPE_INTEGER:
+								layoutBuilder.addIntegerField(name);
+								break;
+							case Cursor.FIELD_TYPE_FLOAT:
+								layoutBuilder.addFloatField(name);
+								break;
+							case Cursor.FIELD_TYPE_BLOB:
+								layoutBuilder.addBlobField(name);
+								break;
+							default:
+								Log.w(TAG, String.format("type of field '%s' not identified : %s", name, type));
+								break;
+							}
+						}
+					}
+					panel = (JPanel) layoutBuilder.build().getComponent();
+					printContainer("panel", panel, true);
+				}
+				return panel;
+			}
+			
+			private JPanel panel = null;
+		};
+	}
+	
+	public JComponent formView() {
+		JComponent uiComponent = (JComponent) iComponent.getUIComponent();
+		return uiComponent;
+	}
+	
+	private Container installTools(boolean tableLayout) {
+		JToolBar bar = findFirstComponent(panes[index], getName());
 		bar.removeAll();
-		addButton(bar, ActionType.DATABASE.index(), new ManagerAction(ActionType.DATABASE));
-		addButton(bar, ActionType.TOGGLE1.index(), new ManagerAction(ActionType.TOGGLE1));
+		addButton(bar, ActionType.DATABASE.index(), new ManagerAction(ActionType.DATABASE), index);
+		if (panes.length == 1)
+			addButton(bar, ActionType.TOGGLE1.index(), new ManagerAction(ActionType.TOGGLE1, tableLayout), index);
+		bar.updateUI();
+		return bar;
 	}
 	
-	private void installForm(Container bar) {
-		reinstallTools(bar);
-		addButton(bar, ActionType.FIRST.index(), new ManagerAction(ActionType.FIRST));
-		addButton(bar, ActionType.PREVIOUS.index(), new ManagerAction(ActionType.PREVIOUS));
-		addButton(bar, ActionType.NEXT.index(), new ManagerAction(ActionType.NEXT));
-		addButton(bar, ActionType.LAST.index(), new ManagerAction(ActionType.LAST));
-		addButton(bar, ActionType.TOGGLE2.index(), new ManagerAction(ActionType.TOGGLE2));
+	private Container installMoreTools() {
+		Container bar = installTools(false);
+		addButton(bar, ActionType.FIRST.index(), new ManagerAction(ActionType.FIRST), index);
+		addButton(bar, ActionType.PREVIOUS.index(), new ManagerAction(ActionType.PREVIOUS), index);
+		addButton(bar, ActionType.NEXT.index(), new ManagerAction(ActionType.NEXT), index);
+		addButton(bar, ActionType.LAST.index(), new ManagerAction(ActionType.LAST), index);
+		if (getTextComponent() != null)
+			addToggle(bar, ActionType.TOGGLE2.index(), new ManagerAction(ActionType.TOGGLE2), index);
+		return bar;
 	}
 	
-	private Container container = null;
-	
-	@Override
-	public Component getUIComponent() {
-		return container;
-	}
-	
-	private int _layout() {
-		String layout = props.getProperty("layout");
-		if (nullOrEmpty(layout))
-			return TABLE;
-		else
-			return FORM;
+	private void toggleView(boolean tableLayout) {
+		try {
+			viewToggler.perform(tableLayout, objects());
+		} catch (Exception e) {
+			Log.e(TAG, "toggleView", e);
+		}
 	}
 
-	private Job<Boolean> layoutToggler = new Job<Boolean>() {
+	private Job<Boolean> viewToggler = new Job<Boolean>() {
 		public void perform(Boolean tableLayout, Object[] parms) throws Exception {
-			props.setProperty("layout", tableLayout ? "" : "form");
-			Component center;
+			Object[] params = objects((Object)null);
 			if (tableLayout) {
-				reinstallTools(DataManager.this);
-				center = dataView;
+				installTools(true);
+				params[0] = tableView();
 			}
 			else {
-				installForm(DataManager.this);
-				center = iComponent.getUIComponent();
+				installMoreTools();
+				params[0] = formView();
 			}
-			replaceCenterComponent(center, container);
-			if (!tableLayout)
+			viewSwitch(
+				new Function<Void>() {
+					public Void apply(Object... params) {
+						Component center = (Component) params[0];
+						replaceCenterComponent(center, panes[index]);
+						return null;
+					}
+				}, 
+				params);
+			printContainer(String.format("panes[%d]", index), panes[index], object(null));
+			if (!tableLayout && getTextComponent() != null)
 				try {
-					textToggler.perform(_text() == TEXT, objects());
+					scriptToggler.perform(_script() == TEXT, objects());
 				} 
 				catch(Exception e) {
 					Log.e(TAG, "layoutToggler", e);
@@ -166,7 +404,7 @@ public class DataManager extends ActionPanel
 		}
 	};
 	
-	private int _text() {
+	private int _script() {
 		String text = props.getProperty("text");
 		if ("script".equals(text))
 			return SCRIPT;
@@ -174,11 +412,19 @@ public class DataManager extends ActionPanel
 			return TEXT;
 	}
 	
-	protected Job<Boolean> textToggler = new Job<Boolean>() {
+	protected Job<Boolean> scriptToggler = new Job<Boolean>() {
 		public void perform(Boolean textView, Object[] parms) throws Exception {
 			props.setProperty("text", textView ? "document" : "script");
 	    	String text = getText();
-			getTextComponent().toggle(textView, null);
+			viewSwitch(
+				new Function<Void>() {
+					public Void apply(Object... params) {
+						Boolean textView = (Boolean) params[0];
+						getTextComponent().toggle(textView, null);
+						return null;
+					}
+				}, 
+				textView);
 			setText(text);
 			propsToFile(props, name);
 		}
@@ -186,13 +432,14 @@ public class DataManager extends ActionPanel
 
 	class ManagerAction extends CustomAction
     {
-		public ManagerAction(ActionType type) {
+		public ManagerAction(ActionType type, Object...params) {
 			super(type);
 			if (type.equals(ActionType.TOGGLE1)) {
-				putValue(NAME, type.name(_layout() == TABLE ? 2 : 1));
+				boolean tableLayout = param_Boolean(true, 0, params);
+				putValue(NAME, type.name(tableLayout ? 2 : 1));
 			}
 			else if (type.equals(ActionType.TOGGLE2)) {
-				putValue(NAME, type.name(_text() == TEXT ? 2 : 1));
+				putValue(NAME, type.name(_script() == TEXT ? 2 : 1));
 			}
         }
         
@@ -202,7 +449,9 @@ public class DataManager extends ActionPanel
 
 		@Override
         protected void action_Performed(ActionEvent ae) {
-//        	String dateString = getDate();
+			if (!setIndexBy((Component) ae.getSource())) {
+				throw new RuntimeException(TAG + " is out of order");
+			}
         	ActionType type = (ActionType)getType();
 			switch (type) {
 			case DATABASE:
@@ -241,30 +490,46 @@ public class DataManager extends ActionPanel
 			case STRUCT:
 				break;
 			case TOGGLE1:
-				toggle(this, layoutToggler);
+				toggle(this, viewToggler);
 				break;
 			case TOGGLE2:
-				toggle(this, textToggler);
+				toggle(this, scriptToggler);
 				break;
 			default:
 				return;
 			}
+			listenToClick(ae);
         }
+
+		public void listenToClick(ActionEvent ae) {
+			MouseEvent ev = new MouseEvent((Component) ae.getSource(), 
+					ae.getID(), ae.getWhen(), ae.getModifiers(), 0, 0, 1, false);
+			clickListener.mouseClicked(ev);
+		}
 	}
     
 	@Override
 	protected String chooseDatabase(String dbString) {
 		Container container = getView();
-		View view = container instanceof View ? (View) container : null;
-		if (dataView.configureData(view, false)) {
-			dbString = dataView.getUriString();
-			props.setProperty("uri", dbString);
-			propsToFile(props, name);
-			initialize(dbString);
-		}
-		return dbString;
+		final View view = container instanceof View ? (View) container : null;
+		viewSwitch(
+			new Function<Void>() {
+				public Void apply(Object... params) {
+					if (dataView.configureData(view, false)) {
+						String dbString = dataView.getUriString();
+						props.setProperty("uri", dbString);
+						propsToFile(props, name);
+						initialize(dbString);
+						setFormComponent();
+					}
+					return null;
+				}
+			});
+		for (index = 0; index < panes.length; index++)
+			toggleView(isTableView(index));
+		return dataView.getUriString();
 	}
-	
+
 	private void initialize(String dbString) {
 		String tableName = dbTableName(dbString);
 		uriString = NotePadProvider.contentUri(tableName).toString();
@@ -299,15 +564,15 @@ public class DataManager extends ActionPanel
 		return dataView.getTable().convertRowIndexToModel(rowIndex);
 	}
 
-	private Provider provider = null;
+	private DataAdapter dataAdapter = null;
 	private String uriString = NoteColumns.CONTENT_URI.toString();
 	private Object pk = null;
 	public int pkColumn = -1, pkRow = -1;
 	
 	private boolean createProvider() {
 		String dbPath = dataView.getDataConfiguration().getPath();
-		provider = new Provider(NotePad.AUTHORITY, new File(dbPath), uriString);
-		ValMap info = provider.info;
+		dataAdapter = new DataAdapter(NotePad.AUTHORITY, new File(dbPath), uriString);
+		ValMap info = dataAdapter.info;
 		if (info.size() > 0) {
 			pk = info.get("PRIMARY_KEY");
 			pkColumn = info.getList("name").indexOf(pk);
@@ -316,7 +581,7 @@ public class DataManager extends ActionPanel
 			}
 		}
 		else {
-			BerichtsheftPlugin.consoleMessage("dataview.no-info-for-table.message", provider.getTableName());
+			BerichtsheftPlugin.consoleMessage("dataview.no-info-for-table.message", dataAdapter.getTableName());
 			pkColumn = -1;
 		}
 		return pkColumn > -1;
@@ -355,7 +620,7 @@ public class DataManager extends ActionPanel
 		if (!noRefresh) {
 			clear();
 			if (createProvider()) {
-				dataView.populate(provider, null, null, DEFAULT_SORT_ORDER);
+				dataView.populate(dataAdapter, null, null, DEFAULT_SORT_ORDER);
 				browse(ActionType.PICK);
 			}
 		}
@@ -474,7 +739,7 @@ public class DataManager extends ActionPanel
 			try {
 				Long time = toTime(dateString, DatePicker.calendarFormat);
 				long[] interval = dayInterval(time, 1);
-				Object[][] result = provider.query(uriString, 
+				Object[][] result = dataAdapter.query(uriString, 
 						strings("created", "title", "note", "_id"), 
 						whereClause(pkValue), 
 						pkValue ? 
@@ -563,7 +828,7 @@ public class DataManager extends ActionPanel
 	
 	private long updateOrAdd(boolean add, String text, Object...rec) {
 		long time = toTime(rec[0].toString(), DatePicker.calendarFormat);
-		ValMap info = provider.info;
+		ValMap info = dataAdapter.info;
 		BidiMultiMap map = new BidiMultiMap();
 		map.putValue("note", text);
 		map.putValue("modified", now());
@@ -572,12 +837,12 @@ public class DataManager extends ActionPanel
 			values.putNull(pk.toString());
 			values.put("created", time);
 			values.put("title", rec[1].toString());
-			Uri uri = provider.insert(uriString, values);
+			Uri uri = dataAdapter.insert(uriString, values);
 			return ContentUris.parseId(uri);
 		}
 		else {
 			rec = (Object[]) select(rec);
-			return provider.update(appendId(uriString, (Long) rec[3]), values);
+			return dataAdapter.update(appendId(uriString, (Long) rec[3]), values);
 		}
 	}
 
@@ -596,7 +861,7 @@ public class DataManager extends ActionPanel
 		boolean done = false;
 		Object[] rec = (Object[]) select(item);
 		if (rec != null) {
-			done = 0 < provider.delete(appendId(uriString, (Long) rec[3]));
+			done = 0 < dataAdapter.delete(appendId(uriString, (Long) rec[3]));
 		}
 		if (done) {
 			clear();
@@ -608,8 +873,10 @@ public class DataManager extends ActionPanel
 	@Override
 	public void setText(String text) {
 		TextEditor2 textBums = getTextComponent();
-		updateText(textBums, text);
-		textBums.getTextEditor().undo.discardAllEdits();
+		if (textBums != null) {
+			updateText(textBums, text);
+			textBums.getTextEditor().undo.discardAllEdits();
+		}
 	}
 
 	public static String noteFormat1 = enclose(FOLD_MARKER[0], " %s\n%s\n", FOLD_MARKER[1]);
@@ -634,28 +901,48 @@ public class DataManager extends ActionPanel
 		}
 	}
 
+	public static void askConstellation(Job<String> job, Object...params) {
+		PromptDirective.prompt(
+			new BerichtsheftActivity(job, params), 
+			Dialogs.DIALOG_TEXT_ENTRY, 
+			"DataManager", 
+			"constellation", 
+			strings("1,0"));
+	}
+
 	public static void main(String...args) {
 		BerichtsheftApp.loadSettings();
-		Properties props = new Properties();
-    	final DataManager dm = new DataManager(null, props, "DataManager");
+		final Properties props = new Properties();
+		askConstellation(
+			new Job<String>() {
+				public void perform(String result, Object[] parms) throws Exception {
+					props.setProperty("constellation", result);
+					manage(props);
+				}
+			});
+	}
+
+	public static void manage(Properties props) {
+    	final DataManager dm = new DataManager(null, props, "DataManager", null);
+		dm.installConstellation(props.getProperty("constellation"));
 		showFrame(null, dm.getName(), 
 			new UIFunction() {
 				public Component[] apply(final Component comp, Object[] parms) {
-					JTable table = dm.dataView.getTable();
-					table.setPreferredScrollableViewportSize(new Dimension(600,300));
-					return components(dm.getUIComponent());
+					Dimension viewportSize = new Dimension(600,200);
+					dm.tableView().setPreferredSize(viewportSize);
+					dm.formView().setPreferredSize(viewportSize);
+					JSplitPane splitPane = splitPane(JSplitPane.VERTICAL_SPLIT, null);
+					splitPane.setTopComponent(dm.getUIComponent(0));
+					if (dm.numberOfPanes() > 1) {
+						splitPane.setBottomComponent(dm.getUIComponent(1));
+					}
+					return components(splitPane);
 				}
 			}, 
 			new UIFunction() {
 				public Component[] apply(Component comp, Object[] parms) {
-					JFrame frame = (JFrame) comp;
-					final Component focus = findComponent(frame, DoubleFeature.FOCUS);
-					focus.addMouseListener(new MouseAdapter() {
-						@Override
-						public void mouseClicked(MouseEvent e) {
-							println("mouse clicked on", focus);
-						}
-					});
+//					Container frame = (JFrame)comp;
+//					printContainer("frame", frame, true);
 					return null;
 				}
 			}, 

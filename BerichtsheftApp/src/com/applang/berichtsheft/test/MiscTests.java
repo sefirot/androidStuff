@@ -97,8 +97,8 @@ public class MiscTests extends XMLTestCase
 		np = new NotePicker(null, textEditor2);
 		if (tempfile.exists())
 			tempfile.delete();
-		contentfile = new File(getSetting("content.xml", BerichtsheftApp.berichtsheftPath("Skripte/content.xml")));
-		paramsFilename = getSetting("params.xml", BerichtsheftApp.berichtsheftPath("Skripte/params.xml"));
+		contentfile = new File(getSetting("content.xml", BerichtsheftApp.applicationDataPath("Skripte/content.xml")));
+		paramsFilename = getSetting("params.xml", BerichtsheftApp.applicationDataPath("Skripte/params.xml"));
 
 	}
 
@@ -946,8 +946,8 @@ public class MiscTests extends XMLTestCase
 	    { 
 			// Cast the TransformerFactory to SAXTransformerFactory.
 			SAXTransformerFactory saxTFactory = ((SAXTransformerFactory) tFactory);	  
-			String controlStyleSheet = getSetting("control.xsl", BerichtsheftApp.berichtsheftPath("Skripte/control.xsl"));
-			String contentStyleSheet = getSetting("content.xsl", BerichtsheftApp.berichtsheftPath("Skripte/content.xsl"));
+			String controlStyleSheet = getSetting("control.xsl", BerichtsheftApp.applicationDataPath("Skripte/control.xsl"));
+			String contentStyleSheet = getSetting("content.xsl", BerichtsheftApp.applicationDataPath("Skripte/content.xsl"));
 			// Create a TransformerHandler for each stylesheet.
 			final TransformerHandler tHandler1 = saxTFactory.newTransformerHandler(new StreamSource(controlStyleSheet));
 			TransformerHandler tHandler2 = saxTFactory.newTransformerHandler(new StreamSource(contentStyleSheet));
@@ -1197,8 +1197,8 @@ public class MiscTests extends XMLTestCase
 	    	String content = pathCombine(tempDir.getPath(), "content.xml");
 			String _content = pathCombine(tempDir.getPath(), "_content.xml");
 			assertTrue(new File(content).renameTo(new File(_content)));
-			String controlStyleSheet = getSetting("control.xsl", BerichtsheftApp.berichtsheftPath("Skripte/control.xsl"));
-			String contentStyleSheet = getSetting("content.xsl", BerichtsheftApp.berichtsheftPath("Skripte/content.xsl"));
+			String controlStyleSheet = getSetting("control.xsl", BerichtsheftApp.applicationDataPath("Skripte/control.xsl"));
+			String contentStyleSheet = getSetting("content.xsl", BerichtsheftApp.applicationDataPath("Skripte/content.xsl"));
 			Class.forName("org.sqlite.JDBC");
 			for (int way : ints(1,2,3)) {
 				switch (way) {
@@ -1389,7 +1389,7 @@ public class MiscTests extends XMLTestCase
 	}
 
 	public void _testXPath() throws Exception {
-		Document doc = xmlDocument(new File(getSetting("content.xml", BerichtsheftApp.berichtsheftPath("Skripte/content.xml"))));
+		Document doc = xmlDocument(new File(getSetting("content.xml", BerichtsheftApp.applicationDataPath("Skripte/content.xml"))));
 //		Document doc = xmlDocument(new File(BerichtsheftApp.berichtsheftPath("Vorlagen/Tagesberichte_2012/styles.xml")));
 		
 /*		String path = 
@@ -1431,8 +1431,8 @@ public class MiscTests extends XMLTestCase
 		new File(debugFilePath).delete();
 		File dir = tempDir(true, BerichtsheftApp.NAME);
 
-		String content = getSetting("content.xml", BerichtsheftApp.berichtsheftPath("Skripte/content.xml"));
-		String mask = getSetting("mask.xsl", BerichtsheftApp.berichtsheftPath("Skripte/mask.xsl"));
+		String content = getSetting("content.xml", BerichtsheftApp.applicationDataPath("Skripte/content.xml"));
+		String mask = getSetting("mask.xsl", BerichtsheftApp.applicationDataPath("Skripte/mask.xsl"));
 		String output = "/tmp/content.xml";
 		
 		clearMappings();

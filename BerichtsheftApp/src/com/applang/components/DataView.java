@@ -45,6 +45,7 @@ import javax.swing.table.TableModel;
 
 import org.gjt.sp.jedit.View;
 
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ContentResolver;
 import android.content.Context;
@@ -70,7 +71,7 @@ public class DataView extends JPanel implements IComponent
 {
 	public static final String TAG = DataView.class.getSimpleName();
 	
-	private Context context = new BerichtsheftActivity();
+	private Context context = BerichtsheftActivity.getInstance();
 	public Context getContext() {
 		return context;
 	}
@@ -93,21 +94,21 @@ public class DataView extends JPanel implements IComponent
 		setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
 		sqlBox = new JComboBox();
 		Memory.update(sqlBox, true, "DataView");
-        final JTextField tf = comboEdit(sqlBox);
+        final JTextField textField = comboEdit(sqlBox);
 		sqlBox.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				dc.setProjectionModel(null);
-				reload(tf.getText());
+				reload(textField.getText());
 			}
 		});
-		tf.addKeyListener(new KeyAdapter() {
+		textField.addKeyListener(new KeyAdapter() {
 			@Override
 			public void keyTyped(KeyEvent e) {
 				super.keyTyped(e);
 				dc.setProjectionModel(null);
 			}
 		});
-		tf.setText("");
+		textField.setText("");
 		table = new DataTable(new DataModel());
 		switchSelectionMode(false);
 		add(sqlBox, BorderLayout.NORTH);
@@ -129,7 +130,7 @@ public class DataView extends JPanel implements IComponent
 						Point pt = new Point(ev.getX(), ev.getY());
 						SwingUtilities.convertPointToScreen(pt, table);
 						Toast.makeText(
-								new BerichtsheftActivity().setLocation(pt), 
+								BerichtsheftActivity.getInstance().setLocation(pt), 
 								String.valueOf(value), 
 								Toast.LENGTH_LONG).show();
 					} catch (Exception e) {
@@ -193,7 +194,7 @@ public class DataView extends JPanel implements IComponent
 	}
 	
 	public void setUriString(String uriString) {
-		setUri(Uri.parse(uriString));
+		setUri(notNullOrEmpty(uriString) ? Uri.parse(uriString) : null);
 	}
 	
 	public String getUriString() {
@@ -210,7 +211,7 @@ public class DataView extends JPanel implements IComponent
 
 	public void synchronizeSelection(int[] rows, Object...params) {
 		if (sqlBox.isVisible()) {
-			sqlBox.setVisible(false);
+			showSqlBox(false);
 			switchSelectionMode(true);
 			JPopupMenu popupMenu = param(null, 0, params);
 			popupAdapter = new PopupAdapter(popupMenu);
@@ -220,13 +221,17 @@ public class DataView extends JPanel implements IComponent
 		}
 		selectRowAndScrollToVisible(table, rows);
 	}
+
+	public void showSqlBox(boolean show) {
+		sqlBox.setVisible(show);
+	}
 	
 	private PopupAdapter popupAdapter = null;
 	private ListSelectionListener tableSelectionListener = null;
 
 	public void nosync() {
 		if (!sqlBox.isVisible()) {
-			sqlBox.setVisible(true);
+			showSqlBox(true);
 			switchSelectionMode(false);
 			if (popupAdapter != null) {
 				table.removeMouseListener(popupAdapter);
@@ -251,7 +256,7 @@ public class DataView extends JPanel implements IComponent
 	}
 	
 	public boolean reload(Object...params) {
-		provider = null;
+		dataAdapter = null;
 		final String sql = param(null, 0, params);
 		return populate(new Job<Void>() {
 			public void perform(Void t, Object[] params) throws Exception {
@@ -266,17 +271,18 @@ public class DataView extends JPanel implements IComponent
 					String tableName = dbTableName(uri);
 					s = "select " + join(",", projection.getKeys().toArray()) + " from " + tableName;
 				}
+				JTextField textField = comboEdit(sqlBox);
 				if (nullOrEmpty(s) && sqlBox.isEnabled())
-					s = comboEdit(sqlBox).getText();
+					s = textField.getText();
 				Cursor cursor = contentResolver.rawQuery(uri, s);
 				if (cursor != null) {
 					model.traverse(cursor);
 				}
 				table.setModel(model);
 				if (sqlBox.isVisible())
-					comboEdit(sqlBox).setText(getSql());
+					textField.setText(getSql());
 				else
-					comboEdit(sqlBox).setText("");
+					textField.setText("");
 				wireObserver(contentResolver, false);
 			}
 		});
@@ -296,12 +302,12 @@ public class DataView extends JPanel implements IComponent
 				Long id = parseId(null, uri);
 				if (id != null) {
 					DataModel model = (DataModel) table.getModel();
-					Object pk = provider.info.get("PRIMARY_KEY");
+					Object pk = dataAdapter.info.get("PRIMARY_KEY");
 					table.rowidColumn = model.columns.indexOf(pk);
 					int row = model.findRowAt(table.rowidColumn, id);
 					ProjectionModel projectionModel = dc.getProjectionModel();
 					Object[] columns = projectionModel.getExpandedProjection().getKeys().toArray();
-					Object[][] result = provider.query(getUriString(), toStrings(columns), pk + "=?", strings("" + id));
+					Object[][] result = dataAdapter.query(getUriString(), toStrings(columns), pk + "=?", strings("" + id));
 					if (isAvailable(0, result)) {
 						if (row > -1)
 							model.setValues(false, row, result[0]);
@@ -331,7 +337,7 @@ public class DataView extends JPanel implements IComponent
 		table.setModel(new DataModel());
 	}
 	
-	private Provider provider = null;
+	private DataAdapter dataAdapter = null;
 	
 	private boolean populate(Job<Void> populate) {
 		boolean retval = true;
@@ -351,20 +357,20 @@ public class DataView extends JPanel implements IComponent
 		return retval;
     }
 	
-	public boolean populate(Provider provider, final Object...params) {
-		this.provider = provider;
+	public boolean populate(DataAdapter dataAdapter, final Object...params) {
+		this.dataAdapter = dataAdapter;
 		wireObserver(contentResolver, true);
 		return populate(new Job<Void>() {
 			public void perform(Void t, Object[] parms) throws Exception {
-				Provider provider = DataView.this.provider;
-				wireObserver(provider.getContext().getContentResolver(), true);
+				DataAdapter dataAdapter = DataView.this.dataAdapter;
+				wireObserver(dataAdapter.getContext().getContentResolver(), true);
 				ProjectionModel projectionModel = dc.getProjectionModel();
 				BidiMultiMap projection = projectionModel.getExpandedProjection();
-				DataModel model = provider.query(getUriString(), 
+				DataModel model = dataAdapter.query(getUriString(), 
 						projection, 
 						params);
 				table.setModel(valueOrElse(new DataModel(), model));
-				wireObserver(provider.getContext().getContentResolver(), false);
+				wireObserver(dataAdapter.getContext().getContentResolver(), false);
 			}
 		});
 	}
@@ -661,13 +667,12 @@ public class DataView extends JPanel implements IComponent
 					conversions.set(i, stringValueOf(projection.getValue(name)));
 				}
 			}
-			debug_println("projection", getExpandedProjection());
 		}
 
-		public ProjectionModel(Provider provider) {
-			setFlavor(provider.getFlavor());
-			tableName = provider.getTableName();
-			initialize(provider.info);
+		public ProjectionModel(DataAdapter dataAdapter) {
+			setFlavor(dataAdapter.getFlavor());
+			tableName = dataAdapter.getTableName();
+			initialize(dataAdapter.info);
 			int pkColumn = info.getList("name").indexOf(info.get("PRIMARY_KEY"));
 			if (pkColumn > -1)
 				checks.set(pkColumn, false);
@@ -795,7 +800,8 @@ public class DataView extends JPanel implements IComponent
 		
 		@Override
 		public String toString() {
-			return getExpandedProjection().toString();
+			return write_assoc(null, "flavor", getFlavor(), -1) + 
+					getExpandedProjection().toString();
 		}
 
 		public boolean changed = false;
@@ -888,7 +894,7 @@ public class DataView extends JPanel implements IComponent
 				})
 				.create();
 		dialog.open(0.5, 0.5);
-		JTable table = findComponent(projectionComponent, "table");
+		JTable table = findFirstComponent(projectionComponent, "table");
 		if (table != null) {
 			AbstractCellEditor ce = (AbstractCellEditor) table.getCellEditor();
 			if (ce != null)
@@ -957,7 +963,7 @@ public class DataView extends JPanel implements IComponent
 			if (projection != null) {
 				columns = projection.getKeys();
 				conversions = projection.getValues().toArray(strings());
-				List<Integer> list = new ArrayList<Integer>();
+				List<Integer> list = alist();
 				Object[] checks = valueOrElse(vlist(), projection.getValues(3)).toArray();
 				for (int i = 0; i < columns.size(); i++) 
 					if (param_Boolean(true, i, checks)) 

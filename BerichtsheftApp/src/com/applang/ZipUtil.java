@@ -150,7 +150,7 @@ public class ZipUtil
 		
 		try {
 			String path = basePath(base);
-			ArrayList<String> filter = new ArrayList<String>();
+			ArrayList<String> filter = alist();
 			for (int i = 0; i < nDelete; i++) 
 				filter.add(entryPath(params[i], path));
 			

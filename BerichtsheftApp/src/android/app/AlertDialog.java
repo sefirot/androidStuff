@@ -73,7 +73,7 @@ public class AlertDialog extends Dialog implements DialogInterface
     	JComponent comp = vw.getComponent();
     	ValList list = new ValList(asList(names));
     	while (comp != null && list.size() > 0) {
-    		comp = findComponent(comp, stringValueOf(list.get(0)));
+    		comp = findFirstComponent(comp, stringValueOf(list.get(0)));
     		list.remove(0);
     	}
     	return (T)comp;
@@ -132,7 +132,7 @@ public class AlertDialog extends Dialog implements DialogInterface
         public AlertDialog create() {
         	ViewGroup vg = dialog.viewGroup;
         	if (options.size() > 0) {
-        		Container container = vg.getLayout();
+        		Container container = vg.getContainer();
         		if (vg.getChildCount() > 0) {
         			if (vg.getChildCount() < 2) 
         				container = (Container) vg.getChildAt(0).getComponent();

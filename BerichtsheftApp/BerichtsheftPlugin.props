@@ -83,6 +83,7 @@ berichtsheft.export-document.message.2=problems processing the document, see Uti
 dataview.sqlite-required.message=Only SQLite database files are acceptable
 texteditor.no-undo.message=Unable to undo: %s
 texteditor.no-redo.message=Unable to redo: %s
+doublefeature.dummy-tooltip.message=<html>click here to view the content of '%s'<br>C + click here for an alternative view</html>
 
 # plugin option pane
 plugin.com.applang.berichtsheft.plugin.BerichtsheftPlugin.option-pane=berichtsheft

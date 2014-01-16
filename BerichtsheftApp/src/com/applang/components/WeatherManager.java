@@ -75,7 +75,7 @@ public class WeatherManager extends ActionPanel
 						weatherManager, 
 						new Function<Component>() {
 							public Component apply(Object...params) {
-								Component c = findComponent(dataView, "south");
+								Component c = findFirstComponent(dataView, "south");
 								if (c != null)
 									dataView.remove(c);
 								return dataView.getUIComponent();
@@ -391,7 +391,7 @@ public class WeatherManager extends ActionPanel
 		AlertDialog dialog;
 		TextView tv = new TextView(null, true);
 		tv.getTextArea().setFont(monoSpaced());
-		dialog = new AlertDialog.Builder(new BerichtsheftActivity(), false)
+		dialog = new AlertDialog.Builder(BerichtsheftActivity.getInstance(), false)
 				.setTitle(title)
 				.setView(tv)
 				.setNeutralButton(android.R.string.close,
@@ -471,7 +471,7 @@ public class WeatherManager extends ActionPanel
 			return;
 		ValMap vormittag = vmap(), nachmittag = vmap();
 		BidiMultiMap precip = bmap(3);
-		ArrayList<Double> temps = new ArrayList<Double>();
+		ArrayList<Double> temps = alist();
 		ValList list = summary.getList("D");
 		if (!isAvailable(0, list))
 			return;
@@ -525,7 +525,7 @@ public class WeatherManager extends ActionPanel
 						break;
 				}
 				old = day;
-				temps = new ArrayList<Double>();
+				temps = alist();
 			}
 		}
 //		for (String d : vormittag.keySet()) {

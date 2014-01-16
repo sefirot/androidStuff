@@ -13,7 +13,7 @@ raw=/home/lotharla/work/Niklas/Bemerkungen*
 case "$1" in
 
 test)
-	echo "This was just a test"
+	echo "Hello World"
 	;;
 
 confluence_notes)

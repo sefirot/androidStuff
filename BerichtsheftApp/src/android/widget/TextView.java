@@ -15,8 +15,8 @@ import android.text.method.MovementMethod;
 import android.text.method.ScrollingMovementMethod;
 import android.view.View;
 
-public class TextView extends View {
-
+public class TextView extends View
+{
     public TextView(Context context, Object...params) {
 		super(context);
 		JTextArea textArea = new JTextArea();
@@ -31,7 +31,7 @@ public class TextView extends View {
     public JTextArea getTextArea() {
 		Container component = getComponent();
 		if (component instanceof JScrollPane)
-			return (JTextArea) findComponent(component, "textArea");
+			return (JTextArea) findFirstComponent(component, "textArea");
 		else
 			return (JTextArea) component;
     }

@@ -162,7 +162,7 @@ public class FormEditor extends JSplitPane
 	
 	static void unmask(String inputPath, String outputPath) {
 		try {
-			String stylePath = getSetting("mask.xsl", BerichtsheftApp.berichtsheftPath("Skripte/mask.xsl"));
+			String stylePath = getSetting("mask.xsl", BerichtsheftApp.applicationDataPath("Skripte/mask.xsl"));
 			xmlTransform(inputPath, stylePath, outputPath, "mode", 2);
 		} catch (Exception e) {
 			handleException(e);
@@ -173,7 +173,7 @@ public class FormEditor extends JSplitPane
 	
 	static boolean generateMask(String contentXml) {
 		try {
-			String stylePath = getSetting("mask.xsl", BerichtsheftApp.berichtsheftPath("Skripte/mask.xsl"));
+			String stylePath = getSetting("mask.xsl", BerichtsheftApp.applicationDataPath("Skripte/mask.xsl"));
 			String dummy = "/tmp/temp.html";
 			xmlTransform(contentXml, stylePath, dummy, "mode", 1);
 			File dir = tempDir(false, BerichtsheftApp.NAME);
@@ -546,7 +546,7 @@ public class FormEditor extends JSplitPane
 			@Override
 			public void update(Observable o, Object arg) {
 				for (int i = 0, j = 0; i < factors.length; i++, j=i%2) {
-					JTextField field = findComponent(pnl, factors[i]);
+					JTextField field = findFirstComponent(pnl, factors[i]);
 					if (o instanceof MaskPanel.Scale && factors[i].startsWith("scale")) {
 						MaskPanel.Scale scale = (MaskPanel.Scale) o;
 						field.setText("" + round(scale.getDim(j), 3));
@@ -569,7 +569,7 @@ public class FormEditor extends JSplitPane
 									pnl.setLayout(new BoxLayout(pnl, BoxLayout.PAGE_AXIS));
 									Dimension fieldSize = new Dimension(160,20);
 									for (int i = 0; i < factors.length; i++) {
-										if (findComponent(pnl, factors[i]) == null) {
+										if (findFirstComponent(pnl, factors[i]) == null) {
 											final JTextField field = new JTextField();
 											field.setName(factors[i]);
 											field.setPreferredSize(fieldSize);

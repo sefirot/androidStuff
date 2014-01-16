@@ -1,5 +1,9 @@
 package com.applang.berichtsheft;
 
+import java.util.HashMap;
+
+import javax.swing.JFrame;
+
 import com.applang.BaseDirective;
 import com.applang.Util.Job;
 
@@ -43,6 +47,21 @@ public class BerichtsheftActivity extends Activity
 
 	public BerichtsheftActivity() {
 		super();
+	}
+	
+	private static HashMap<JFrame,BerichtsheftActivity> instances = new HashMap<JFrame,BerichtsheftActivity>();
+
+	public static BerichtsheftActivity getInstance() {
+		return getInstance(Activity.frame);
+	}
+
+	public static BerichtsheftActivity getInstance(JFrame frame) {
+		if (frame != null)
+			return new BerichtsheftActivity();
+		Activity.frame = frame;
+		if (!instances.containsKey(frame))
+			instances.put(frame, new BerichtsheftActivity());
+		return instances.get(frame);
 	}
 
 }

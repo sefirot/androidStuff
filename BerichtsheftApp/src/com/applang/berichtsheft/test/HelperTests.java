@@ -16,16 +16,22 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.StringReader;
 import java.io.Writer;
+import java.lang.reflect.Constructor;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Scanner;
 import java.util.Set;
+import java.util.StringTokenizer;
 import java.util.TreeSet;
+import java.util.regex.MatchResult;
+import java.util.regex.Pattern;
  
 import javax.swing.AbstractAction;
 import javax.swing.Box;
@@ -74,19 +80,23 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
+import android.content.res.Resources;
 import android.net.Uri;
-import android.os.Environment;
 import android.provider.BaseColumns;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.TextView;
 
 import com.applang.BaseDirective;
 import com.applang.Dialogs;
 import com.applang.PromptDirective;
 import com.applang.UserContext.EvaluationTask;
+import com.applang.Util2.LayoutBuilder;
 import com.applang.berichtsheft.BerichtsheftActivity;
 import com.applang.berichtsheft.BerichtsheftApp;
+import com.applang.berichtsheft.R;
 import com.applang.berichtsheft.plugin.DataDockable;
 import com.applang.berichtsheft.plugin.DataDockable.TransportBuilder;
 import com.applang.berichtsheft.plugin.JEditOptionDialog;
@@ -98,7 +108,7 @@ import com.applang.components.DataView.DataModel;
 import com.applang.components.DataView.ProjectionModel;
 import com.applang.components.DatePicker;
 import com.applang.components.ProfileManager;
-import com.applang.components.Provider;
+import com.applang.components.DataAdapter;
 import com.applang.components.ScriptManager;
 import com.applang.components.TextEditor2;
 import com.applang.components.WeatherManager;
@@ -111,12 +121,16 @@ import static com.applang.Util1.*;
 import static com.applang.Util2.*;
 import static com.applang.SwingUtil.*;
 
-import junit.framework.TestCase;
+import junit.framework.*;
 
 public class HelperTests extends TestCase
 {
     private static final String TAG = HelperTests.class.getSimpleName();
 
+    public HelperTests(String name) {
+    	super(name);
+    }
+    
 	protected void setUp() throws Exception {
 		super.setUp();
 		BerichtsheftApp.loadSettings();
@@ -498,8 +512,8 @@ public class HelperTests extends TestCase
 		String flavor = "com.applang.provider.NotePad";
 		DataView dv = new DataView();
 		dv.setUri(uri);
-		Provider provider = new Provider(dv);
-		BidiMultiMap projection = new BidiMultiMap(provider.info.getList("name"));
+		DataAdapter dataAdapter = new DataAdapter(dv);
+		BidiMultiMap projection = new BidiMultiMap(dataAdapter.info.getList("name"));
 		projection.removeKey("_id");
 		Context context = new BerichtsheftActivity();
 		ProjectionModel model = new ProjectionModel(context, uri, flavor, projection);
@@ -509,7 +523,7 @@ public class HelperTests extends TestCase
 		println(projection);
 		boolean unchanged = !model.changed;
 		if (unchanged) assertThat((Boolean) projection.getValue("_id", 3), is(equalTo(false)));
-		DataModel consumer = provider.query(dv.getUriString(), projection);
+		DataModel consumer = dataAdapter.query(dv.getUriString(), projection);
 		projection = consumer.getProjection();
 		if (unchanged) {
 			assertThat(projection.getKeys().size(), is(equalTo(4)));
@@ -606,30 +620,30 @@ public class HelperTests extends TestCase
     public void testUpdateOrInsert() throws Exception {
     	String dbPath = createNotePad();
     	String uriString = fileUri(dbPath, "notes").toString();
-		Provider provider = new Provider(uriString);
+		DataAdapter dataAdapter = new DataAdapter(uriString);
 		BidiMultiMap projection = builder.elaborateProjection(objects("title", "note", "created"), null, "");
-       	ContentValues values = contentValues(provider.info, projection.getKeys(), "title", "note", now());
+       	ContentValues values = contentValues(dataAdapter.info, projection.getKeys(), "title", "note", now());
 		ValMap profile = ProfileManager.getProfileAsMap("tagesberichte", "pull");
        	
 		String pk = BaseColumns._ID;
-		Object result = provider.updateOrInsert(uriString, profile, projection, pk, values);
+		Object result = dataAdapter.updateOrInsert(uriString, profile, projection, pk, values);
 		assertNotNull(result);
 		assertTrue(result instanceof Uri);
 		long id = ContentUris.parseId((Uri) result);
 		assertThat(id, is(greaterThan(-1l)));
-		result = provider.updateOrInsert(uriString, profile, projection, pk, values);
+		result = dataAdapter.updateOrInsert(uriString, profile, projection, pk, values);
 		assertNotNull(result);
 		assertTrue(result instanceof Integer);
 		assertThat((Integer)result, is(greaterThan(0)));
 		
 		projection.insert(0, pk, null);
 		values.putNull(pk.toString());
-		result = provider.updateOrInsert(uriString, profile, projection, null, values);
+		result = dataAdapter.updateOrInsert(uriString, profile, projection, null, values);
 		assertNotNull(result);
 		assertTrue(result instanceof Uri);
 		assertThat(ContentUris.parseId((Uri) result), is(lessThan(0l)));
 		values.put("created", now());
-		result = provider.updateOrInsert(uriString, profile, projection, "", values);
+		result = dataAdapter.updateOrInsert(uriString, profile, projection, "", values);
 		assertNotNull(result);
 		assertTrue(result instanceof Uri);
 		assertThat(ContentUris.parseId((Uri) result), allOf(greaterThan(-1l), not(equalTo(id))));
@@ -676,18 +690,18 @@ public class HelperTests extends TestCase
 	public void testRoundTrip() throws Exception {
     	String dbPath = createNotePad();
     	String uriString = fileUri(dbPath, "notes").toString();
-    	Provider provider = new Provider(uriString);
+    	DataAdapter dataAdapter = new DataAdapter(uriString);
 		String name = "tagesberichte";
 		ValMap profile = ProfileManager.getProfileAsMap(name, "push");
 		Object flavor = profile.get("flavor");
 		String[] full = toStrings(fullProjection(flavor));
-		println(com.applang.Util.toString(provider.query(uriString, full)));
-		Object[][] mods = provider.query(uriString, strings("_id","modified","title"));
+		println(com.applang.Util.toString(dataAdapter.query(uriString, full)));
+		Object[][] mods = dataAdapter.query(uriString, strings("_id","modified","title"));
 //		println(com.applang.toString(mods));
 		String template = stringValueOf(profile.get("template"));
     	ValList list = builder.evaluateTemplate(template, profile);
-		BidiMultiMap projection = builder.elaborateProjection(list.toArray(), provider.info.getList("name"), provider.getTableName());
-		DataView.DataModel model = provider.query(uriString, projection);
+		BidiMultiMap projection = builder.elaborateProjection(list.toArray(), dataAdapter.info.getList("name"), dataAdapter.getTableName());
+		DataView.DataModel model = dataAdapter.query(uriString, projection);
     	JTable table = model.makeTable();
 		DataDockable.showItems(null, 
 				"datadock.transport-to-buffer.label", 
@@ -701,7 +715,7 @@ public class HelperTests extends TestCase
 		profile = ProfileManager.getProfileAsMap(name, "pull");
 		template = stringValueOf(profile.get("template"));
     	list = builder.evaluateTemplate(template, profile);
-		projection = builder.elaborateProjection(list.toArray(), provider.info.getList("name"), provider.getTableName());
+		projection = builder.elaborateProjection(list.toArray(), dataAdapter.info.getList("name"), dataAdapter.getTableName());
 		model = builder.scan(new StringReader(text), projection);
 		table = model.makeTable();
     	DataDockable.showItems(null,
@@ -712,13 +726,13 @@ public class HelperTests extends TestCase
 				Behavior.MODAL,
 				null, -1);
 //    	profile.put("name", "tagesbirichte");
-    	int[] results = provider.pickRecords(null, table, uriString, profile);
+    	int[] results = dataAdapter.pickRecords(null, table, uriString, profile);
 		assertNotNull("process canceled", results);
 		println("results", results);
-		println(com.applang.Util.toString(provider.query(uriString, full)));
+		println(com.applang.Util.toString(dataAdapter.query(uriString, full)));
 		for (int i = 0; i < mods.length; i++) {
 			Object[] mod = mods[i];
-			Object[][] m = provider.query(uriString, strings("modified"), "_id=?", strings(mod[0].toString()));
+			Object[][] m = dataAdapter.query(uriString, strings("modified"), "_id=?", strings(mod[0].toString()));
 			if ((Long)m[0][0] > (Long)mod[1])
 				println(String.format("record '%s' updated", mod[2]));
 		}
@@ -728,7 +742,7 @@ public class HelperTests extends TestCase
     	String dbPath = createNotePad();
     	String uriString = fileUri(dbPath, "notes").toString();
     	String flavor = "com.applang.provider.NotePad";
-    	Provider provider = new Provider(uriString);
+    	DataAdapter dataAdapter = new DataAdapter(uriString);
     	Object[] fields = fullProjection(flavor);
     	ValList list = builder.evaluateTemplate(builder.makeTemplate(fields), null);
     	assertTrue(Arrays.equals(fields, list.toArray()));
@@ -736,9 +750,9 @@ public class HelperTests extends TestCase
     	println(map);
     	assertTrue(map.containsKey("template"));
     	list = builder.evaluateTemplate(map.get("template").toString(), map);
-		BidiMultiMap projection = builder.elaborateProjection(list.toArray(), provider.info.getList("name"), provider.getTableName());
+		BidiMultiMap projection = builder.elaborateProjection(list.toArray(), dataAdapter.info.getList("name"), dataAdapter.getTableName());
 		assertNotNull(projection);
-		DataView.DataModel model = provider.query(uriString, projection);
+		DataView.DataModel model = dataAdapter.query(uriString, projection);
 		println(model);
     	final JTable table = model.makeTable();
 		int result = DataDockable.showItems(null, "berichtsheft.transport-to-buffer.label", 
@@ -1252,6 +1266,41 @@ public class HelperTests extends TestCase
         }
 	}
 	
+	public void testResources() {
+		Context context = BerichtsheftActivity.getInstance();
+		File[] files = new File(BerichtsheftApp.applicationDataPath("res/layout")).listFiles();
+		for (File file : files) {
+			String relPath = relativePath(file.getPath(), Resources.getSettingsPath());
+			ViewGroup vg = (ViewGroup) LayoutInflater.from(new BerichtsheftActivity())
+					.inflate(relPath, null);
+			assertNotNull(vg);
+			println(vg);
+		}
+		LayoutBuilder layoutBuilder = new LayoutBuilder(context, "linearlayout.xml");
+		layoutBuilder.addStringField("name");
+		final JPanel panel = (JPanel) layoutBuilder.build().getComponent();
+		showDialog(null, null, "testLayoutBuilder", 
+				new UIFunction() {
+					public Component[] apply(Component comp, Object[] parms) {
+						return components(panel);
+					}
+				}, 
+				new UIFunction() {
+					public Component[] apply(Component comp, Object[] parms) {
+						return null;
+					}
+				}, 
+				null, 
+				Behavior.MODAL);
+		assertEquals("Berichtsheft", 
+				context.getResources().getString(R.string.app_name));
+		assertEquals(51, ProviderTests.getStateStrings(context).length);
+		println(Resources.getAbsolutePath("/res/values/strings.xml", END));
+		println(Resources.getAbsolutePath("/res/values/colors.xml", END));
+		printMatchResults("@dimen/margin", Resources.XML_RESOURCE_PATTERN, object(null));
+		printMatchResults("@com.applang.berichtsheft.R:dimen/margin", Resources.XML_RESOURCE_PATTERN, object(false));
+	}
+	
 	public void testPrompts() {
 		BaseDirective.setOptions(-1);
 		PromptDirective.prompt(new BerichtsheftActivity(
@@ -1328,7 +1377,7 @@ public class HelperTests extends TestCase
 	}
 	
 	public void testJOrtho() {
-		BerichtsheftPlugin.setupSpellChecker(BerichtsheftApp.berichtsheftPath());
+		BerichtsheftPlugin.setupSpellChecker(BerichtsheftApp.applicationDataPath());
 		final TextEditor2 textEditor2 = new TextEditor2();
     	Deadline.wait = 2000;
     	showFrame(null, 
@@ -1475,5 +1524,85 @@ public class HelperTests extends TestCase
 					0);
 		}
 	}
+	
+	public static Test suite() {
+		if ( TestUtils.hasTestCases() ) {
+			return TestUtils.getSuite( HelperTests.class );
+		}
+		return new TestSuite(HelperTests.class);
+	}
 
+}
+
+@SuppressWarnings({"rawtypes","unchecked"})
+final class TestUtils {
+    private static final String TEST_CASES = "tests";
+    private static final String ANT_PROPERTY = "${tests}";
+    private static final String DELIMITER = ",";
+
+    /**
+     * Check to see if the test cases property is set. Ignores Ant's
+     * default setting for the property (or null to be on the safe side).
+     **/
+    public static boolean hasTestCases() {
+		String prop = System.getProperty( TEST_CASES );
+        return prop != null && !prop.equals( ANT_PROPERTY );
+    }
+
+    /**
+     * Create a TestSuite using the TestCase subclass and the list
+     * of test cases to run specified using the TEST_CASES JVM property.
+     *
+     * @param testClass the TestCase subclass to instantiate as tests in
+     * the suite.
+     *
+     * @return a TestSuite with new instances of testClass for each
+     * test case specified in the JVM property.
+     *
+     * @throws IllegalArgumentException if testClass is not a subclass or
+     * implementation of junit.framework.TestCase.
+     *
+     * @throws RuntimeException if testClass is written incorrectly and does
+     * not have the approriate constructor (It must take one String
+     * argument).
+     **/
+	public static TestSuite getSuite( Class testClass ) {
+        if ( ! TestCase.class.isAssignableFrom( testClass ) ) {
+            throw new IllegalArgumentException( "Must pass in a subclass of TestCase" );
+        }
+        TestSuite suite = new TestSuite();
+        try {
+			Constructor constructor = testClass.getConstructor( new Class[] { String.class } );
+            List testCaseNames = getTestCaseNames();
+            for ( Iterator testCases = testCaseNames.iterator(); testCases.hasNext(); ) {
+                String testCaseName = (String) testCases.next();
+                suite.addTest( (TestCase) constructor.newInstance( new Object[] { testCaseName } ) );
+            }
+        } catch ( Exception e ) {
+            throw new RuntimeException( testClass.getName() + " doesn't have the proper constructor" );
+        }
+        return suite;
+    }
+
+    /**
+     * Create a List of String names of test cases specified in the
+     * JVM property in comma-separated format.
+     *
+     * @return a List of String test case names
+     *
+     * @throws NullPointerException if the TEST_CASES property
+     * isn't set
+     **/
+    private static List getTestCaseNames() {
+        if ( System.getProperty( TEST_CASES ) == null ) {
+            throw new NullPointerException( "Test case property is not set" );
+        }
+        List testCaseNames = new ArrayList();
+        String testCases = System.getProperty( TEST_CASES );
+        StringTokenizer tokenizer = new StringTokenizer( testCases, DELIMITER );
+        while ( tokenizer.hasMoreTokens() ) {
+            testCaseNames.add( tokenizer.nextToken() );
+        }
+        return testCaseNames;
+    }
 }

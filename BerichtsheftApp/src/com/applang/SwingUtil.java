@@ -87,6 +87,7 @@ import javax.swing.JPopupMenu;
 import javax.swing.JRadioButton;
 import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
@@ -144,59 +145,57 @@ public class SwingUtil
 	}
     
 	/**
-	 * @param container
-	 * @param regex
-	 * @return	an array of those child <code>Component</code> objects of container which names match the given pattern
-	 */
-	public static Component[] findComponents(Container container, final String regex) {
-		final ArrayList<Component> al = new ArrayList<Component>();
-		iterateComponents(container, new ComponentFunction<Object[]>() {
-			public Object[] apply(Component comp, Object[] parms) {
-				String name = comp.getName();
-				if (name != null && name.matches(regex))
-					al.add(comp);
-				return parms;
-			}
-		}, null, null);
-		return al.toArray(new Component[al.size()]);
-	}
-    
-	/**
 	 * @param <C> the type of the return value (derived from <code>Component</code>)
 	 * @param container	the containing <code>Component</code>
-	 * @param key	the name of the <code>Component</code> searched for in the container including descending components
+	 * @param regex	pattern for the name of the <code>Component</code> searched for in the container including descendants
 	 * @return	the <code>Component</code> found if unequal <code>null</code> otherwise nothing was found
 	 */
-	@SuppressWarnings("unchecked")
-	public static <C extends Component> C findComponent(Container container, String key) {
-		Component[] comps = findComponents(container, key);
-		if (comps.length > 0) 
-			try {
-				return (C)comps[0];
-			} catch (Exception e) {}
-		return null;
-	}
-    
-	public static Component[] findComponents(Container container, final Class<?> cl) {
-		final ArrayList<Component> al = new ArrayList<Component>();
-		iterateComponents(container, new ComponentFunction<Object[]>() {
-			public Object[] apply(Component comp, Object[] parms) {
-				if (cl != null && cl.equals(comp.getClass()))
-					al.add(comp);
-				return parms;
+	public static <C extends Component> C findFirstComponent(Container container, final String regex) {
+		return findFirstComponent(container, new Predicate<Component>() {
+			public boolean apply(Component c) {
+				String name = c.getName();
+				return name != null && name.matches(regex);
 			}
-		}, null, null);
-		return al.toArray(new Component[al.size()]);
+		});
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <C extends Component> C findComponent(Container container, Class<?> cl) {
-		Component[] comps = findComponents(container, cl);
+	public static <C extends Component> C findFirstComponent(Container container, Predicate<Component> predicate) {
+		Component[] comps = findComponents(container, predicate);
 		if (comps.length > 0) 
 			try {
 				return (C)comps[0];
 			} catch (Exception e) {}
 		return null;
+	}
+    
+	public static Component[] findComponents(Container container, final Predicate<Component> predicate) {
+		final ArrayList<Component> al = alist();
+		iterateComponents(container, new ComponentFunction<Object[]>() {
+			public Object[] apply(Component c, Object[] parms) {
+				if (predicate.apply(c))
+					al.add(c);
+				return parms;
+			} 
+		}, null, null);
+		return al.toArray(new Component[al.size()]);
+	}
+    
+	public static Component findAncestor(Component component, Predicate<Component> predicate) {
+		while(!predicate.apply(component)) {
+			component = component.getParent();
+			if(component == null)
+				break;
+		}
+		return component;
+	}
+
+	public static boolean containsComponent(Container container, final Component component) {
+		return findComponents(container, new Predicate<Component>() {
+			public boolean apply(Component c) {
+				return component.equals(c);
+			}
+		}).length > 0;
 	}
 
 	public static void addCenterComponent(Component target, Container container) {
@@ -214,6 +213,7 @@ public class SwingUtil
 					container.remove(c);
 				}
 			container.add(target, BorderLayout.CENTER);
+			return true;
 		}
 		return false;
 	}
@@ -611,7 +611,7 @@ public class SwingUtil
 		if (!modal && arrangeUI != null)
 			arrangeUI.apply(dlg, null);
     	
-		noprintln("dialogResult", dialogResult);
+		no_println("dialogResult", dialogResult);
 		
 		return dialogResult;
 	}
@@ -793,7 +793,7 @@ public class SwingUtil
     	case JOptionPane.OK_CANCEL_OPTION:
 			JTextField textField = new JTextField(text);
     		textField.setHorizontalAlignment(JTextField.CENTER);
-    		addFocusObserver(textField);
+    		addSelectAllObserver(textField);
     		
 	    	JLabel label = new JLabel(message.toString());
     	    label.setDisplayedMnemonic(KeyEvent.VK_I);
@@ -867,7 +867,7 @@ public class SwingUtil
 	{
 		Function<String[]> lister = new Function<String[]>() {
 			public String[] apply(Object... params) {
-				List<String> list = new ArrayList<String>();
+				List<String> list = alist();
 				String element = param(null, 0, params);
 				String[] array = param(null, 1, params);
 				if (array != null) {
@@ -876,7 +876,7 @@ public class SwingUtil
 				boolean sort = param_Boolean(false, 2, params);
 				if (sort) {
 					Set<String> set = sortedSet(list);
-					list = new ArrayList<String>();
+					list = alist();
 					list.addAll(set);
 				}
 				boolean first = param_Boolean(true, 3, params);
@@ -1140,7 +1140,7 @@ public class SwingUtil
 			messRedirection.apply(text);
 		else {
 			Container rootContainer = underTest ? container : getRootContainer(container);
-			JLabel mess = findComponent(rootContainer, "mess");
+			JLabel mess = findFirstComponent(rootContainer, "mess");
 			if (mess != null) 
 				mess.setText(text);
 			else if (underTest)
@@ -1551,7 +1551,7 @@ public class SwingUtil
 		return null;
 	}
 
-	public static void addFocusObserver(JTextComponent jtc) {
+	public static void addSelectAllObserver(JTextComponent jtc) {
 	    jtc.addFocusListener(new FocusListener() {
 	        public void focusGained(FocusEvent e) {
 	            ((JTextComponent)e.getSource()).selectAll();
@@ -1595,18 +1595,14 @@ public class SwingUtil
 		return new Font("Monospaced", param(0, 0, params), param(12, 1, params));
 	}
 	
-	public static void printContainer(String message, Container container, Object... params) {
-		Boolean print = param_Boolean(true, 0, params);
-		Boolean debug = param_Boolean(false, 1, params);
-		if (print && (!debug || fileExists(debugFilePath))) {
-			StringBuilder sb = new StringBuilder();
-			sb.append(message + " :\n");
-			iterateContainer(container, sb, 1);
-			if (debug)
-				debug_print(sb.toString());
-			else 
-				print(sb.toString());
-		}
+	public static void printContainer(String message, Container container, Object...params) {
+		Boolean debug = param_Boolean(false, 0, params);
+		if (debug == null)
+			return;
+		StringBuilder sb = new StringBuilder();
+		sb.append(message + " :\n");
+		iterateContainer(container, sb, 1);
+		debug_print(debug, sb.toString());
 	}
 
 	public static void iterateContainer(Container container, final StringBuilder sb, int indent) {
@@ -1961,6 +1957,14 @@ public class SwingUtil
 	public static Point centerOfScreen() {
 		Dimension screenSize = sizeOfScreen();
 		return new Point(screenSize.width / 2, screenSize.height / 2);
+	}
+	
+	public static JSplitPane splitPane(int orientation, PropertyChangeListener dividerLocationListener) {
+		JSplitPane splitPane = new JSplitPane(orientation);
+		splitPane.setResizeWeight(0.5);
+		splitPane.setOneTouchExpandable(true);
+		splitPane.addPropertyChangeListener("dividerLocation", dividerLocationListener);
+		return splitPane;
 	}
 	
 	public static String readFromUrlWithProgress(String url, String encoding) throws IOException {

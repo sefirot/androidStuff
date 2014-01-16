@@ -69,7 +69,7 @@ public class BerichtsheftApp
 	 */
 	public static void main(String...args) {
 		loadSettings();
-    	File defaultFile = new File(berichtsheftPath("jedit.properties"));
+    	File defaultFile = new File(applicationDataPath("jedit.properties"));
     	try {
 	    	File file = new File(".jedit/properties");
 	    	if (!fileExists(file)) {
@@ -97,8 +97,9 @@ public class BerichtsheftApp
 		return (View)Activity.frame;
 	}
 	
-	public static String berichtsheftPath(String...parts) {
-		parts = arrayappend(strings(System.getProperty("settings.dir", "")), parts);
+	public static String applicationDataPath(String...parts) {
+		String settingsDir = System.getProperty("settings.dir", "");
+		parts = arrayappend(strings(settingsDir), parts);
 		return pathCombine(parts);
 	}
 	
@@ -219,8 +220,8 @@ public class BerichtsheftApp
 			throw new Exception(String.format("TransformerFactory feature '%s' missing", SAXResult.FEATURE));
 	    
 		SAXTransformerFactory saxTFactory = ((SAXTransformerFactory) tFactory);	  
-		String controlStyleSheet = getSetting("control.xsl", BerichtsheftApp.berichtsheftPath("Skripte/control.xsl"));
-		String contentStyleSheet = getSetting("content.xsl", BerichtsheftApp.berichtsheftPath("Skripte/content.xsl"));
+		String controlStyleSheet = getSetting("control.xsl", BerichtsheftApp.applicationDataPath("Skripte/control.xsl"));
+		String contentStyleSheet = getSetting("content.xsl", BerichtsheftApp.applicationDataPath("Skripte/content.xsl"));
 		TransformerHandler tHandler1 = saxTFactory.newTransformerHandler(new StreamSource(controlStyleSheet));
 		TransformerHandler tHandler2 = saxTFactory.newTransformerHandler(new StreamSource(contentStyleSheet));
 		tHandler2.getTransformer().setParameter("inputfile", inputFilename);
@@ -260,13 +261,13 @@ public class BerichtsheftApp
 	}
 
 	public static String odtVorlagePath(String name) {
-		return berichtsheftPath("Vorlagen/" + name + ".odt");
+		return applicationDataPath("Vorlagen/" + name + ".odt");
 	}
 
 	public static String odtDokumentPath(String name, int...weekDate) {
 		if (isAvailable(1, weekDate))
 			name += String.format("_%d_%d", weekDate[1], weekDate[0]);
-		return berichtsheftPath("Dokumente/" + name + ".odt");
+		return applicationDataPath("Dokumente/" + name + ".odt");
 	}
 
 	public static void doIndirection(Element element, String attr, String tag, Job<Element> job, Object...params) {
@@ -284,7 +285,7 @@ public class BerichtsheftApp
 	}
 
 	public static void performQueries(String controlFileName) throws Exception {
-		final Context context = new BerichtsheftActivity();
+		final Context context = BerichtsheftActivity.getInstance();
 		File file = new File(controlFileName);
 		Document doc = xmlDocument(file);
 		NodeList nodeList = evaluateXPath(doc.getDocumentElement(), "*[@query]");

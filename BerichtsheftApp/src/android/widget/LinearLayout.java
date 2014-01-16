@@ -14,14 +14,14 @@ public class LinearLayout extends ViewGroup {
 		super(context);
 	}
     
-	public static class LayoutParams extends ViewGroup.LayoutParams {
+	public static class LayoutParams extends ViewGroup.MarginLayoutParams {
 
 		public LayoutParams(int width, int height) {
             super(width, height);
 		}
 
 		public void setMargins(int left, int top, int right, int bottom) {
-			// TODO Auto-generated method stub
+			super.setMargins(left, top, right, bottom);
 		}
 
 	}
@@ -44,8 +44,8 @@ public class LinearLayout extends ViewGroup {
 	}
     
 	@Override
-    public Container getLayout() {
-		Container container = super.getLayout();
+    public Container getContainer() {
+		Container container = super.getContainer();
 		LayoutManager mgr = 
 				new BoxLayout(container, orientation == HORIZONTAL ? BoxLayout.X_AXIS : BoxLayout.Y_AXIS);
 		container.setLayout(mgr);

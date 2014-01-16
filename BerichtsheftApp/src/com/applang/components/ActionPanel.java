@@ -42,7 +42,7 @@ public class ActionPanel extends ManagerBase<Object>
 				new UIFunction() {
 					public Component[] apply(Component comp, Object[] parms) {
 						Container contentPane = new JPanel(new BorderLayout());
-						actionPanel.joinContainer(northToolBar(contentPane));
+						actionPanel.memberOf(northToolBar(contentPane));
 						contentPane.add(centerComponent.apply(params), BorderLayout.CENTER);
 						southStatusBar(contentPane);
 						if (preferred != null)
@@ -138,16 +138,18 @@ public class ActionPanel extends ManagerBase<Object>
 		view = param(null, 0, params);
 		caption = param_String("Database", 1, params);
 		setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
+		bars = param_Integer(1, 2, params);
+		buttons = new AbstractButton[bars * (1 + ActionType.ACTIONS.index())];
 	}
 	
-	public void joinContainer(Container container, Object...params) {
+	public void memberOf(Container container, Object...params) {
 		Object param0 = param(null, 0, params);
 		if (param0 instanceof String)
 			for (int i = 0; i < buttons.length; i++) {
 				AbstractButton btn = buttons[i];
 				if (btn != null) {
-					Object name = btn.getAction().getValue(CustomAction.NAME);
-					if (asList(params).indexOf(name) > -1)
+					Object actionName = btn.getAction().getValue(CustomAction.NAME);
+					if (asList(params).indexOf(actionName) > -1)
 						container.add(btn);
 				}
 			}
@@ -155,41 +157,64 @@ public class ActionPanel extends ManagerBase<Object>
 			container.add(this, param0);
 	}
 
-	protected AbstractButton[] buttons = new AbstractButton[1 + ActionType.ACTIONS.index()];
+	protected AbstractButton[] buttons;
+	private int bars;
 	
-	public void addButton(Container container, int index, CustomAction customAction) {
-		if (index > -1 && index < buttons.length)
-			container.add(buttons[index] = BerichtsheftPlugin.makeCustomButton(customAction, false));
+	private int index(int i, int...bar) {
+		return i += param(0, 0, bar) * buttons.length / bars;
 	}
 	
-	public void addToggle(Container container, int index, CustomAction customAction) {
-		if (index > -1 && index < buttons.length)
-			container.add(buttons[index] = new JToggleButton(customAction));
+	private void _add(Container container, int index, AbstractButton btn, int...bar) {
+		index = index(index, bar);
+		if (index > -1 && index < buttons.length) {
+			int pos = param(container.getComponentCount(), 1, bar);
+			container.add(buttons[index] = btn, pos);
+		}
 	}
 	
-	public CustomAction getAction(int index) {
+	public void addButton(Container container, int index, CustomAction customAction, int...bar) {
+		_add(container, index, BerichtsheftPlugin.makeCustomButton(customAction, false), bar);
+	}
+	
+	public void addToggle(Container container, int index, CustomAction customAction, int...bar) {
+		_add(container, index, new JToggleButton(customAction), bar);
+	}
+	
+	public void removeButton(Container container, int index, int...bar) {
+		index = index(index, bar);
+		if (index > -1 && index < buttons.length)
+			if (buttons[index] != null) {
+				container.remove(buttons[index]);
+				buttons[index] = null;
+			}
+	}
+	
+	public CustomAction getAction(int index, int...bar) {
+		index = index(index, bar);
 		if (index > -1 && index < buttons.length)
 			return (CustomAction) buttons[index].getAction();
 		else
 			return null;
 	}
 	
-	public void setAction(int index, CustomAction customAction) {
+	public void setAction(int index, CustomAction customAction, int...bar) {
+		index = index(index, bar);
 		if (index > -1 && index < buttons.length)
 			buttons[index].setAction(customAction);
 	}
 	
-	public void clickAction(int index) {
+	public void clickAction(int index, int...bar) {
+		index = index(index, bar);
 		if (index > -1 && index < buttons.length)
 			buttons[index].doClick();
 	}
 	
-	public void enableAction(int index, boolean enabled) {
+	public void enableAction(int index, boolean enabled, int...bar) {
 		if (buttons[index] != null)
 			buttons[index].getAction().setEnabled(enabled);
 	}
 	
-	public boolean isActionEnabled(int index) {
+	public boolean isActionEnabled(int index, int...bar) {
 		return buttons[index].getAction().isEnabled();
 	}
 	

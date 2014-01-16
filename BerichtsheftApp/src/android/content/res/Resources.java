@@ -16,178 +16,269 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import java.util.regex.MatchResult;
+import java.util.regex.Pattern;
 
 import javax.swing.JOptionPane;
 import javax.swing.UIManager;
 
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.parser.Parser;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 
 import android.content.Context;
 import android.graphics.drawable.Drawable;
 import android.util.Log;
 
 import static com.applang.Util.*;
+import static com.applang.Util2.*;
 import static com.applang.SwingUtil.*;
 
 public class Resources
 {
 	private static final String TAG = Resources.class.getSimpleName();
 	
+	public static String getSettingsPath() {
+		return System.getProperty("settings.dir", "");
+	}
+	
+	public static String getAbsolutePath(String path, Object...params) {
+		String part = strip(true, path, PATH_SEP);
+		File file = fileOf(getSettingsPath(), part);
+		if (fileExists(file))
+			return file.getPath();
+		else
+			return absolutePathOf(path, END);
+	}
+	
+	public static String[] resourceTypes = 
+		{"array","attr","color","dimen","drawable","id","layout","menu","raw","string"};
+	public static String[] resourceLocations = 
+		{"res/values/strings.xml","attr",
+		"res/values/colors.xml",
+		"res/values/dimens.xml",				//	3
+		"res/drawable/","id",
+		"res/layout/","res/menu/",				//	6
+		"res/raw/",
+		"res/values/strings.xml"};				//	9
+	public static final Pattern XML_RESOURCE_PATTERN = 
+		Pattern.compile("@((([\\w]+\\.)*[\\w]+):)*(" + join("|", resourceTypes) + ")/([\\w]+)");
+	
+	public static String getRelativePath(int loc, String...parts) {
+		parts = arrayextend(parts, true, resourceLocations[loc]);
+		String path = fileOf(parts).getPath();
+		return PATH_SEP + strip(true, path, PATH_SEP);
+	}
+	
+	//	@[<package_name>:]<resource_type>/<resource_name>
+	public <T> T getXMLResourceItem(String resourceRefString) {
+		T value = null;
+		MatchResult m = findFirstIn(resourceRefString, XML_RESOURCE_PATTERN);
+		if (m != null) {
+//			String packageName = m.group(2);
+			String resourceName = m.group(5);
+			int resourceType = asList(resourceTypes).indexOf(m.group(4));
+			String path = Resources.getAbsolutePath(resourceLocations[resourceType], END);
+			switch (resourceType) {
+			case 3:
+				break;
+			}
+			return value;
+		}
+		return value;
+	}
+	
+	@SuppressWarnings("unchecked")
+	public <T> T getResourceByName(Document doc, final String name, int type) {
+		for (Element elem : iterateElements("*", doc, new Predicate<Element>() {
+			public boolean apply(Element el) {
+				return name.equals(el.getAttribute("name"));
+			}})) 
+		{
+			String value = elem.getTextContent();
+			switch (type) {
+			case 3:
+				return (T) toInt(0, stripUnits(value));
+			case 9:
+				return (T) value;
+			}
+		}
+		return null;
+	}
+	
+	public InputStream getInputStreamByName(Class<?> c, final String name, int type) throws Exception {
+		Set<URL> res = getResourceURLs(
+				new ResourceURLFilter() {
+					public boolean accept(URL resourceUrl) {
+						String url = resourceUrl.getFile();
+						return url.contains(name);
+					}
+				});
+		if (res.size() == 1) {
+			String path = res.iterator().next().getFile();
+			path = path.substring(path.indexOf(name));
+			return c.getResourceAsStream(path);
+		}
+		return null;
+	}
+	
+    //	NOTE	all further up do NOT correspond to an Android API
+	
 	private Context context;
 	
 	public Resources(Context context) {
 		this.context = context;
 	}
+	
 	public String getString(int id) {
-		try {
-			switch (id) {
-			case android.R.string.close:
-				return (String) defaultOptions(JOptionPane.DEFAULT_OPTION).get(0);
-			case android.R.string.cancel:
-				return (String) UIManager.get("OptionPane.cancelButtonText");
-			case android.R.string.ok:
-				return (String) UIManager.get("OptionPane.okButtonText");
-			case android.R.string.yes:
-				return (String) UIManager.get("OptionPane.yesButtonText");
-			case android.R.string.no:
-				return (String) UIManager.get("OptionPane.noButtonText");
-			default:
-				Object[] params = {null};
-				resourceLookup(id, context.getPackageName(), "string", new Job<Class<?>>() {
-					public void perform(Class<?> c, Object[] parms) throws Exception {
-						String name = param_String(null,0,parms);
-						InputStream is = c.getResourceAsStream("/res/values/strings.xml");
-						Document doc = Jsoup.parse(is, "UTF-8", "", Parser.xmlParser());
-						for (Element elem : doc.getElementsByAttribute("name")) {
-							if (name.equals(elem.attr("name"))) {
-								Object[] params = param(null,1,parms);
-								if (params != null)
-									params[0] = elem.text();
-								break;
-							}
-						}
+		switch (id) {
+		case android.R.string.close:
+			return (String) defaultOptions(JOptionPane.DEFAULT_OPTION).get(0);
+		case android.R.string.cancel:
+			return (String) UIManager.get("OptionPane.cancelButtonText");
+		case android.R.string.ok:
+			return (String) UIManager.get("OptionPane.okButtonText");
+		case android.R.string.yes:
+			return (String) UIManager.get("OptionPane.yesButtonText");
+		case android.R.string.no:
+			return (String) UIManager.get("OptionPane.noButtonText");
+		default:
+			Object[] params = {null};
+			lookup_R(id, context.getPackageName(), 9, new Job<Class<?>>() {
+				public void perform(Class<?> c, Object[] parms) throws Exception {
+					final String name = param_String(null,0,parms);
+					InputStream is = c.getResourceAsStream(getRelativePath(9));
+					Document doc = xmlDocument(null, is);
+					for (Element elem : iterateElements("*", doc, new Predicate<Element>() {
+						public boolean apply(Element el) {
+							return name.equals(el.getAttribute("name"));
+						}})) 
+					{
+						Object[] params = param(null,1,parms);
+						if (params != null)
+							params[0] = elem.getTextContent();
+						break;
 					}
-				}, params);
-				if (null != params[0])
-					return (String) params[0];
-			}
-		} catch (Exception e) {
-			Log.e(TAG, "getString", e);
+				}
+			}, params);
+			if (null != params[0])
+				return (String) params[0];
 		}
 		return "";
 	}
 	public int getDimensionPixelOffset(int id) {
-		try {
-			switch (id) {
-			default:
-				Object[] params = {0};
-				resourceLookup(id, context.getPackageName(), "dimen", new Job<Class<?>>() {
-					public void perform(Class<?> c, Object[] parms) throws Exception {
-						String name = param_String(null,0,parms);
-						InputStream is = c.getResourceAsStream("/res/values/dimens.xml");
-						Document doc = Jsoup.parse(is, "UTF-8", "", Parser.xmlParser());
-						for (Element elem : doc.getElementsByAttribute("name")) {
-							if (name.equals(elem.attr("name"))) {
-								Object[] params = param(null,1,parms);
-								if (params != null)
-									params[0] = toInt(0, stripUnits(elem.text()));
-								break;
-							}
-						}
+		switch (id) {
+		default:
+			Object[] params = {0};
+			lookup_R(id, context.getPackageName(), 3, new Job<Class<?>>() {
+				public void perform(Class<?> c, Object[] parms) throws Exception {
+					final String name = param_String(null,0,parms);
+					InputStream is = c.getResourceAsStream(getRelativePath(3));
+					Document doc = xmlDocument(null, is);
+					for (Element elem : iterateElements("*", doc, new Predicate<Element>() {
+						public boolean apply(Element el) {
+							return name.equals(el.getAttribute("name"));
+						}})) 
+					{
+						Object[] params = param(null,1,parms);
+						if (params != null)
+							params[0] = toInt(0, stripUnits(elem.getTextContent()));
+						break;
 					}
-				}, params);
-				if (null != params[0])
-					return (Integer) params[0];
-			}
-		} catch (Exception e) {
-			Log.e(TAG, "getDimensionPixelOffset", e);
+				}
+			}, params);
+			if (null != params[0])
+				return (Integer) params[0];
 		}
 		return 0;
 	}
 	public Drawable getDrawable (int id) {
-		try {
-			switch (id) {
-			default:
-				Object[] params = {null};
-				resourceLookup(id, context.getPackageName(), "drawable", new Job<Class<?>>() {
-					public void perform(Class<?> c, Object[] parms) throws Exception {
-						final String name = "/res/drawable/" + param_String(null,0,parms);
-						Set<URL> res = getResourceURLs(
+		switch (id) {
+		default:
+			Object[] params = {null};
+			lookup_R(id, context.getPackageName(), 4, new Job<Class<?>>() {
+				public void perform(Class<?> c, Object[] parms) throws Exception {
+					final String name = getRelativePath(4, param_String(null,0,parms));
+					Set<URL> res = getResourceURLs(
 							new ResourceURLFilter() {
 								public boolean accept(URL resourceUrl) {
 									String url = resourceUrl.getFile();
-								    return url.contains(name);
+									return url.contains(name);
 								}
 							});
-						if (res.size() == 1) {
-							String path = res.iterator().next().getFile();
-							path = path.substring(path.indexOf(name));
-							InputStream is = c.getResourceAsStream(path);
-							Object[] params = param(null, 1, parms);
-							if (params != null)
-								params[0] = is;
-						}
+					if (res.size() == 1) {
+						String path = res.iterator().next().getFile();
+						path = path.substring(path.indexOf(name));
+						InputStream is = c.getResourceAsStream(path);
+						Object[] params = param(null, 1, parms);
+						if (params != null)
+							params[0] = is;
 					}
-				}, params);
-				if (null != params[0])
-					return new Drawable().setInputStream(params[0]);
-			}
-		} catch (Exception e) {
-			Log.e(TAG, "getDrawable", e);
+				}
+			}, params);
+			if (null != params[0])
+				return new Drawable().setInputStream(params[0]);
 		}
 		return null;
 	}
 	public InputStream openRawResource(int id) {
-		try {
-			switch (id) {
-			default:
-				Object[] params = {null};
-				resourceLookup(id, context.getPackageName(), "raw", new Job<Class<?>>() {
-					public void perform(Class<?> c, Object[] parms) throws Exception {
-						final String name = "/res/raw/" + param_String(null,0,parms);
-						Set<URL> res = getResourceURLs(
+		switch (id) {
+		default:
+			Object[] params = {null};
+			lookup_R(id, context.getPackageName(), 8, new Job<Class<?>>() {
+				public void perform(Class<?> c, Object[] parms) throws Exception {
+					final String name = getRelativePath(8, param_String(null,0,parms));
+					Set<URL> res = getResourceURLs(
 							new ResourceURLFilter() {
 								public boolean accept(URL resourceUrl) {
 									String url = resourceUrl.getFile();
-								    return url.contains(name);
+									return url.contains(name);
 								}
 							});
-						if (res.size() == 1) {
-							String path = res.iterator().next().getFile();
-							path = path.substring(path.indexOf(name));
-							InputStream is = c.getResourceAsStream(path);
-							Object[] params = param(null, 1, parms);
-							if (params != null)
-								params[0] = is;
-						}
+					if (res.size() == 1) {
+						URL url = res.iterator().next();
+						no_println("openRawResource", url);
+						String path = url.getFile();
+						no_println("openRawResource", path);
+						path = path.substring(path.indexOf(name));
+						InputStream is = c.getResourceAsStream(path);
+						Object[] params = param(null, 1, parms);
+						if (params != null)
+							params[0] = is;
 					}
-				}, params);
-				if (null != params[0])
-					return (InputStream) params[0];
-			}
-		} catch (Exception e) {
-			Log.e(TAG, "openRawResource", e);
+				}
+			}, params);
+			if (null != params[0])
+				return (InputStream) params[0];
 		}
 		return null;
 	}
 	
-	private void resourceLookup(int id, String pkg, String nameOfInnerClass, Job<Class<?>> lookup, Object...params) throws Exception {
-		Class<?> c = Class.forName(pkg + (notNullOrEmpty(pkg) ? ".R" : "R"));
-		for (Class<?> inner : c.getDeclaredClasses()) {
-			if (nameOfInnerClass.equals(inner.getSimpleName())) {
-				for (Field field : inner.getDeclaredFields()) {
-					if ("int".equals(field.getType().getSimpleName()) && field.getInt(null) == id) {
-						lookup.perform(c, objects(field.getName(), params));
-						return;
+	public AssetManager getAssets() {
+		return new AssetManager();
+	}
+	
+    //	NOTE	all further down do NOT correspond to an Android API
+	
+	private boolean lookup_R(int id, String pkg, int resourceType, Job<Class<?>> lookup, Object...params) {
+		try {
+			Class<?> c = Class.forName(pkg + (notNullOrEmpty(pkg) ? ".R" : "R"));
+			for (Class<?> inner : c.getDeclaredClasses()) {
+				if (resourceTypes[resourceType].equals(inner.getSimpleName())) {
+					for (Field field : inner.getDeclaredFields()) {
+						if ("int".equals(field.getType().getSimpleName()) && field.getInt(null) == id) {
+							if (lookup != null)
+								lookup.perform(c, objects(field.getName(), params));
+							return true;
+						}
 					}
 				}
 			}
+		} catch (Exception e) {
+			Log.e(TAG, "lookup_R", e);
 		}
+		return false;
 	}
-	
+
 	public interface ResourceURLFilter {
 		public boolean accept(URL resourceUrl);
 	}
@@ -275,9 +366,5 @@ public class Resources
 		} catch (Exception e) {
 			Log.e(TAG, "list", e);
 		}
-	}
-	
-	public AssetManager getAssets() {
-		return new AssetManager();
 	}
 }

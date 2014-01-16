@@ -3,14 +3,17 @@ package com.applang.components;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyListener;
+import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.Properties;
 
 import javax.swing.AbstractAction;
 import javax.swing.JComponent;
+import javax.swing.JFrame;
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
+import javax.swing.WindowConstants;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.text.Segment;
@@ -22,6 +25,7 @@ import org.gjt.sp.jedit.Mode;
 import org.gjt.sp.jedit.View;
 import org.gjt.sp.jedit.buffer.BufferAdapter;
 import org.gjt.sp.jedit.buffer.JEditBuffer;
+import org.gjt.sp.jedit.syntax.ModeProvider;
 import org.gjt.sp.jedit.syntax.ParserRuleSet;
 import org.gjt.sp.jedit.syntax.Token;
 import org.gjt.sp.jedit.syntax.TokenHandler;
@@ -32,7 +36,6 @@ import org.gjt.sp.jedit.textarea.Selection;
 import org.gjt.sp.jedit.textarea.StandaloneTextArea;
 import org.gjt.sp.jedit.textarea.TextArea;
 
-import android.app.Activity;
 import android.util.Log;
 
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
@@ -63,7 +66,7 @@ public class TextEditor2 extends DoubleFeature implements ITextComponent
 	}
 
 	public TextEditor getTextEditor() {
-		return findComponent(getWidget(), FOCUS);
+		return findFirstComponent(getWidget(), FOCUS);
 	}
 	
 	private View view = null;
@@ -74,8 +77,6 @@ public class TextEditor2 extends DoubleFeature implements ITextComponent
 	
 	private void setView(View vw) {
 		view = vw;
-		if (Activity.frame == null)
-			Activity.frame = view;
 	}
 	
 	public boolean hasView() {
@@ -114,6 +115,7 @@ public class TextEditor2 extends DoubleFeature implements ITextComponent
 			initBufferProperties(props);
 			String antiAlias = BerichtsheftPlugin.getProperty("view.antiAlias", "standard");
 			props.setProperty("view.antiAlias", antiAlias);
+			props.setProperty("view.gutter.borderWidth", "0");
 			IPropertyManager propsMan = new IPropertyManager() {
 				public String getProperty(String name)
 				{
@@ -138,10 +140,10 @@ public class TextEditor2 extends DoubleFeature implements ITextComponent
 			tokenMarker.addRuleSet(new ParserRuleSet("text","MAIN"));
 			buffer.setTokenMarker(tokenMarker);
 			textArea.setBuffer(buffer);
-			final Mode mode = new Mode(modeName);
+			Mode mode = new Mode(modeName);
 			modeFileName = BerichtsheftPlugin.getSettingsDirectory() + modeFileName;
 			mode.setProperty("file", modeFileName);
-			mode.loadIfNecessary();
+			ModeProvider.instance.addMode(mode);	//	mode.loadIfNecessary();
 			buffer.setMode(mode);
 		}
 		Dimension size = textArea.getPreferredSize();
@@ -417,5 +419,22 @@ public class TextEditor2 extends DoubleFeature implements ITextComponent
 			else
 				Log.w(TAG, "addKeyListener not possible");
 		}
+	}
+
+	public static void main(String...args) throws Exception {
+		JFrame frame = new JFrame();
+		TextEditor2 textEditor2 = new TextEditor2();
+		TextArea textArea = textEditor2.createBufferedTextArea("xml", "/modes/xml.xml").getTextArea();
+		textArea.getPainter().addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				println("mouseClicked", identity(e.getSource()));
+			}
+		});
+		printContainer("textArea", textArea, object(null));
+		frame.getContentPane().add(textArea);
+		frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+		frame.pack();
+		frame.setVisible(true);
 	}
 }

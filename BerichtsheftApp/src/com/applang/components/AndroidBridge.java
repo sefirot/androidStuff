@@ -116,7 +116,7 @@ public class AndroidBridge
 				writer = write_assoc(writer, "gridwidth", gbc.gridwidth, 1);
 				writer = write_assoc(writer, "gridheight", gbc.gridheight, 1);
 				writer = write_assoc(writer, "anchor", gbc.anchor, 1);
-				noprintln(write(writer, "]").toString());
+				no_println(write(writer, "]").toString());
 				super.add(comp, constraints);
 			}
 		};

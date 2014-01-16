@@ -69,8 +69,10 @@ public class DataConfiguration
 		this.uri = uri;
 		tableName = dbTableName(uri);
 		path = context.getDatabasePath(uri);
+		if (nullOrEmpty(uri))
+			setProjectionModel(null);
 		if (projectionModel != null && projectionModel.hasFlavor()) {
-			getContext().registerFlavor(projectionModel.getFlavor(), path);
+			context.registerFlavor(projectionModel.getFlavor(), path);
 		}
 	}
 
@@ -86,6 +88,9 @@ public class DataConfiguration
 
 	private ProjectionModel projectionModel = null;
 	public void setProjectionModel(ProjectionModel projectionModel) {
+		if (this.projectionModel != null && this.projectionModel.hasFlavor()) {
+			context.unregisterFlavor(this.projectionModel.getFlavor());
+		}
 		this.projectionModel = projectionModel;
 	}
 
@@ -101,15 +106,13 @@ public class DataConfiguration
 			setUri(uri);
 		if (model != null)
 			setProjectionModel(model);
-		else if (projectionModel == null)
-			setProjectionModel(new ProjectionModel(context, getUri(), context.getFlavor()));
 	}
 	
-	public DataConfiguration(Provider provider) {
-		setContext(provider.getContext());
+	public DataConfiguration(DataAdapter dataAdapter) {
+		setContext(dataAdapter.getContext());
 		String uriString = stringValueOf(uri);
-		setUri(provider.makeUri(uriString));
-		setProjectionModel(new ProjectionModel(provider));
+		setUri(dataAdapter.makeUri(uriString));
+		setProjectionModel(new ProjectionModel(dataAdapter));
 	}
 
 	private AlertDialog dialog;
@@ -184,12 +187,12 @@ public class DataConfiguration
 		}
 		Dimension size = new Dimension(400, 110);
 		JComponent component = DataView.dbTablesComponent(context, uri, onDoubleClick);
-		tables[0] = findComponent(component, "table");
+		tables[0] = findFirstComponent(component, "table");
 		tables[0].setPreferredScrollableViewportSize(scaledDimension(size, 1.0, 0.8));
 		panel.add(component);
 		if (more) {
 			component = DataView.projectionComponent(dialog, projectionModel);
-			tables[1] = findComponent(component, "table");
+			tables[1] = findFirstComponent(component, "table");
 			tables[1].setPreferredScrollableViewportSize(scaledDimension(size, 1.0, 1.2));
 			panel.add(component);
 		}
@@ -246,6 +249,8 @@ public class DataConfiguration
                 })
 				.create();
 		setLongText(entry, path);
+		if (projectionModel == null)
+			setProjectionModel(new ProjectionModel(context, getUri(), context.getFlavor()));
 		comboBox.getModel().setSelectedItem(projectionModel.getFlavor());
 		dialog.open();
 		if (result == null)
@@ -330,8 +335,6 @@ public class DataConfiguration
 		String flavor = null;
 		if (ContentResolver.SCHEME_CONTENT.equals(uri.getScheme())) {
 			flavor = uri.getAuthority();
-			if (notNullOrEmpty(database))
-				context.registerFlavor(flavor, database);
 		}
 		String query = uri.getQuery();
 		if (query != null) {
@@ -351,7 +354,10 @@ public class DataConfiguration
 			BidiMultiMap projection = new BidiMultiMap(names, conversions, types, checks);
 			setProjectionModel(new ProjectionModel(context, uri, flavor, projection));
 		}
-		setUri(uri.buildUpon().query(null).build());
+		String tableName = dbTableName(uri);
+		uri = uri.buildUpon().query(null).fragment(null).build();
+		dbTable(uri, tableName);
+		setUri(uri);
 	}
 
 	public void save() {
@@ -396,7 +402,7 @@ public class DataConfiguration
 	//	NOTE	used in scripts
 	public static String inquireUri(String uriString, boolean full) {
 		DataConfiguration dc = 
-			new DataConfiguration(new BerichtsheftActivity(), 
+			new DataConfiguration(BerichtsheftActivity.getInstance(), 
 					Uri.parse(stringValueOf(uriString)), 
 					null);
 		if (dc.display(null, full)) 
@@ -407,7 +413,7 @@ public class DataConfiguration
 	
 	public static boolean dataProperties(View view, Properties props) {
 		Uri uri = Uri.parse(props.getProperty("uri", ""));
-		DataConfiguration dc = new DataConfiguration(new BerichtsheftActivity(), uri, null);
+		DataConfiguration dc = new DataConfiguration(BerichtsheftActivity.getInstance(view), uri, null);
 		if (dc.display(view, true)) {
 			props.setProperty("uri", stringValueOf(dc.getUri()));
 			return true;
@@ -419,7 +425,7 @@ public class DataConfiguration
 	 */
 	public static void main(String[] args) {
 		BerichtsheftApp.loadSettings();
-		DataConfiguration dc = new DataConfiguration(new BerichtsheftActivity(), null, null);
+		DataConfiguration dc = new DataConfiguration(BerichtsheftActivity.getInstance(), null, null);
 		do {
 			if (dc.display(null)) 
 				dc.save();

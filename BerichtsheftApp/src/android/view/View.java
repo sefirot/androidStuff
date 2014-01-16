@@ -51,7 +51,7 @@ public class View
     }
 
 	public View(Context context) {
-		this.mContext = context;
+		mContext = context;
 	}
 
 	private Context mContext = null;

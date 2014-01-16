@@ -81,7 +81,7 @@ public class WeatherInfoTests extends TestCase
         {
         	ProcessBuilder builder = new ProcessBuilder(
             		home + "/gawk-4.0.0/gawk", 
-            		"-f", BerichtsheftApp.berichtsheftPath("Skripte/descriptions.awk"));
+            		"-f", BerichtsheftApp.applicationDataPath("Skripte/descriptions.awk"));
 //            		"-f", home + "/work/awk/letter-count.awk", "-v", "letters=O V C *");
             builder.directory(new File(System.getProperty("user.dir")));
             builder.redirectErrorStream(true);

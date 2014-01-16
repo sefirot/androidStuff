@@ -1,5 +1,6 @@
 package com.applang;
 
+import java.awt.Container;
 import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.RenderingHints;
@@ -71,8 +72,6 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-import com.applang.Util.ValList;
-
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
@@ -82,6 +81,9 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
 import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
 
 import static com.applang.Util.*;
 import static com.applang.Util1.*;
@@ -95,13 +97,15 @@ public class Util2
 	 * @return	if path is null returns the absolute 'user.dir' system property otherwise the path relative to 'user.dir'.
 	 */
 	public static String relativePath(Object...params) {
-		String base = param_String(System.getProperty("user.dir"), 1, params);
 		String path = param_String(null, 0, params);
+		String base = param_String(System.getProperty("user.dir"), 1, params);
 		if (path == null)
 			return base;
 		else
 			return new File(base).toURI().relativize(new File(path).toURI()).getPath();
 	}
+	
+	public static final int START = 1, MIDDLE = 0, END = -1;
 	
 	public static String absolutePathOf(final String part, final int inStartMiddleOrEnd) {
 		try {
@@ -110,9 +114,9 @@ public class Util2
 					public boolean accept(URL resourceUrl) {
 						String url = resourceUrl.getFile();
 						switch (inStartMiddleOrEnd) {
-						case 1:
+						case START:
 							return url.startsWith(part);
-						case -1:
+						case END:
 							return url.endsWith(part);
 						default:
 							return url.contains(part);
@@ -122,7 +126,7 @@ public class Util2
 			if (res.size() > 0)
 				return res.iterator().next().getFile();
 		} catch (Exception e) {
-			Log.e(TAG, "", e);
+			Log.e(TAG, "absolutePathOf", e);
 		}
 		return null;
 	}
@@ -147,7 +151,7 @@ public class Util2
 			String dir = System.getProperty("settings.dir", "");
 			if (nullOrEmpty(dir))
 				dir = relativePath();
-			debug_println("settings.default.dir", dir);
+			no_println("settings.default.dir", dir);
 			File[] array = new File(dir).listFiles();
 	    	for (File file : array) {
 	    		String path = file.getPath();
@@ -477,7 +481,7 @@ public class Util2
 
 	public static String debugFilePath = "/tmp/debug.out";
 	
-	public static void debug_out(Job<PrintWriter> job, Object... params) {
+	public static void debug_out(Job<PrintWriter> job, Object...params) {
 		if (fileExists(debugFilePath))
 			try {
 				PrintWriter dout = new PrintWriter( new FileOutputStream( debugFilePath, true ) );
@@ -485,40 +489,63 @@ public class Util2
 				dout.close();
 			} 
 			catch ( Exception e ) {
-				System.err.println("Can't print output to file: " + debugFilePath);
+				System.err.println("Can't write debug output to file: " + debugFilePath);
 			}
 	}
 
-	public static void debug_println(final Object... params) {
-		debug_out(new Job<PrintWriter>() {
-			public void perform(PrintWriter pw, Object[] parms) throws Exception {
-				println(pw, params);
+	public static void debug_println(Object...params) {
+		Boolean debug = param_Boolean(null, 0, params);
+		if (debug != null) {
+			params = arrayreduce(params, 1, params.length - 1);
+			if (!debug) {
+				println(params);
+				return;
 			}
-		});
+		}
+		debug_out(
+			new Job<PrintWriter>() {
+				public void perform(PrintWriter pw, Object[] parms) throws Exception {
+					println(pw, parms);
+				}
+			}, 
+			params);
 	}
 
-	public static void debug_print(final Object... params) {
-		debug_out(new Job<PrintWriter>() {
-			public void perform(PrintWriter pw, Object[] parms) throws Exception {
-				print(pw, params);
+	public static void debug_print(Object...params) {
+		Boolean debug = param_Boolean(null, 0, params);
+		if (debug != null) {
+			params = arrayreduce(params, 1, params.length - 1);
+			if (!debug) {
+				print(params);
+				return;
 			}
-		});
+		}
+		debug_out(
+			new Job<PrintWriter>() {
+				public void perform(PrintWriter pw, Object[] parms) throws Exception {
+					print(pw, parms);
+				}
+			}, 
+			params);
 	}
 
-	public static void noprint(Object... params) {}
+	public static void no_print(Object...params) {}
 
-	public static void noprintln(Object... params) {}
+	public static void no_println(Object...params) {}
 
-	public static void printMatchResults(String string, Pattern pattern) {
+	public static void printMatchResults(String string, Pattern pattern, Object...params) {
+		Boolean debug = param_Boolean(false, 0, params);
+		if (debug == null)
+			return;
 		MatchResult[] mr = findAllIn(string, pattern);
-    	for (int i = 0; i < mr.length; i++) {
-    		MatchResult m = mr[i];
-    		println("%d-%d(%d,%d)%s", i, m.groupCount(), m.start(), m.end(), m.group());
-    		for (int j = 1; j <= m.groupCount(); j++) {
-    			println(m.group(j));
+    	for (int g = 0; g < mr.length; g++) {
+    		MatchResult m = mr[g];
+    		debug_println(debug, "%d-%d(%d,%d)%s", g, m.groupCount(), m.start(), m.end(), m.group());
+    		for (int h = 1; h <= m.groupCount(); h++) {
+    			debug_println(debug, stringValueOf(m.group(h)));
     		}
 		}
-    	println("(%d)%s", string.length(), string);
+    	debug_println(debug, "(%d)%s", string.length(), string);
 	}
 	
 	public static class DataBaseConnect
@@ -687,7 +714,7 @@ public class Util2
 	}
 
 	public static List<ValMap> getResultMapList(PreparedStatement ps, Object...params) {
-		List<ValMap> list = new ArrayList<ValMap>();
+		List<ValMap> list = alist();
 		try {
 			ResultSet rs = ps.executeQuery();
 			ResultSetMetaData rsmd = rs.getMetaData();
@@ -1092,6 +1119,24 @@ public class Util2
 		return info;
 	}
 
+    public static int fieldTypeAffinity(String type) {
+    	if ("integer".compareToIgnoreCase(type) == 0 || 
+    			type.toLowerCase().contains("int"))
+    		return Cursor.FIELD_TYPE_INTEGER;
+    	else if ("real".compareToIgnoreCase(type) == 0 || 
+    			"float".compareToIgnoreCase(type) == 0 || 
+    			type.toLowerCase().contains("double"))
+    		return Cursor.FIELD_TYPE_FLOAT;
+    	else if ("text".compareToIgnoreCase(type) == 0 || 
+    			"clob".compareToIgnoreCase(type) == 0 || 
+    			type.toLowerCase().contains("char"))
+    		return Cursor.FIELD_TYPE_STRING;
+    	else if ("blob".compareToIgnoreCase(type) == 0)
+    		return Cursor.FIELD_TYPE_BLOB;
+    	else
+    		return Cursor.FIELD_TYPE_NULL;
+	}
+
 	public static boolean makeSureExists(String flavor, File dbFile) {
 		try {
 			Class<?> c = Class.forName(flavor + "Provider");
@@ -1113,6 +1158,54 @@ public class Util2
 		}
 	}
 
+	public static class LayoutBuilder
+	{
+		private Context mContext;
+		private ViewGroup viewGroup;
+		private LayoutInflater inflater = null;
+		
+		public LayoutBuilder(Context context, String name) {
+			mContext = context;
+			viewGroup = new ViewGroup(mContext);
+			inflater = LayoutInflater.from(mContext);
+			View view = inflater.inflate(Resources.getRelativePath(6, name), viewGroup);
+			if (view instanceof ViewGroup)
+				viewGroup = (ViewGroup) view;
+		}
+		
+	    public ViewGroup build(Object...params) {
+	    	ViewGroup viewGroup = param(this.viewGroup, 0, params);
+	    	Container container = viewGroup.getContainer();
+			for (int i = 0; i < viewGroup.getChildCount(); i++) {
+				View view = viewGroup.getChildAt(i);
+				if (view instanceof ViewGroup)
+					build(view);
+				container.add(view.getComponent());
+			}
+			return viewGroup;
+	    }
+	
+	    public void addView(View view, ViewGroup.LayoutParams params) {
+	    	viewGroup.addView(view, params);
+		}
+	    
+	    public void addStringField(Object name) {
+			inflater.inflate(Resources.getRelativePath(6, "field_string.xml"), viewGroup);
+		}
+	
+		public void addIntegerField(Object name) {
+			inflater.inflate(Resources.getRelativePath(6, "field_integer.xml"), viewGroup);
+		}
+	
+		public void addFloatField(Object name) {
+			inflater.inflate(Resources.getRelativePath(6, "field_float.xml"), viewGroup);
+		}
+	
+		public void addBlobField(Object name) {
+			inflater.inflate(Resources.getRelativePath(6, "field_blob.xml"), viewGroup);
+		}
+	}
+
 	/**
 	 * Recursive method used to find all classes in a given directory and subdirs.
 	 *
@@ -1123,7 +1216,7 @@ public class Util2
 	 */
 	@SuppressWarnings("rawtypes")
 	public static List<Class> findClasses(File directory, String packageName) throws ClassNotFoundException {
-	    List<Class> classes = new ArrayList<Class>();
+	    List<Class> classes = alist();
 	    if (directory.exists()) {
 	    	File[] files = directory.listFiles();
 	    	for (File file : files) {
@@ -1150,12 +1243,12 @@ public class Util2
 	public static Class[] findLocalClasses(String packageName, Object...params) throws Exception {
 	    String path = packageName.replace('.', '/');
 	    Enumeration<URL> resources = ClassLoader.getSystemResources(path);
-	    List<File> dirs = new ArrayList<File>();
+	    List<File> dirs = alist();
 	    while (resources.hasMoreElements()) {
 	        URL resource = resources.nextElement();
 	        dirs.add(new File(resource.getFile()));
 	    }
-	    ArrayList<Class> classes = new ArrayList<Class>();
+	    ArrayList<Class> classes = alist();
 	    for (File directory : dirs) {
 	        classes.addAll(findClasses(directory, packageName));
 	    }

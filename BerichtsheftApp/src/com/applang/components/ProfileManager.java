@@ -149,7 +149,7 @@ public class ProfileManager extends ManagerBase<Element>
 				if (notNullOrEmpty(flavor)) {
 					final Object[] projection = fullProjection(flavor);
 					if (isAvailable(0, projection)) {
-						AlertDialog dialog = new AlertDialog.Builder(new BerichtsheftActivity())
+						AlertDialog dialog = new AlertDialog.Builder(BerichtsheftActivity.getInstance())
 								.setTitle(String.format("Columns for '%s'", flavor))
 								.setSingleChoiceItems(
 										arraycast(projection, new CharSequence[0]), 
@@ -255,7 +255,7 @@ public class ProfileManager extends ManagerBase<Element>
 		boolean download = "download".equals(oper);
 		comboBoxes[3].setEnabled(!download);
 		comboBoxes[4].setEnabled(!download);
-		JLabel label = findComponent(container, "Template_Label");
+		JLabel label = findFirstComponent(container, "Template_Label");
 		label.setText(download ? "URL" : "Template");
 		BerichtsheftPlugin.setProperty("TRANSPORT_OPER", oper);
 		updateModels(true, false, true);
@@ -393,7 +393,7 @@ public class ProfileManager extends ManagerBase<Element>
 	
 	public static void saveTransports(Object...params) {
 		if (transports != null) {
-			String settingsDir = param(BerichtsheftApp.berichtsheftPath(), 0, params);
+			String settingsDir = param(BerichtsheftApp.applicationDataPath(), 0, params);
 			File file = new File(settingsDir, "transports.xml");
 			xmlNodeToFile(transports, true, file);
 		}
@@ -401,7 +401,7 @@ public class ProfileManager extends ManagerBase<Element>
 
 	public static boolean transportsLoaded(Object...params) {
 		if (transports == null) {
-			String settingsDir = param(BerichtsheftApp.berichtsheftPath(), 0, params);
+			String settingsDir = param(BerichtsheftApp.applicationDataPath(), 0, params);
 			File file = new File(settingsDir, "transports.xml");
 			if (fileExists(file))
 				transports = xmlDocument(file);

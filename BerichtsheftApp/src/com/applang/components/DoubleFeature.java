@@ -6,11 +6,11 @@ import java.io.StringWriter;
 import java.io.Writer;
 
 import javax.swing.JComponent;
+import javax.swing.SwingUtilities;
 
 import org.gjt.sp.jedit.Buffer;
 import org.gjt.sp.jedit.EditPane;
 import org.gjt.sp.jedit.textarea.TextArea;
-
 
 import android.util.Log;
 
@@ -21,8 +21,6 @@ import static com.applang.SwingUtil.*;
 public class DoubleFeature implements IComponent
 {
     protected static final String TAG = DoubleFeature.class.getSimpleName();
-
-	public static final String FOCUS = "focus";
 
 	private JComponent widget = null;
 	
@@ -135,15 +133,31 @@ public class DoubleFeature implements IComponent
 		}
     }
 
+	public static final String FOCUS = "focus";
+	public static final String REQUEST = "request";
+	
+	public static Component[] focusRequestComponents(Container container) {
+		final Component[] focused = findComponents(container, new Predicate<Component>() {
+			public boolean apply(Component c) {
+				String name = c.getName();
+				return DoubleFeature.FOCUS.equals(name) || DoubleFeature.REQUEST.equals(name);
+			}
+		});
+		no_println("focusRequest", identity(asList(focused).toArray()));
+		return focused;
+	}
+
 	public void requestFocus() {
 		TextArea textArea = getTextArea();
 		if (textArea != null)
 			textArea.requestFocus();
 		else if (widget != null) {
-			Component component = findComponent(widget, FOCUS);
+			Component component = findFirstComponent(widget, FOCUS);
 			if (component != null) {
-				component.requestFocus();
-				debug_println("requestFocus", identity(component));
+				component.requestFocusInWindow();
+				debug_println("focus", 
+						identity(component), 
+						identity(SwingUtilities.getAncestorOfClass(EditPane.class, component)));
 			}
 		}
 	}

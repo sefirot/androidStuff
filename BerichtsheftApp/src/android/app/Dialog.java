@@ -5,8 +5,6 @@ import java.awt.Frame;
 
 import javax.swing.JDialog;
 
-import com.applang.SwingUtil;
-
 import static com.applang.Util.*;
 import static com.applang.SwingUtil.*;
 

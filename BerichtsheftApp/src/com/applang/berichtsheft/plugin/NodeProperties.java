@@ -52,7 +52,7 @@ public class NodeProperties implements NodePropertyProvider {
 		if (isSQLite(file)) {
 			panel.add(new JLabel("SQLite database"));
 			panel.add(DataView.dbTablesComponent(
-					new BerichtsheftActivity(), 
+					BerichtsheftActivity.getInstance(), 
 					Uri.fromFile(file), 
 					null), BorderLayout.CENTER);
 		}

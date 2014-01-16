@@ -917,7 +917,7 @@ public class VelocityTests extends TestCase
 	}
 
 	public static String[] listReferences(SimpleNode document) {
-	    ArrayList<String> list = new ArrayList<String>();
+	    ArrayList<String> list = alist();
 	    
 		Visitor.walk(document, new Function<Object>() {
 			@Override

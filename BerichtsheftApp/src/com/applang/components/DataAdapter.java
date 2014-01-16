@@ -30,7 +30,7 @@ import static com.applang.Util1.*;
 import static com.applang.Util2.*;
 import static com.applang.SwingUtil.*;
 
-public class Provider
+public class DataAdapter
 {
 	private Context context;
 	public Context getContext() {
@@ -39,19 +39,19 @@ public class Provider
 
 	private ContentResolver contentResolver;
 	
-	public Provider(DataView dv) {
+	public DataAdapter(DataView dv) {
 		this(dv.getUriString());
 	}
 	
-	public Provider(String uriString) {
-		this(new BerichtsheftActivity(), uriString);
+	public DataAdapter(String uriString) {
+		this(BerichtsheftActivity.getInstance(), uriString);
 	}
 	
-	public Provider(String flavor, final File dbFile, String uriString) {
+	public DataAdapter(String flavor, final File dbFile, String uriString) {
 		this(Context.contextForFlavor(BerichtsheftActivity.packageName, flavor, dbFile), uriString);
 	}
 	
-	private Provider(Context context, String uriString) {
+	private DataAdapter(Context context, String uriString) {
 		this.context = context;
 		contentResolver = context.getContentResolver();
 		tableName = dbTableName(uriString);
@@ -95,7 +95,7 @@ public class Provider
 		String[] selectionArgs = param(null, 1, params);
 		String sortOrder = param(null, 2, params);
 		try {
-			final ArrayList<Object[]> rows = new ArrayList<Object[]>();
+			final ArrayList<Object[]> rows = alist();
 			Cursor cursor = contentResolver.query(uri, 
 					columns, 
 					selection, selectionArgs, 
