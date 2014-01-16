@@ -360,7 +360,7 @@ public class PlantInfoProvider extends ContentProvider
         return count;
     }
 
-    private static ArrayList<HashMap<String, String>> projectionMaps = new ArrayList<HashMap<String, String>>();
+    private static ArrayList<HashMap<String, String>> projectionMaps = alist();
 
     static {
         sUriMatcher = new UriMatcher(UriMatcher.NO_MATCH);

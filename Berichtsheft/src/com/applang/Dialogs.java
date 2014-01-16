@@ -73,7 +73,7 @@ public class Dialogs extends Activity
 	public static Runnable sProgressRunnable = null;
 */
 	private int checkedItem = -1;
-	private List<Boolean> checkedItems = new ArrayList<Boolean>();
+	private List<Boolean> checkedItems = alist();
 	CursorHelper cursorHelper = new CursorHelper(this);
 	private Cursor cursor;
 	
@@ -353,7 +353,7 @@ public class Dialogs extends Activity
             		new TextView(this);
             textView.setText(values[0]);
             textView.setMovementMethod(new ScrollingMovementMethod());
-            linearLayout.addView(textView, Util1.linearLayoutParams(
+            linearLayout.addView(textView, Util1.marginLayoutParams(
             		LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 
             		margin,	halfMargin, margin, halfMargin));
     		switch (id) {

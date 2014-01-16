@@ -291,7 +291,7 @@ public class ProviderTests extends InfraTests<BerichtsheftActivity>
     	for (String database : databases(mActivity)) 
     		mActivity.deleteDatabase(database);
     	String helloVm = readAsset(mActivity, "hello.vm");
-    	String[] states = getStateStrings();
+    	String[] states = getStateStrings(mActivity);
 		generateNotePadData(mActivity, true, new Object[][] {
 			{ 1L, "prompt1", "#set($var=\"\")" +
 					"#prompt(\"name\" $var \"xxx\")#if($var)$var\n#end", null, now() }, 
@@ -348,9 +348,9 @@ public class ProviderTests extends InfraTests<BerichtsheftActivity>
 		keepTestData(databases(mActivity));
     }
 
-    public String[] getStateStrings() {
+    public static String[] getStateStrings(Context context) {
     	try {
-			InputStream is = mActivity.getResources().openRawResource(R.raw.states);
+			InputStream is = context.getResources().openRawResource(R.raw.states);
 			String res = readAll(new BufferedReader(new InputStreamReader(is, Charset.forName("UTF-8"))));
 			return ((ValList) walkJSON(null, new JSONArray(res), null)).toArray(new String[0]);
 		} catch (Exception e) {

@@ -45,6 +45,8 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
 
 import android.util.Log;
 
@@ -284,8 +286,16 @@ public class Util
 			return prototype.getClass().getName().equals(o.getClass().getName());
 	}
 	
-	public static String identity(Object o) {
-		return o == null ? "null" : o.getClass().getSimpleName() + "@" + Integer.toHexString(o.hashCode());
+	public static String identity(Object...o) {
+		int len = o.length;
+		if (len < 1)
+			return "";
+		else if (len < 2)
+			return o[0] == null ? "null" : o[0].getClass().getSimpleName() + "@" + Integer.toHexString(o[0].hashCode());
+		String[] s = new String[len];
+		while (len > 0)
+			s[--len] = identity(o[len]);
+		return Arrays.toString(s);
 	}
 	
 	public static String stringValueOf(Object value) {
@@ -505,6 +515,10 @@ public class Util
 		return String.valueOf(o);
 	}
 	
+	public static Object object(Object o) {
+		return o;
+	}
+	
 	public static Object[] objects(Object...params) {
 		return params;
 	}
@@ -572,7 +586,7 @@ public class Util
 	}
 	
 	public static MatchResult[] findAllIn(String input, Pattern pattern) {
-		ArrayList<MatchResult> matches = new ArrayList<MatchResult>();
+		ArrayList<MatchResult> matches = alist();
 		
 		Matcher matcher = pattern.matcher(input);
 		while (matcher.find()) 
@@ -618,7 +632,7 @@ public class Util
 
 	public static <T> String join(String delimiter, @SuppressWarnings("unchecked") T...params) {
 	    StringBuilder sb = new StringBuilder();
-	    Iterator<T> iter = new ArrayList<T>(asList(params)).iterator();
+	    Iterator<T> iter = alist(params).iterator();
 	    if (iter.hasNext())
 	        do {
 		        sb.append(String.valueOf(iter.next()))
@@ -998,7 +1012,7 @@ public class Util
 	}
 
 	public static List<Integer> fromIntArray(int[] array) {
-		List<Integer> list = new ArrayList<Integer>();
+		List<Integer> list = alist();
 	    for (int i = 0; i < array.length; i++) {
 	        list.add(array[i]);
 	    }
@@ -1014,9 +1028,9 @@ public class Util
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <T> T[] arrayappend(T[] array, T... elements) {
-		ArrayList<T> list = new ArrayList<T>(asList(array));
-		list.addAll(new ArrayList<T>(asList(elements)));
+	public static <T> T[] arrayappend(T[] array, T...elements) {
+		ArrayList<T> list = alist(array);
+		list.addAll(asList(elements));
 		return list.toArray(array);
 	}
 
@@ -1041,37 +1055,55 @@ public class Util
 			array[len - i - 1] = element;
 		}
 	}
+	
+	public static <T> ArrayList<T> alist() {
+		return new ArrayList<T>();
+	}
+	
+	public static <T> ArrayList<T> alist(T[] elements) {
+		return new ArrayList<T>(asList(elements));
+	}
 
 	public static Document xmlDocument(File file, Object...params) {
-		FileInputStream fis = null;
+		InputStream is = null;
 	    try {
 			DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
 			DocumentBuilder db = dbf.newDocumentBuilder();
-			String systemId = param(null, 0, params);
-			if (systemId == null)
+			if (file != null)
 				return db.parse(file);
 			else {
-				fis = new FileInputStream(file);
-				return db.parse(fis, systemId);
+				is = param(null, 0, params);
+				return db.parse(is);
 			}
 	    } catch (Exception e) {
 			Log.e(TAG, "xmlDocument", e);
 	    	return null;
 	    }
 	    finally {
-	    	if (fis != null)
+	    	if (is != null)
 				try {
-					fis.close();
+					is.close();
 				} catch (IOException e) {
 					Log.e(TAG, "xmlDocument", e);
 				}
 	    }
 	}
+	
+	public static Element[] iterateElements(String tagName, Document doc, Predicate<Element> predicate) {
+		ArrayList<Element> al = alist();
+		NodeList nodes = doc.getElementsByTagName(tagName);
+		for (int i = 0; i < nodes.getLength(); i++) {
+			Element el = (Element) nodes.item(i);
+			if (predicate.apply(el))
+				al.add(el);
+		}
+		return al.toArray(new Element[0]);
+	}
     
     public interface Predicate<T> { boolean apply(T t); }
 
 	public static <T> Collection<T> filter(Collection<T> target, boolean negate, Predicate<T> predicate) {
-        Collection<T> result = new ArrayList<T>();
+        Collection<T> result = alist();
         for (T element: target) {
 			if (predicate.apply(element)) {
 				if (!negate)
@@ -1084,7 +1116,7 @@ public class Util
     }
 
 	public static <T> List<Integer> filterIndex(List<T> target, boolean negate, Predicate<T> predicate) {
-		List<Integer> result = new ArrayList<Integer>();
+		List<Integer> result = alist();
         for (int i = 0; i < target.size(); i++) {
         	T element = target.get(i);
 			if (predicate.apply(element)) {

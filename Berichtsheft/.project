@@ -30,4 +30,36 @@
 		<nature>com.android.ide.eclipse.adt.AndroidNature</nature>
 		<nature>org.eclipse.jdt.core.javanature</nature>
 	</natures>
+	<linkedResources>
+		<link>
+			<name>res/layout/field_blob.xml</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/field_blob.xml</locationURI>
+		</link>
+		<link>
+			<name>res/layout/field_float.xml</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/field_float.xml</locationURI>
+		</link>
+		<link>
+			<name>res/layout/field_integer.xml</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/field_integer.xml</locationURI>
+		</link>
+		<link>
+			<name>res/layout/field_string.xml</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/field_string.xml</locationURI>
+		</link>
+		<link>
+			<name>res/layout/linearlayout.xml</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/linearlayout.xml</locationURI>
+		</link>
+		<link>
+			<name>res/layout/relativelayout.xml</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/relativelayout.xml</locationURI>
+		</link>
+	</linkedResources>
 </projectDescription>

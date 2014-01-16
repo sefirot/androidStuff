@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="padding_list">5dp</dimen>
+    <dimen name="padding">20dp</dimen>
+    <dimen name="padding_half">10dp</dimen>
+    <dimen name="text_size">20sp</dimen>
+    <dimen name="margin">10dp</dimen>
+    <dimen name="margin_half">5dp</dimen>
+    <dimen name="image_height">100dip</dimen>
+    <dimen name="image_width">150dip</dimen>
+</resources>

@@ -63,7 +63,6 @@ public class ConstructDialogs extends Dialogs
 		switch (id) {
 		case DIALOG_CONSTRUCT:
 	    	defaults = defaultValues.toArray(new String[0]);
-	    	
 			mDialog = new Dialog(this) {
 				@Override
 				public boolean onKeyDown(int keyCode, KeyEvent event) {
@@ -81,16 +80,12 @@ public class ConstructDialogs extends Dialogs
 				}
 			};
 			mDialog.setTitle(prompt);
-			
 			contentView = contentPane();
 			contentView.addView(header());
 			contentView.addView(scrollView = form());
-			
 			mDialog.setContentView(contentView);
-			
 			makeSuggestions();
 			validate();
-			
 			return mDialog;
 		}
 		return null;
@@ -117,7 +112,6 @@ public class ConstructDialogs extends Dialogs
 				.inflate(isExtensible() ? 
 						R.layout.construct_form_header2 : 
 						R.layout.construct_form_header, null);
-		
 //		ImageButton im = new ImageButton(this);
 //		im.setId(R.id.button4);
 //		im.setImageResource(R.drawable.dropdown);
@@ -166,7 +160,6 @@ public class ConstructDialogs extends Dialogs
 				}
 			}
 		});
-		
 //		btn = new Button(this);
 //		btn.setId(R.id.cancel);
 //		btn.setText(android.R.string.cancel);
@@ -184,7 +177,6 @@ public class ConstructDialogs extends Dialogs
             	_finish(RESULT_CANCELED, null);
 			}
 		});
-		
 		if (isExtensible()) {
 			btn = (Button) relLayout.findViewById(R.id.button2);
 			btn.setOnClickListener(new OnClickListener() {
@@ -217,7 +209,6 @@ public class ConstructDialogs extends Dialogs
 				}
 			});
 		}
-		
 		return relLayout;
     }
     
@@ -266,22 +257,20 @@ public class ConstructDialogs extends Dialogs
 		boolean canDefault = Character.isLowerCase(type.charAt(0));
 		LinearLayout linearLayout = canDefault ? 
 				lineLayoutWithDefault(argument, index, map) : 
-					lineLayout(true, argument, index, map);
-				LinearLayout vertLayout = (LinearLayout) scrollView.findViewById(android.R.id.content);
-				vertLayout.addView(linearLayout);
+				lineLayout(true, argument, index, map);
+		LinearLayout vertLayout = (LinearLayout) scrollView.findViewById(android.R.id.content);
+		vertLayout.addView(linearLayout);
 		return map;
 	}
 
 	private LinearLayout lineLayoutWithDefault(String argument, final int index, ValMap map) {
         LinearLayout vertLayout = 
         		contentPane(LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT);
-        
 		LinearLayout horzLayout = lineLayout(true, argument, index, map);
 		int id = horzLayout.getId();
 		horzLayout.setId(View.NO_ID);
 		vertLayout.addView(horzLayout);
 		vertLayout.setId(id);
-		
 		String type = argumentType(argument);
 		MatchResult m = argumentSuffix(argument);
 		int suffix = toInt(1, m.group());
@@ -293,7 +282,6 @@ public class ConstructDialogs extends Dialogs
 		horzLayout = lineLayout(false, optionalize(argument), index, map2);
 		map.put(SECOND_FIELD, map2);
 		vertLayout.addView(horzLayout);
-		
 		return vertLayout;
 	}
 
@@ -438,7 +426,6 @@ public class ConstructDialogs extends Dialogs
     	isOk = param_Boolean(true, 1, params);
     	if (!isOk)
     		return false;
-    	
     	String[] messages = getResources().getStringArray(R.array.construct_validation_messages);
     	if (text.length() < 1) {
     		addComment(map, prefix, true, messages[8]);
@@ -521,7 +508,6 @@ public class ConstructDialogs extends Dialogs
 				if (!isType(URI_TYPE_INDEX, type) && 
 						object.toString().toLowerCase(Locale.getDefault()).endsWith("uri"))
 					return true;
-				
 				return false;
 			}
 		};
@@ -578,7 +564,6 @@ public class ConstructDialogs extends Dialogs
 		@Override
 		protected void onPostExecute(ValMap result) {
 			super.onPostExecute(result);
-			
 			if (result != null) 
 				onProgressUpdate(result);
 		}
@@ -638,7 +623,6 @@ public class ConstructDialogs extends Dialogs
 	private boolean fieldValidate(boolean toast, boolean valid, ValMap fieldMap) {
 		if (isInactive(fieldMap))
 			return valid;
-		
 		valid &= isContentValid(fieldMap);
 		if (!valid) {
 			if (toast) {
@@ -650,12 +634,10 @@ public class ConstructDialogs extends Dialogs
 			fieldMap.remove(COMMENT);
 			return false;
 		}
-		
 		if (fieldMap.containsKey(SECOND_FIELD)) {
 			fieldMap = (ValMap) fieldMap.get(SECOND_FIELD);
 			return fieldValidate(toast, valid, fieldMap);
 		}
-		
 		return true;
 	}
 	
@@ -676,7 +658,6 @@ public class ConstructDialogs extends Dialogs
         	ValMap fieldMap = (ValMap) fieldMaps.get(i);
 			if (isInactive(fieldMap))
 				continue;
-			
 			list.add(getText(fieldMap));
 		}
     	return list;

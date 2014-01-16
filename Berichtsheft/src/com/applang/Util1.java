@@ -89,22 +89,16 @@ public class Util1
 		return linear;
 	}
 
-	public static LinearLayout.LayoutParams linearLayoutParams(int width, int height, Integer... ltrb) {
-		LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(width, height);
-		layoutParams.setMargins(param(0, 0, ltrb), param(0, 1, ltrb), param(0, 2, ltrb), param(0, 3, ltrb));
-		return layoutParams;
-	}
-
-	public static RelativeLayout.LayoutParams relativeLayoutParams(int width, int height, Integer... ltrb) {
-		RelativeLayout.LayoutParams layoutParams = new RelativeLayout.LayoutParams(width, height);
-		layoutParams.setMargins(param(0, 0, ltrb), param(0, 1, ltrb), param(0, 2, ltrb), param(0, 3, ltrb));
-		return layoutParams;
-	}
-
 	public static RelativeLayout relativeLayout(Context context, int width, int height) {
 		RelativeLayout relative = new RelativeLayout(context);
 	    relative.setLayoutParams(new LayoutParams(width, height));
 		return relative;
+	}
+
+	public static ViewGroup.MarginLayoutParams marginLayoutParams(int width, int height, Integer... ltrb) {
+		ViewGroup.MarginLayoutParams layoutParams = new ViewGroup.MarginLayoutParams(width, height);
+		layoutParams.setMargins(param(0, 0, ltrb), param(0, 1, ltrb), param(0, 2, ltrb), param(0, 3, ltrb));
+		return layoutParams;
 	}
 
 	public static Object[] iterateViews(ViewGroup container, Function<Object[]> func, int indent, Object... params) {
@@ -496,7 +490,7 @@ public class Util1
     }
 
 	public static String[] databases(Activity activity) {
-		ArrayList<String> list = new ArrayList<String>();
+		ArrayList<String> list = alist();
 		ValList authorities = contentAuthorities(providerPackages, activity);
 		for (Object authority : authorities) {
 			String name = databaseName(authority);
@@ -517,8 +511,10 @@ public class Util1
 				return null;
 			}
 		}
-		else
+		else if (uri != null)
 			return new File(uri.getPath());
+		else
+			return null;
 	}
 
 	public static ContentValues contentValues(ValMap info, List<Object> projection, Object...items) {

@@ -841,7 +841,7 @@ public class VelocityUtil
 	}
 	
 	public static ArrayList<String> getSuggestionsFromProblem() {
-		ArrayList<String> list = new ArrayList<String>();
+		ArrayList<String> list = alist();
 		if (problem != null) {
 			int[][] expTokSeq = problem.expectedTokenSequences;
 		    if (expTokSeq != null) {
@@ -945,7 +945,7 @@ public class VelocityUtil
 					"\\(\\s*" + PARENS_TERM + "\\s*\\)\\}?");
 	
 	public static List<String> referencesIn(String template) {
-		ArrayList<String> list = new ArrayList<String>();
+		ArrayList<String> list = alist();
 		for (MatchResult m : findAllIn(template, REFERENCE_PATTERN2))
 			list.add(m.group());
 		return list;
@@ -989,7 +989,7 @@ public class VelocityUtil
 			strings("==","!=","<",">","<=",">=","eq","ne","lt","gt","le","ge");
 	public static final String[] ARITHMETIC_OPERATORS = 
 			strings("+","-","*","/","%");
-	public static ArrayList<Pattern> termPatterns = new ArrayList<Pattern>();
+	public static ArrayList<Pattern> termPatterns = alist();
 	static {
 		for (String op : ASSIGN_OPERATORS) {
 			termPatterns.add(Pattern.compile("^(\\S+)\\s*" + op + "\\s*(\\S+)$"));
