@@ -114,8 +114,20 @@ public class Util1
 		return params;
 	}
 
+	public static String viewLine(View v, int indent) {
+		String string = v.getName() + " : " + v.getClass().getSimpleName();
+		if (v instanceof LinearLayout) {
+			LinearLayout l = (LinearLayout) v;
+			string += TAB + 
+				(l.getOrientation() == LinearLayout.HORIZONTAL ? 
+					"horizontal" : "vertical");
+		}
+		string += TAB + v.getLayoutParams();
+		return indentedLine(string, TAB, indent);
+	}
+
 	public static String viewHierarchy(ViewGroup container) {
-		String s = indentedLine(container.getClass().getSimpleName(), TAB, 0);
+		String s = viewLine(container, 0);
 		Object[] params = iterateViews(container, 
 			new Function<Object[]>() {
 				public Object[] apply(Object... params) {
@@ -123,8 +135,7 @@ public class Util1
 					int indent = param_Integer(null, 1, params);
 					Object[] parms = param(null, 2, params);
 					String s = (String) parms[0];
-					String line = /*v.getId() + " : " + */v.getClass().getSimpleName();
-					s += indentedLine(line, TAB, indent);
+					s += viewLine(v, indent);
 					parms[0] = s;
 					return parms;
 				}
@@ -657,10 +668,10 @@ public class Util1
 		}
 	}
 
-	public static String readAsset(Activity activity, String fileName) {
+	public static String readAsset(Context context, String fileName) {
 	    StringBuffer sb = new StringBuffer();
 	    try {
-	    	AssetManager am = activity.getResources().getAssets();
+	    	AssetManager am = context.getResources().getAssets();
 			InputStream is = am.open( fileName );
 			while( true ) {
 			    int c = is.read();

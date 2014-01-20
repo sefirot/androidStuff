@@ -32,6 +32,11 @@
 	</natures>
 	<linkedResources>
 		<link>
+			<name>res/drawable/spiraling.gif</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/BerichtsheftApp/.jedit/plugins/berichtsheft/res/drawable/spiraling.gif</locationURI>
+		</link>
+		<link>
 			<name>res/layout/field_blob.xml</name>
 			<type>1</type>
 			<locationURI>PARENT-1-PROJECT_LOC/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/field_blob.xml</locationURI>
@@ -50,6 +55,11 @@
 			<name>res/layout/field_string.xml</name>
 			<type>1</type>
 			<locationURI>PARENT-1-PROJECT_LOC/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/field_string.xml</locationURI>
+		</link>
+		<link>
+			<name>res/layout/field_text.xml</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/field_text.xml</locationURI>
 		</link>
 		<link>
 			<name>res/layout/linearlayout.xml</name>

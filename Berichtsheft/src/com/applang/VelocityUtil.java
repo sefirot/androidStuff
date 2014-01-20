@@ -84,7 +84,7 @@ public class VelocityUtil
 	public static int argumentTyperIndex(String arg) {
 		int offs = 0;
 		if (arg.startsWith(String.valueOf(ARGUMENT_TYPER))) {
-			arg = strip(true, arg, ARGUMENT_TYPER);
+			arg = strip(Constraint.START, arg, ARGUMENT_TYPER);
 			offs = 1;
 		}
 		return offs + arg.indexOf(ARGUMENT_TYPER);
@@ -93,9 +93,9 @@ public class VelocityUtil
 	public static String argumentName(String arg) {
 		int index = argumentTyperIndex(arg);
 		if (index < 0)
-			return strip(true, arg, ARGUMENT_TYPER, VRI);
+			return strip(Constraint.START, arg, ARGUMENT_TYPER, VRI);
 		else
-			return strip(true, arg.substring(0, index), ARGUMENT_TYPER, VRI);
+			return strip(Constraint.START, arg.substring(0, index), ARGUMENT_TYPER, VRI);
 	}
 	
 	public static MatchResult argumentSuffix(String arg) {

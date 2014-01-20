@@ -1,5 +1,8 @@
 package com.applang;
 
+import static com.applang.Util.NEWLINE_REGEX;
+import static com.applang.Util.TAB;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -29,6 +32,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
@@ -496,7 +500,7 @@ public class Util
 		for (Object object : (Object[])o) 
 			list.add(Arrays.toString((Object[])object));
 		String s = Arrays.toString(list.toArray());
-		return strip(true, strip(false, s , "]") , "[")
+		return strip(Constraint.START, strip(Constraint.END, s , "]") , "[")
 				.replaceAll("(\\],) (\\[)", "$1\n\n$2");
 	}
 
@@ -517,6 +521,10 @@ public class Util
 	
 	public static Object object(Object o) {
 		return o;
+	}
+	
+	public static Object _null() {
+		return object(null);
 	}
 	
 	public static Object[] objects(Object...params) {
@@ -543,6 +551,10 @@ public class Util
 		return Arrays.asList(array);
 	}
 	
+	public static <T> Set<T> set(Collection<T> collection) {
+		return new HashSet<T>(collection);
+	}
+	
 	public static <T> Set<T> sortedSet(Collection<T> collection) {
 		return new TreeSet<T>(collection);
 	}
@@ -554,28 +566,6 @@ public class Util
 	public interface Job<T> {
 		public void perform(T t, Object[] parms) throws Exception;
 	}
-		 
-	public static Object[] iterateFiles(boolean includeDirs, File dir, Job<Object> job, Object...params) throws Exception {
-		params = reduceDepth(params);
-		if (dir != null && dir.isDirectory()) {
-			for (File file : dir.listFiles())
-				if (file.isDirectory())
-					iterateFiles(includeDirs, file, job, params);
-				else if (file.isFile()) {
-					job.perform(file, params);
-					Integer n = param_Integer(null, 0, params);
-					if (n != null)
-						params[0] = n + 1;
-				}
-			if (includeDirs) {
-				job.perform(dir, params);
-				Integer n = param_Integer(null, 1, params);
-				if (n != null)
-					params[1] = n + 1;
-			}
-		}
-		return params;
-	} 
 	
 	public static Pattern clippingPattern(String clipper1, String clipper2) {
 		String clipped1 = "[^" + clipper1 + "]";
@@ -625,14 +615,16 @@ public class Util
     	return file;
     }
 
-	public static ValList split(String string, String regex) {
-		String[] parts = string.split(regex);
+	public static ValList split(String string, String regex, int...limit) {
+		String[] parts = strings();
+		if (notNullOrEmpty(string))
+			parts = limit.length < 1 ? string.split(regex) : string.split(regex, limit[0]);
 		return new ValList(asList(parts));
     }
 
-	public static <T> String join(String delimiter, @SuppressWarnings("unchecked") T...params) {
+	public static <T> String join(String delimiter, T...params) {
 	    StringBuilder sb = new StringBuilder();
-	    Iterator<T> iter = alist(params).iterator();
+	    Iterator<T> iter = asList(params).iterator();
 	    if (iter.hasNext())
 	        do {
 		        sb.append(String.valueOf(iter.next()))
@@ -656,14 +648,20 @@ public class Util
     	return string;
 	}
 
-    public static String strip(boolean atStart, String string, Object...params) {
+    public static String strip(Constraint constraint, String string, Object...params) {
     	for (int i = 0; i < params.length; i++) {
     		Object param = param("", i, params);
 			String pad = String.valueOf(param);
-	    	if (atStart && string.startsWith(pad))
-	    		string = string.substring(pad.length());
-	    	if (!atStart && string.endsWith(pad))
-	    		string = string.substring(0, string.length() - pad.length());
+			if (check(string, constraint, pad))
+				switch (constraint) {
+				case START:
+					string = string.substring(pad.length());
+					break;
+				case END:
+					string = string.substring(0, string.length() - pad.length());
+					break;
+				default:
+				}
     	}
     	return string;
 	}
@@ -879,6 +877,11 @@ public class Util
 		public ValList(int initialCapacity) {
 			super(initialCapacity);
 		}
+		public ValList sizeAtLeast(int size) {
+			while (size() < size)
+				add(null);
+			return this;
+		}
 		@Override
 		public Object get(int index) {
 			if (index < 0)
@@ -1027,7 +1030,6 @@ public class Util
 	    return primitives;
 	}
 
-	@SuppressWarnings("unchecked")
 	public static <T> T[] arrayappend(T[] array, T...elements) {
 		ArrayList<T> list = alist(array);
 		list.addAll(asList(elements));
@@ -1099,6 +1101,59 @@ public class Util
 		}
 		return al.toArray(new Element[0]);
 	}
+
+	public static String addPart(String string, String part) {
+		ValList list = split(string, GLUE_REGEX);
+		if (list.add(part))
+			return join(GLUE, set(list).toArray());
+		else
+			return string;
+	}
+
+	public static String removePart(String string, String part) {
+		ValList list = split(string, GLUE_REGEX);
+		if (list.remove(part))
+			string = join(GLUE, list.toArray());
+		return string;
+	}
+	
+	public enum Constraint {
+		AMONG(2), START(1), MIDDLE(0), END(-1);
+		
+		final int index;
+
+		Constraint(int index) {
+			this.index = index;
+		}
+	}
+	
+	public static Boolean check(String string, Constraint constraint, String part) {
+		if (string == null)
+			return null;
+		switch (constraint) {
+		case START:
+			return string.startsWith(part);
+		case MIDDLE:
+			return string.contains(part);
+		case AMONG:
+			ValList list = split(string, "\\|");
+			return list.contains(part);
+		case END:
+			return string.endsWith(part);
+		default:
+			return null;
+		}
+	}
+	
+	public static String findFirstFile(File dir, Constraint constraint, String part) {
+		File[] files = dir.listFiles();
+    	for (File file : files) {
+    		String path = file.getPath();
+			if (file.isFile() && check(path, constraint, part))
+    			return path;
+    	}
+		return null;
+	}
     
     public interface Predicate<T> { boolean apply(T t); }
 
@@ -1152,8 +1207,10 @@ public class Util
 	public static final String PATH_SEP = System.getProperty("file.separator");
 	public static final String TAB = "\t";
 	public static final String NEWLINE = "\n";	//	System.getProperty("line.separator");
+	public static final String GLUE = "|";
 	public static final String TAB_REGEX = "\\t";
 	public static final String NEWLINE_REGEX = "\\n";
+	public static final String GLUE_REGEX = "\\|";
 	public static final String WHITESPACE_REGEX = "\\s+";
 	public static final String WHITESPACE_OR_NOTHING_REGEX = "\\s*";
 	public static final String[] FOLD_MARKER = strings("{{{", "}}}");
@@ -1175,6 +1232,10 @@ public class Util
 	    sb.append(line);
 	    sb.append(NEWLINE);
 	    return sb.toString();
+	}
+	
+	public static String flatten(String s) {
+		return s.replaceAll(NEWLINE_REGEX, TAB);
 	}
 	
 	public static boolean isSQLite(File file) {
@@ -1230,8 +1291,7 @@ public class Util
 				lists = arrayappend(lists, vlist());
 			for (int i = 0; i < lists.length; i++) {
 				ValList values = lists[i];
-				while (values.size() < size)
-					values.add(null);
+				values.sizeAtLeast(size);
 			}
 			this.lists = lists;
 		}
@@ -1269,7 +1329,7 @@ public class Util
 		
 		@Override
 		public String toString() {
-			String separator = "|";
+			String separator = GLUE;
 			StringBuilder sb = new StringBuilder();
 			int keysIndex = index[0];
 			index[0] = 0;
@@ -1281,7 +1341,7 @@ public class Util
 					sb.append(String.format(separator + "%s", String.valueOf(val)));
 				}
 				if (i < size - 1)
-					sb.append(",\n");
+					sb.append("," + NEWLINE);
 			}
 			index[0] = keysIndex;
 			return enclose("{", sb.toString(), "}");
