@@ -322,7 +322,7 @@ public class DataConfiguration
 	public void load() {
 		String uriString = stringValueOf(prefs.getString("uri", ""));
 		String database = stringValueOf(prefs.getString("database", ""));
-		debug_println("loaded uri, database", uriString, database);
+		debug_println(null, "loaded uri, database", uriString, database);
 		if (isFileUri(uriString))
 			database = Uri.parse(uriString).getPath();
 		if (!fileExists(database)) {
@@ -370,7 +370,7 @@ public class DataConfiguration
 		}
 		String uriString = uri != null ? Uri.decode(uri.toString()) : null;
 		prefs.edit().putString("uri", uriString).putString("database", database).commit();
-		debug_println("saved uri, database", uriString, database);
+		debug_println(null, "saved uri, database", uriString, database);
 	}
 
 	public Uri projectionToUri(Uri uri) {

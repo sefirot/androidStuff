@@ -50,7 +50,7 @@ public class AndroidBridge
 	// NOTE used in scripts
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public static String chooseFileFromSdcard(final View view, final boolean onlyDirs, final String androidFileName) {
-		final Object[] devices = AndroidBridge.deviceInfo(null);
+		final Object[] devices = deviceInfo(null);
 		if (!isAvailable(0, devices) || nullOrEmpty(devices[0])) {
 			BerichtsheftPlugin.consoleMessage("berichtsheft.android-devices.message");
 			return null;
@@ -89,7 +89,7 @@ public class AndroidBridge
 			}
 			public void ancestorAdded(AncestorEvent event) {
 				if (notNullOrEmpty(androidFileName) && androidFileName.contains("|")) {
-					ValList parts = AndroidBridge.splitAndroidFileName(androidFileName);
+					ValList parts = splitAndroidFileName(androidFileName);
 					String device = parts.get(0).toString();
 					File file = new File(parts.get(1).toString());
 					int index = asList(devices).indexOf(device);
@@ -97,7 +97,7 @@ public class AndroidBridge
 						lists[0].setSelectedValue(devices[index], true);
 						String dir = file.getParent() + "/";
 						labels[1].setText(dir);
-						fileLister.apply(AndroidBridge.deviceInfo(device, dir, onlyDirs));
+						fileLister.apply(deviceInfo(device, dir, onlyDirs));
 						String name = file.getName();
 						if (!highLiter.apply(name, lists[1]))
 							highLiter.apply(name + "/", lists[1]);
@@ -149,7 +149,7 @@ public class AndroidBridge
 					item = "";
 				}
 				labels[1].setText(dir);
-				fileLister.apply(AndroidBridge.deviceInfo(device, dir, onlyDirs));
+				fileLister.apply(deviceInfo(device, dir, onlyDirs));
 				highLiter.apply(item, list);
 				itemField.setText(item);
 			}
@@ -176,7 +176,7 @@ public class AndroidBridge
 						if (name.length() > 0) {
 							String dir = stringValueOf(labels[1].getText());
 							String device = stringValueOf(lists[0].getSelectedValue());
-							if (AndroidBridge.deviceOperation("mkdir", device, dir, name, fileLister))
+							if (deviceOperation("mkdir", device, dir, name, fileLister))
 								highLiter.apply(name, lists[1]);
 						}
 					}
@@ -193,7 +193,7 @@ public class AndroidBridge
 								quest += "\nand all files within this directory";
 							if (question(String.format(quest, dir + name))) {
 								String device = stringValueOf(lists[0].getSelectedValue());
-								if (AndroidBridge.deviceOperation("rm", device, dir, name, fileLister))
+								if (deviceOperation("rm", device, dir, name, fileLister))
 									itemField.setText("");
 							}
 						}
@@ -226,7 +226,7 @@ public class AndroidBridge
 			String device = stringValueOf(lists[0].getSelectedValue());
 			String path = stringValueOf(labels[1].getText());
 			String name = stringValueOf(lists[1].getSelectedValue());
-			return AndroidBridge.joinAndroidFileName(device, path + name);
+			return joinAndroidFileName(device, path + name);
 		}
 		return null;
 	}
@@ -244,9 +244,9 @@ public class AndroidBridge
 			if (isDirectory) 
 				oper = "rm -r";
 		}
-		String cmd = AndroidBridge.buildAdbCommand(oper, AndroidBridge.joinAndroidFileName(device, dir + name), "");
+		String cmd = buildAdbCommand(oper, joinAndroidFileName(device, dir + name), "");
 		String response = runShellScript("cmd", cmd);
-		List files = fileLister.apply(AndroidBridge.deviceInfo(device, dir));
+		List files = fileLister.apply(deviceInfo(device, dir));
 		if (oper.startsWith("mk") && files.contains(name))
 			response = null;
 		else if (oper.startsWith("rm") && !files.contains(name)) 
@@ -267,19 +267,19 @@ public class AndroidBridge
 			script += " if (m == 1) print $NF\"/\"";
 			if (!onlyDirs)
 				script += " ; else print $NF";
-			script = AndroidBridge.awkCommand("{" + script + "}");
-			script = AndroidBridge.adbScript(device, "shell ls -l \"" + dir + "\" | " + script);
+			script = awkCommand("{" + script + "}");
+			script = adbScript(device, "shell ls -l \"" + dir + "\" | " + script);
 			response = runShellScript("ls", script);
 			ValList list = split(response, NEWLINE_REGEX);
-			list.add(0, "." + AndroidBridge.repeat(" ", 30));
+			list.add(0, "." + repeat(" ", 30));
 			MatchResult[] mr = findAllIn(dir, Pattern.compile("/"));
 			if (mr.length > 2)
 				list.add(0, "..");
 			array = sortedSet(list).toArray();
 		}
 		else {
-			script = AndroidBridge.awkCommand("NR > 1 {print $1}");
-			script = AndroidBridge.adbScript(null, "devices | " + script);
+			script = awkCommand("NR > 1 {print $1}");
+			script = adbScript(null, "devices | " + script);
 			response = runShellScript("dev", script);
 			array = split(response, NEWLINE_REGEX).toArray();
 		}

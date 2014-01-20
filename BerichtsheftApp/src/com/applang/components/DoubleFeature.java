@@ -156,7 +156,7 @@ public class DoubleFeature implements IComponent
 			Component component = findFirstComponent(widget, FOCUS, Constraint.AMONG);
 			if (component != null) {
 				component.requestFocusInWindow();
-				debug_println("focus", 
+				debug_println(null, "focus", 
 						identity(component), 
 						identity(SwingUtilities.getAncestorOfClass(EditPane.class, component)));
 			}

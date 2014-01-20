@@ -493,6 +493,8 @@ public class Util2
 				return;
 			}
 		}
+		if (param(null, 0, params) == null)
+			return;
 		debug_out(
 			new Job<PrintWriter>() {
 				public void perform(PrintWriter pw, Object[] parms) throws Exception {
@@ -511,6 +513,8 @@ public class Util2
 				return;
 			}
 		}
+		if (param(null, 0, params) == null)
+			return;
 		debug_out(
 			new Job<PrintWriter>() {
 				public void perform(PrintWriter pw, Object[] parms) throws Exception {

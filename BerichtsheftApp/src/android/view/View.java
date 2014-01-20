@@ -101,18 +101,18 @@ public class View
 			Dimension size = component.getPreferredSize();
 			if (mLayoutParams instanceof MarginLayoutParams) {
 				MarginLayoutParams margs = (MarginLayoutParams) mLayoutParams;
-				if (params.width > -1) {
-					params.width -= margs.leftMargin + margs.rightMargin;
-					params.width = Math.max(0, params.width);
+				Dimension dim = new Dimension(params.width, params.height);
+				if (dim.width > -1) {
+					dim.width -= margs.leftMargin + margs.rightMargin;
 				}
-				if (params.height > -1) {
-					params.height -= margs.topMargin + margs.bottomMargin;
-					params.height = Math.max(0, params.height);
+				if (dim.height > -1) {
+					dim.height -= margs.topMargin + margs.bottomMargin;
 				}
+				if (dim.width > -1) 
+					size.width = dim.width;
+				if (dim.height > -1) 
+					size.height = dim.height;
 			}
-			size = new Dimension(
-					params.width > -1 ? params.width : size.width, 
-					params.height > -1 ? params.height : size.height);
 			component.setPreferredSize(size);
 		}
 	}

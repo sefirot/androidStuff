@@ -204,12 +204,12 @@ public class BerichtsheftPlugin extends EditPlugin
 						doMagic(doubleFeature, buffer);
 					}
 				});
-				debug_println("featured", identity(pane), doubleFeature);
+				debug_println(null, "featured", identity(pane), doubleFeature);
 				focusRequest(pane);
 			}
 			else {
 				doubleFeature.toggle(false, null);
-				debug_println("reduced", identity(pane), doubleFeature);
+				debug_println(null, "reduced", identity(pane), doubleFeature);
 			}
 			Container parent = pane.getParent();
 			if (parent != null)
@@ -246,7 +246,7 @@ public class BerichtsheftPlugin extends EditPlugin
 					doubleFeatures.putValue(pane, focused, 2);
 					s += enclose(focused ? "(" : "", identity(pane), focused ? ")" : "", " ");
 				}
-				debug_println("focused", s);
+				debug_println(null, "focused", s);
 			}
 		});
 	}
@@ -258,7 +258,7 @@ public class BerichtsheftPlugin extends EditPlugin
 				findComponents(editPane, new Predicate<Component>() {
 					public boolean apply(Component c) {
 						if (c.hasFocus()) {
-							debug_println("hasFocus", identity(c), identity(editPane));
+							debug_println(null, "hasFocus", identity(c), identity(editPane));
 							return true;
 						}
 						return false;
@@ -499,7 +499,7 @@ public class BerichtsheftPlugin extends EditPlugin
 		}
 		buffer.setStringProperty(MAGIC, magic);
 		magicBuffers.put(buffer, container);
-		debug_println("addMagic", buffer);
+		debug_println(null, "addMagic", buffer);
 		return true;
 	}
 	
@@ -518,7 +518,7 @@ public class BerichtsheftPlugin extends EditPlugin
 		}
 		buffer.setStringProperty(MAGIC, "");
 		magicBuffers.remove(buffer);
-		debug_println("removeMagic", buffer);
+		debug_println(null, "removeMagic", buffer);
 	}
 	
 	private void doMagic(DoubleFeature doubleFeature, Buffer buffer) {
@@ -866,7 +866,9 @@ public class BerichtsheftPlugin extends EditPlugin
 		BerichtsheftShell.print("Welcome...", NEWLINE);
 		String[] tools = {"AWK_COMMAND", "ADB_COMMAND", "SQLITE_COMMAND"};
 		for (int i = 0; i < tools.length; i++) {
+			debug_println(i, tools[i]);
 			String cmd = getCommand(tools[i]);
+			debug_println(i, cmd);
 			if (!fileExists(cmd)) {
 				if (nullOrEmpty(runShellScript("which", "which " + cmd)))
 					consoleMessage("berichtsheft.tool-missing.message", cmd);
@@ -880,8 +882,10 @@ public class BerichtsheftPlugin extends EditPlugin
 
 	public static String getCommand(String path) {
 		String cmd = getProperty(path); 
+		debug_println(path, cmd);
 		if (!cmd.startsWith(PATH_SEP) && cmd.contains(PATH_SEP)) {
 			String sdk = getProperty("ANDROID_SDK");
+			debug_println("ANDROID_SDK", sdk);
 			cmd = pathCombine(System.getProperty("user.home"), sdk, cmd);
 		}
 		return cmd;

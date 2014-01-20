@@ -284,7 +284,7 @@ public class SQLiteDatabase {
 				db.connection.loadExtension(extensionFile, "sqlite3_regexp_init");
 			}
 		} catch (com.almworks.sqlite4java.SQLiteException e) {
-			com.applang.Util2.debug_println("openDatabase", path);
+			com.applang.Util2.debug_println(null, "openDatabase", path);
 			Log.e(TAG, "openDatabase", e);
 			return null;
 		}
