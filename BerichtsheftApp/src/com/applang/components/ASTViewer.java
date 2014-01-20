@@ -489,7 +489,7 @@ public class ASTViewer extends ActionPanel
 	        	@Override
 	    		public void popupMenuWillBecomeVisible(PopupMenuEvent e) {
 	    			JPopupMenu popup = (JPopupMenu)e.getSource();
-	    			printContainer("popupMenuWillBecomeVisible", popup, object(null));
+	    			printContainer("popupMenuWillBecomeVisible", popup, _null());
 	    			ValMap map = map(popupEvent);
 					if (map != null) {
 						boolean enabled = isPossible(actionIdent, map);

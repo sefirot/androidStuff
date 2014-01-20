@@ -25,6 +25,8 @@ import javax.swing.UIManager;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
+import com.applang.Util.Constraint;
+
 import android.content.Context;
 import android.graphics.drawable.Drawable;
 import android.util.Log;
@@ -37,97 +39,86 @@ public class Resources
 {
 	private static final String TAG = Resources.class.getSimpleName();
 	
-	public static String getSettingsPath() {
-		return System.getProperty("settings.dir", "");
-	}
-	
-	public static String getAbsolutePath(String path, Object...params) {
-		String part = strip(true, path, PATH_SEP);
-		File file = fileOf(getSettingsPath(), part);
-		if (fileExists(file))
-			return file.getPath();
-		else
-			return absolutePathOf(path, END);
-	}
-	
-	public static String[] resourceTypes = 
-		{"array","attr","color","dimen","drawable","id","layout","menu","raw","string"};
-	public static String[] resourceLocations = 
-		{"res/values/strings.xml","attr",
-		"res/values/colors.xml",
-		"res/values/dimens.xml",				//	3
-		"res/drawable/","id",
-		"res/layout/","res/menu/",				//	6
-		"res/raw/",
-		"res/values/strings.xml"};				//	9
-	public static final Pattern XML_RESOURCE_PATTERN = 
-		Pattern.compile("@((([\\w]+\\.)*[\\w]+):)*(" + join("|", resourceTypes) + ")/([\\w]+)");
-	
-	public static String getRelativePath(int loc, String...parts) {
-		parts = arrayextend(parts, true, resourceLocations[loc]);
-		String path = fileOf(parts).getPath();
-		return PATH_SEP + strip(true, path, PATH_SEP);
-	}
-	
-	//	@[<package_name>:]<resource_type>/<resource_name>
-	public <T> T getXMLResourceItem(String resourceRefString) {
-		T value = null;
-		MatchResult m = findFirstIn(resourceRefString, XML_RESOURCE_PATTERN);
-		if (m != null) {
-//			String packageName = m.group(2);
-			String resourceName = m.group(5);
-			int resourceType = asList(resourceTypes).indexOf(m.group(4));
-			String path = Resources.getAbsolutePath(resourceLocations[resourceType], END);
-			switch (resourceType) {
-			case 3:
-				break;
-			}
-			return value;
-		}
-		return value;
-	}
-	
-	@SuppressWarnings("unchecked")
-	public <T> T getResourceByName(Document doc, final String name, int type) {
-		for (Element elem : iterateElements("*", doc, new Predicate<Element>() {
-			public boolean apply(Element el) {
-				return name.equals(el.getAttribute("name"));
-			}})) 
-		{
-			String value = elem.getTextContent();
-			switch (type) {
-			case 3:
-				return (T) toInt(0, stripUnits(value));
-			case 9:
-				return (T) value;
-			}
-		}
-		return null;
-	}
-	
-	public InputStream getInputStreamByName(Class<?> c, final String name, int type) throws Exception {
-		Set<URL> res = getResourceURLs(
-				new ResourceURLFilter() {
-					public boolean accept(URL resourceUrl) {
-						String url = resourceUrl.getFile();
-						return url.contains(name);
-					}
-				});
-		if (res.size() == 1) {
-			String path = res.iterator().next().getFile();
-			path = path.substring(path.indexOf(name));
-			return c.getResourceAsStream(path);
-		}
-		return null;
-	}
-	
-    //	NOTE	all further up do NOT correspond to an Android API
-	
 	private Context context;
 	
 	public Resources(Context context) {
 		this.context = context;
 	}
+	
+	public static String getSettingsPath() {
+		return System.getProperty("settings.dir", "");
+	}
+	
+	public static String getAbsolutePath(String part, Object...params) {
+		Constraint constraint = param(Constraint.END, 0, params);
+		part = strip(Constraint.START, part, PATH_SEP);
+		File file = fileOf(getSettingsPath(), part);
+		String path = findFirstFile(file.getParentFile(), constraint, file.getName());
+		if (notNullOrEmpty(path))
+			return path;
+		else
+			return absolutePathOf(part, constraint);
+	}
+	
+	public static String[] resourceTypes = 
+		{"array","attr","color","dimen","drawable","id","layout","menu","raw","string"};
+	public static final Pattern XML_RESOURCE_PATTERN = 
+		Pattern.compile("@([\\+]*)((([\\w]+\\.)*[\\w]+):)*(" + join("|", resourceTypes) + ")/([\\w\\.]+)");
+	public static String[] resourceLocations = 
+		{"res/values/strings.xml",	"attr",
+		"res/values/colors.xml",
+		"res/values/dimens.xml",				//	3
+		"res/drawable/",	"id",
+		"res/layout/",							//	6
+		"res/menu/",
+		"res/raw/",
+		"res/values/strings.xml"};				//	9
+	
+	public static String getRelativePath(int loc, String...parts) {
+		parts = arrayextend(parts, true, resourceLocations[loc]);
+		String path = fileOf(parts).getPath();
+		return PATH_SEP + strip(Constraint.START, path, PATH_SEP);
+	}
+	
+	//	@[<package_name>:]<resource_type>/<resource_name>
+	@SuppressWarnings("unchecked")
+	public <T> T getXMLResourceItem(String attribute) {
+		T value = null;
+		if (notNullOrEmpty(attribute)) {
+			MatchResult m = findFirstIn(attribute, XML_RESOURCE_PATTERN);
+			if (m != null) {
+				String pkg = m.group(3);
+				String name = m.group(6), path;
+				int type = asList(resourceTypes).indexOf(m.group(5));
+				switch (type) {
+				case 5:
+					value = (T) name;
+					break;
+				case 4:
+					if ("android".equals(pkg)) {
+						value = (T) getDrawable (-1, pkg, name);
+						if (value != null)
+							break;
+					}
+					path = fileOf(resourceLocations[type], name).getPath();
+					path = Resources.getAbsolutePath(path, Constraint.MIDDLE);
+					if (notNullOrEmpty(path))
+						value = (T) new Drawable().setImage(path);
+					break;
+				case 3:
+				case 9:
+					path = Resources.getAbsolutePath(resourceLocations[type], Constraint.END);
+					if (notNullOrEmpty(path))
+						value = getResourceByName(xmlDocument(new File(path)), name, type);
+					break;
+				}
+				return value;
+			}
+		}
+		return value;
+	}
+	
+    //	NOTE	all further up do NOT correspond to Android APIs
 	
 	public String getString(int id) {
 		switch (id) {
@@ -148,16 +139,9 @@ public class Resources
 					final String name = param_String(null,0,parms);
 					InputStream is = c.getResourceAsStream(getRelativePath(9));
 					Document doc = xmlDocument(null, is);
-					for (Element elem : iterateElements("*", doc, new Predicate<Element>() {
-						public boolean apply(Element el) {
-							return name.equals(el.getAttribute("name"));
-						}})) 
-					{
-						Object[] params = param(null,1,parms);
-						if (params != null)
-							params[0] = elem.getTextContent();
-						break;
-					}
+					Object[] params = param(null,1,parms);
+					if (params != null)
+						params[0] = getResourceByName(doc, name, 9);
 				}
 			}, params);
 			if (null != params[0])
@@ -174,16 +158,9 @@ public class Resources
 					final String name = param_String(null,0,parms);
 					InputStream is = c.getResourceAsStream(getRelativePath(3));
 					Document doc = xmlDocument(null, is);
-					for (Element elem : iterateElements("*", doc, new Predicate<Element>() {
-						public boolean apply(Element el) {
-							return name.equals(el.getAttribute("name"));
-						}})) 
-					{
-						Object[] params = param(null,1,parms);
-						if (params != null)
-							params[0] = toInt(0, stripUnits(elem.getTextContent()));
-						break;
-					}
+					Object[] params = param(null,1,parms);
+					if (params != null)
+						params[0] = getResourceByName(doc, name, 3);
 				}
 			}, params);
 			if (null != params[0])
@@ -191,32 +168,23 @@ public class Resources
 		}
 		return 0;
 	}
-	public Drawable getDrawable (int id) {
+	public Drawable getDrawable (int id, Object...params) {
+		String pkg = param(context.getPackageName(), 0, params);
 		switch (id) {
 		default:
-			Object[] params = {null};
-			lookup_R(id, context.getPackageName(), 4, new Job<Class<?>>() {
+			params = params.length < 1 ? objects(_null()): params;
+			params[0] = null;
+			lookup_R(id, pkg, 4, new Job<Class<?>>() {
 				public void perform(Class<?> c, Object[] parms) throws Exception {
 					final String name = getRelativePath(4, param_String(null,0,parms));
-					Set<URL> res = getResourceURLs(
-							new ResourceURLFilter() {
-								public boolean accept(URL resourceUrl) {
-									String url = resourceUrl.getFile();
-									return url.contains(name);
-								}
-							});
-					if (res.size() == 1) {
-						String path = res.iterator().next().getFile();
-						path = path.substring(path.indexOf(name));
-						InputStream is = c.getResourceAsStream(path);
-						Object[] params = param(null, 1, parms);
-						if (params != null)
-							params[0] = is;
-					}
+					InputStream is = getInputStreamByName(c, name, 4);
+					Object[] params = param(null, 1, parms);
+					if (params != null)
+						params[0] = is;
 				}
 			}, params);
 			if (null != params[0])
-				return new Drawable().setInputStream(params[0]);
+				return new Drawable().setImage((InputStream) params[0]);
 		}
 		return null;
 	}
@@ -227,24 +195,10 @@ public class Resources
 			lookup_R(id, context.getPackageName(), 8, new Job<Class<?>>() {
 				public void perform(Class<?> c, Object[] parms) throws Exception {
 					final String name = getRelativePath(8, param_String(null,0,parms));
-					Set<URL> res = getResourceURLs(
-							new ResourceURLFilter() {
-								public boolean accept(URL resourceUrl) {
-									String url = resourceUrl.getFile();
-									return url.contains(name);
-								}
-							});
-					if (res.size() == 1) {
-						URL url = res.iterator().next();
-						no_println("openRawResource", url);
-						String path = url.getFile();
-						no_println("openRawResource", path);
-						path = path.substring(path.indexOf(name));
-						InputStream is = c.getResourceAsStream(path);
-						Object[] params = param(null, 1, parms);
-						if (params != null)
-							params[0] = is;
-					}
+					InputStream is = getInputStreamByName(c, name, 8);
+					Object[] params = param(null, 1, parms);
+					if (params != null)
+						params[0] = is;
 				}
 			}, params);
 			if (null != params[0])
@@ -257,15 +211,17 @@ public class Resources
 		return new AssetManager();
 	}
 	
-    //	NOTE	all further down do NOT correspond to an Android API
+    //	NOTE	all further down do NOT correspond to Android APIs
 	
 	private boolean lookup_R(int id, String pkg, int resourceType, Job<Class<?>> lookup, Object...params) {
 		try {
 			Class<?> c = Class.forName(pkg + (notNullOrEmpty(pkg) ? ".R" : "R"));
 			for (Class<?> inner : c.getDeclaredClasses()) {
 				if (resourceTypes[resourceType].equals(inner.getSimpleName())) {
+					String name = param_String(null, 1, params);
 					for (Field field : inner.getDeclaredFields()) {
-						if ("int".equals(field.getType().getSimpleName()) && field.getInt(null) == id) {
+						if ("int".equals(field.getType().getSimpleName()) && field.getInt(null) == id ||
+								field.getName().equals(name)) {
 							if (lookup != null)
 								lookup.perform(c, objects(field.getName(), params));
 							return true;
@@ -277,6 +233,40 @@ public class Resources
 			Log.e(TAG, "lookup_R", e);
 		}
 		return false;
+	}
+	
+	@SuppressWarnings("unchecked")
+	public <T> T getResourceByName(Document doc, final String name, int type) {
+		for (Element elem : iterateElements("*", doc, new Predicate<Element>() {
+			public boolean apply(Element el) {
+				return name.equals(el.getAttribute("name"));
+			}})) 
+		{
+			String value = elem.getTextContent();
+			switch (type) {
+			case 3:
+				return (T) toInt(0, stripUnits(value));
+			case 9:
+				return (T) value;
+			}
+		}
+		return null;
+	}
+	
+	public InputStream getInputStreamByName(Class<?> c, final String name, int type) {
+		Set<URL> res = getResourceURLs(
+				new ResourceURLFilter() {
+					public boolean accept(URL resourceUrl) {
+						String url = resourceUrl.getFile();
+						return url.contains(name);
+					}
+				});
+		if (res.size() == 1) {
+			String path = res.iterator().next().getFile();
+			path = path.substring(path.indexOf(name));
+			return c.getResourceAsStream(path);
+		}
+		return null;
 	}
 
 	public interface ResourceURLFilter {
@@ -317,15 +307,19 @@ public class Resources
 		}
 	}
 
-	public static Set<URL> getResourceURLs() throws IOException, URISyntaxException {
+	public static Set<URL> getResourceURLs() {
 		return getResourceURLs((ResourceURLFilter)null);
 	}
 	
-	public static Set<URL> getResourceURLs(ResourceURLFilter filter) throws IOException, URISyntaxException {
+	public static Set<URL> getResourceURLs(ResourceURLFilter filter) {
 		Set<URL> collectedURLs = new HashSet<URL>();
-		URLClassLoader ucl = (URLClassLoader)ClassLoader.getSystemClassLoader();
-		for (URL url: ucl.getURLs()) {
-			iterateEntry(new File(url.toURI()), filter, collectedURLs);
+		try {
+			URLClassLoader ucl = (URLClassLoader)ClassLoader.getSystemClassLoader();
+			for (URL url: ucl.getURLs()) {
+				iterateEntry(new File(url.toURI()), filter, collectedURLs);
+			}
+		} catch (Exception e) {
+			Log.e(TAG, "getResourceURLs", e);
 		}
 		return collectedURLs;
 	}
@@ -355,7 +349,7 @@ public class Resources
 	}
 	
 	public static String className(String resourceClassFileName, String sourceLocation) {
-		return strip(true, resourceClassFileName.substring(sourceLocation.length()), "!/").replace('/', '.');
+		return strip(Constraint.START, resourceClassFileName.substring(sourceLocation.length()), "!/").replace('/', '.');
 	}
 	
 	public static void list(Writer writer, String packageName, ResourceURLFilter filter) {

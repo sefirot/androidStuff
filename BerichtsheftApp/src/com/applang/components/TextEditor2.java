@@ -38,6 +38,7 @@ import org.gjt.sp.jedit.textarea.TextArea;
 
 import android.util.Log;
 
+import com.applang.Util.Constraint;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 import com.inet.jortho.SpellChecker;
 
@@ -61,12 +62,12 @@ public class TextEditor2 extends DoubleFeature implements ITextComponent
 	}
 
 	private void setTextEditor(TextEditor textEditor) {
-		textEditor.setName(FOCUS);
+		addNamePart(textEditor, FOCUS);
 		setWidget(new JScrollPane(textEditor));
 	}
 
 	public TextEditor getTextEditor() {
-		return findFirstComponent(getWidget(), FOCUS);
+		return findFirstComponent(getWidget(), FOCUS, Constraint.AMONG);
 	}
 	
 	private View view = null;
@@ -148,7 +149,7 @@ public class TextEditor2 extends DoubleFeature implements ITextComponent
 		}
 		Dimension size = textArea.getPreferredSize();
 		textArea.setPreferredSize(new Dimension(size.width, size.height / 2));
-		textArea.setName(FOCUS);
+		addNamePart(textArea, FOCUS);
 		setTextArea(textArea);
 		getTextEditor().updateUI();
 		return this;
@@ -431,7 +432,7 @@ public class TextEditor2 extends DoubleFeature implements ITextComponent
 				println("mouseClicked", identity(e.getSource()));
 			}
 		});
-		printContainer("textArea", textArea, object(null));
+		printContainer("textArea", textArea, _null());
 		frame.getContentPane().add(textArea);
 		frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 		frame.pack();

@@ -32,7 +32,7 @@ public class Toast {
     }
     
     public void setView(View view) {
-    	mComponent = view.getComponent();
+    	mComponent = (JComponent) view.getComponent();
     }
 
     public static Toast makeText(Context context, CharSequence text, int duration) {

@@ -278,7 +278,7 @@ public class DataManager extends ActionPanel
 		JTable table = dataView.getTable();
 		table.getTableHeader().setName(DoubleFeature.REQUEST);
 		table.setFillsViewportHeight(true);
-		table.setName(DoubleFeature.FOCUS);
+		addNamePart(table, DoubleFeature.FOCUS);
 		dataView.showSqlBox(false);
 	}
 	
@@ -303,7 +303,7 @@ public class DataManager extends ActionPanel
 					boolean standardLayout = nullOrEmpty(layout);
 					if (standardLayout) 
 						layout = "linearlayout.xml";
-					LayoutBuilder layoutBuilder = new LayoutBuilder(context, layout);
+					FormBuilder formBuilder = new FormBuilder(context, layout);
 					ProjectionModel projectionModel = dataView.getDataConfiguration().getProjectionModel();
 					if (standardLayout && projectionModel != null) {
 						BidiMultiMap projection = projectionModel.getProjection();
@@ -311,16 +311,16 @@ public class DataManager extends ActionPanel
 							String type = stringValueOf(projection.getValue(name, 2));
 							switch (fieldTypeAffinity(type)) {
 							case Cursor.FIELD_TYPE_STRING:
-								layoutBuilder.addStringField(name);
+								formBuilder.addStringField(name);
 								break;
 							case Cursor.FIELD_TYPE_INTEGER:
-								layoutBuilder.addIntegerField(name);
+								formBuilder.addIntegerField(name);
 								break;
 							case Cursor.FIELD_TYPE_FLOAT:
-								layoutBuilder.addFloatField(name);
+								formBuilder.addFloatField(name);
 								break;
 							case Cursor.FIELD_TYPE_BLOB:
-								layoutBuilder.addBlobField(name);
+								formBuilder.addBlobField(name);
 								break;
 							default:
 								Log.w(TAG, String.format("type of field '%s' not identified : %s", name, type));
@@ -328,7 +328,7 @@ public class DataManager extends ActionPanel
 							}
 						}
 					}
-					panel = (JPanel) layoutBuilder.build().getComponent();
+					panel = (JPanel) formBuilder.build().getComponent();
 					printContainer("panel", panel, true);
 				}
 				return panel;
@@ -374,7 +374,7 @@ public class DataManager extends ActionPanel
 
 	private Job<Boolean> viewToggler = new Job<Boolean>() {
 		public void perform(Boolean tableLayout, Object[] parms) throws Exception {
-			Object[] params = objects((Object)null);
+			Object[] params = objects(_null());
 			if (tableLayout) {
 				installTools(true);
 				params[0] = tableView();
@@ -392,7 +392,7 @@ public class DataManager extends ActionPanel
 					}
 				}, 
 				params);
-			printContainer(String.format("panes[%d]", index), panes[index], object(null));
+			printContainer(String.format("panes[%d]", index), panes[index], _null());
 			if (!tableLayout && getTextComponent() != null)
 				try {
 					scriptToggler.perform(_script() == TEXT, objects());
@@ -922,13 +922,14 @@ public class DataManager extends ActionPanel
 			});
 	}
 
+	public static Dimension viewportSize = new Dimension(600,200);
+	
 	public static void manage(Properties props) {
     	final DataManager dm = new DataManager(null, props, "DataManager", null);
 		dm.installConstellation(props.getProperty("constellation"));
 		showFrame(null, dm.getName(), 
 			new UIFunction() {
 				public Component[] apply(final Component comp, Object[] parms) {
-					Dimension viewportSize = new Dimension(600,200);
 					dm.tableView().setPreferredSize(viewportSize);
 					dm.formView().setPreferredSize(viewportSize);
 					JSplitPane splitPane = splitPane(JSplitPane.VERTICAL_SPLIT, null);

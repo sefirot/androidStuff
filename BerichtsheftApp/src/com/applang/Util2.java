@@ -3,6 +3,7 @@ package com.applang;
 import java.awt.Container;
 import java.awt.Graphics2D;
 import java.awt.Image;
+import java.awt.LayoutManager;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.beans.XMLDecoder;
@@ -48,6 +49,8 @@ import java.util.Set;
 import java.util.regex.MatchResult;
 import java.util.regex.Pattern;
 
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.SwingWorker;
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Result;
@@ -72,6 +75,8 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+import com.applang.Util.Constraint;
+
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
@@ -84,6 +89,8 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewGroup.LayoutParams;
+import android.view.ViewGroup.MarginLayoutParams;
 
 import static com.applang.Util.*;
 import static com.applang.Util1.*;
@@ -105,29 +112,16 @@ public class Util2
 			return new File(base).toURI().relativize(new File(path).toURI()).getPath();
 	}
 	
-	public static final int START = 1, MIDDLE = 0, END = -1;
-	
-	public static String absolutePathOf(final String part, final int inStartMiddleOrEnd) {
-		try {
-			Set<URL> res = Resources.getResourceURLs(
+	public static String absolutePathOf(final String part, final Constraint constraint) {
+		Set<URL> res = Resources.getResourceURLs(
 				new ResourceURLFilter() {
 					public boolean accept(URL resourceUrl) {
 						String url = resourceUrl.getFile();
-						switch (inStartMiddleOrEnd) {
-						case START:
-							return url.startsWith(part);
-						case END:
-							return url.endsWith(part);
-						default:
-							return url.contains(part);
-						}
+						return check(url, constraint, part);
 					}
 				});
-			if (res.size() > 0)
-				return res.iterator().next().getFile();
-		} catch (Exception e) {
-			Log.e(TAG, "absolutePathOf", e);
-		}
+		if (res.size() > 0)
+			return res.iterator().next().getFile();
 		return null;
 	}
 	
@@ -152,12 +146,9 @@ public class Util2
 			if (nullOrEmpty(dir))
 				dir = relativePath();
 			no_println("settings.default.dir", dir);
-			File[] array = new File(dir).listFiles();
-	    	for (File file : array) {
-	    		String path = file.getPath();
-				if (file.isFile() && path.endsWith(".properties"))
-	    			return path;
-	    	}
+			String path = findFirstFile(new File(dir), Constraint.END, ".properties");
+			if (notNullOrEmpty(path))
+				return path;
 	    	String[] parts = dir.split("\\\\|/");
 	    	return pathCombine(dir, parts[parts.length - 1] + ".properties");
 		}
@@ -534,7 +525,7 @@ public class Util2
 	public static void no_println(Object...params) {}
 
 	public static void printMatchResults(String string, Pattern pattern, Object...params) {
-		Boolean debug = param_Boolean(false, 0, params);
+		Boolean debug = param_Boolean(null, 0, params);
 		if (debug == null)
 			return;
 		MatchResult[] mr = findAllIn(string, pattern);
@@ -1160,10 +1151,14 @@ public class Util2
 
 	public static class LayoutBuilder
 	{
-		private Context mContext;
-		private ViewGroup viewGroup;
-		private LayoutInflater inflater = null;
+		protected Context mContext;
+		protected LayoutInflater inflater = null;
+		protected ViewGroup viewGroup;
 		
+		public ViewGroup getViewGroup() {
+			return viewGroup;
+		}
+
 		public LayoutBuilder(Context context, String name) {
 			mContext = context;
 			viewGroup = new ViewGroup(mContext);
@@ -1180,6 +1175,26 @@ public class Util2
 				View view = viewGroup.getChildAt(i);
 				if (view instanceof ViewGroup)
 					build(view);
+				LayoutParams parms = view.getLayoutParams();
+				if (parms instanceof MarginLayoutParams) {
+					MarginLayoutParams margs = (MarginLayoutParams) parms;
+					LayoutManager layout = container.getLayout();
+					if (layout instanceof BoxLayout) {
+						BoxLayout boxLayout = (BoxLayout) layout;
+						int axis = boxLayout.getAxis();
+						Box outerBox = new Box(axis);
+						outerBox.add(margs.strutsOuterFirst(axis));
+						Box innerBox = axis == BoxLayout.X_AXIS ? 
+								Box.createVerticalBox() : 
+								Box.createHorizontalBox();
+						innerBox.add(margs.strutsInnerFirst(axis));
+						innerBox.add(view.getComponent());
+						innerBox.add(margs.strutsInnerLast(axis));
+						outerBox.add(innerBox);
+						outerBox.add(margs.strutsOuterLast(axis));
+						view.setComponent(outerBox);
+					}
+				}
 				container.add(view.getComponent());
 			}
 			return viewGroup;
@@ -1187,22 +1202,6 @@ public class Util2
 	
 	    public void addView(View view, ViewGroup.LayoutParams params) {
 	    	viewGroup.addView(view, params);
-		}
-	    
-	    public void addStringField(Object name) {
-			inflater.inflate(Resources.getRelativePath(6, "field_string.xml"), viewGroup);
-		}
-	
-		public void addIntegerField(Object name) {
-			inflater.inflate(Resources.getRelativePath(6, "field_integer.xml"), viewGroup);
-		}
-	
-		public void addFloatField(Object name) {
-			inflater.inflate(Resources.getRelativePath(6, "field_float.xml"), viewGroup);
-		}
-	
-		public void addBlobField(Object name) {
-			inflater.inflate(Resources.getRelativePath(6, "field_blob.xml"), viewGroup);
 		}
 	}
 
@@ -1260,11 +1259,11 @@ public class Util2
 	public static Class[] getLocalClasses(final String packageName, Object...params) throws Exception {
 		URI codeSourceLocation = Resources.getCodeSourceLocation(Resources.class);
 		final String location = 
-				strip(true, codeSourceLocation.toString(), "file:");
+				strip(Constraint.START, codeSourceLocation.toString(), "file:");
 	   	ValList list = vlist();
 	    for (URL url: Resources.getResourceURLs(packageName, new ResourceURLFilter() {
 			public boolean accept(URL resourceUrl) {
-				String fileName = strip(true, resourceUrl.getFile(), "file:");
+				String fileName = strip(Constraint.START, resourceUrl.getFile(), "file:");
 				if (fileName.endsWith(".class") && fileName.startsWith(location)) {
 					fileName = Resources.className(fileName, location);
 					return fileName.startsWith(packageName);
@@ -1272,9 +1271,9 @@ public class Util2
 				return false;
 			}})) 
 	    {
-	        String fileName = Resources.className(strip(true, url.getFile(), "file:"), location);
+	        String fileName = Resources.className(strip(Constraint.START, url.getFile(), "file:"), location);
 	        if (!fileName.contains("$"))
-	        	list.add(Class.forName(strip(false, fileName, ".class")));
+	        	list.add(Class.forName(strip(Constraint.END, fileName, ".class")));
 	    }
         return arraycast(list.toArray(), new Class[0]);
 	}

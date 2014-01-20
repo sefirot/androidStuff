@@ -221,12 +221,12 @@ public class ProfileManager extends ManagerBase<Element>
 		comboBoxes[3] = new JComboBox(BerichtsheftOptionPane.separators.keySet().toArray());
 		box.add(Box.createHorizontalGlue());
 		String labelText = BerichtsheftPlugin.getOptionProperty("record-separator.title");
-		box.add(new JLabel( strip(false, labelText, ":") ));
+		box.add(new JLabel( strip(Constraint.END, labelText, ":") ));
 		box.add(comboBoxes[3]);
 		box.add(Box.createHorizontalGlue());
 		comboBoxes[4] = new JComboBox(BerichtsheftOptionPane.decorations.keySet().toArray());
 		labelText = BerichtsheftPlugin.getOptionProperty("record-decoration.title");
-		box.add(new JLabel( strip(false, labelText, ":") ));
+		box.add(new JLabel( strip(Constraint.END, labelText, ":") ));
 		box.add(comboBoxes[4]);
 		box.add(Box.createHorizontalGlue());
 		container.add(box);

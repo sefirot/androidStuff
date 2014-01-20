@@ -24,8 +24,7 @@ public class RelativeLayout extends ViewGroup {
 	}
 	
 	public void setLayoutParams(ViewGroup.LayoutParams layoutParams) {
-		// TODO Auto-generated method stub
-		
+		super.setLayoutParams(layoutParams);
 	}
     
 	@Override

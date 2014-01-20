@@ -151,7 +151,7 @@ rm $0
 	</target>
 
 	<property name="test" value="HelperTests" />
-	<property name="tests" value="testResources" />
+	<property name="tests" value="testShellRun" />
 	
 	<target name="ensure-test-name" unless="test">
 	    <fail message="You must run this target with -Dtest=TestName"/>

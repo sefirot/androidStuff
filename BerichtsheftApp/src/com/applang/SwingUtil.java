@@ -112,6 +112,9 @@ import javax.swing.table.TableColumn;
 import javax.swing.table.TableColumnModel;
 import javax.swing.text.JTextComponent;
 
+import com.applang.Util.Constraint;
+import com.applang.Util.ValList;
+
 import android.util.Log;
 
 import static com.applang.Util.*;
@@ -159,6 +162,15 @@ public class SwingUtil
 		});
 	}
 
+	public static <C extends Component> C findFirstComponent(Container container, final String part, final Constraint constraint) {
+		return findFirstComponent(container, new Predicate<Component>() {
+			public boolean apply(Component c) {
+				String name = c.getName();
+				return name != null && check(name, constraint, part);
+			}
+		});
+	}
+
 	@SuppressWarnings("unchecked")
 	public static <C extends Component> C findFirstComponent(Container container, Predicate<Component> predicate) {
 		Component[] comps = findComponents(container, predicate);
@@ -188,6 +200,14 @@ public class SwingUtil
 				break;
 		}
 		return component;
+	}
+
+	public static void addNamePart(Component component, String part) {
+		component.setName(addPart(component.getName(), part));
+	}
+
+	public static void removeNamePart(Component component, String part) {
+		component.setName(removePart(component.getName(), part));
 	}
 
 	public static boolean containsComponent(Container container, final Component component) {
@@ -1596,7 +1616,7 @@ public class SwingUtil
 	}
 	
 	public static void printContainer(String message, Container container, Object...params) {
-		Boolean debug = param_Boolean(false, 0, params);
+		Boolean debug = param_Boolean(null, 0, params);
 		if (debug == null)
 			return;
 		StringBuilder sb = new StringBuilder();
@@ -1612,10 +1632,12 @@ public class SwingUtil
 				String indentString = "";
 				for (int i = 0; i < indent; i++) 
 					indentString += "    ";
-				sb.append(String.format("%s%s%s\n", 
+				String size = comp.getSize().toString();
+				sb.append(String.format("%s%s%s\tsize%s\n", 
 						indentString, 
 						comp.getName() == null ? "" : comp.getName() + " : ", 
-						comp.getClass()));
+						comp.getClass(),
+						size.substring(size.indexOf("["))));
 				return ++indent;
 			}
 		}, indent);
@@ -1861,7 +1883,7 @@ public class SwingUtil
 	
 		@Override
 		public String toString() {
-			Writer writer = write(new StringWriter(), "[");
+			Writer writer = write(null, "[");
 			writer = write_assoc(writer, "name", this.name);
 			writer = write_assoc(writer, "capacity", this.capacity, 1);
 			writer = write_assoc(writer, "deque", this.deque, 1);
@@ -1944,7 +1966,7 @@ public class SwingUtil
 				titlePosition
 			)
 		);
-		box.setLayout(new BoxLayout(box, BoxLayout.Y_AXIS) );
+		box.setLayout(new BoxLayout(box, BoxLayout.Y_AXIS));
 		box.add( contents );
 		box.add( Box.createVerticalStrut(10) );
 		return box;

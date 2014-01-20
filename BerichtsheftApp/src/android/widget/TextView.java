@@ -4,11 +4,12 @@ import static com.applang.Util.*;
 import static com.applang.SwingUtil.*;
 
 import java.awt.Color;
-import java.awt.Container;
 
 import javax.swing.JComponent;
+import javax.swing.JLabel;
 import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.text.JTextComponent;
 
 import android.content.Context;
 import android.text.method.MovementMethod;
@@ -18,49 +19,49 @@ import android.view.View;
 public class TextView extends View
 {
     public TextView(Context context, Object...params) {
-		super(context);
-		JTextArea textArea = new JTextArea();
-		textArea.setName("textArea");
-		setComponent(textArea);
-		if (param_Boolean(false, 0, params))
-			setMovementMethod(new ScrollingMovementMethod());
-		setId(0);
-		getTextArea().setEditable(false);
+		super(context, params);
+    }
+
+    protected void create(Object... params) {
+    	super.create(params);
+		JLabel label = new JLabel();
+		setComponent(label);
+	}
+    
+    public JComponent getTextComponent() {
+    	JComponent component = (JComponent) getComponent();
+		if (component instanceof JScrollPane)
+			return (JComponent) findFirstComponent(component, name, Constraint.AMONG);
+		else
+			return component;
     }
     
-    public JTextArea getTextArea() {
-		Container component = getComponent();
-		if (component instanceof JScrollPane)
-			return (JTextArea) findFirstComponent(component, "textArea");
-		else
-			return (JTextArea) component;
+    public JLabel getLabel() {
+    	return (JLabel) getTextComponent();
     }
 
 	public void setMovementMethod(MovementMethod movementMethod) {
 		if (movementMethod instanceof ScrollingMovementMethod) {
-			JComponent component = getComponent();
-			if (!(component instanceof JScrollPane)) {
+			JComponent component = (JComponent) getComponent();
+			if (component instanceof JTextComponent && !(component instanceof JTextField)) {
 				setComponent(new JScrollPane(component));
 			}
 		}
 	}
-
-	public void setHorizontallyScrolling(boolean whether) {
-		JTextArea textArea = getTextArea();
-		textArea.setLineWrap(!whether);
-		textArea.setWrapStyleWord(!whether);
-	}
 	
 	public void setText(String text) {
-		getTextArea().setText(text);
+    	if (inputType.equals("textMultiLine")) {
+    		text = enclose("<html>", text.replaceAll(NEWLINE_REGEX, "<br>"), "</html>");
+    	}
+		getLabel().setText(text);
 	}
 
 	public String getText() {
-		return getTextArea().getText();
+		return getLabel().getText();
 	}
 	
 	public void append (CharSequence text) {
-		String t = getTextArea().getText();
+		String t = getLabel().getText();
 		setText(t + text.toString());
 	}
 	

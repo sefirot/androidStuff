@@ -1,13 +1,14 @@
 package android.content.res;
 
+import java.io.File;
 import java.io.InputStream;
 
-import static com.applang.Util2.*;
+import static com.applang.Util.*;
 
 public class AssetManager
 {
 	public InputStream open (String fileName) {
-		String path = pathCombine("/assets", fileName);
-		return getClass().getResourceAsStream( path );
+		File file = fileOf("/assets", fileName);
+		return getClass().getResourceAsStream( file.getPath() );
 	}
 }

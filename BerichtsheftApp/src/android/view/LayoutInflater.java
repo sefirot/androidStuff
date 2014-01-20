@@ -13,6 +13,7 @@ import android.util.Log;
 import android.view.ViewGroup.LayoutParams;
 import android.view.ViewGroup.MarginLayoutParams;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
@@ -47,23 +48,24 @@ public class LayoutInflater
      *         this is the root View; otherwise it is the root of the inflated
      *         XML file.
      */
-    public View inflate(String resourcePath, ViewGroup root) {
+    public View inflate(String resourcePath, ViewGroup root, Object...params) {
     	View vw = null;
     	ViewGroup vg = root == null ? new ViewGroup(mContext) : root;
     	File resourceFile = new File(Resources.getSettingsPath(), resourcePath);
 		if (fileExists(resourceFile)) {
 			Document document = xmlDocument(resourceFile);
-			vw = inflate(vg, document.getDocumentElement());
+			vw = inflate(vg, document.getDocumentElement(), params);
 		}
         return vw;
     }
 
-	public View inflate(ViewGroup vg, Element element) {
+	public View inflate(ViewGroup vg, Element element, Object...params) {
     	View vw = null;
 		try {
 			Class<?> layoutClass = Class.forName("android.widget.".concat(element.getNodeName()));
-			int width = LayoutParams.value(element.getAttribute("android:layout_width"));
-			int height = LayoutParams.value(element.getAttribute("android:layout_height"));
+			Object id = mContext.getResources().getXMLResourceItem(element.getAttribute("android:id"));
+			int width = LayoutParams.value(mContext, element.getAttribute("android:layout_width"));
+			int height = LayoutParams.value(mContext, element.getAttribute("android:layout_height"));
 			if (LinearLayout.class.equals(layoutClass)) {
 				vw = linearLayout(mContext, 
 						"vertical".equals(element.getAttribute("android:orientation")) ? 
@@ -74,16 +76,23 @@ public class LayoutInflater
 				vw = relativeLayout(mContext,  width, height);
 			}
 			else {
+				String inputType = element.getAttribute("android:inputType");
+				Object defaultValue = element.getAttribute("android:text");
 				int left = MarginLayoutParams.value(mContext, element.getAttribute("android:layout_marginLeft"));
 				int top = MarginLayoutParams.value(mContext, element.getAttribute("android:layout_marginTop"));
 				int right = MarginLayoutParams.value(mContext, element.getAttribute("android:layout_marginRight"));
 				int bottom = MarginLayoutParams.value(mContext, element.getAttribute("android:layout_marginBottom"));
 				if (TextView.class.equals(layoutClass)) {
-					vw = new TextView(mContext);
+					vw = new TextView(mContext, id, inputType, defaultValue);
 					vw.setLayoutParams(marginLayoutParams(width, height, left, top, right, bottom));
 				}
 				else if (EditText.class.equals(layoutClass)) {
-					vw = new EditText(mContext);
+					vw = new EditText(mContext, id, inputType, defaultValue);
+					vw.setLayoutParams(marginLayoutParams(width, height, left, top, right, bottom));
+				}
+				else if (ImageView.class.equals(layoutClass)) {
+					defaultValue = mContext.getResources().getXMLResourceItem(element.getAttribute("android:src"));
+					vw = new ImageView(mContext, id, inputType, defaultValue);
 					vw.setLayoutParams(marginLayoutParams(width, height, left, top, right, bottom));
 				}
 			}
@@ -93,10 +102,11 @@ public class LayoutInflater
 					for (int i = 0; i < nodes.getLength(); i++) {
 						Node node = nodes.item(i);
 						if (node.getNodeType() == Node.ELEMENT_NODE)
-							inflate((ViewGroup)vw, (Element)node);
+							inflate((ViewGroup)vw, (Element)node, params);
 					}
 				}
-				vg.addView(vw, vw.getLayoutParams());
+				LayoutParams layoutParams = vw.getLayoutParams();
+				vg.addView(vw, layoutParams);
 			}
 		} 
 		catch (Exception e) {

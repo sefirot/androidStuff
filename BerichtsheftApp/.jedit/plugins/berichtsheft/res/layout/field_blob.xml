@@ -5,7 +5,7 @@
     android:orientation="horizontal" >
 
     <TextView
-        android:id="@+id/textView1"
+        android:id="@+id/textView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="@dimen/margin_half"
@@ -13,13 +13,14 @@
         android:layout_marginRight="@dimen/margin_half"
         android:layout_marginTop="@dimen/margin_half" />
 
-    <EditText
-        android:id="@+id/editText1"
+    <ImageView
+        android:id="@+id/imageView"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="@dimen/margin_half"
         android:layout_marginLeft="@dimen/margin_half"
         android:layout_marginRight="@dimen/margin"
-        android:layout_marginTop="@dimen/margin_half" />
+        android:layout_marginTop="@dimen/margin_half"
+        android:src="@drawable/spiraling" />
 
 </LinearLayout>

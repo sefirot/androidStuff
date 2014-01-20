@@ -1,7 +1,6 @@
 package android.widget;
 
 import java.awt.Container;
-import java.awt.LayoutManager;
 
 import javax.swing.BoxLayout;
 
@@ -27,8 +26,7 @@ public class LinearLayout extends ViewGroup {
 	}
 	
 	public void setLayoutParams(ViewGroup.LayoutParams layoutParams) {
-		// TODO Auto-generated method stub
-		
+		super.setLayoutParams(layoutParams);
 	}
 	
 	public static final int HORIZONTAL = 0;
@@ -39,6 +37,7 @@ public class LinearLayout extends ViewGroup {
 	public int getOrientation() {
 		return orientation;
 	}
+	
 	public void setOrientation(int orientation) {
 		this.orientation = orientation;
 	}
@@ -46,9 +45,10 @@ public class LinearLayout extends ViewGroup {
 	@Override
     public Container getContainer() {
 		Container container = super.getContainer();
-		LayoutManager mgr = 
-				new BoxLayout(container, orientation == HORIZONTAL ? BoxLayout.X_AXIS : BoxLayout.Y_AXIS);
-		container.setLayout(mgr);
-    	return container;
+		container.setLayout(
+			new BoxLayout(container, orientation == HORIZONTAL ? 
+					BoxLayout.X_AXIS : 
+					BoxLayout.Y_AXIS));
+		return container;
     }
 }

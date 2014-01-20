@@ -12,7 +12,6 @@ import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
-import java.io.StringWriter;
 import java.io.Writer;
 import java.util.List;
 import java.util.regex.MatchResult;
@@ -34,6 +33,7 @@ import javax.swing.event.AncestorListener;
 import org.apache.commons.lang.StringUtils;
 import org.gjt.sp.jedit.View;
 
+import com.applang.Util.ValList;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 
@@ -110,7 +110,7 @@ public class AndroidBridge
 			@Override
 			public void add(Component comp, Object constraints) {
 				GridBagConstraints gbc = (GridBagConstraints) constraints;
-				Writer writer = write(new StringWriter(), "[");
+				Writer writer = write(null, "[");
 				writer = write_assoc(writer, "gridx", gbc.gridx);
 				writer = write_assoc(writer, "gridy", gbc.gridy, 1);
 				writer = write_assoc(writer, "gridwidth", gbc.gridwidth, 1);
@@ -287,20 +287,18 @@ public class AndroidBridge
 	}
 
 	public static ValList splitAndroidFileName(String androidFileName) {
-		return split(androidFileName, "\\|");
+		ValList parts = split(androidFileName, GLUE_REGEX, 2);
+		if (parts.size() < 2)
+			parts.add(0, "");
+		return parts;
 	}
 
 	public static String joinAndroidFileName(Object...parts) {
-		return strip(false, join("|", parts), "|");
+		return strip(Constraint.END, join(GLUE, parts), GLUE);
 	}
 
 	public static String getAdbCommand() {
-		String cmd = BerichtsheftPlugin.getProperty("ADB_COMMAND"); 
-		if (!cmd.startsWith("/")) {
-			String sdk = BerichtsheftPlugin.getProperty("ANDROID_SDK");
-			cmd = pathCombine(System.getProperty("user.home"), sdk, cmd);
-		}
-		return cmd;
+		return BerichtsheftPlugin.getCommand("ADB_COMMAND");
 	}
 
 	public static String adbScript(String device, String part) {
@@ -331,23 +329,24 @@ public class AndroidBridge
 			oper = "shell rm -r";
 		else if (!oper.startsWith("pu")) 
 			oper = "version";
-		Object device = "";
+		Object device = null;
 		ValList parts = splitAndroidFileName(androidFileName);
 		if (parts.size() > 1) {
 			device = parts.get(0);
 			parts.set(0, oper);
 		}
 		else {
-			parts.add(0, oper);
+			parts.sizeAtLeast(2);
+			parts.set(0, oper);
 		}
-		parts.set(1, enclose("\"", parts.get(1).toString()));
+		parts.set(1, enclose("\"", stringValueOf(parts.get(1))));
 		fileName = enclose("\"", fileName);
 		if ("push".equals(oper))
 			parts.add(1, fileName);
 		else if ("pull".equals(oper))
 			parts.add(2, fileName);
 		String cmd = join(" ", parts.toArray());
-		return adbScript(device.toString(), cmd);
+		return adbScript(stringValueOf(device), cmd);
 	}
 
 	public static String awkCommand(String part) {

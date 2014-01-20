@@ -1354,7 +1354,7 @@ public class MiscTests extends XMLTestCase
 		ps.setLong(1, interval[0]);
 		ps.setLong(2, interval[1] - 1);
 		ps.setString(3, wm.location);
-		BidiMultiMap bidi = getResultMultiMap(ps, (Object) null);
+		BidiMultiMap bidi = getResultMultiMap(ps, _null());
 		ValList list = bidi.getKeys();
 		boolean retval = list.size() > 0 && 
 				Long.compare((Long) list.get(0), interval[0]) >= 0 && 

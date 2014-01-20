@@ -2,6 +2,7 @@ package com.applang.berichtsheft.test;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
+import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
@@ -30,8 +31,6 @@ import java.util.Scanner;
 import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.TreeSet;
-import java.util.regex.MatchResult;
-import java.util.regex.Pattern;
  
 import javax.swing.AbstractAction;
 import javax.swing.Box;
@@ -83,6 +82,7 @@ import android.content.DialogInterface.OnClickListener;
 import android.content.res.Resources;
 import android.net.Uri;
 import android.provider.BaseColumns;
+import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -93,7 +93,6 @@ import com.applang.BaseDirective;
 import com.applang.Dialogs;
 import com.applang.PromptDirective;
 import com.applang.UserContext.EvaluationTask;
-import com.applang.Util2.LayoutBuilder;
 import com.applang.berichtsheft.BerichtsheftActivity;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.R;
@@ -103,10 +102,12 @@ import com.applang.berichtsheft.plugin.JEditOptionDialog;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 import com.applang.components.AndroidBridge;
 import com.applang.components.DataConfiguration;
+import com.applang.components.DataManager;
 import com.applang.components.DataView;
 import com.applang.components.DataView.DataModel;
 import com.applang.components.DataView.ProjectionModel;
 import com.applang.components.DatePicker;
+import com.applang.components.FormBuilder;
 import com.applang.components.ProfileManager;
 import com.applang.components.DataAdapter;
 import com.applang.components.ScriptManager;
@@ -150,8 +151,6 @@ public class HelperTests extends TestCase
 		}
 	}
 	
-	File keinFehlerFile = new File(new BerichtsheftActivity().getDataDirectory(), "../../assets/Kein Fehler im System.txt");
-
 	private void setupJEdit(String script, Object...params) throws Throwable {
 		File tempFile = BerichtsheftPlugin.getTempFile("test.bsh");
 		contentsToFile(tempFile, 
@@ -264,21 +263,23 @@ public class HelperTests extends TestCase
 		scriptTest("testSpellchecking", script);
    }
 
-	private ValList shellRunTest(String script, String target) throws Exception {
-		println(script.replaceAll(NEWLINE_REGEX, TAB));
-		String response = runShellScript(target, script);
-		String sh = "/tmp/" + target + ".sh";
-		String res = "/tmp/" + target;
-		print(sh, TAB);
-		print(getFileSize(sh), TAB);
-		print(res, TAB);
-		print(getFileSize(res));
-		println();
-		for (int i = 0; i < 3; i++) {
-			print(getFileTime(sh, i), TAB);
-			print(getFileTime(res, i));
-			println();
-		}
+	private ValList shellRunTest(String script, String name) throws Exception {
+		String response = runShellScript(name, script);
+		println("script", flatten(script));
+		String sh = "/tmp/" + name + ".sh";
+		println(sh, flatten(contentsFromFile(new File(sh))));
+		String resp = "/tmp/" + name;
+		println(resp, flatten(contentsFromFile(new File(resp))));
+//		print(sh, TAB);
+//		print(getFileSize(sh), TAB);
+//		print(res, TAB);
+//		print(getFileSize(res));
+//		println();
+//		for (int i = 0; i < 3; i++) {
+//			print(getFileTime(sh, i), TAB);
+//			print(getFileTime(res, i));
+//			println();
+//		}
 		return split(response, NEWLINE_REGEX);
 	}
 	
@@ -291,29 +292,29 @@ public class HelperTests extends TestCase
 						"m = match($0, /d/)\n" +
 						"if (m == 1) print $NF\"/\" ; else print $NF\n" +
 					"}'";
-		ValList list = (ValList) shellRunTest(String.format(script, subdir), "test");
+		script = String.format(script, subdir);
+		ValList list = (ValList) split(runShellScript("test", script), NEWLINE_REGEX);
 		assertEquals(expected, list.contains(item));
 	}
 	
 	public void testShellRun() throws Exception {
-		underTest = true;
+		BerichtsheftPlugin.checkAvailabilityOfTools();
+		String adb = AndroidBridge.getAdbCommand();
+		assertTrue("Android adb command not available", fileExists(adb));
 		if (shellRunTest(AndroidBridge.buildAdbCommand("", "", ""), "test").get(0).toString().startsWith("error"))
 			return;
-		
+		println("devices :", AndroidBridge.deviceInfo(null));
 		shellRunTest(AndroidBridge.buildAdbCommand("-r", "/sdcard/xxx", ""), "rm");
 		existTest(false, "xxx/", "");
-		
 		shellRunTest(AndroidBridge.buildAdbCommand("mkdir", "/sdcard/xxx/", ""), "mkdir");
 		existTest(true, "xxx/", "");
-		
-		String adb = AndroidBridge.getAdbCommand();
-		runShellScript("dev", adb + " devices");
 		shellRunTest(AndroidBridge.buildAdbCommand("push", "/sdcard/xxx/", "/tmp/dev"), "push");
-//		existTest(true, "dev", "xxx/");
-		
+		existTest(true, "dev", "xxx/");
+		assertTrue(new File("/tmp/dev").delete());
+		shellRunTest(AndroidBridge.buildAdbCommand("pull", "/sdcard/xxx/dev", "/tmp"), "pull");
+		assertTrue(new File("/tmp/dev").exists());
 		shellRunTest(AndroidBridge.buildAdbCommand("rm", "/sdcard/xxx/dev", ""), "rm");
 		existTest(false, "dev", "xxx/");
-		
 		shellRunTest(AndroidBridge.buildAdbCommand("rmdir", "/sdcard/xxx/", ""), "rmdir");
 		existTest(false, "xxx/", "");
 	}
@@ -1119,7 +1120,7 @@ public class HelperTests extends TestCase
 	public void testResizableOptionDialog() {
 		JTextArea textArea = new JTextArea("");
 		textArea.setEditable(true);
-		textArea.setText(contentsFromFile(keinFehlerFile));
+		textArea.setText(readAsset(BerichtsheftActivity.getInstance(), "Kein Fehler im System.txt"));
 		ValList list = defaultOptions(12);
 		Object initialOption = list.remove(-1);
 		Object[] options = list.toArray();
@@ -1221,8 +1222,10 @@ public class HelperTests extends TestCase
 	
 	public void testDialogFeed() throws Exception {
 		final int id = 1;
+		TextView tv = new TextView(null);
+        tv.setMovementMethod(new ScrollingMovementMethod());
 		final AlertDialog dialog = new AlertDialog.Builder(new BerichtsheftActivity(), false)
-				.setView(new TextView(null, true))
+				.setView(tv)
 				.setNeutralButton(android.R.string.close, new OnClickListener() {
 					public void onClick(DialogInterface dialog, int which) {
 						dialog.dismiss();
@@ -1230,7 +1233,7 @@ public class HelperTests extends TestCase
 				})
 				.create();
 		dialog.open();
-		TextView tv = (TextView) dialog.findViewById(id);
+		tv = (TextView) dialog.findViewById(id);
 		tv.getComponent().setPreferredSize(new Dimension(100,100));
 		tv.append("Random\n");
 		startFrame(
@@ -1266,6 +1269,36 @@ public class HelperTests extends TestCase
         }
 	}
 	
+	public void testFormBuilder() {
+		Context context = BerichtsheftActivity.getInstance();
+		FormBuilder formBuilder = new FormBuilder(context, "linearlayout.xml");
+		formBuilder.addStringField("String");
+/*
+		formBuilder.addIntegerField("Integer");
+		formBuilder.addFloatField("Float");
+		formBuilder.addBlobField("Blob");
+		formBuilder.addTextField("Text");
+*/		
+		final Container container = formBuilder.build().getContainer();
+		container.addComponentListener(new ComponentAdapter() {
+			@Override
+			public void componentResized(ComponentEvent e) {
+				printContainer("panel", container, false);
+			}
+		});
+		println(formBuilder.getViewGroup());
+ 		showDialog(null, null, "testFormBuilder", 
+				new UIFunction() {
+					public Component[] apply(Component comp, Object[] parms) {
+						container.setPreferredSize(DataManager.viewportSize);
+						return components(container);
+					}
+				}, 
+				null, 
+				null, 
+				Behavior.MODAL);
+	}
+	
 	public void testResources() {
 		Context context = BerichtsheftActivity.getInstance();
 		File[] files = new File(BerichtsheftApp.applicationDataPath("res/layout")).listFiles();
@@ -1276,93 +1309,80 @@ public class HelperTests extends TestCase
 			assertNotNull(vg);
 			println(vg);
 		}
-		LayoutBuilder layoutBuilder = new LayoutBuilder(context, "linearlayout.xml");
-		layoutBuilder.addStringField("name");
-		final JPanel panel = (JPanel) layoutBuilder.build().getComponent();
-		showDialog(null, null, "testLayoutBuilder", 
-				new UIFunction() {
-					public Component[] apply(Component comp, Object[] parms) {
-						return components(panel);
-					}
-				}, 
-				new UIFunction() {
-					public Component[] apply(Component comp, Object[] parms) {
-						return null;
-					}
-				}, 
-				null, 
-				Behavior.MODAL);
 		assertEquals("Berichtsheft", 
 				context.getResources().getString(R.string.app_name));
 		assertEquals(51, ProviderTests.getStateStrings(context).length);
-		println(Resources.getAbsolutePath("/res/values/strings.xml", END));
-		println(Resources.getAbsolutePath("/res/values/colors.xml", END));
-		printMatchResults("@dimen/margin", Resources.XML_RESOURCE_PATTERN, object(null));
-		printMatchResults("@com.applang.berichtsheft.R:dimen/margin", Resources.XML_RESOURCE_PATTERN, object(false));
+		printMatchResults("@dimen/margin", Resources.XML_RESOURCE_PATTERN, "no");
+		printMatchResults("@com.applang.berichtsheft.R:dimen/margin", Resources.XML_RESOURCE_PATTERN, "no");
+		println(Resources.getAbsolutePath("/res/values/strings.xml", Constraint.END));
+		println(Resources.getAbsolutePath("/res/values/colors.xml", Constraint.END));
+		println("user.dir", System.getProperty("user.dir"));
+		println("user.home", System.getProperty("user.home"));
 	}
 	
 	public void testPrompts() {
 		BaseDirective.setOptions(-1);
 		PromptDirective.prompt(new BerichtsheftActivity(
-					new Job<String>() {
-						public void perform(String result, Object[] parms) throws Exception {
-							if (result == null)
-								return;
-							int type = (Integer) BaseDirective.options.get(result);
-							String prompt = "";
-							ValList values = vlist();
-							switch (type) {
-							case Dialogs.DIALOG_TEXT_ENTRY:
-								prompt = "name";
-								values.add("xxx");
-								break;
-							case Dialogs.DIALOG_TEXT_INFO:
-								prompt = "text";
-								values.add(contentsFromFile(keinFehlerFile));
-								break;
-							case Dialogs.DIALOG_YES_NO_MESSAGE:
-								prompt = "macht nix";
-								values.add("ja");
-								values.add("nein");
-								break;
-							case Dialogs.DIALOG_YES_NO_LONG_MESSAGE:
-								prompt = "macht nix";
-								values.add("nee ... gar nix");
-								values.add("doch, es macht");
-								values.add("schon ein bisschen");
-								values.add("ist egal");
-								break;
-							case Dialogs.DIALOG_LIST:
-							case Dialogs.DIALOG_SINGLE_CHOICE:
-							case Dialogs.DIALOG_MULTIPLE_CHOICE:
-								prompt = "Choice";
-//								String[] array = getStateStrings();
-//								values.addAll(asList(array));
-								ValList list = vlist();
-								for (Object object : UIManager.getLookAndFeelDefaults().keySet()) {
-									list.add(stringValueOf(object));
-								}
-								values.addAll(sortedSet(list));
-								break;
-							default:
-								println("not implemented");
-								return;
-							}
-							PromptDirective.prompt(new BerichtsheftActivity(
-									new Job<String>() {
-										public void perform(String result, Object[] parms) throws Exception {
-											println(String.valueOf(result));
-											testPrompts();
-										}
-									}), 
-									type, result, 
-									prompt, toStrings(values)); 
+			new Job<String>() {
+				public void perform(String result, Object[] parms) throws Exception {
+					Context context = param(null, 0, parms);
+					if (result == null)
+						return;
+					int type = (Integer) BaseDirective.options.get(result);
+					String prompt = "";
+					ValList values = vlist();
+					switch (type) {
+					case Dialogs.DIALOG_TEXT_ENTRY:
+						prompt = "Gedicht";
+						values.add(readAsset(context, "Kein Fehler im System.txt"));
+						break;
+					case Dialogs.DIALOG_TEXT_INFO:
+						prompt = "poem";
+						values.add(readAsset(context, "Kein Fehler im System.txt"));
+						break;
+					case Dialogs.DIALOG_YES_NO_MESSAGE:
+						prompt = "macht nix";
+						values.add("ja");
+						values.add("nein");
+						break;
+					case Dialogs.DIALOG_YES_NO_LONG_MESSAGE:
+						prompt = "macht nix";
+						values.add("nee ... gar nix");
+						values.add("doch, es macht");
+						values.add("schon ein bisschen");
+						values.add("ist egal");
+						break;
+					case Dialogs.DIALOG_LIST:
+					case Dialogs.DIALOG_SINGLE_CHOICE:
+					case Dialogs.DIALOG_MULTIPLE_CHOICE:
+						prompt = "Choice";
+//						String[] array = getStateStrings();
+//						values.addAll(asList(array));
+						ValList list = vlist();
+						for (Object object : UIManager.getLookAndFeelDefaults().keySet()) {
+							list.add(stringValueOf(object));
 						}
+						values.addAll(sortedSet(list));
+						break;
+					default:
+						println("not implemented");
+						return;
 					}
-				),
-				Dialogs.DIALOG_LIST, 
-				"", "Prompts", 
-				toStrings(BaseDirective.options.keySet()));
+					PromptDirective.prompt(new BerichtsheftActivity(
+							new Job<String>() {
+								public void perform(String result, Object[] parms) throws Exception {
+									println(String.valueOf(result));
+									testPrompts();
+								}
+							}), 
+							type, result, 
+							prompt, toStrings(values)); 
+				}
+			}
+		),
+		Dialogs.DIALOG_LIST, 
+		"", "Prompts", 
+		toStrings(BaseDirective.options.keySet()));
 	}
 	
 	public void testJEditOptionDialog() {

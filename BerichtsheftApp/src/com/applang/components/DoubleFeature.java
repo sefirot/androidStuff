@@ -140,7 +140,8 @@ public class DoubleFeature implements IComponent
 		final Component[] focused = findComponents(container, new Predicate<Component>() {
 			public boolean apply(Component c) {
 				String name = c.getName();
-				return DoubleFeature.FOCUS.equals(name) || DoubleFeature.REQUEST.equals(name);
+				return check(name, Constraint.AMONG, DoubleFeature.FOCUS) || 
+						check(name, Constraint.AMONG, DoubleFeature.REQUEST);
 			}
 		});
 		no_println("focusRequest", identity(asList(focused).toArray()));
@@ -152,7 +153,7 @@ public class DoubleFeature implements IComponent
 		if (textArea != null)
 			textArea.requestFocus();
 		else if (widget != null) {
-			Component component = findFirstComponent(widget, FOCUS);
+			Component component = findFirstComponent(widget, FOCUS, Constraint.AMONG);
 			if (component != null) {
 				component.requestFocusInWindow();
 				debug_println("focus", 

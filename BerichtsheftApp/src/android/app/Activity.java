@@ -49,7 +49,7 @@ public class Activity extends Context
 				field.setAccessible(true);
 				field.set(inst, mRequestCode);
 				method = Activity.class.getDeclaredMethod("onCreate", Bundle.class);
-				method.invoke(inst, (Object) null);
+				method.invoke(inst, _null());
 			} catch (Exception e) {
 				Log.e(TAG, "startActivity", e);
 			}

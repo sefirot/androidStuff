@@ -70,6 +70,7 @@ import android.app.Activity;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.applang.Util.Constraint;
 import com.applang.berichtsheft.BerichtsheftActivity;
 import com.applang.components.AndroidBridge;
 import com.applang.components.DataConfiguration;
@@ -212,7 +213,7 @@ public class BerichtsheftPlugin extends EditPlugin
 			}
 			Container parent = pane.getParent();
 			if (parent != null)
-				printContainer(identity(parent), parent, object(null));
+				printContainer(identity(parent), parent, _null());
 		}
 	};
 	
@@ -451,7 +452,7 @@ public class BerichtsheftPlugin extends EditPlugin
 		else {
 			if (magic.startsWith("spell")) {
 				TextEditor textEditor = new TextEditor();
-				textEditor.setName(DoubleFeature.FOCUS);
+				addNamePart(textEditor, DoubleFeature.FOCUS);
 				textEditor.installSpellChecker();
 				textEditor.setText(buffer.getText());
 				container = new JPanel(new BorderLayout());
@@ -467,7 +468,9 @@ public class BerichtsheftPlugin extends EditPlugin
 											EditPane[] editPanes = getEditPanesFor(buffer);
 											if (editPanes.length > 0) {
 												DoubleFeature df = (DoubleFeature) doubleFeatures.getValue(editPanes[0]);
-												TextEditor textEditor = (TextEditor) findFirstComponent(df.getWidget(), DoubleFeature.FOCUS);
+												TextEditor textEditor = (TextEditor) 
+													findFirstComponent(df.getWidget(), 
+															DoubleFeature.FOCUS, Constraint.AMONG);
 												df.getTextArea2().setText(textEditor.getText());
 											}
 											removeMagic(buffer);
@@ -488,9 +491,9 @@ public class BerichtsheftPlugin extends EditPlugin
 			} 
 			else {
 				container = jEdit.getActiveView().getEditPane().getTextArea();
-				container.setName(DoubleFeature.FOCUS);
+				addNamePart(container, DoubleFeature.FOCUS);
 			}
-			Component component = findFirstComponent(container, DoubleFeature.FOCUS);
+			Component component = findFirstComponent(container, DoubleFeature.FOCUS, Constraint.AMONG);
 			if (component != null) 
 				component.addMouseListener(clickListener);
 		}
@@ -501,12 +504,17 @@ public class BerichtsheftPlugin extends EditPlugin
 	}
 	
 	private void removeMagic(Buffer buffer) {
-		JComponent widget = magicBuffers.get(buffer);
-		Component component = findFirstComponent(widget, DoubleFeature.FOCUS);
+		JComponent container = magicBuffers.get(buffer);
 		String magic = buffer.getStringProperty(MAGIC);
-		if (magic.startsWith("spell")) {
-			TextEditor textEditor = (TextEditor) component;
-			textEditor.uninstallSpellChecker();
+		if (!magic.startsWith("data")) {
+			Component component = findFirstComponent(container, DoubleFeature.FOCUS, Constraint.AMONG);
+			if (magic.startsWith("spell")) {
+				TextEditor textEditor = (TextEditor) component;
+				textEditor.uninstallSpellChecker();
+			}
+			if (component != null) 
+				component.removeMouseListener(clickListener);
+			removeNamePart(container, DoubleFeature.FOCUS);
 		}
 		buffer.setStringProperty(MAGIC, "");
 		magicBuffers.remove(buffer);
@@ -776,7 +784,7 @@ public class BerichtsheftPlugin extends EditPlugin
 		if (!insideJEdit()) {
 			String fileName = pathCombine(relativePath(), "BerichtsheftPlugin.props");
 			if (!fileExists(fileName))
-				fileName = absolutePathOf(fileName, -1);
+				fileName = absolutePathOf(fileName, Constraint.END);
 			properties = loadProperties(fileName);
 		}
 		messageRedirection();
@@ -858,14 +866,25 @@ public class BerichtsheftPlugin extends EditPlugin
 		BerichtsheftShell.print("Welcome...", NEWLINE);
 		String[] tools = {"AWK_COMMAND", "ADB_COMMAND", "SQLITE_COMMAND"};
 		for (int i = 0; i < tools.length; i++) {
-			String cmd = getProperty(tools[i]);
-			if (!fileExists(new File(cmd)))
-				consoleMessage("berichtsheft.tool-missing.message", cmd);
+			String cmd = getCommand(tools[i]);
+			if (!fileExists(cmd)) {
+				if (nullOrEmpty(runShellScript("which", "which " + cmd)))
+					consoleMessage("berichtsheft.tool-missing.message", cmd);
+			}
 			else if (tools[i].startsWith("ADB")) {
-				cmd = AndroidBridge.adbRestart();
-				BerichtsheftShell.print(cmd, NEWLINE);
+				String msg = AndroidBridge.adbRestart();
+				BerichtsheftShell.print(msg, NEWLINE);
 			}
 		}
+	}
+
+	public static String getCommand(String path) {
+		String cmd = getProperty(path); 
+		if (!cmd.startsWith(PATH_SEP) && cmd.contains(PATH_SEP)) {
+			String sdk = getProperty("ANDROID_SDK");
+			cmd = pathCombine(System.getProperty("user.home"), sdk, cmd);
+		}
+		return cmd;
 	}
 
 	public static Function<File> fileChooser(final View view) {
@@ -899,17 +918,8 @@ public class BerichtsheftPlugin extends EditPlugin
     	return null;
 	}
 
-	public static String getSqliteCommand() {
-		String cmd = getProperty("SQLITE_COMMAND"); 
-		if (!cmd.startsWith("/")) {
-			String sdk = getProperty("ANDROID_SDK");
-			cmd = pathCombine(System.getProperty("user.home"), sdk, cmd);
-		}
-		return cmd;
-	}
-
 	public static String sqliteScript(String db, String statement) {
-		String cmd = getSqliteCommand(); 
+		String cmd = getCommand("SQLITE_COMMAND"); 
 		if (notNullOrEmpty(db))
 			cmd += " " + db;
 		cmd += " <<<\"" + statement + "\"";

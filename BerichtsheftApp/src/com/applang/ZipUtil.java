@@ -7,6 +7,8 @@ import java.io.*;
 import java.util.*;
 import java.util.zip.*;
 
+import com.applang.Util.Job;
+
 public class ZipUtil
 {
 	static String basePath(Object path) throws Exception {
@@ -16,6 +18,28 @@ public class ZipUtil
 	static String entryPath(Object file, String base) throws Exception {
 		return pathDivide(basePath(file), base);
 	}
+	 
+	public static Object[] iterateFiles(boolean includeDirs, File dir, Job<Object> job, Object...params) throws Exception {
+		params = reduceDepth(params);
+		if (dir != null && dir.isDirectory()) {
+			for (File file : dir.listFiles())
+				if (file.isDirectory())
+					iterateFiles(includeDirs, file, job, params);
+				else if (file.isFile()) {
+					job.perform(file, params);
+					Integer n = param_Integer(null, 0, params);
+					if (n != null)
+						params[0] = n + 1;
+				}
+			if (includeDirs) {
+				job.perform(dir, params);
+				Integer n = param_Integer(null, 1, params);
+				if (n != null)
+					params[1] = n + 1;
+			}
+		}
+		return params;
+	} 
 
 	public static class ZipJob implements Job<Object>
 	{

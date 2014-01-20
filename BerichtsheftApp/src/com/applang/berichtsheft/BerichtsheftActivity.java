@@ -31,7 +31,9 @@ public class BerichtsheftActivity extends Activity
 			if (followUp != null)
 				try {
 					String result = data.getExtras().getString(BaseDirective.RESULT);
-					followUp.perform("null".equals(String.valueOf(result)) ? null : result, params);
+					followUp.perform(
+							"null".equals(String.valueOf(result)) ? null : result, 
+							objects(this, params));
 				} catch (Exception e) {
 					Log.e(TAG, "prompt...followUp", e);
 				}

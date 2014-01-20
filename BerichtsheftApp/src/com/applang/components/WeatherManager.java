@@ -45,6 +45,7 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 import android.net.Uri;
+import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.widget.TextView;
 
@@ -389,8 +390,9 @@ public class WeatherManager extends ActionPanel
 
 	public AlertDialog feedableDialog(String title) {
 		AlertDialog dialog;
-		TextView tv = new TextView(null, true);
-		tv.getTextArea().setFont(monoSpaced());
+		TextView tv = new TextView(null);
+        tv.setMovementMethod(new ScrollingMovementMethod());
+		tv.getTextComponent().setFont(monoSpaced());
 		dialog = new AlertDialog.Builder(BerichtsheftActivity.getInstance(), false)
 				.setTitle(title)
 				.setView(tv)

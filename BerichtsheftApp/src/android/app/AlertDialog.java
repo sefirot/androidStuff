@@ -70,7 +70,7 @@ public class AlertDialog extends Dialog implements DialogInterface
     	View vw = findViewById(id);
     	if (vw == null)
     		return null;
-    	JComponent comp = vw.getComponent();
+    	Container comp = (Container) vw.getComponent();
     	ValList list = new ValList(asList(names));
     	while (comp != null && list.size() > 0) {
     		comp = findFirstComponent(comp, stringValueOf(list.get(0)));
