@@ -147,10 +147,9 @@ public class Util2
 		
 		public static String defaultFilename() {
 			String dir = System.getProperty("settings.dir", "");
-			debug_println("settings.dir", dir);
 			if (nullOrEmpty(dir))
 				dir = relativePath();
-			debug_println("settings.default.dir", dir);
+			no_println("settings.default.dir", dir);
 			String path = findFirstFile(new File(dir), Constraint.END, ".properties");
 			if (notNullOrEmpty(path))
 				return path;

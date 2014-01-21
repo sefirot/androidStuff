@@ -652,8 +652,7 @@ public class BerichtsheftPlugin extends EditPlugin
 		BerichtsheftToolBar.userCommandDirectory = path;
 		path = dir.getPath();
 		System.setProperty("settings.dir", path);
-		debug_println("load.settings.dir", path);
-		Settings.load();
+		Settings.load(pathCombine(path, NAME + ".properties"));
 		path = pathCombine(settingsDir, "jars", "sqlite4java");
 		System.setProperty("sqlite4java.library.path", path);
 	}
@@ -770,16 +769,12 @@ public class BerichtsheftPlugin extends EditPlugin
 	
 	public static String getProperty(String name, String defaultValue) {
 		String prop;
-		boolean insideJEdit = insideJEdit();
-		debug_println("insideJEdit", insideJEdit, name);
-		if (insideJEdit) 
+		if (insideJEdit()) 
 			prop = jEdit.getProperty(name, defaultValue);
 		else
 			prop = properties.getProperty(name, defaultValue);
-		debug_println("prop", prop);
 		if (nullOrEmpty(prop) && (name.endsWith("_COMMAND") || name.endsWith("_SDK"))) 
 			prop = getSetting(name, "");
-		debug_println("prop2", prop);
 		return prop;
 	}
 	
