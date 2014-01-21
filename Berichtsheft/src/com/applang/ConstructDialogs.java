@@ -403,7 +403,7 @@ public class ConstructDialogs extends Dialogs
 			comment += "\n" + old;
 		if (notNullOrEmpty(prefix))
 			comment = prefix + " : " + comment;
-		map.put(COMMENT, strip(true, comment, "\n"));
+		map.put(COMMENT, strip(Constraint.START, comment, "\n"));
     }
 	
 	private boolean isTypeLike(int typeIndex, String type) {

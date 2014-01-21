@@ -348,8 +348,8 @@ public class Dialogs extends Activity
             		LinearLayout.HORIZONTAL, 
             		LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT);
             TextView textView = id == DIALOG_TEXT_ENTRY ? 
-            		new EditText(this, null, "textMultiLine") : 
-            		new TextView(this, null, "textMultiLine");
+            		new EditText(this, null) : 
+            		new TextView(this, null);
             textView.setText(values[0]);
             textView.setMovementMethod(new ScrollingMovementMethod());
             linearLayout.addView(textView, Util1.marginLayoutParams(

@@ -15,6 +15,9 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONStringer;
+import org.w3c.dom.Element;
+import org.w3c.dom.NamedNodeMap;
+import org.w3c.dom.Node;
 
 import android.app.Activity;
 import android.content.ContentResolver;
@@ -22,6 +25,7 @@ import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.res.AssetManager;
+import android.content.res.Resources;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
@@ -29,6 +33,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Bitmap.CompressFormat;
 import android.net.Uri;
+import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
@@ -41,6 +46,116 @@ import static com.applang.Util2.*;
 
 public class Util1
 {
+	public static ValMap namedParams(Object... params) {
+		ValMap map = vmap();
+		
+		for (int i = 0; i < params.length; i++) {
+			Object param = params[i];
+			if (param instanceof String && embedsLeft(param.toString(), "=")) {
+				String[] sides = param.toString().split("=", 2);
+				if (sides.length > 0) {
+					if (sides.length > 1) 
+						map.put(sides[0], sides[1]);
+					else
+						map.put(sides[0], "");
+					
+					continue;
+				}
+			}
+			
+			map.put("param" + i, param);
+		}
+		
+		return map;
+	}
+	
+	@SuppressWarnings("unchecked")
+	public static <T extends Object> T namedValue(T defaultValue, String name, Map<String, Object> map) throws ClassCastException {
+		if (map.containsKey(name)) 
+			try {
+				T returnValue = (T)map.get(name);
+				return returnValue;
+			} catch (ClassCastException e) {}
+		
+		return defaultValue;
+	}
+	
+	public static Boolean namedBoolean(Boolean defaultValue, String name, Map<String, Object> map) {
+		if (map.containsKey(name)) {
+			Object value = map.get(name);
+			if (value instanceof Boolean)
+				return (Boolean) value;
+			else
+				return parseBoolean(defaultValue, "" + value);
+		}
+		else
+			return defaultValue;
+	}
+	
+	public static Integer namedInteger(Integer defaultValue, String name, Map<String, Object> map) {
+		if (map.containsKey(name)) {
+			Object value = map.get(name);
+			if (value instanceof Integer)
+				return (Integer) value;
+			else
+				return parseInteger(defaultValue, "" + value);
+		}
+		else
+			return defaultValue;
+	}
+	
+	public static Double namedDouble(Double defaultValue, String name, Map<String, Object> map) {
+		if (map.containsKey(name)) {
+			Object value = map.get(name);
+			if (value instanceof Double)
+				return (Double) value;
+			else
+				return parseDouble(defaultValue, "" + value);
+		}
+		else
+			return defaultValue;
+	}
+
+    public static boolean embedsLeft(String whole, String part) {
+		return whole != null && whole.contains(part) && !whole.startsWith(part);
+	}
+
+    public static boolean embedsRight(String whole, String part) {
+		return whole != null && whole.contains(part) && !whole.endsWith(part);
+	}
+
+    public static boolean embeds(String whole, String part) {
+		return whole != null && embedsLeft(whole, part) && embedsRight(whole, part);
+	}
+
+	public static Integer parseInteger(Integer defaultValue, String string) {
+		try {
+			return Integer.parseInt(string.trim());
+		} catch (NumberFormatException e) {
+			return defaultValue;
+		}
+	}
+
+	public static Boolean parseBoolean(Boolean defaultValue, String string) {
+		try {
+			return Boolean.parseBoolean(string.trim());
+		} catch (Exception e) {
+			return defaultValue;
+		}
+	}
+
+	public static Double parseDouble(Double defaultValue, String string) {
+		try {
+			Double d = Double.valueOf(string);
+			if (Double.isNaN(d))
+				return defaultValue;
+			else
+				return d;
+		} catch (NumberFormatException e) {
+			return defaultValue;
+		}
+	}
+
 	public static boolean traverse(Cursor cursor, Job<Cursor> job, Object...params) {
 		if (cursor == null)
 			return false;
@@ -115,7 +230,7 @@ public class Util1
 	}
 
 	public static String viewLine(View v, int indent) {
-		String string = v.getName() + " : " + v.getClass().getSimpleName();
+		String string = v.getTag() + " : " + v.getClass().getSimpleName();
 		if (v instanceof LinearLayout) {
 			LinearLayout l = (LinearLayout) v;
 			string += TAB + 
