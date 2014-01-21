@@ -14,24 +14,29 @@ import javax.swing.text.JTextComponent;
 import android.content.Context;
 import android.text.method.MovementMethod;
 import android.text.method.ScrollingMovementMethod;
+import android.util.AttributeSet;
 import android.view.View;
 
 public class TextView extends View
 {
-    public TextView(Context context, Object...params) {
-		super(context, params);
+    public TextView(Context context, AttributeSet attrs) {
+		super(context, attrs);
     }
 
     protected void create(Object... params) {
-    	super.create(params);
 		JLabel label = new JLabel();
 		setComponent(label);
+    	if (attributeSet != null) {
+	    	String defaultValue = attributeSet.getAttributeValue("android:text");
+	    	if (notNullOrEmpty(defaultValue))
+	    		setText(defaultValue);
+    	}
 	}
     
     public JComponent getTextComponent() {
     	JComponent component = (JComponent) getComponent();
 		if (component instanceof JScrollPane)
-			return (JComponent) findFirstComponent(component, name, Constraint.AMONG);
+			return (JComponent) findFirstComponent(component, tag, Constraint.AMONG);
 		else
 			return component;
     }
@@ -50,7 +55,7 @@ public class TextView extends View
 	}
 	
 	public void setText(String text) {
-    	if (inputType.equals("textMultiLine")) {
+    	if ("textMultiLine".equals(inputType)) {
     		text = enclose("<html>", text.replaceAll(NEWLINE_REGEX, "<br>"), "</html>");
     	}
 		getLabel().setText(text);

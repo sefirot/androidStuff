@@ -10,6 +10,7 @@ import java.beans.XMLDecoder;
 import java.beans.XMLEncoder;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -72,10 +73,12 @@ import org.json.JSONObject;
 import org.json.JSONStringer;
 import org.w3c.dom.CDATASection;
 import org.w3c.dom.Element;
+import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import com.applang.Util.Constraint;
+import com.applang.Util.ValMap;
 
 import android.app.Activity;
 import android.content.Context;
@@ -85,6 +88,7 @@ import android.content.res.Resources.ResourceURLFilter;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
+import android.util.AttributeSet;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -143,9 +147,10 @@ public class Util2
 		
 		public static String defaultFilename() {
 			String dir = System.getProperty("settings.dir", "");
+			debug_println("settings.dir", dir);
 			if (nullOrEmpty(dir))
 				dir = relativePath();
-			no_println("settings.default.dir", dir);
+			debug_println("settings.default.dir", dir);
 			String path = findFirstFile(new File(dir), Constraint.END, ".properties");
 			if (notNullOrEmpty(path))
 				return path;
@@ -1151,6 +1156,118 @@ public class Util2
 			Log.e(TAG, "makeSureExists", e);
 			return false;
 		}
+	}
+	
+	public static AttributeSet attributeSet(final Context context, Object...attrs) {
+		Element el = param(null, 0, attrs);
+		if (el == null) {
+			ValMap map = namedParams(attrs);
+			StringBuilder sb = new StringBuilder();
+			sb.append("<AttributeSet xmlns:android=\"http://schemas.android.com/apk/res/android\"");
+			for (String key : map.keySet())
+				sb.append(" " + key + "=" + quoted(stringValueOf(map.get(key))));
+			sb.append(" />");
+			InputStream is = new ByteArrayInputStream(sb.toString().getBytes());
+			el = xmlDocument(null, is).getDocumentElement();
+		}
+		final Element element = el;
+		return new AttributeSet() {
+			{
+				resources = context.getResources();
+				attributes = element.getAttributes();
+			}
+			
+			Resources resources;
+			NamedNodeMap attributes;
+			
+			public int getAttributeCount() {
+				return attributes.getLength();
+			}
+			public String getAttributeName(int index) {
+				return attributes.item(index).getNodeName();
+			}
+			public String getAttributeValue(int index) {
+				return attributes.item(index).getNodeValue();
+			}
+			public String getAttributeValue(String namespace, String name) {
+				return attributes.getNamedItemNS(namespace, name).getNodeValue();
+			}
+			public String getPositionDescription() {
+				return null;
+			}
+			public String getAttributeValue(String name) {
+				Node item = attributes.getNamedItem(name);
+				return item != null ? item.getNodeValue() : null;
+			}
+			public <T> T getAttributeResourceItem(String name) {
+				String attr = getAttributeValue(name);
+				return resources.getXMLResourceItem(attr);
+			}
+			public int getIdAttributeResourceValue(int defaultValue) {
+				return toInt(defaultValue, getIdAttribute());
+			}
+			public String getIdAttribute() {
+				return getAttributeResourceItem("android:id");
+			}
+			public String getClassAttribute() {
+				return getAttributeResourceItem("class");
+			}
+			public int getStyleAttribute() {
+				return getAttributeResourceItem("style");
+			}
+			public int getAttributeUnsignedIntValue(int index, int defaultValue) {
+				// TODO Auto-generated method stub
+				return 0;
+			}
+			public int getAttributeUnsignedIntValue(String namespace, String attribute, int defaultValue) {
+				// TODO Auto-generated method stub
+				return 0;
+			}
+			public int getAttributeResourceValue(int index, int defaultValue) {
+				// TODO Auto-generated method stub
+				return 0;
+			}
+			public int getAttributeResourceValue(String namespace, String attribute, int defaultValue) {
+				// TODO Auto-generated method stub
+				return 0;
+			}
+			public int getAttributeNameResource(int index) {
+				// TODO Auto-generated method stub
+				return 0;
+			}
+			public int getAttributeListValue(int index, String[] options, int defaultValue) {
+				// TODO Auto-generated method stub
+				return 0;
+			}
+			public int getAttributeListValue(String namespace, String attribute, String[] options, int defaultValue) {
+				// TODO Auto-generated method stub
+				return 0;
+			}
+			public int getAttributeIntValue(int index, int defaultValue) {
+				// TODO Auto-generated method stub
+				return 0;
+			}
+			public int getAttributeIntValue(String namespace, String attribute, int defaultValue) {
+				// TODO Auto-generated method stub
+				return 0;
+			}
+			public float getAttributeFloatValue(int index, float defaultValue) {
+				// TODO Auto-generated method stub
+				return 0;
+			}
+			public float getAttributeFloatValue(String namespace, String attribute, float defaultValue) {
+				// TODO Auto-generated method stub
+				return 0;
+			}
+			public boolean getAttributeBooleanValue(int index, boolean defaultValue) {
+				// TODO Auto-generated method stub
+				return false;
+			}
+			public boolean getAttributeBooleanValue(String namespace, String attribute, boolean defaultValue) {
+				// TODO Auto-generated method stub
+				return false;
+			}
+		};
 	}
 
 	public static class LayoutBuilder

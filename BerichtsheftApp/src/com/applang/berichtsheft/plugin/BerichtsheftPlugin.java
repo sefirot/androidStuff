@@ -652,7 +652,7 @@ public class BerichtsheftPlugin extends EditPlugin
 		BerichtsheftToolBar.userCommandDirectory = path;
 		path = dir.getPath();
 		System.setProperty("settings.dir", path);
-		no_println("settings.dir", path);
+		debug_println("load.settings.dir", path);
 		Settings.load();
 		path = pathCombine(settingsDir, "jars", "sqlite4java");
 		System.setProperty("sqlite4java.library.path", path);

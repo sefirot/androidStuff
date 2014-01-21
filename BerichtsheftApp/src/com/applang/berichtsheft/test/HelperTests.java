@@ -1222,7 +1222,7 @@ public class HelperTests extends TestCase
 	
 	public void testDialogFeed() throws Exception {
 		final int id = 1;
-		TextView tv = new TextView(null);
+		TextView tv = new TextView(null, null);
         tv.setMovementMethod(new ScrollingMovementMethod());
 		final AlertDialog dialog = new AlertDialog.Builder(new BerichtsheftActivity(), false)
 				.setView(tv)
@@ -1272,13 +1272,13 @@ public class HelperTests extends TestCase
 	public void testFormBuilder() {
 		Context context = BerichtsheftActivity.getInstance();
 		FormBuilder formBuilder = new FormBuilder(context, "linearlayout.xml");
-		formBuilder.addStringField("String");
 /*
+		formBuilder.addStringField("String");
 		formBuilder.addIntegerField("Integer");
 		formBuilder.addFloatField("Float");
 		formBuilder.addBlobField("Blob");
-		formBuilder.addTextField("Text");
 */		
+		formBuilder.addTextField("Text");
 		final Container container = formBuilder.build().getContainer();
 		container.addComponentListener(new ComponentAdapter() {
 			@Override
@@ -1334,7 +1334,7 @@ public class HelperTests extends TestCase
 					switch (type) {
 					case Dialogs.DIALOG_TEXT_ENTRY:
 						prompt = "Gedicht";
-						values.add(readAsset(context, "Kein Fehler im System.txt"));
+						values.add("Kein Fehler im System");
 						break;
 					case Dialogs.DIALOG_TEXT_INFO:
 						prompt = "poem";

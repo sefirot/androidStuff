@@ -10,6 +10,7 @@ import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 
 import android.content.Context;
+import android.util.AttributeSet;
 import android.view.ViewGroup.LayoutParams;
 import android.view.ViewGroup.MarginLayoutParams;
 
@@ -19,14 +20,14 @@ public class View
 {
 	public static int uniqueCounter = 0;
 	
-    public static String getUniquifiedName(String name) {
-    	return name + (++uniqueCounter);
+    public static String uniquifyTag(String tag) {
+    	return tag + (++uniqueCounter);
     }
     
-	protected String name;
+	protected String tag = "view";
 
-	public String getName() {
-		return name;
+	public String getTag() {
+		return tag;
 	}
 	
 	public View(Component component) {
@@ -68,19 +69,25 @@ public class View
         return null;
     }
 
-	public View(Context context, Object...params) {
+	public View(Context context, AttributeSet attrs) {
 		mContext = context;
-		name = getUniquifiedName(param_String("view", 0, params));
+		attributeSet = attrs;
 		setId(0);
-		create(params);
+		if (attributeSet != null) {
+			tag = attributeSet.getIdAttribute();
+			inputType = attributeSet.getAttributeValue("android:inputType");
+		}
+		tag = uniquifyTag(tag);
+		create();
 		if (component != null)
-			component.setName(name);
+			component.setName(tag);
     }
 	
-	protected String inputType;
+	public AttributeSet attributeSet = null;
+	
+	protected String inputType = null;
 
-    protected void create(Object... params) {
-    	inputType = param_String("", 1, params);
+	protected void create(Object... params) {
 	}
 
 	private Context mContext = null;
@@ -117,7 +124,7 @@ public class View
 		}
 	}
 
-	public void setPadding (int left, int top, int right, int bottom) {
+	public void setPadding(int left, int top, int right, int bottom) {
 		if (component != null && component instanceof JComponent) {
 		    Border padding = new EmptyBorder(top, left, bottom, right);
 		    JComponent jc = (JComponent) component;

@@ -22,7 +22,7 @@ public class ViewGroup extends View implements ViewManager
 	}
 
 	public ViewGroup(Context context) {
-		super(context);
+		super(context, null);
 		setComponent(new Container());
 	}
 

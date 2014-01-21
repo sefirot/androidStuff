@@ -2,7 +2,6 @@ package android.widget;
 
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
-import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
 import javax.swing.text.DocumentFilter;
@@ -10,36 +9,40 @@ import javax.swing.text.JTextComponent;
 import javax.swing.text.PlainDocument;
 
 import android.content.Context;
+import android.util.AttributeSet;
 
 import static com.applang.Util.*;
 import static com.applang.SwingUtil.*;
 
 public class EditText extends TextView {
 
-    public EditText(Context context, Object...params) {
-    	super(context, params);
+    public EditText(Context context, AttributeSet attrs) {
+    	super(context, attrs);
+    	if (attrs == null)
+    		inputType = "textMultiLine";
     }
 
     @Override
     protected void create(Object... params) {
-    	super.create(params);
-    	if (inputType.equals("textMultiLine")) {
+    	if ("textMultiLine".equals(inputType)) {
     		JTextArea textArea = new JTextArea();
     		textArea.setEditable(true);
     		setComponent(textArea);
     	}
     	else {
     		JTextField textField = new JTextField();
-    		if (inputType.startsWith("number")) {
+    		if (inputType != null && inputType.startsWith("number")) {
     			PlainDocument doc = (PlainDocument) textField.getDocument();
     			doc.setDocumentFilter(new NumericFilter(inputType));
     		}
 			setMaximumDimension(textField, 100);
     		setComponent(textField);
     	}
-    	String defaultValue = param(null, 2, params);
-    	if (notNullOrEmpty(defaultValue))
-    		setText(defaultValue);
+    	if (attributeSet != null) {
+			String defaultValue = attributeSet.getAttributeValue("android:text");
+			if (notNullOrEmpty(defaultValue))
+				setText(defaultValue);
+		}
 	}
     
     public JTextComponent getTextArea() {
@@ -102,7 +105,7 @@ class NumericFilter extends DocumentFilter
 	}
 	
 	@Override
-	public void insertString(FilterBypass fb, int offset, String string, AttributeSet attrs) throws BadLocationException {
+	public void insertString(FilterBypass fb, int offset, String string, javax.swing.text.AttributeSet attrs) throws BadLocationException {
 		if (testInContext(fb, offset, null, string, 
 				new Function<StringBuilder>() {
 					public StringBuilder apply(Object... params) {
@@ -118,7 +121,7 @@ class NumericFilter extends DocumentFilter
 	}
 
 	@Override
-	public void replace(FilterBypass fb, int offset, int length, String text, AttributeSet attrs) throws BadLocationException {
+	public void replace(FilterBypass fb, int offset, int length, String text, javax.swing.text.AttributeSet attrs) throws BadLocationException {
 		if (testInContext(fb, offset, length, text, 
 				new Function<StringBuilder>() {
 					public StringBuilder apply(Object... params) {

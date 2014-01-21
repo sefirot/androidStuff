@@ -12,6 +12,7 @@ import javax.swing.JComponent;
 
 import android.content.Context;
 import android.graphics.drawable.Drawable;
+import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
 
@@ -21,14 +22,13 @@ public class ImageView extends View
 {
 	private static final String TAG = ImageView.class.getSimpleName();
 	
-	public ImageView(Context context, Object...params) {
-		super(context, params);
+	public ImageView(Context context, AttributeSet attrs) {
+		super(context, attrs);
 	}
 
 	@Override
 	protected void create(Object... params) {
-		super.create(params);
-		Drawable defaultValue = param(null, 2, params);
+		Drawable defaultValue = attributeSet.getAttributeResourceItem("android:src");
 		Picture picture = new Picture(defaultValue != null ? defaultValue.getImage() : null);
 		setComponent(picture);
 	}

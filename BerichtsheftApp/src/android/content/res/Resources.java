@@ -91,7 +91,7 @@ public class Resources
 				String name = m.group(6), path;
 				int type = asList(resourceTypes).indexOf(m.group(5));
 				switch (type) {
-				case 5:
+				default:
 					value = (T) name;
 					break;
 				case 4:

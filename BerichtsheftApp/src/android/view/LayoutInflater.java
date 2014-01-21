@@ -9,6 +9,7 @@ import org.w3c.dom.NodeList;
 
 import android.content.Context;
 import android.content.res.Resources;
+import android.util.AttributeSet;
 import android.util.Log;
 import android.view.ViewGroup.LayoutParams;
 import android.view.ViewGroup.MarginLayoutParams;
@@ -20,6 +21,7 @@ import android.widget.TextView;
 
 import static com.applang.Util.*;
 import static com.applang.Util1.*;
+import static com.applang.Util2.*;
 
 public class LayoutInflater
 {
@@ -59,11 +61,11 @@ public class LayoutInflater
         return vw;
     }
 
-	public View inflate(ViewGroup vg, Element element, Object...params) {
+	public View inflate(ViewGroup vg, final Element element, Object...params) {
     	View vw = null;
 		try {
+			AttributeSet attributeSet = attributeSet(mContext, element);
 			Class<?> layoutClass = Class.forName("android.widget.".concat(element.getNodeName()));
-			Object id = mContext.getResources().getXMLResourceItem(element.getAttribute("android:id"));
 			int width = LayoutParams.value(mContext, element.getAttribute("android:layout_width"));
 			int height = LayoutParams.value(mContext, element.getAttribute("android:layout_height"));
 			if (LinearLayout.class.equals(layoutClass)) {
@@ -76,27 +78,25 @@ public class LayoutInflater
 				vw = relativeLayout(mContext,  width, height);
 			}
 			else {
-				String inputType = element.getAttribute("android:inputType");
-				Object defaultValue = element.getAttribute("android:text");
 				int left = MarginLayoutParams.value(mContext, element.getAttribute("android:layout_marginLeft"));
 				int top = MarginLayoutParams.value(mContext, element.getAttribute("android:layout_marginTop"));
 				int right = MarginLayoutParams.value(mContext, element.getAttribute("android:layout_marginRight"));
 				int bottom = MarginLayoutParams.value(mContext, element.getAttribute("android:layout_marginBottom"));
 				if (TextView.class.equals(layoutClass)) {
-					vw = new TextView(mContext, id, inputType, defaultValue);
+					vw = new TextView(mContext, attributeSet);
 					vw.setLayoutParams(marginLayoutParams(width, height, left, top, right, bottom));
 				}
 				else if (EditText.class.equals(layoutClass)) {
-					vw = new EditText(mContext, id, inputType, defaultValue);
+					vw = new EditText(mContext, attributeSet);
 					vw.setLayoutParams(marginLayoutParams(width, height, left, top, right, bottom));
 				}
 				else if (ImageView.class.equals(layoutClass)) {
-					defaultValue = mContext.getResources().getXMLResourceItem(element.getAttribute("android:src"));
-					vw = new ImageView(mContext, id, inputType, defaultValue);
+					vw = new ImageView(mContext, attributeSet);
 					vw.setLayoutParams(marginLayoutParams(width, height, left, top, right, bottom));
 				}
 			}
 			if (vw != null) {
+				vw.attributeSet = attributeSet;
 				if (vw instanceof ViewGroup) {
 					NodeList nodes = element.getChildNodes();
 					for (int i = 0; i < nodes.getLength(); i++) {

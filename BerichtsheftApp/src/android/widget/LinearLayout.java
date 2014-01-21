@@ -13,16 +13,14 @@ public class LinearLayout extends ViewGroup {
 		super(context);
 	}
     
-	public static class LayoutParams extends ViewGroup.MarginLayoutParams {
-
+	public static class LayoutParams extends ViewGroup.MarginLayoutParams
+	{
 		public LayoutParams(int width, int height) {
             super(width, height);
 		}
 
-		public void setMargins(int left, int top, int right, int bottom) {
-			super.setMargins(left, top, right, bottom);
-		}
-
+		public int gravity;
+		public float weight;
 	}
 	
 	public void setLayoutParams(ViewGroup.LayoutParams layoutParams) {
