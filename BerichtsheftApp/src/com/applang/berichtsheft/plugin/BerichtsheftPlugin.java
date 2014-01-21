@@ -770,12 +770,16 @@ public class BerichtsheftPlugin extends EditPlugin
 	
 	public static String getProperty(String name, String defaultValue) {
 		String prop;
-		if (insideJEdit()) 
+		boolean insideJEdit = insideJEdit();
+		debug_println("insideJEdit", insideJEdit, name);
+		if (insideJEdit) 
 			prop = jEdit.getProperty(name, defaultValue);
 		else
 			prop = properties.getProperty(name, defaultValue);
+		debug_println("prop", prop);
 		if (nullOrEmpty(prop) && (name.endsWith("_COMMAND") || name.endsWith("_SDK"))) 
 			prop = getSetting(name, "");
+		debug_println("prop2", prop);
 		return prop;
 	}
 	
@@ -881,6 +885,7 @@ public class BerichtsheftPlugin extends EditPlugin
 	}
 
 	public static String getCommand(String path) {
+		debug_println("settings.dir", System.getProperty("settings.dir", ""));
 		String cmd = getProperty(path); 
 		debug_println(path, cmd);
 		if (!cmd.startsWith(PATH_SEP) && cmd.contains(PATH_SEP)) {
