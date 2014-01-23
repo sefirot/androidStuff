@@ -1,8 +1,5 @@
 package com.applang;
 
-import static com.applang.Util.NEWLINE_REGEX;
-import static com.applang.Util.TAB;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -354,6 +351,14 @@ public class Util
     	Integer result;
         try {
         	result = Integer.parseInt(value);
+        } catch(NumberFormatException e) { result = defaultValue; }
+        return result;
+    }
+
+    public static Long fromHex(Long defaultValue, String value) {
+    	Long result;
+        try {
+        	result = Long.parseLong(value, 16);
         } catch(NumberFormatException e) { result = defaultValue; }
         return result;
     }
@@ -1215,6 +1220,12 @@ public class Util
 	public static final String WHITESPACE_OR_NOTHING_REGEX = "\\s*";
 	public static final String[] FOLD_MARKER = strings("{{{", "}}}");
 	public static final String[] FOLD_MARKER_REGEX = strings("\\{\\{\\{", "\\}\\}\\}");
+	
+	public static String wildcardRegex(Object wildcard) {
+		return stringValueOf(wildcard)
+        		.replaceAll("\\*", "\\\\w+")
+        		.replaceAll("\\?", "\\\\w");
+	}
 
 	public static String indentedLine(String line, Object level, Object...params) {
 	    StringBuffer sb = new StringBuffer();
