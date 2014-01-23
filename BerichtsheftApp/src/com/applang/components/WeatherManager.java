@@ -391,7 +391,6 @@ public class WeatherManager extends ActionPanel
 	public AlertDialog feedableDialog(String title) {
 		AlertDialog dialog;
 		TextView tv = new TextView(null, null);
-        tv.setMovementMethod(new ScrollingMovementMethod());
 		tv.getTextComponent().setFont(monoSpaced());
 		dialog = new AlertDialog.Builder(BerichtsheftActivity.getInstance(), false)
 				.setTitle(title)

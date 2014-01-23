@@ -35,6 +35,7 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.util.Log;
 
+import com.applang.Util2.Settings;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 
 import static com.applang.Util.*;
@@ -59,9 +60,9 @@ public class BerichtsheftApp
 	public static void loadSettings() {
 		String path = absolutePath(".jedit/plugins/berichtsheft");
 		System.setProperty("settings.dir", path);
-		path = absolutePath(".jedit/jars/sqlite4java");
-		System.setProperty("sqlite4java.library.path", path);
-		Settings.load();
+		String path2 = absolutePath(".jedit/jars/sqlite4java");
+		System.setProperty("sqlite4java.library.path", path2);
+		Settings.load(pathCombine(path, NAME + ".properties"));
 		Log.logConsoleHandling(Log.INFO);
 	}
 	/**

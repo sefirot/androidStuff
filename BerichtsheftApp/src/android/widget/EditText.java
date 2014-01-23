@@ -14,19 +14,22 @@ import android.util.AttributeSet;
 import static com.applang.Util.*;
 import static com.applang.SwingUtil.*;
 
-public class EditText extends TextView {
+public class EditText extends TextView
+{
+    public EditText(Context context) {
+    	super(context, null);
+    }
 
     public EditText(Context context, AttributeSet attrs) {
     	super(context, attrs);
-    	if (attrs == null)
-    		inputType = "textMultiLine";
     }
 
     @Override
     protected void create(Object... params) {
-    	if ("textMultiLine".equals(inputType)) {
+		if (attributeSet == null)
+    		inputType = "textMultiLine";
+    	if (isMultiLine()) {
     		JTextArea textArea = new JTextArea();
-    		textArea.setEditable(true);
     		setComponent(textArea);
     	}
     	else {
@@ -38,11 +41,6 @@ public class EditText extends TextView {
 			setMaximumDimension(textField, 100);
     		setComponent(textField);
     	}
-    	if (attributeSet != null) {
-			String defaultValue = attributeSet.getAttributeValue("android:text");
-			if (notNullOrEmpty(defaultValue))
-				setText(defaultValue);
-		}
 	}
     
     public JTextComponent getTextArea() {
@@ -89,7 +87,7 @@ class NumericFilter extends DocumentFilter
 
 	public static boolean test(String text, String inputType) {
 		try {
-			if (nullOrEmpty(text))
+			if (nullOrEmpty(text) || "-".equals(text) || "+".equals(text))
 				return true;
 			else if (inputType.equals("numberDecimal")) {
 				Double.parseDouble(text);

@@ -1193,8 +1193,8 @@ public class Util2
 			public String getAttributeValue(String namespace, String name) {
 				return attributes.getNamedItemNS(namespace, name).getNodeValue();
 			}
-			public String getPositionDescription() {
-				return null;
+			public boolean hasAttribute(String name) {
+				return attributes.getNamedItem(name) != null;
 			}
 			public String getAttributeValue(String name) {
 				Node item = attributes.getNamedItem(name);
@@ -1215,6 +1215,9 @@ public class Util2
 			}
 			public int getStyleAttribute() {
 				return getAttributeResourceItem("style");
+			}
+			public String getPositionDescription() {
+				return null;
 			}
 			public int getAttributeUnsignedIntValue(int index, int defaultValue) {
 				// TODO Auto-generated method stub
@@ -1275,19 +1278,35 @@ public class Util2
 	{
 		protected Context mContext;
 		protected LayoutInflater inflater = null;
-		protected ViewGroup viewGroup;
+		protected ViewGroup viewGroup = null;
 		
 		public ViewGroup getViewGroup() {
 			return viewGroup;
 		}
 
-		public LayoutBuilder(Context context, String name) {
+		public void setViewGroup(ViewGroup viewGroup) {
+			this.viewGroup = viewGroup;
+		}
+
+		public LayoutBuilder(Context context, String resName) {
 			mContext = context;
-			viewGroup = new ViewGroup(mContext);
 			inflater = LayoutInflater.from(mContext);
-			View view = inflater.inflate(Resources.getRelativePath(6, name), viewGroup);
-			if (view instanceof ViewGroup)
-				viewGroup = (ViewGroup) view;
+			if (notNullOrEmpty(resName)) {
+				View view = inflater.inflate(Resources.getRelativePath(6, resName));
+				if (view instanceof ViewGroup)
+					viewGroup = (ViewGroup) view;
+				else {
+					viewGroup = new ViewGroup(mContext);
+					addView(view, view.getLayoutParams());
+				}
+			}
+			else
+				viewGroup = new ViewGroup(mContext);
+			viewGroup.setTag("form");
+		}
+		
+	    public void addView(View view, ViewGroup.LayoutParams params) {
+	    	viewGroup.addView(view, params);
 		}
 		
 	    public ViewGroup build(Object...params) {
@@ -1297,33 +1316,34 @@ public class Util2
 				View view = viewGroup.getChildAt(i);
 				if (view instanceof ViewGroup)
 					build(view);
-				LayoutParams parms = view.getLayoutParams();
-				if (parms instanceof MarginLayoutParams) {
-					MarginLayoutParams margs = (MarginLayoutParams) parms;
-					LayoutManager layout = container.getLayout();
-					if (layout instanceof BoxLayout) {
-						BoxLayout boxLayout = (BoxLayout) layout;
-						int axis = boxLayout.getAxis();
-						Box outerBox = new Box(axis);
-						outerBox.add(margs.strutsOuterFirst(axis));
-						Box innerBox = axis == BoxLayout.X_AXIS ? 
-								Box.createVerticalBox() : 
-								Box.createHorizontalBox();
-						innerBox.add(margs.strutsInnerFirst(axis));
-						innerBox.add(view.getComponent());
-						innerBox.add(margs.strutsInnerLast(axis));
-						outerBox.add(innerBox);
-						outerBox.add(margs.strutsOuterLast(axis));
-						view.setComponent(outerBox);
-					}
-				}
+				marginLayout(container, view);
 				container.add(view.getComponent());
 			}
+			viewGroup.applyAttributes();
 			return viewGroup;
 	    }
-	
-	    public void addView(View view, ViewGroup.LayoutParams params) {
-	    	viewGroup.addView(view, params);
+
+		public void marginLayout(Container container, View view) {
+			LayoutParams parms = view.getLayoutParams();
+			if (parms instanceof MarginLayoutParams) {
+				MarginLayoutParams margs = (MarginLayoutParams) parms;
+				LayoutManager layout = container.getLayout();
+				if (layout instanceof BoxLayout) {
+					BoxLayout boxLayout = (BoxLayout) layout;
+					int axis = boxLayout.getAxis();
+					Box outerBox = new Box(axis);
+					outerBox.add(margs.strutsOuterFirst(axis));
+					Box innerBox = axis == BoxLayout.X_AXIS ? 
+							Box.createVerticalBox() : 
+							Box.createHorizontalBox();
+					innerBox.add(margs.strutsInnerFirst(axis));
+					innerBox.add(view.getComponent());
+					innerBox.add(margs.strutsInnerLast(axis));
+					outerBox.add(innerBox);
+					outerBox.add(margs.strutsOuterLast(axis));
+					view.setComponent(outerBox);
+				}
+			}
 		}
 	}
 

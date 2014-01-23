@@ -63,6 +63,7 @@ public interface AttributeSet {
     public String getPositionDescription();
     
     //	NOTE	the following are NOT Android APIs
+    public boolean hasAttribute(String name);
     public String getAttributeValue(String name);
     public <T> T getAttributeResourceItem(String name);	
 

@@ -1,6 +1,7 @@
 package android.widget;
 
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Graphics;
 import java.awt.Image;
 import java.awt.event.FocusEvent;
@@ -11,6 +12,7 @@ import java.awt.event.MouseListener;
 import javax.swing.JComponent;
 
 import android.content.Context;
+import android.content.res.Resources;
 import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -28,19 +30,42 @@ public class ImageView extends View
 
 	@Override
 	protected void create(Object... params) {
-		Drawable defaultValue = attributeSet.getAttributeResourceItem("android:src");
-		Picture picture = new Picture(defaultValue != null ? defaultValue.getImage() : null);
+		Picture picture = new Picture();
 		setComponent(picture);
+	}
+	
+	public void setImage(Image image) {
+		Picture picture = taggedComponent();
+		if (picture != null)
+			picture.setImage(image);
+	}
+	
+    @Override
+	public void applyAttributes() {
+		if (attributeSet != null) {
+	    	if (attributeSet.hasAttribute("android:src")) {
+	    		Drawable drawable = attributeSet.getAttributeResourceItem("android:src");
+				setImage(drawable.getImage());
+			}
+		}
+		super.applyAttributes();
 	}
 
 }
 
 class Picture extends JComponent implements MouseListener, FocusListener
 {
-    Image image;
+    private Image image = null;
 
-    public Picture(Image image) {
-        this.image = image;
+    public Image getImage() {
+		return image;
+	}
+
+	public void setImage(Image image) {
+		this.image = image;
+	}
+
+	public Picture() {
         setFocusable(true);
         addMouseListener(this);
         addFocusListener(this);

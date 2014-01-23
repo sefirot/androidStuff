@@ -6,6 +6,7 @@
 
     <TextView
         android:id="@+id/textView"
+        android:inputType="textMultiLine"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="@dimen/margin_half"
@@ -21,13 +22,15 @@
         android:layout_marginLeft="@dimen/margin_half"
         android:layout_marginRight="@dimen/margin"
         android:layout_marginTop="@dimen/margin_half"
-        android:inputType="textMultiLine"
+        android:background="@color/light_green"
         android:height="50dp"
-        android:width="200dp"
+        android:inputType="textMultiLine"
         android:paddingBottom="@dimen/padding_half"
         android:paddingLeft="@dimen/padding"
         android:paddingRight="@dimen/padding"
         android:paddingTop="@dimen/padding_half"
-        android:text="fehler im system" />
+        android:text="fehler im system"
+        android:textColor="@color/opaque_red"
+        android:width="200dp" />
 
 </LinearLayout>

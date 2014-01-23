@@ -7,12 +7,14 @@ import java.io.Writer;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 
+import com.applang.Util.Function;
+
 import android.content.Context;
+import android.content.res.Resources;
 
 import static com.applang.Util.*;
 import static com.applang.Util1.*;
-import static com.applang.Util2.write;
-import static com.applang.Util2.write_assoc;
+import static com.applang.Util2.*;
 
 public class ViewGroup extends View implements ViewManager
 {
@@ -23,6 +25,10 @@ public class ViewGroup extends View implements ViewManager
 
 	public ViewGroup(Context context) {
 		super(context, null);
+	}
+
+	@Override
+	protected void create(Object... params) {
 		setComponent(new Container());
 	}
 
@@ -37,18 +43,13 @@ public class ViewGroup extends View implements ViewManager
 		public static final int FILL_PARENT = -1;
 		public static final int WRAP_CONTENT = -2;
 		
-		public static int value(Context context, String s) {
+		public static int dimensionalValue(Context context, String s) {
 			if ("fill_parent".equals(s))
 				return FILL_PARENT;
 			else if ("wrap_content".equals(s))
 				return WRAP_CONTENT;
-			else {
-				Object o = context.getResources().getXMLResourceItem(s);
-				if (o instanceof Integer)
-					return (Integer) o;
-				else 
-					return toInt(0, stripUnits(s));
-			}
+			else 
+				return Resources.dimensionalValue(context, s);
 		}
 		
         public int width, height;
@@ -66,14 +67,6 @@ public class ViewGroup extends View implements ViewManager
 			writer = write_assoc(writer, "margin", objects(leftMargin, topMargin, rightMargin, bottomMargin), 1);
 			return writer.toString();
 		}
-
-    	public static int value(Context context, String s) {
-			Object o = context.getResources().getXMLResourceItem(s);
-			if (o instanceof Integer)
-				return (Integer) o;
-			else 
-				return toInt(0, stripUnits(stringValueOf(o)));
-    	}
 		
         public int leftMargin, topMargin, rightMargin, bottomMargin;
         
@@ -115,6 +108,14 @@ public class ViewGroup extends View implements ViewManager
 	
 	ValList views = vlist();
 
+    public int getChildCount() {
+    	return views.size();
+    }
+    
+    public View getChildAt(int index) {
+    	return (View) views.get(index);
+    }
+
 	@Override
     public void addView(View view, LayoutParams params) {
     	views.add(view);
@@ -125,23 +126,36 @@ public class ViewGroup extends View implements ViewManager
 	public void removeView(View view) {
     	views.remove(view);
 	}
-
-    public int getChildCount() {
-    	return views.size();
-    }
     
-    public View getChildAt(int index) {
-    	return (View) views.get(index);
-    }
-    
+    @Override
     public View findViewById(final int id) {
+		if (findViewTraversal(id) != null)
+			return this;
     	Object[] params = iterateViews(this, 
 			new Function<Object[]>() {
 				public Object[] apply(Object... params) {
 					View v = param(null, 0, params);
 					Object[] parms = param(null, 2, params);
 					if (v.findViewTraversal(id) != null)
-						return new Object[] {v};
+						return objects(v);
+					else
+						return parms;
+				}
+			}, 0);
+    	return param(null, 0, params);
+    }
+
+    @Override
+    public View findViewWithTag(final Object tag) {
+		if (findViewWithTagTraversal(tag) != null)
+			return this;
+    	Object[] params = iterateViews(this, 
+			new Function<Object[]>() {
+				public Object[] apply(Object... params) {
+					View v = param(null, 0, params);
+					Object[] parms = param(null, 2, params);
+					if (v.findViewWithTagTraversal(tag) != null)
+						return arrayextend(parms, false, v);
 					else
 						return parms;
 				}
@@ -167,5 +181,18 @@ public class ViewGroup extends View implements ViewManager
     public Container getContainer() {
     	return (Container) getComponent();
     }
+
+	public void applyAttributes() {
+		super.applyAttributes();
+		iterateViews(this, 
+			new Function<Object[]>() {
+				public Object[] apply(Object... params) {
+					View v = param(null, 0, params);
+					if (v != null)
+						v.applyAttributes();
+					return null;
+				}
+			}, 0);
+	}
 
 }

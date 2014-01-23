@@ -37,6 +37,7 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -87,11 +88,16 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewGroup.LayoutParams;
+import android.view.ViewGroup.MarginLayoutParams;
+import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.applang.BaseDirective;
 import com.applang.Dialogs;
 import com.applang.PromptDirective;
+import com.applang.Util1;
 import com.applang.UserContext.EvaluationTask;
 import com.applang.berichtsheft.BerichtsheftActivity;
 import com.applang.berichtsheft.BerichtsheftApp;
@@ -1223,7 +1229,6 @@ public class HelperTests extends TestCase
 	public void testDialogFeed() throws Exception {
 		final int id = 1;
 		TextView tv = new TextView(null, null);
-        tv.setMovementMethod(new ScrollingMovementMethod());
 		final AlertDialog dialog = new AlertDialog.Builder(new BerichtsheftActivity(), false)
 				.setView(tv)
 				.setNeutralButton(android.R.string.close, new OnClickListener() {
@@ -1269,28 +1274,51 @@ public class HelperTests extends TestCase
         }
 	}
 	
+	public ViewGroup buildTextField(Context context) {
+        LinearLayout linearLayout = linearLayout(context, 
+        		LinearLayout.HORIZONTAL, 
+        		LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT);
+        TextView textView = new TextView(context);
+        LayoutParams layoutParams = marginLayoutParams(
+        		LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 
+        		10,	5, 10, 5);
+		linearLayout.addView(textView, layoutParams);
+        EditText editText = new EditText(context);
+        linearLayout.addView(editText, layoutParams);
+        return linearLayout;
+	}
+	
 	public void testFormBuilder() {
 		Context context = BerichtsheftActivity.getInstance();
-		FormBuilder formBuilder = new FormBuilder(context, "linearlayout.xml");
+		String resName = "linearlayout.xml";	//	
+		FormBuilder formBuilder = new FormBuilder(context, resName);
+		ViewGroup viewGroup = formBuilder.getViewGroup();
+		if (nullOrEmpty(resName)) {
+			formBuilder.setViewGroup(buildTextField(context));
+			TextView tv = (TextView) viewGroup.findViewWithTag("*5");
+			tv.setText("hello");
+			EditText et = (EditText) viewGroup.findViewWithTag("*6");
+			et.setText("world");
+		}
 /*
+ */		
 		formBuilder.addStringField("String");
 		formBuilder.addIntegerField("Integer");
 		formBuilder.addFloatField("Float");
 		formBuilder.addBlobField("Blob");
-*/		
 		formBuilder.addTextField("Text");
+		println(viewGroup);
 		final Container container = formBuilder.build().getContainer();
 		container.addComponentListener(new ComponentAdapter() {
 			@Override
 			public void componentResized(ComponentEvent e) {
-				printContainer("panel", container, false);
+				printContainer("form", container, false);
 			}
 		});
-		println(formBuilder.getViewGroup());
  		showDialog(null, null, "testFormBuilder", 
 				new UIFunction() {
 					public Component[] apply(Component comp, Object[] parms) {
-						container.setPreferredSize(DataManager.viewportSize);
+						container.setPreferredSize(new Dimension(100,100));
 						return components(container);
 					}
 				}, 
@@ -1305,7 +1333,7 @@ public class HelperTests extends TestCase
 		for (File file : files) {
 			String relPath = relativePath(file.getPath(), Resources.getSettingsPath());
 			ViewGroup vg = (ViewGroup) LayoutInflater.from(new BerichtsheftActivity())
-					.inflate(relPath, null);
+					.inflate(relPath);
 			assertNotNull(vg);
 			println(vg);
 		}
@@ -1334,7 +1362,7 @@ public class HelperTests extends TestCase
 					switch (type) {
 					case Dialogs.DIALOG_TEXT_ENTRY:
 						prompt = "Gedicht";
-						values.add("Kein Fehler im System");
+						values.add(readAsset(context, "Kein Fehler im System.txt"));
 						break;
 					case Dialogs.DIALOG_TEXT_INFO:
 						prompt = "poem";

@@ -105,6 +105,7 @@ public class Resources
 					if (notNullOrEmpty(path))
 						value = (T) new Drawable().setImage(path);
 					break;
+				case 2:
 				case 3:
 				case 9:
 					path = Resources.getAbsolutePath(resourceLocations[type], Constraint.END);
@@ -116,6 +117,24 @@ public class Resources
 			}
 		}
 		return value;
+	}
+
+	public static int colorValue(Context context, String s) {
+		Object o = context.getResources().getXMLResourceItem(s);
+		if (o instanceof Integer)
+			return (Integer) o;
+		else {
+			s = stringValueOf(s).replaceFirst("\\#", "");
+			return (int)(long)fromHex(0L, s);
+		}
+	}
+
+	public static int dimensionalValue(Context context, String s) {
+		Object o = context.getResources().getXMLResourceItem(s);
+		if (o instanceof Integer)
+			return (Integer) o;
+		else 
+			return toInt(0, stripUnits(stringValueOf(s)));
 	}
 	
     //	NOTE	all further up do NOT correspond to Android APIs
@@ -244,9 +263,13 @@ public class Resources
 		{
 			String value = elem.getTextContent();
 			switch (type) {
+			case 2:
+				value = value.substring(value.indexOf('#') + 1);
+				int intValue = (int)(long)fromHex(0L, value);
+				return (T) new Integer(intValue);
 			case 3:
 				return (T) toInt(0, stripUnits(value));
-			case 9:
+			default:
 				return (T) value;
 			}
 		}
