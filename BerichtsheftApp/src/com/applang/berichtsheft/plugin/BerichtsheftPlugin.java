@@ -865,9 +865,9 @@ public class BerichtsheftPlugin extends EditPlugin
 		BerichtsheftShell.print("Welcome...", NEWLINE);
 		String[] tools = {"AWK_COMMAND", "ADB_COMMAND", "SQLITE_COMMAND"};
 		for (int i = 0; i < tools.length; i++) {
-			debug_println(i, tools[i]);
+			no_println(i, tools[i]);
 			String cmd = getCommand(tools[i]);
-			debug_println(i, cmd);
+			no_println(i, cmd);
 			if (!fileExists(cmd)) {
 				if (nullOrEmpty(runShellScript("which", "which " + cmd)))
 					consoleMessage("berichtsheft.tool-missing.message", cmd);
@@ -880,12 +880,12 @@ public class BerichtsheftPlugin extends EditPlugin
 	}
 
 	public static String getCommand(String path) {
-		debug_println("settings.dir", System.getProperty("settings.dir", ""));
+		no_println("settings.dir", System.getProperty("settings.dir", ""));
 		String cmd = getProperty(path); 
-		debug_println(path, cmd);
+		no_println(path, cmd);
 		if (!cmd.startsWith(PATH_SEP) && cmd.contains(PATH_SEP)) {
 			String sdk = getProperty("ANDROID_SDK");
-			debug_println("ANDROID_SDK", sdk);
+			no_println("ANDROID_SDK", sdk);
 			cmd = pathCombine(System.getProperty("user.home"), sdk, cmd);
 		}
 		return cmd;

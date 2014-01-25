@@ -165,7 +165,7 @@ public class Util2
 			if (properties == null)
 				clear();
 			
-			debug_println("settings.fileName", fileExists(fileName), fileName);
+			no_println("settings.fileName", fileExists(fileName), fileName);
 			if (!fileExists(fileName))
 				return;
 			
@@ -179,7 +179,7 @@ public class Util2
 					properties.load(fis);
 					fis.close();
 				}
-				debug_println("settings.loaded", properties);
+				no_println("settings.loaded", properties);
 			} 
 			catch (FileNotFoundException e) {
 			} 

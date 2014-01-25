@@ -397,6 +397,7 @@ public class Resources
 			return src.getLocation().toURI();
 		} catch (Exception e) {
 			Log.e(TAG, "getCodeSourceLocation", e);
+			debug_println("code source not available");
 			throw new RuntimeException("code source not available");
 		}
 	}

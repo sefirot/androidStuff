@@ -11,7 +11,6 @@ import android.content.Context;
 import android.util.AttributeSet;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewGroup.MarginLayoutParams;
 
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
@@ -222,8 +221,6 @@ public class RelativeLayout extends ViewGroup
 			for (int verb = 0; verb < rules.length; verb++) {
 				String rule = rules[verb];
 				if (notNullOrEmpty(rule)) {
-					SpringLayout.Constraints viewCons = getLayout()
-							.getConstraints(component);
 					if (component != null)
 						switch (verb) {
 						case LEFT_OF:
