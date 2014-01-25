@@ -2,9 +2,12 @@ package android.widget;
 
 import java.awt.Container;
 
+import javax.swing.Box;
 import javax.swing.BoxLayout;
 
 import android.content.Context;
+import android.util.AttributeSet;
+import android.view.View;
 import android.view.ViewGroup;
 
 public class LinearLayout extends ViewGroup {
@@ -17,6 +20,10 @@ public class LinearLayout extends ViewGroup {
 	{
 		public LayoutParams(int width, int height) {
             super(width, height);
+		}
+
+		public LayoutParams(Context c, AttributeSet attrs) {
+            super(c, attrs);
 		}
 
 		public int gravity;
@@ -43,10 +50,32 @@ public class LinearLayout extends ViewGroup {
 	@Override
     public Container getContainer() {
 		Container container = super.getContainer();
-		container.setLayout(
-			new BoxLayout(container, orientation == HORIZONTAL ? 
-					BoxLayout.X_AXIS : 
-					BoxLayout.Y_AXIS));
+		if (!(container.getLayout() instanceof BoxLayout))
+			container.setLayout(
+				new BoxLayout(container, orientation == HORIZONTAL ? 
+						BoxLayout.X_AXIS : 
+						BoxLayout.Y_AXIS));
 		return container;
     }
+
+	@Override
+	public void doLayout(View view) {
+		ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
+		if (layoutParams instanceof MarginLayoutParams) {
+			MarginLayoutParams margs = (MarginLayoutParams) layoutParams;
+			BoxLayout boxLayout = (BoxLayout) getContainer().getLayout();
+			int axis = boxLayout.getAxis();
+			Box outerBox = new Box(axis);
+			outerBox.add(margs.strutsOuterFirst(axis));
+			Box innerBox = axis == BoxLayout.X_AXIS ? 
+					Box.createVerticalBox() : 
+					Box.createHorizontalBox();
+			innerBox.add(margs.strutsInnerFirst(axis));
+			innerBox.add(view.getComponent());
+			innerBox.add(margs.strutsInnerLast(axis));
+			outerBox.add(innerBox);
+			outerBox.add(margs.strutsOuterLast(axis));
+			view.setComponent(outerBox);
+		}
+	}
 }

@@ -1,7 +1,6 @@
 package android.widget;
 
 import java.awt.Color;
-import java.awt.Component;
 import java.awt.Graphics;
 import java.awt.Image;
 import java.awt.event.FocusEvent;
@@ -12,7 +11,6 @@ import java.awt.event.MouseListener;
 import javax.swing.JComponent;
 
 import android.content.Context;
-import android.content.res.Resources;
 import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -22,8 +20,12 @@ import static com.applang.Util.*;
 
 public class ImageView extends View
 {
-	private static final String TAG = ImageView.class.getSimpleName();
+	protected static final String TAG = ImageView.class.getSimpleName();
 	
+	public ImageView(Context context) {
+		super(context, null);
+	}
+
 	public ImageView(Context context, AttributeSet attrs) {
 		super(context, attrs);
 	}

@@ -498,7 +498,7 @@ public class DataView extends JPanel implements IComponent
 		if (notNullOrEmpty(packageName)) {
 			ValList flavors = contentAuthorities(strings(packageName));
 			for (Object flavor : flavors) {
-				rows.add(objects(split(flavor.toString(), "\\.").get(-1)));
+				rows.add(objects(split(flavor.toString(), DOT_REGEX).get(-1)));
 			}
 		}
 		else  {

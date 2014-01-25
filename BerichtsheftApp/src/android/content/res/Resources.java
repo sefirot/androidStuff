@@ -124,8 +124,7 @@ public class Resources
 		if (o instanceof Integer)
 			return (Integer) o;
 		else {
-			s = stringValueOf(s).replaceFirst("\\#", "");
-			return (int)(long)fromHex(0L, s);
+			return android.graphics.Color.parseColor(s);
 		}
 	}
 
@@ -136,10 +135,19 @@ public class Resources
 		else 
 			return toInt(0, stripUnits(stringValueOf(s)));
 	}
+
+	public static boolean booleanValue(Context context, String s) {
+		Object o = context.getResources().getXMLResourceItem(s);
+		if (o instanceof String)
+			return toBool(false, (String) o);
+		else 
+			return toBool(false, s);
+	}
 	
-    //	NOTE	all further up do NOT correspond to Android APIs
+    //	NOTE	methods further up do NOT correspond to Android APIs
 	
 	public String getString(int id) {
+		final int resourceType = 9;
 		switch (id) {
 		case android.R.string.close:
 			return (String) defaultOptions(JOptionPane.DEFAULT_OPTION).get(0);
@@ -153,14 +161,14 @@ public class Resources
 			return (String) UIManager.get("OptionPane.noButtonText");
 		default:
 			Object[] params = {null};
-			lookup_R(id, context.getPackageName(), 9, new Job<Class<?>>() {
+			lookup_R(id, context.getPackageName(), resourceType, new Job<Class<?>>() {
 				public void perform(Class<?> c, Object[] parms) throws Exception {
 					final String name = param_String(null,0,parms);
-					InputStream is = c.getResourceAsStream(getRelativePath(9));
+					InputStream is = c.getResourceAsStream(getRelativePath(resourceType));
 					Document doc = xmlDocument(null, is);
 					Object[] params = param(null,1,parms);
 					if (params != null)
-						params[0] = getResourceByName(doc, name, 9);
+						params[0] = getResourceByName(doc, name, resourceType);
 				}
 			}, params);
 			if (null != params[0])
@@ -169,17 +177,18 @@ public class Resources
 		return "";
 	}
 	public int getDimensionPixelOffset(int id) {
+		final int resourceType = 3;
 		switch (id) {
 		default:
 			Object[] params = {0};
-			lookup_R(id, context.getPackageName(), 3, new Job<Class<?>>() {
+			lookup_R(id, context.getPackageName(), resourceType, new Job<Class<?>>() {
 				public void perform(Class<?> c, Object[] parms) throws Exception {
 					final String name = param_String(null,0,parms);
-					InputStream is = c.getResourceAsStream(getRelativePath(3));
+					InputStream is = c.getResourceAsStream(getRelativePath(resourceType));
 					Document doc = xmlDocument(null, is);
 					Object[] params = param(null,1,parms);
 					if (params != null)
-						params[0] = getResourceByName(doc, name, 3);
+						params[0] = getResourceByName(doc, name, resourceType);
 				}
 			}, params);
 			if (null != params[0])
@@ -187,16 +196,17 @@ public class Resources
 		}
 		return 0;
 	}
-	public Drawable getDrawable (int id, Object...params) {
+	public Drawable getDrawable(int id, Object...params) {
 		String pkg = param(context.getPackageName(), 0, params);
+		final int resourceType = 4;
 		switch (id) {
 		default:
 			params = params.length < 1 ? objects(_null()): params;
 			params[0] = null;
-			lookup_R(id, pkg, 4, new Job<Class<?>>() {
+			lookup_R(id, pkg, resourceType, new Job<Class<?>>() {
 				public void perform(Class<?> c, Object[] parms) throws Exception {
-					final String name = getRelativePath(4, param_String(null,0,parms));
-					InputStream is = getInputStreamByName(c, name, 4);
+					final String name = getRelativePath(resourceType, param_String(null,0,parms));
+					InputStream is = getInputStreamByName(c, name, resourceType);
 					Object[] params = param(null, 1, parms);
 					if (params != null)
 						params[0] = is;
@@ -208,13 +218,14 @@ public class Resources
 		return null;
 	}
 	public InputStream openRawResource(int id) {
+		final int resourceType = 8;
 		switch (id) {
 		default:
 			Object[] params = {null};
-			lookup_R(id, context.getPackageName(), 8, new Job<Class<?>>() {
+			lookup_R(id, context.getPackageName(), resourceType, new Job<Class<?>>() {
 				public void perform(Class<?> c, Object[] parms) throws Exception {
-					final String name = getRelativePath(8, param_String(null,0,parms));
-					InputStream is = getInputStreamByName(c, name, 8);
+					final String name = getRelativePath(resourceType, param_String(null,0,parms));
+					InputStream is = getInputStreamByName(c, name, resourceType);
 					Object[] params = param(null, 1, parms);
 					if (params != null)
 						params[0] = is;
@@ -230,7 +241,27 @@ public class Resources
 		return new AssetManager();
 	}
 	
-    //	NOTE	all further down do NOT correspond to Android APIs
+    //	NOTE	methods further down do NOT correspond to Android APIs
+	
+	public Document getXml(int id) {
+		final int resourceType = 6;
+		switch (id) {
+		default:
+			Object[] params = {0};
+			lookup_R(id, context.getPackageName(), resourceType, new Job<Class<?>>() {
+				public void perform(Class<?> c, Object[] parms) throws Exception {
+					final String name = getRelativePath(resourceType, param_String(null,0,parms));
+					InputStream is = getInputStreamByName(c, name, resourceType);
+					Object[] params = param(null,1,parms);
+					if (params != null)
+						params[0] = xmlDocument(null, is);
+				}
+			}, params);
+			if (null != params[0])
+				return (Document) params[0];
+		}
+		return null;
+	}
 	
 	private boolean lookup_R(int id, String pkg, int resourceType, Job<Class<?>> lookup, Object...params) {
 		try {
@@ -264,9 +295,7 @@ public class Resources
 			String value = elem.getTextContent();
 			switch (type) {
 			case 2:
-				value = value.substring(value.indexOf('#') + 1);
-				int intValue = (int)(long)fromHex(0L, value);
-				return (T) new Integer(intValue);
+				return (T) new Integer(android.graphics.Color.parseColor(value));
 			case 3:
 				return (T) toInt(0, stripUnits(value));
 			default:
@@ -281,11 +310,12 @@ public class Resources
 				new ResourceURLFilter() {
 					public boolean accept(URL resourceUrl) {
 						String url = resourceUrl.getFile();
-						return url.contains(name);
+						return check(url, Constraint.MIDDLE, name + DOT);
 					}
 				});
-		if (res.size() == 1) {
-			String path = res.iterator().next().getFile();
+		if (res.iterator().hasNext()) {
+			URL url = res.iterator().next();
+			String path = url.getFile();
 			path = path.substring(path.indexOf(name));
 			return c.getResourceAsStream(path);
 		}
@@ -365,7 +395,7 @@ public class Resources
 		try {
 			CodeSource src = rootClass.getProtectionDomain().getCodeSource();
 			return src.getLocation().toURI();
-		} catch (URISyntaxException e) {
+		} catch (Exception e) {
 			Log.e(TAG, "getCodeSourceLocation", e);
 			throw new RuntimeException("code source not available");
 		}

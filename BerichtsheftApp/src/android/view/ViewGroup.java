@@ -11,6 +11,7 @@ import com.applang.Util.Function;
 
 import android.content.Context;
 import android.content.res.Resources;
+import android.util.AttributeSet;
 
 import static com.applang.Util.*;
 import static com.applang.Util1.*;
@@ -32,7 +33,8 @@ public class ViewGroup extends View implements ViewManager
 		setComponent(new Container());
 	}
 
-	public static class LayoutParams {
+	public static class LayoutParams
+	{
 		@Override
 		public String toString() {
 			Writer writer = write(null, identity(this));
@@ -54,13 +56,19 @@ public class ViewGroup extends View implements ViewManager
 		
         public int width, height;
         
+        public LayoutParams(Context context, AttributeSet attrs) {
+			width = dimensionalValue(context, attrs.getAttributeValue("android:layout_width"));
+			height = dimensionalValue(context, attrs.getAttributeValue("android:layout_height"));
+		}
+        
         public LayoutParams(int width, int height) {
             this.width = width;
             this.height = height;
 		}
 	}
 
-	public static class MarginLayoutParams extends LayoutParams {
+	public static class MarginLayoutParams extends LayoutParams
+	{
 		@Override
 		public String toString() {
 			Writer writer = write(null, super.toString());
@@ -80,6 +88,14 @@ public class ViewGroup extends View implements ViewManager
         public MarginLayoutParams(int width, int height) {
             super(width, height);
 		}
+ 
+        public MarginLayoutParams(Context context, AttributeSet attrs) {
+        	super(context, attrs);
+        	leftMargin = Resources.dimensionalValue(context, attrs.getAttributeValue("android:layout_marginLeft"));
+        	topMargin = Resources.dimensionalValue(context, attrs.getAttributeValue("android:layout_marginTop"));
+        	rightMargin = Resources.dimensionalValue(context, attrs.getAttributeValue("android:layout_marginRight"));
+        	bottomMargin = Resources.dimensionalValue(context, attrs.getAttributeValue("android:layout_marginBottom"));
+        }
         
         public Component strutsOuterFirst(int orientation) {
         	return orientation == BoxLayout.X_AXIS ? 
@@ -119,11 +135,13 @@ public class ViewGroup extends View implements ViewManager
 	@Override
     public void addView(View view, LayoutParams params) {
     	views.add(view);
+    	view.setParent(this);
     	view.setLayoutParams(params);
 	}
 
 	@Override
 	public void removeView(View view) {
+		view.setParent(null);
     	views.remove(view);
 	}
     
@@ -146,21 +164,21 @@ public class ViewGroup extends View implements ViewManager
     }
 
     @Override
-    public View findViewWithTag(final Object tag) {
-		if (findViewWithTagTraversal(tag) != null)
+    public View findViewWithTag(final Object tag, final Object...params) {
+		if (findViewWithTagTraversal(tag, params) != null)
 			return this;
-    	Object[] params = iterateViews(this, 
+    	Object[] findings = iterateViews(this, 
 			new Function<Object[]>() {
 				public Object[] apply(Object... params) {
 					View v = param(null, 0, params);
 					Object[] parms = param(null, 2, params);
-					if (v.findViewWithTagTraversal(tag) != null)
+					if (v.findViewWithTagTraversal(tag, params) != null)
 						return arrayextend(parms, false, v);
 					else
 						return parms;
 				}
 			}, 0);
-    	return param(null, 0, params);
+    	return param(null, 0, findings);
     }
 
 	@Override
@@ -177,10 +195,6 @@ public class ViewGroup extends View implements ViewManager
     protected boolean checkLayoutParams(ViewGroup.LayoutParams p) {
         return  p != null;
     }
-    
-    public Container getContainer() {
-    	return (Container) getComponent();
-    }
 
 	public void applyAttributes() {
 		super.applyAttributes();
@@ -193,6 +207,17 @@ public class ViewGroup extends View implements ViewManager
 					return null;
 				}
 			}, 0);
+	}
+    
+    public Container getContainer() {
+    	return (Container) getComponent();
+    }
+
+	public void doLayout(View view) {
+	}
+
+	public ViewGroup completeLayout() {
+		return this;
 	}
 
 }

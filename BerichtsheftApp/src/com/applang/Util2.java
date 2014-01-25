@@ -3,7 +3,6 @@ package com.applang;
 import java.awt.Container;
 import java.awt.Graphics2D;
 import java.awt.Image;
-import java.awt.LayoutManager;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.beans.XMLDecoder;
@@ -50,8 +49,6 @@ import java.util.Set;
 import java.util.regex.MatchResult;
 import java.util.regex.Pattern;
 
-import javax.swing.Box;
-import javax.swing.BoxLayout;
 import javax.swing.SwingWorker;
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Result;
@@ -93,8 +90,8 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewGroup.LayoutParams;
-import android.view.ViewGroup.MarginLayoutParams;
+import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 
 import static com.applang.Util.*;
 import static com.applang.Util1.*;
@@ -868,7 +865,7 @@ public class Util2
 	public static File tempFile(String nameWithExtension, String...subdirs) {
 		try {
 			File tempDir = tempDir(false, subdirs);
-			String[] parts = nameWithExtension.split("\\.");
+			String[] parts = nameWithExtension.split(DOT_REGEX);
 			return File.createTempFile(
 					parts.length > 0 && parts[0].length() > 2 ? parts[0] : "tmp", 
 					parts.length > 1 ? "." + parts[1] : null, 
@@ -911,7 +908,6 @@ public class Util2
 			return Arrays.copyOfRange(array, start, start + length);
 	}
 
-	@SuppressWarnings("unchecked")
 	public static <T> T[] arrayextend(T[] array, boolean prepend, T... params) {
 		T[] a;
 		if (prepend) {
@@ -1160,18 +1156,19 @@ public class Util2
 	}
 	
 	public static AttributeSet attributeSet(final Context context, Object...attrs) {
-		Element el = param(null, 0, attrs);
-		if (el == null) {
+		Object o = param(null, 0, attrs);
+		if (!(o instanceof Element)) {
 			ValMap map = namedParams(attrs);
 			StringBuilder sb = new StringBuilder();
 			sb.append("<AttributeSet xmlns:android=\"http://schemas.android.com/apk/res/android\"");
-			for (String key : map.keySet())
-				sb.append(" " + key + "=" + quoted(stringValueOf(map.get(key))));
+			for (int i = 0; i < map.size(); i+=2) {
+				sb.append(" " + map.get("param" + i) + "=" + quoted(stringValueOf(map.get("param" + (i + 1)))));
+			}
 			sb.append(" />");
 			InputStream is = new ByteArrayInputStream(sb.toString().getBytes());
-			el = xmlDocument(null, is).getDocumentElement();
+			o = xmlDocument(null, is).getDocumentElement();
 		}
-		final Element element = el;
+		final Element element = (Element) o;
 		return new AttributeSet() {
 			{
 				resources = context.getResources();
@@ -1278,6 +1275,12 @@ public class Util2
 	{
 		protected Context mContext;
 		protected LayoutInflater inflater = null;
+		
+		public LayoutBuilder(Context context) {
+			mContext = context;
+			inflater = LayoutInflater.from(mContext);
+		}
+
 		protected ViewGroup viewGroup = null;
 		
 		public ViewGroup getViewGroup() {
@@ -1288,11 +1291,15 @@ public class Util2
 			this.viewGroup = viewGroup;
 		}
 
-		public LayoutBuilder(Context context, String resName) {
-			mContext = context;
-			inflater = LayoutInflater.from(mContext);
-			if (notNullOrEmpty(resName)) {
-				View view = inflater.inflate(Resources.getRelativePath(6, resName));
+		public LayoutBuilder(Context context, ViewGroup viewGroup) {
+			this(context);
+			this.viewGroup = viewGroup;
+		}
+
+		public LayoutBuilder(Context context, String resourceName) {
+			this(context);
+			if (notNullOrEmpty(resourceName)) {
+				View view = inflater.inflate(Resources.getRelativePath(6, resourceName));
 				if (view instanceof ViewGroup)
 					viewGroup = (ViewGroup) view;
 				else {
@@ -1302,7 +1309,6 @@ public class Util2
 			}
 			else
 				viewGroup = new ViewGroup(mContext);
-			viewGroup.setTag("form");
 		}
 		
 	    public void addView(View view, ViewGroup.LayoutParams params) {
@@ -1316,35 +1322,14 @@ public class Util2
 				View view = viewGroup.getChildAt(i);
 				if (view instanceof ViewGroup)
 					build(view);
-				marginLayout(container, view);
+				View parent = view.getParent();
+				if (parent instanceof ViewGroup)
+					((ViewGroup) parent).doLayout(view);
 				container.add(view.getComponent());
 			}
 			viewGroup.applyAttributes();
-			return viewGroup;
+			return viewGroup.completeLayout();
 	    }
-
-		public void marginLayout(Container container, View view) {
-			LayoutParams parms = view.getLayoutParams();
-			if (parms instanceof MarginLayoutParams) {
-				MarginLayoutParams margs = (MarginLayoutParams) parms;
-				LayoutManager layout = container.getLayout();
-				if (layout instanceof BoxLayout) {
-					BoxLayout boxLayout = (BoxLayout) layout;
-					int axis = boxLayout.getAxis();
-					Box outerBox = new Box(axis);
-					outerBox.add(margs.strutsOuterFirst(axis));
-					Box innerBox = axis == BoxLayout.X_AXIS ? 
-							Box.createVerticalBox() : 
-							Box.createHorizontalBox();
-					innerBox.add(margs.strutsInnerFirst(axis));
-					innerBox.add(view.getComponent());
-					innerBox.add(margs.strutsInnerLast(axis));
-					outerBox.add(innerBox);
-					outerBox.add(margs.strutsOuterLast(axis));
-					view.setComponent(outerBox);
-				}
-			}
-		}
 	}
 
 	/**

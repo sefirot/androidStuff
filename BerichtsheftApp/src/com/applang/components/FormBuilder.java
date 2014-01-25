@@ -1,9 +1,9 @@
 package com.applang.components;
 
+import org.w3c.dom.Document;
+
 import android.content.Context;
 import android.content.res.Resources;
-import android.text.method.ScrollingMovementMethod;
-import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -12,10 +12,21 @@ import android.widget.TextView;
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
 
-public class FormBuilder extends LayoutBuilder {
+public class FormBuilder extends LayoutBuilder
+{
+	public FormBuilder(Context context, ViewGroup viewGroup) {
+		super(context, viewGroup);
+	}
 
 	public FormBuilder(Context context, String resName) {
 		super(context, resName);
+		getViewGroup().setTag("form");
+	}
+
+	public FormBuilder(Context context, int resId) {
+		super(context);
+		Document document = mContext.getResources().getXml(resId);
+		setViewGroup((ViewGroup) inflater.inflate(document.getDocumentElement()));
 	}
 
 	public void setLabel(Object labelText, ViewGroup vg) {

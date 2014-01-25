@@ -83,21 +83,19 @@ import android.content.DialogInterface.OnClickListener;
 import android.content.res.Resources;
 import android.net.Uri;
 import android.provider.BaseColumns;
-import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
-import android.view.ViewGroup.MarginLayoutParams;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import com.applang.BaseDirective;
 import com.applang.Dialogs;
 import com.applang.PromptDirective;
-import com.applang.Util1;
 import com.applang.UserContext.EvaluationTask;
 import com.applang.berichtsheft.BerichtsheftActivity;
 import com.applang.berichtsheft.BerichtsheftApp;
@@ -1274,32 +1272,49 @@ public class HelperTests extends TestCase
         }
 	}
 	
-	public ViewGroup buildTextField(Context context) {
+	public void testLinearLayout() {
+		Context context = BerichtsheftActivity.getInstance();
         LinearLayout linearLayout = linearLayout(context, 
         		LinearLayout.HORIZONTAL, 
         		LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT);
-        TextView textView = new TextView(context);
         LayoutParams layoutParams = marginLayoutParams(
         		LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 
         		10,	5, 10, 5);
+        TextView textView = new TextView(context);
 		linearLayout.addView(textView, layoutParams);
         EditText editText = new EditText(context);
         linearLayout.addView(editText, layoutParams);
-        return linearLayout;
+		FormBuilder formBuilder = new FormBuilder(context, linearLayout);
+		TextView tv = (TextView) linearLayout.findViewWithTag("*3");
+		tv.setText("hello");
+		EditText et = (EditText) linearLayout.findViewWithTag("*4");
+		et.setText("world");
+		showForm(formBuilder);
+	}
+	
+	public void testRelativeLayout() {
+		Context context = BerichtsheftActivity.getInstance();
+		RelativeLayout relativeLayout = relativeLayout(context, 
+        		LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT);
+		TextView textView = new TextView(context);
+		relativeLayout.addView(textView, textView.getLayoutParams());
+		EditText editText = new EditText(context);
+        LayoutParams layoutParams = new RelativeLayout.LayoutParams(context, 
+        		attributeSet(context, 
+        				"android:layout_toRightOf", "view_3"));
+        relativeLayout.addView(editText, layoutParams);
+		FormBuilder formBuilder = new FormBuilder(context, relativeLayout);
+		TextView tv = (TextView) relativeLayout.findViewWithTag("*3");
+		tv.setText("hello");
+		EditText et = (EditText) relativeLayout.findViewWithTag("*4");
+		et.setText("world");
+		showForm(formBuilder);
 	}
 	
 	public void testFormBuilder() {
 		Context context = BerichtsheftActivity.getInstance();
 		String resName = "linearlayout.xml";	//	
 		FormBuilder formBuilder = new FormBuilder(context, resName);
-		ViewGroup viewGroup = formBuilder.getViewGroup();
-		if (nullOrEmpty(resName)) {
-			formBuilder.setViewGroup(buildTextField(context));
-			TextView tv = (TextView) viewGroup.findViewWithTag("*5");
-			tv.setText("hello");
-			EditText et = (EditText) viewGroup.findViewWithTag("*6");
-			et.setText("world");
-		}
 /*
  */		
 		formBuilder.addStringField("String");
@@ -1307,7 +1322,17 @@ public class HelperTests extends TestCase
 		formBuilder.addFloatField("Float");
 		formBuilder.addBlobField("Blob");
 		formBuilder.addTextField("Text");
-		println(viewGroup);
+		showForm(formBuilder);
+	}
+	
+	public void testFormBuilder2() {
+		Context context = BerichtsheftActivity.getInstance();
+		FormBuilder formBuilder = new FormBuilder(context, R.layout.construct_form_header);
+		showForm(formBuilder);
+	}
+
+	public void showForm(FormBuilder formBuilder) {
+		println(formBuilder.getViewGroup());
 		final Container container = formBuilder.build().getContainer();
 		container.addComponentListener(new ComponentAdapter() {
 			@Override
@@ -1328,6 +1353,8 @@ public class HelperTests extends TestCase
 	}
 	
 	public void testResources() {
+		assertEquals(-65536, Resources.colorValue(BerichtsheftActivity.getInstance(), "@color/opaque_red"));
+		assertEquals(-65536, Resources.colorValue(BerichtsheftActivity.getInstance(), "#ff0000"));
 		Context context = BerichtsheftActivity.getInstance();
 		File[] files = new File(BerichtsheftApp.applicationDataPath("res/layout")).listFiles();
 		for (File file : files) {
@@ -1335,7 +1362,7 @@ public class HelperTests extends TestCase
 			ViewGroup vg = (ViewGroup) LayoutInflater.from(new BerichtsheftActivity())
 					.inflate(relPath);
 			assertNotNull(vg);
-			println(vg);
+			no_println(vg);
 		}
 		assertEquals("Berichtsheft", 
 				context.getResources().getString(R.string.app_name));
@@ -1343,7 +1370,7 @@ public class HelperTests extends TestCase
 		printMatchResults("@dimen/margin", Resources.XML_RESOURCE_PATTERN, "no");
 		printMatchResults("@com.applang.berichtsheft.R:dimen/margin", Resources.XML_RESOURCE_PATTERN, "no");
 		println(Resources.getAbsolutePath("/res/values/strings.xml", Constraint.END));
-		println(Resources.getAbsolutePath("/res/values/colors.xml", Constraint.END));
+		println(Resources.getAbsolutePath("/res/layout/construct_form_header.xml", Constraint.END));
 		println("user.dir", System.getProperty("user.dir"));
 		println("user.home", System.getProperty("user.home"));
 	}

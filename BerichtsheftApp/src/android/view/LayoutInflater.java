@@ -13,6 +13,7 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.view.ViewGroup.LayoutParams;
 import android.view.ViewGroup.MarginLayoutParams;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -77,21 +78,19 @@ public class LayoutInflater
 				vw = relativeLayout(mContext,  width, height);
 			}
 			else {
-				int left = Resources.dimensionalValue(mContext, element.getAttribute("android:layout_marginLeft"));
-				int top = Resources.dimensionalValue(mContext, element.getAttribute("android:layout_marginTop"));
-				int right = Resources.dimensionalValue(mContext, element.getAttribute("android:layout_marginRight"));
-				int bottom = Resources.dimensionalValue(mContext, element.getAttribute("android:layout_marginBottom"));
-				if (TextView.class.equals(layoutClass)) {
-					vw = new TextView(mContext, attributeSet);
-					vw.setLayoutParams(marginLayoutParams(width, height, left, top, right, bottom));
-				}
-				else if (EditText.class.equals(layoutClass)) {
-					vw = new EditText(mContext, attributeSet);
-					vw.setLayoutParams(marginLayoutParams(width, height, left, top, right, bottom));
-				}
-				else if (ImageView.class.equals(layoutClass)) {
-					vw = new ImageView(mContext, attributeSet);
-					vw.setLayoutParams(marginLayoutParams(width, height, left, top, right, bottom));
+				vw = (View) layoutClass
+						.getConstructor(Context.class, AttributeSet.class)
+						.newInstance(mContext, attributeSet);
+				if (vw != null) {
+					LayoutParams layoutParams;
+					View vp = param(null, 0, params);
+					if (vp instanceof LinearLayout)
+						layoutParams = new LinearLayout.LayoutParams(mContext, attributeSet);
+					else if (vp instanceof RelativeLayout)
+						layoutParams = new RelativeLayout.LayoutParams(mContext, attributeSet);
+					else 
+						layoutParams = new ViewGroup.MarginLayoutParams(mContext, attributeSet);
+					vw.setLayoutParams(layoutParams);
 				}
 			}
 			if (vw != null) {
@@ -102,9 +101,8 @@ public class LayoutInflater
 					for (int i = 0; i < nodes.getLength(); i++) {
 						Node node = nodes.item(i);
 						if (node.getNodeType() == Node.ELEMENT_NODE) {
-							View v = inflate((Element)node, params);
-							LayoutParams layoutParams = v.getLayoutParams();
-							vg.addView(v, layoutParams);
+							View v = inflate((Element)node, vg);
+							vg.addView(v, v.getLayoutParams());
 						}
 					}
 				}

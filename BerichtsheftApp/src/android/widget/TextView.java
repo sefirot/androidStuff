@@ -51,7 +51,7 @@ public class TextView extends View
 	public void setMovementMethod(MovementMethod movementMethod) {
 		if (movementMethod instanceof ScrollingMovementMethod) {
 			JComponent component = (JComponent) getComponent();
-			if (!(component instanceof JTextField)) {
+			if (!(component instanceof JScrollPane) && !(component instanceof JTextField)) {
 				setComponent(new JScrollPane(component));
 			}
 		}
@@ -62,7 +62,7 @@ public class TextView extends View
 	}
 	
 	public void setText(String text) {
-    	if (isMultiLine()) {
+    	if (isMultiLine() && !text.substring(0, Math.min(text.length(), 10)).toLowerCase().startsWith("<html>")) {
     		text = enclose("<html>", text.replaceAll(NEWLINE_REGEX, "<br>"), "</html>");
     	}
 		getLabel().setText(text);
