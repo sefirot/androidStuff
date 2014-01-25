@@ -344,14 +344,15 @@ public class Dialogs extends Activity
 			} 
 	    case DIALOG_TEXT_ENTRY:
 	    case DIALOG_TEXT_INFO:
-            LinearLayout linearLayout = Util1.linearLayout(this, 
+            LinearLayout linearLayout = linearLayout(this, 
             		LinearLayout.HORIZONTAL, 
             		LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT);
             TextView textView = id == DIALOG_TEXT_ENTRY ? 
             		new EditText(this) : 
             		new TextView(this);
             textView.setText(values[0]);
-            linearLayout.addView(textView, Util1.marginLayoutParams(
+            textView.setMovementMethod(new ScrollingMovementMethod());
+            linearLayout.addView(textView, marginLayoutParams(
             		LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 
             		margin,	halfMargin, margin, halfMargin));
     		switch (id) {

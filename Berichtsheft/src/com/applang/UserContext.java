@@ -225,7 +225,7 @@ public class UserContext extends CustomContext implements Serializable
 			this.userContext = new UserContext(refMap, this);
 			for (Object authority : contentAuthorities(providerPackages)) {
 				String auth = String.valueOf(authority);
-				String key = split(auth, "\\.").get(-1) + "Uri";
+				String key = split(auth, DOT_REGEX).get(-1) + "Uri";
 				userContext.put(key, contentUri(auth, null).toString());
 			}
     	}

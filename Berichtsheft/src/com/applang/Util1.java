@@ -15,9 +15,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONStringer;
-import org.w3c.dom.Element;
-import org.w3c.dom.NamedNodeMap;
-import org.w3c.dom.Node;
 
 import android.app.Activity;
 import android.content.ContentResolver;
@@ -25,7 +22,6 @@ import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.res.AssetManager;
-import android.content.res.Resources;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
@@ -33,7 +29,6 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Bitmap.CompressFormat;
 import android.net.Uri;
-import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
@@ -200,13 +195,13 @@ public class Util1
 	public static LinearLayout linearLayout(Context context, int orientation, int width, int height) {
 	    LinearLayout linear = new LinearLayout(context);
 	    linear.setOrientation(orientation);
-		linear.setLayoutParams(new LayoutParams(width, height));
+		linear.setLayoutParams(new LinearLayout.LayoutParams(width, height));
 		return linear;
 	}
 
 	public static RelativeLayout relativeLayout(Context context, int width, int height) {
 		RelativeLayout relative = new RelativeLayout(context);
-	    relative.setLayoutParams(new LayoutParams(width, height));
+	    relative.setLayoutParams(new RelativeLayout.LayoutParams(width, height));
 		return relative;
 	}
 

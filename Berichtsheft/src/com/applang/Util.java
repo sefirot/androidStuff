@@ -1209,12 +1209,14 @@ public class Util
 	    }
 	}
 	
-	public static final String PATH_SEP = System.getProperty("file.separator");
+	public static final String PATH_SEP = System.getProperty("file.separator");	//	slash
 	public static final String TAB = "\t";
 	public static final String NEWLINE = "\n";	//	System.getProperty("line.separator");
+	public static final String DOT = ".";
 	public static final String GLUE = "|";
 	public static final String TAB_REGEX = "\\t";
 	public static final String NEWLINE_REGEX = "\\n";
+	public static final String DOT_REGEX = "\\.";
 	public static final String GLUE_REGEX = "\\|";
 	public static final String WHITESPACE_REGEX = "\\s+";
 	public static final String WHITESPACE_OR_NOTHING_REGEX = "\\s*";

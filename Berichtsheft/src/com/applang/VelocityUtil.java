@@ -941,7 +941,7 @@ public class VelocityUtil
 			Pattern.compile("\\" + VRI + "\\!?\\{?(" + IDENTIFIER_PATTERN2 + ")\\}?");
 	public static final Pattern PARENS_TERM = Pattern.compile("([^\\)]+)?");
 	public static final Pattern METHOD_PATTERN = 
-			Pattern.compile("\\" + VRI + "\\!?\\{?(" + IDENTIFIER_PATTERN + "\\." + IDENTIFIER_PATTERN + ")" +
+			Pattern.compile("\\" + VRI + "\\!?\\{?(" + IDENTIFIER_PATTERN + DOT_REGEX + IDENTIFIER_PATTERN + ")" +
 					"\\(\\s*" + PARENS_TERM + "\\s*\\)\\}?");
 	
 	public static List<String> referencesIn(String template) {
