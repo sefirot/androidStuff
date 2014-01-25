@@ -294,6 +294,7 @@ public class Util1
 			}
 		} catch (Exception e) {
 			Log.e(TAG, "contentAuthorities", e);
+			debug_println("contentAuthorities exception !!!");
 			list.addAll(asList(strings(
 					"com.applang.provider.NotePad", 
 					"com.applang.provider.WeatherInfo", 
