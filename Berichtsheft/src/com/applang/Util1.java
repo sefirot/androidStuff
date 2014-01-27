@@ -32,7 +32,6 @@ import android.net.Uri;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewGroup.LayoutParams;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 
@@ -81,7 +80,7 @@ public class Util1
 			if (value instanceof Boolean)
 				return (Boolean) value;
 			else
-				return parseBoolean(defaultValue, "" + value);
+				return toBool(defaultValue, "" + value);
 		}
 		else
 			return defaultValue;
@@ -93,7 +92,7 @@ public class Util1
 			if (value instanceof Integer)
 				return (Integer) value;
 			else
-				return parseInteger(defaultValue, "" + value);
+				return toInt(defaultValue, "" + value);
 		}
 		else
 			return defaultValue;
@@ -105,50 +104,10 @@ public class Util1
 			if (value instanceof Double)
 				return (Double) value;
 			else
-				return parseDouble(defaultValue, "" + value);
+				return toDouble(defaultValue, "" + value);
 		}
 		else
 			return defaultValue;
-	}
-
-    public static boolean embedsLeft(String whole, String part) {
-		return whole != null && whole.contains(part) && !whole.startsWith(part);
-	}
-
-    public static boolean embedsRight(String whole, String part) {
-		return whole != null && whole.contains(part) && !whole.endsWith(part);
-	}
-
-    public static boolean embeds(String whole, String part) {
-		return whole != null && embedsLeft(whole, part) && embedsRight(whole, part);
-	}
-
-	public static Integer parseInteger(Integer defaultValue, String string) {
-		try {
-			return Integer.parseInt(string.trim());
-		} catch (NumberFormatException e) {
-			return defaultValue;
-		}
-	}
-
-	public static Boolean parseBoolean(Boolean defaultValue, String string) {
-		try {
-			return Boolean.parseBoolean(string.trim());
-		} catch (Exception e) {
-			return defaultValue;
-		}
-	}
-
-	public static Double parseDouble(Double defaultValue, String string) {
-		try {
-			Double d = Double.valueOf(string);
-			if (Double.isNaN(d))
-				return defaultValue;
-			else
-				return d;
-		} catch (NumberFormatException e) {
-			return defaultValue;
-		}
 	}
 
 	public static boolean traverse(Cursor cursor, Job<Cursor> job, Object...params) {
@@ -294,7 +253,6 @@ public class Util1
 			}
 		} catch (Exception e) {
 			Log.e(TAG, "contentAuthorities", e);
-			debug_println("contentAuthorities exception !!!");
 			list.addAll(asList(strings(
 					"com.applang.provider.NotePad", 
 					"com.applang.provider.WeatherInfo", 

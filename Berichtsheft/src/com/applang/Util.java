@@ -1107,6 +1107,18 @@ public class Util
 		return al.toArray(new Element[0]);
 	}
 
+    public static boolean embedsLeft(String whole, String part) {
+		return whole != null && whole.contains(part) && !whole.startsWith(part);
+	}
+
+    public static boolean embedsRight(String whole, String part) {
+		return whole != null && whole.contains(part) && !whole.endsWith(part);
+	}
+
+    public static boolean embeds(String whole, String part) {
+		return whole != null && embedsLeft(whole, part) && embedsRight(whole, part);
+	}
+
 	public static String addPart(String string, String part) {
 		ValList list = split(string, GLUE_REGEX);
 		if (list.add(part))
@@ -1257,6 +1269,18 @@ public class Util
 			return header16.startsWith("SQLite format 3");
 		}
 		return false;
+	}
+	
+	@SuppressWarnings("unchecked")
+	public static <T> T getPrivateField(Class<?> c, Object o, String fieldName) {
+		try {
+			Field field = c.getDeclaredField(fieldName);
+			field.setAccessible(true);
+			return (T) field.get(o);
+		} catch (Exception e) {
+			Log.e(TAG, "getPrivateField", e);
+			return null;
+		}
 	}
 
 	@SuppressWarnings("unchecked")
