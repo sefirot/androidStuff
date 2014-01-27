@@ -126,7 +126,9 @@ public class View
 		setId(0);
 		String tag = "view_";
 		if (attributeSet != null) {
-			tag = attributeSet.getIdAttribute();
+			String idAttr = attributeSet.getIdAttribute();
+			if (notNullOrEmpty(idAttr))
+				tag = idAttr;
 			inputType = attributeSet.getAttributeValue("android:inputType");
 		}
 		create();

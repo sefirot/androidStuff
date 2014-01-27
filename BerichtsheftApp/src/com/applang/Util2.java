@@ -90,8 +90,6 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.LinearLayout;
-import android.widget.RelativeLayout;
 
 import static com.applang.Util.*;
 import static com.applang.Util1.*;
@@ -441,16 +439,24 @@ public class Util2
 	public static Writer write_assoc(Writer writer, String key, Object value, int...pos) {
 		if (writer == null)
 			writer = new StringWriter();
-		String commaString = ", ";
-		int commaPos = param(0,0,pos);
-		if (commaPos > 0)
-			writer = write(writer, commaString);
+		int sepPos = param(0,0,pos);
+		String sep = ", ";
+		switch (Math.abs(sepPos)) {
+		case 2:
+			sep = NEWLINE;
+			break;
+		case 3:
+			sep = NEWLINE + TAB;
+			break;
+		}
+		if (sepPos > 0)
+			writer = write(writer, sep);
 		if (value == null) 
 			writer = write(writer, "%s=null", key);
 		else
 			writer = write(writer, "%s=%s", key, value);
-		if (commaPos < 0)
-			writer = write(writer, commaString);
+		if (sepPos < 0)
+			writer = write(writer, sep);
 		return writer;
 	}
 

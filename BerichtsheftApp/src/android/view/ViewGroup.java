@@ -6,6 +6,7 @@ import java.io.Writer;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.SpringLayout;
 
 import com.applang.Util.Function;
 
@@ -83,6 +84,40 @@ public class ViewGroup extends View implements ViewManager
             topMargin = top;
             rightMargin = right;
             bottomMargin = bottom;
+        }
+        
+        public int getMargin(String cardinalPoint) {
+        	switch (asList(cardinalPoints()).indexOf(cardinalPoint)) {
+			case 0:
+				return leftMargin;
+			case 1:
+				return topMargin;
+			case 2:
+				return rightMargin;
+			case 3:
+				return bottomMargin;
+			default:
+				throw new RuntimeException(String.format("no such cardinal point : %s", cardinalPoint));
+			}
+        }
+        
+        public void setMargin(String cardinalPoint, int value) {
+        	switch (asList(cardinalPoints()).indexOf(cardinalPoint)) {
+			case 0:
+				leftMargin = value;
+				break;
+			case 1:
+				topMargin = value;
+				break;
+			case 2:
+				rightMargin = value;
+				break;
+			case 3:
+				bottomMargin = value;
+				break;
+			default:
+				throw new RuntimeException(String.format("no such cardinal point : %s", cardinalPoint));
+			}
         }
     	
         public MarginLayoutParams(int width, int height) {
@@ -218,6 +253,10 @@ public class ViewGroup extends View implements ViewManager
 
 	public ViewGroup completeLayout() {
 		return this;
+	}
+
+	public static String[] cardinalPoints() {
+		return strings(SpringLayout.WEST, SpringLayout.NORTH, SpringLayout.EAST, SpringLayout.SOUTH);
 	}
 
 }

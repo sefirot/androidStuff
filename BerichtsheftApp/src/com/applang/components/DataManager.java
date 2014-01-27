@@ -349,7 +349,7 @@ public class DataManager extends ActionPanel
 		addButton(bar, ActionType.DATABASE.index(), new ManagerAction(ActionType.DATABASE), index);
 		if (panes.length == 1)
 			addButton(bar, ActionType.TOGGLE1.index(), new ManagerAction(ActionType.TOGGLE1, tableLayout), index);
-		bar.updateUI();
+		bar.revalidate();
 		return bar;
 	}
 	
@@ -916,8 +916,12 @@ public class DataManager extends ActionPanel
 		askConstellation(
 			new Job<String>() {
 				public void perform(String result, Object[] parms) throws Exception {
-					props.setProperty("constellation", result);
-					manage(props);
+					if (result != null) {
+						props.setProperty("constellation", result);
+						manage(props);
+					}
+					else
+						System.exit(0);
 				}
 			});
 	}

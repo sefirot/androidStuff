@@ -270,16 +270,9 @@ public class BerichtsheftPlugin extends EditPlugin
 	}
 	
 	private Border getBorder(EditPane editPane, String fieldName) {
-		try {
-			Gutter gutter = editPane.getTextArea().getGutter();
-			Field field = Gutter.class.getDeclaredField(fieldName);
-			field.setAccessible(true);
-			return (Border) field.get(gutter);
-		} 
-		catch (Exception e) {
-			Log.e(TAG, "getBorder", e);
-			return BorderFactory.createEmptyBorder();
-		}
+		Gutter gutter = editPane.getTextArea().getGutter();
+		Border border = getPrivateField(Gutter.class, gutter, fieldName);
+		return border == null ? BorderFactory.createEmptyBorder() : border;
 	}
 	
 	private void updateGutters(EditPane focusPane)

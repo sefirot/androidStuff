@@ -37,7 +37,6 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
-import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -53,6 +52,8 @@ import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.JToolBar;
+import javax.swing.Spring;
+import javax.swing.SpringLayout;
 import javax.swing.SwingWorker;
 import javax.swing.UIManager;
 
@@ -88,6 +89,8 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
+import android.view.ViewGroup.MarginLayoutParams;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
@@ -106,7 +109,6 @@ import com.applang.berichtsheft.plugin.JEditOptionDialog;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 import com.applang.components.AndroidBridge;
 import com.applang.components.DataConfiguration;
-import com.applang.components.DataManager;
 import com.applang.components.DataView;
 import com.applang.components.DataView.DataModel;
 import com.applang.components.DataView.ProjectionModel;
@@ -1289,7 +1291,7 @@ public class HelperTests extends TestCase
 		tv.setText("hello");
 		EditText et = (EditText) linearLayout.findViewWithTag("*4");
 		et.setText("world");
-		showForm(formBuilder);
+		showForm(buildForm(formBuilder));
 	}
 	
 	public void testRelativeLayout() {
@@ -1297,18 +1299,75 @@ public class HelperTests extends TestCase
 		RelativeLayout relativeLayout = relativeLayout(context, 
         		LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT);
 		TextView textView = new TextView(context);
-		relativeLayout.addView(textView, textView.getLayoutParams());
+		LayoutParams layoutParams = new RelativeLayout.LayoutParams(context, 
+				attributeSet(context, 
+						"android:layout_alignLeft", "view__4"));
+		relativeLayout.addView(textView, layoutParams);
 		EditText editText = new EditText(context);
-        LayoutParams layoutParams = new RelativeLayout.LayoutParams(context, 
-        		attributeSet(context, 
-        				"android:layout_toRightOf", "view_3"));
-        relativeLayout.addView(editText, layoutParams);
+		layoutParams = new RelativeLayout.LayoutParams(context, 
+				attributeSet(context, 
+						"android:layout_above", "view_3", 
+						"android:layout_marginLeft", "@dimen/margin", 
+						"android:layout_marginTop", "@dimen/margin_half", 
+						"android:layout_marginRight", "@dimen/margin_half",
+						"android:layout_marginBottom", "@dimen/margin_half"));
+		relativeLayout.addView(editText, layoutParams);
 		FormBuilder formBuilder = new FormBuilder(context, relativeLayout);
 		TextView tv = (TextView) relativeLayout.findViewWithTag("*3");
 		tv.setText("hello");
 		EditText et = (EditText) relativeLayout.findViewWithTag("*4");
 		et.setText("world");
-		showForm(formBuilder);
+		Container container = buildForm(formBuilder);
+        RelativeLayout.printSprings(relativeLayout);
+		showForm(container);
+	}
+	
+	public void testSpringLayout1() {
+		Context context = BerichtsheftActivity.getInstance();
+		RelativeLayout relativeLayout = relativeLayout(context, 
+        		LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT);
+		Button btn = new Button(context);
+		btn.setText("click");
+		relativeLayout.addView(btn, btn.getLayoutParams());
+        
+		FormBuilder formBuilder = new FormBuilder(context, relativeLayout);
+		Container container = buildForm(formBuilder);
+		
+		MarginLayoutParams margins = 
+				marginLayoutParams(LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT, 5,5,5,5);
+		relativeLayout.do_Margins(container, btn.getComponent(), margins, null);
+
+		relativeLayout.setContainer(container, margins);
+		RelativeLayout.printSprings(relativeLayout);
+		showForm(container);
+	}
+	
+	public void testSpringLayout2() {
+		Context context = BerichtsheftActivity.getInstance();
+		RelativeLayout relativeLayout = relativeLayout(context, 
+        		LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT);
+		TextView tv = new TextView(context);
+		tv.setText("hello");
+		relativeLayout.addView(tv, tv.getLayoutParams());
+		EditText et = new EditText(context);
+		et.setText("world");
+        relativeLayout.addView(et, et.getLayoutParams());
+        
+		FormBuilder formBuilder = new FormBuilder(context, relativeLayout);
+		Container container = buildForm(formBuilder);
+		assertTrue(swapComponents(tv.getComponent(), et.getComponent()));
+		
+        SpringLayout springLayout = relativeLayout.getLayout();
+		SpringLayout.Constraints tvCons = 
+        		springLayout.getConstraints(tv.getComponent());
+        SpringLayout.Constraints etCons =
+        		springLayout.getConstraints(et.getComponent());
+        tvCons.setX(
+        		Spring.sum(Spring.constant(5),
+                etCons.getConstraint(SpringLayout.EAST)));
+
+        RelativeLayout.printSprings(relativeLayout);
+        showForm(container);
 	}
 	
 	public void testFormBuilder() {
@@ -1322,25 +1381,29 @@ public class HelperTests extends TestCase
 		formBuilder.addFloatField("Float");
 		formBuilder.addBlobField("Blob");
 		formBuilder.addTextField("Text");
-		showForm(formBuilder);
+		showForm(buildForm(formBuilder));
 	}
 	
 	public void testFormBuilder2() {
 		Context context = BerichtsheftActivity.getInstance();
 		FormBuilder formBuilder = new FormBuilder(context, R.layout.construct_form_header);
-		showForm(formBuilder);
+		showForm(buildForm(formBuilder));
 	}
 
-	public void showForm(FormBuilder formBuilder) {
+	public Container buildForm(FormBuilder formBuilder) {
 		println(formBuilder.getViewGroup());
 		final Container container = formBuilder.build().getContainer();
 		container.addComponentListener(new ComponentAdapter() {
 			@Override
 			public void componentResized(ComponentEvent e) {
-				printContainer("form", container, false);
+				printContainer("form", container, _null());
 			}
 		});
- 		showDialog(null, null, "testFormBuilder", 
+ 		return container;
+	}
+
+	public void showForm(final Container container) {
+		showDialog(null, null, "testFormBuilder", 
 				new UIFunction() {
 					public Component[] apply(Component comp, Object[] parms) {
 						container.setPreferredSize(new Dimension(100,100));
@@ -1353,6 +1416,8 @@ public class HelperTests extends TestCase
 	}
 	
 	public void testResources() {
+		Spring sum = Spring.sum(Spring.constant(0, 0, 0), Spring.constant(5, 5, 5));
+		println(sum.getValue());
 		assertEquals(-65536, Resources.colorValue(BerichtsheftActivity.getInstance(), "@color/opaque_red"));
 		assertEquals(-65536, Resources.colorValue(BerichtsheftActivity.getInstance(), "#ff0000"));
 		Context context = BerichtsheftActivity.getInstance();

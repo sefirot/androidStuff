@@ -168,8 +168,10 @@ public class Context
     //	NOTE	this does NOT correspond to an Android API
 	public void registerFlavor(String flavor, String path) {
 		String name = databaseName(flavor);
-		if (name != null)
+		if (name != null) {
+			path = Uri.parse(path).getPath();
 			flavorPaths.putValue(name, path);
+		}
 		setFlavor(flavor);
 	}
 	

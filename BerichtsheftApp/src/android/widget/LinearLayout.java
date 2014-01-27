@@ -4,6 +4,7 @@ import java.awt.Container;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.SpringLayout;
 
 import android.content.Context;
 import android.util.AttributeSet;
@@ -57,13 +58,17 @@ public class LinearLayout extends ViewGroup {
 						BoxLayout.Y_AXIS));
 		return container;
     }
+	
+	public BoxLayout getLayout() {
+		return (BoxLayout) getContainer().getLayout();
+    }
 
 	@Override
 	public void doLayout(View view) {
 		ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
 		if (layoutParams instanceof MarginLayoutParams) {
 			MarginLayoutParams margs = (MarginLayoutParams) layoutParams;
-			BoxLayout boxLayout = (BoxLayout) getContainer().getLayout();
+			BoxLayout boxLayout = getLayout();
 			int axis = boxLayout.getAxis();
 			Box outerBox = new Box(axis);
 			outerBox.add(margs.strutsOuterFirst(axis));

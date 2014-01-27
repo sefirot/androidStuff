@@ -202,6 +202,41 @@ public class SwingUtil
 		return component;
 	}
 
+	public static int getComponentIndex(Component component) {
+		Container container = component.getParent();
+		if (component != null && container != null) {
+			for (int i = 0; i < container.getComponentCount(); i++) {
+				if (container.getComponent(i) == component)
+					return i;
+			}
+		}
+		return -1;
+	}
+
+	public static boolean swapComponents(Component component, Component peer) {
+		Container container = component.getParent();
+		if (component != null && container != null && peer != null && container.equals(peer.getParent())) {
+			printContainer("before swap", container, _null());
+			int cIndex = getComponentIndex(component);
+			int pIndex = getComponentIndex(peer);
+			if (cIndex > pIndex) {
+				container.remove(cIndex);
+				container.add(component, pIndex);
+				container.remove(pIndex + 1);
+				container.add(peer, cIndex);
+			}
+			else if (pIndex > cIndex) {
+				container.remove(pIndex);
+				container.add(peer, cIndex);
+				container.remove(cIndex + 1);
+				container.add(component, pIndex);
+			}
+			printContainer("after swap", container, _null());
+			return true;
+		}
+		return false;
+	}
+	
 	public static void addNamePart(Component component, String part) {
 		component.setName(addPart(component.getName(), part));
 	}
