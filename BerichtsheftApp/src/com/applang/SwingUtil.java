@@ -350,13 +350,13 @@ public class SwingUtil
 
 		@Override
 		protected Void doInBackground(){
-			println(String.format("deadline after %d ms", wait));
+			println(String.format("deadline after %d ms", WAIT));
 
 	        waiting(wnd, new ComponentFunction<Void>() {
 				public Void apply(Component comp, Object[] parms) {
 					Timing timing = (Timing)parms[0];
 					
-					while (timing.current() < wait && !isCancelled()) 
+					while (timing.current() < WAIT && !isCancelled()) 
 						Thread.yield();
 					
 					return null;
@@ -393,7 +393,7 @@ public class SwingUtil
 					}
 				}
 				
-				robot.delay(delay);
+				robot.delay(DELAY);
 				
 				for (int i = 0; i < keyEvents.length; i++) {
 					if (keyEvents[i] != null) {
@@ -406,11 +406,11 @@ public class SwingUtil
 			}
 		}
 		
-		public static int delay = 1000;
-		public static int wait = 1000;
+		public static int DELAY = 1000;
+		public static int WAIT = 1000;
 		
 		public static Deadline start(int millis, Integer... keyEvents) {
-			Deadline.wait = millis;
+			Deadline.WAIT = millis;
 			return start(null, keyEvents);
 		}
 		

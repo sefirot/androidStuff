@@ -826,7 +826,7 @@ public class BerichtsheftPlugin extends EditPlugin
 		String format = getProperty(key);
 		String msg = notNullOrEmpty(format) ? 
 				String.format(format, params) : 
-				"<<< message format missing >>>" + com.applang.Util.toString(params);
+				String.format("<<< message text missing for key '%s'>>>", key) + com.applang.Util.toString(params);
 		BerichtsheftShell.print(msg, NEWLINE);
 	}
 	

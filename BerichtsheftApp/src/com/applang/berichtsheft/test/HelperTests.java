@@ -17,19 +17,15 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.StringReader;
 import java.io.Writer;
-import java.lang.reflect.Constructor;
 import java.net.URL;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Scanner;
 import java.util.Set;
-import java.util.StringTokenizer;
 import java.util.TreeSet;
  
 import javax.swing.AbstractAction;
@@ -84,12 +80,12 @@ import android.content.DialogInterface.OnClickListener;
 import android.content.res.Resources;
 import android.net.Uri;
 import android.provider.BaseColumns;
+import android.util.AttributeSet;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
-import android.view.ViewGroup.MarginLayoutParams;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -564,6 +560,7 @@ public class HelperTests extends TestCase
 	}
 	
 	public void testDataConfig() throws Exception {
+		println(dbPath(null));
 		String orig_uriString = getSetting("uri", null);
 		String orig_database = getSetting("database", null);
 		try {
@@ -1294,15 +1291,14 @@ public class HelperTests extends TestCase
 		showForm(buildForm(formBuilder));
 	}
 	
-	public void testRelativeLayout() {
+	public void testRelativeLayout2() {
 		Context context = BerichtsheftActivity.getInstance();
-		RelativeLayout relativeLayout = relativeLayout(context, 
-        		LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT);
+		RelativeLayout viewGroup = new RelativeLayout(context);
 		TextView textView = new TextView(context);
 		LayoutParams layoutParams = new RelativeLayout.LayoutParams(context, 
 				attributeSet(context, 
 						"android:layout_alignLeft", "view__4"));
-		relativeLayout.addView(textView, layoutParams);
+		viewGroup.addView(textView, layoutParams);
 		EditText editText = new EditText(context);
 		layoutParams = new RelativeLayout.LayoutParams(context, 
 				attributeSet(context, 
@@ -1311,35 +1307,94 @@ public class HelperTests extends TestCase
 						"android:layout_marginTop", "@dimen/margin_half", 
 						"android:layout_marginRight", "@dimen/margin_half",
 						"android:layout_marginBottom", "@dimen/margin_half"));
-		relativeLayout.addView(editText, layoutParams);
-		FormBuilder formBuilder = new FormBuilder(context, relativeLayout);
-		TextView tv = (TextView) relativeLayout.findViewWithTag("*3");
+		viewGroup.addView(editText, layoutParams);
+		FormBuilder formBuilder = new FormBuilder(context, viewGroup);
+		TextView tv = (TextView) viewGroup.findViewWithTag("*3");
 		tv.setText("hello");
-		EditText et = (EditText) relativeLayout.findViewWithTag("*4");
+		EditText et = (EditText) viewGroup.findViewWithTag("*4");
 		et.setText("world");
 		Container container = buildForm(formBuilder);
-        RelativeLayout.printSprings(relativeLayout);
+		viewGroup.printSprings();
 		showForm(container);
 	}
 	
-	public void testSpringLayout1() {
+	public void testRelativeLayout() {
 		Context context = BerichtsheftActivity.getInstance();
-		RelativeLayout relativeLayout = relativeLayout(context, 
-        		LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT);
-		Button btn = new Button(context);
-		btn.setText("click");
-		relativeLayout.addView(btn, btn.getLayoutParams());
-        
-		FormBuilder formBuilder = new FormBuilder(context, relativeLayout);
-		Container container = buildForm(formBuilder);
-		
-		MarginLayoutParams margins = 
-				marginLayoutParams(LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT, 5,5,5,5);
-		relativeLayout.do_Margins(container, btn.getComponent(), margins, null);
-
-		relativeLayout.setContainer(container, margins);
-		RelativeLayout.printSprings(relativeLayout);
+		RelativeLayout viewGroup = buttonViewGroup(context);
+		Container container = buildForm(new FormBuilder(context, viewGroup));
+//		viewGroup.printSprings();
 		showForm(container);
+	}
+	
+	private Button addButton(Context context, String text, ViewGroup vg, 
+			AttributeSet attributeSet, Object...params) 
+	{
+		Button btn = new Button(context);
+		btn.setText(text);
+		RelativeLayout.LayoutParams layoutParams = attributeSet != null ?
+				new RelativeLayout.LayoutParams(context, attributeSet) :
+				new RelativeLayout.LayoutParams();
+		layoutParams.addRules(context, params);
+		vg.addView(btn, layoutParams);
+		return btn;
+	}
+	
+	private RelativeLayout buttonViewGroup(Context context) {
+		RelativeLayout viewGroup = new RelativeLayout(context);
+		AttributeSet attributeSet = attributeSet(context, 
+			"android:layout_marginLeft", "@dimen/margin", 
+			"android:layout_marginTop", "@dimen/margin_half", 
+			"android:layout_marginRight", "@dimen/margin_half",
+			"android:layout_marginBottom", "@dimen/margin_half");
+		addButton(context, "Button 1", viewGroup, attributeSet);
+		addButton(context, "2", viewGroup, attributeSet);
+		addButton(context, "Button 3", viewGroup, attributeSet);
+		addButton(context, "Long-Named Button 4", viewGroup, attributeSet, 
+				"android:layout_toLeftOf", "view_5");
+		addButton(context, "Button 5", viewGroup, attributeSet);
+		return viewGroup;
+	}
+	
+	public void testSpringLayout() {
+		Context context = BerichtsheftActivity.getInstance();
+		RelativeLayout viewGroup = buttonViewGroup(context);
+    	Container container = viewGroup.getContainer();
+		for (int i = 0; i < viewGroup.getChildCount(); i++) {
+			View view = viewGroup.getChildAt(i);
+			container.add(view.getComponent());
+		}
+//		viewGroup.finalLayout();
+		springLayout(viewGroup);
+		showForm(container);
+	}
+
+	private void springLayout(RelativeLayout viewGroup) {
+		SpringLayout springLayout = viewGroup.getLayout();
+        Spring pad = Spring.constant(5);
+        Spring ySpring = pad;
+        Spring xSpring = pad;
+        Spring maxHeightSpring = Spring.constant(0);
+		for (int i = 0; i < viewGroup.getChildCount(); i++) {
+			int j = i==2?3:(i==3?2:i);
+			View view = viewGroup.getChildAt(j);
+            SpringLayout.Constraints cons = springLayout.getConstraints(view.getComponent());
+            cons.setX(xSpring);
+            cons.setY(ySpring);
+            if (j == -3) {
+            	View anchor = viewGroup.getChildAt(2);
+            	SpringLayout.Constraints anchorCons = springLayout.getConstraints(anchor.getComponent());
+            	anchorCons.setY(Spring.sum(
+						pad,
+						cons.getConstraint(SpringLayout.SOUTH)));
+            	ySpring = Spring.sum(pad, cons.getConstraint("South"));
+            }
+            else
+            	xSpring = Spring.sum(pad, cons.getConstraint("East"));
+            maxHeightSpring = Spring.max(maxHeightSpring, cons.getConstraint("South"));
+		}
+		SpringLayout.Constraints cons = springLayout.getConstraints(viewGroup.getContainer());
+        cons.setConstraint("East", xSpring);
+        cons.setConstraint("South", Spring.sum(maxHeightSpring, ySpring));
 	}
 	
 	public void testSpringLayout2() {
@@ -1366,7 +1421,7 @@ public class HelperTests extends TestCase
         		Spring.sum(Spring.constant(5),
                 etCons.getConstraint(SpringLayout.EAST)));
 
-        RelativeLayout.printSprings(relativeLayout);
+        relativeLayout.printSprings();
         showForm(container);
 	}
 	
@@ -1385,6 +1440,7 @@ public class HelperTests extends TestCase
 	}
 	
 	public void testFormBuilder2() {
+		Deadline.WAIT = 10000;
 		Context context = BerichtsheftActivity.getInstance();
 		FormBuilder formBuilder = new FormBuilder(context, R.layout.construct_form_header);
 		showForm(buildForm(formBuilder));
@@ -1396,23 +1452,32 @@ public class HelperTests extends TestCase
 		container.addComponentListener(new ComponentAdapter() {
 			@Override
 			public void componentResized(ComponentEvent e) {
-				printContainer("form", container, _null());
+				printContainer("form", container.getParent(), false);
 			}
 		});
  		return container;
 	}
 
 	public void showForm(final Container container) {
-		showDialog(null, null, "testFormBuilder", 
+		showFrame(null, "FormBuilder", 
 				new UIFunction() {
 					public Component[] apply(Component comp, Object[] parms) {
-						container.setPreferredSize(new Dimension(100,100));
+//						container.setPreferredSize(new Dimension(100,100));
 						return components(container);
 					}
 				}, 
+				new UIFunction() {
+					public Component[] apply(Component comp, Object[] parms) {
+						SpringLayout layout = (SpringLayout) container.getLayout();
+						for (int i = 0; i < container.getComponentCount(); i++) {
+//							SpringLayout.Constraints cons = layout.getConstraints(container.getComponent(i));
+//							println(cons.getConstraint(SpringLayout.WEST).getValue(), cons.getConstraint(SpringLayout.EAST).getValue());
+						}
+						return null;
+					}
+				}, 
 				null, 
-				null, 
-				Behavior.MODAL);
+				Behavior.TIMEOUT);
 	}
 	
 	public void testResources() {
@@ -1519,7 +1584,7 @@ public class HelperTests extends TestCase
 	public void testJOrtho() {
 		BerichtsheftPlugin.setupSpellChecker(BerichtsheftApp.applicationDataPath());
 		final TextEditor2 textEditor2 = new TextEditor2();
-    	Deadline.wait = 2000;
+    	Deadline.WAIT = 2000;
     	showFrame(null, 
 				"Spellchecker",
 				new UIFunction() {
@@ -1672,77 +1737,4 @@ public class HelperTests extends TestCase
 		return new TestSuite(HelperTests.class);
 	}
 
-}
-
-@SuppressWarnings({"rawtypes","unchecked"})
-final class TestUtils {
-    private static final String TEST_CASES = "tests";
-    private static final String ANT_PROPERTY = "${tests}";
-    private static final String DELIMITER = ",";
-
-    /**
-     * Check to see if the test cases property is set. Ignores Ant's
-     * default setting for the property (or null to be on the safe side).
-     **/
-    public static boolean hasTestCases() {
-		String prop = System.getProperty( TEST_CASES );
-        return prop != null && !prop.equals( ANT_PROPERTY );
-    }
-
-    /**
-     * Create a TestSuite using the TestCase subclass and the list
-     * of test cases to run specified using the TEST_CASES JVM property.
-     *
-     * @param testClass the TestCase subclass to instantiate as tests in
-     * the suite.
-     *
-     * @return a TestSuite with new instances of testClass for each
-     * test case specified in the JVM property.
-     *
-     * @throws IllegalArgumentException if testClass is not a subclass or
-     * implementation of junit.framework.TestCase.
-     *
-     * @throws RuntimeException if testClass is written incorrectly and does
-     * not have the approriate constructor (It must take one String
-     * argument).
-     **/
-	public static TestSuite getSuite( Class testClass ) {
-        if ( ! TestCase.class.isAssignableFrom( testClass ) ) {
-            throw new IllegalArgumentException( "Must pass in a subclass of TestCase" );
-        }
-        TestSuite suite = new TestSuite();
-        try {
-			Constructor constructor = testClass.getConstructor( new Class[] { String.class } );
-            List testCaseNames = getTestCaseNames();
-            for ( Iterator testCases = testCaseNames.iterator(); testCases.hasNext(); ) {
-                String testCaseName = (String) testCases.next();
-                suite.addTest( (TestCase) constructor.newInstance( new Object[] { testCaseName } ) );
-            }
-        } catch ( Exception e ) {
-            throw new RuntimeException( testClass.getName() + " doesn't have the proper constructor" );
-        }
-        return suite;
-    }
-
-    /**
-     * Create a List of String names of test cases specified in the
-     * JVM property in comma-separated format.
-     *
-     * @return a List of String test case names
-     *
-     * @throws NullPointerException if the TEST_CASES property
-     * isn't set
-     **/
-    private static List getTestCaseNames() {
-        if ( System.getProperty( TEST_CASES ) == null ) {
-            throw new NullPointerException( "Test case property is not set" );
-        }
-        List testCaseNames = new ArrayList();
-        String testCases = System.getProperty( TEST_CASES );
-        StringTokenizer tokenizer = new StringTokenizer( testCases, DELIMITER );
-        while ( tokenizer.hasMoreTokens() ) {
-            testCaseNames.add( tokenizer.nextToken() );
-        }
-        return testCaseNames;
-    }
 }

@@ -162,7 +162,7 @@ public class FormEditor extends JSplitPane
 	
 	static void unmask(String inputPath, String outputPath) {
 		try {
-			String stylePath = getSetting("mask.xsl", BerichtsheftApp.applicationDataPath("Skripte/mask.xsl"));
+			String stylePath = BerichtsheftApp.applicationDataPath("Skripte/mask.xsl");
 			xmlTransform(inputPath, stylePath, outputPath, "mode", 2);
 		} catch (Exception e) {
 			handleException(e);
@@ -173,7 +173,7 @@ public class FormEditor extends JSplitPane
 	
 	static boolean generateMask(String contentXml) {
 		try {
-			String stylePath = getSetting("mask.xsl", BerichtsheftApp.applicationDataPath("Skripte/mask.xsl"));
+			String stylePath = BerichtsheftApp.applicationDataPath("Skripte/mask.xsl");
 			String dummy = "/tmp/temp.html";
 			xmlTransform(contentXml, stylePath, dummy, "mode", 1);
 			File dir = tempDir(false, BerichtsheftApp.NAME);

@@ -7,16 +7,23 @@
 
 		<PERIOD LABEL="Berichtsheft period" VARNAME="period"
 			EVAL="no=1; jEdit.setProperty(&quot;period&quot;, &quot;&quot;+no); no" />
+			
+		<TOGGLE LABEL="retrieve weather data for the period" VARNAME="retrieveWeatherData"
+			EVAL="jEdit.getBooleanProperty(&quot;RETRIEVE_WEATHER_DATA&quot;, false)" />
  	</UI>
 
 	<COMMANDS>
 		<COMMAND SHELL="BeanShell">
 			jEdit.setProperty("DOKUMENT_DB", db);
 			jEdit.setProperty("DOKUMENT_DB2", db2);
+			jEdit.setBooleanProperty("RETRIEVE_WEATHER_DATA", retrieveWeatherData);
 
 			buf = new StringBuffer();
 			buf.append("import com.applang.berichtsheft.plugin.*; ");
-			buf.append("DataDockable.makeDokument(view, \"odt\", new Object[]{false, \""+db+"\", \""+db2+"\"}); ");
+			if (retrieveWeatherData) {
+				buf.append("DataDockable.makeWetter(view, \"period\", new Object[]{false, \""+db2+"\", false}); ");
+			}
+			buf.append("DataDockable.makeDokument(view, \"odt\", new Object[]{false, \""+db+"\", \""+db2+"\", }); ");
 			buf.toString();
 		</COMMAND>
 	</COMMANDS>

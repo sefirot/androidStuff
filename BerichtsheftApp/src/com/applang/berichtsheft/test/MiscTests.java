@@ -86,19 +86,24 @@ public class MiscTests extends XMLTestCase
 {
 	public MiscTests(String testName) {
 		super(testName);
+		this.testName = testName;
 	}
 
+	private String testName = null;
+	
 	@Override
 	public void setUp() throws Exception {
 		super.setUp();
 		underTest = true;
 		BerichtsheftApp.loadSettings();
-		textEditor2 = new TextEditor2();
-		np = new NotePicker(null, textEditor2);
+		if (!"testOdtDokument".equals(testName) && !"testPiping".equals(testName)) {
+			textEditor2 = new TextEditor2();
+			np = new NotePicker(null, textEditor2);
+		}
 		if (tempfile.exists())
 			tempfile.delete();
-		contentfile = new File(getSetting("content.xml", BerichtsheftApp.applicationDataPath("Skripte/content.xml")));
-		paramsFilename = getSetting("params.xml", BerichtsheftApp.applicationDataPath("Skripte/params.xml"));
+		contentfile = new File(BerichtsheftApp.applicationDataPath("Skripte/content.xml"));
+		paramsFilename = BerichtsheftApp.applicationDataPath("Skripte/params.xml");
 
 	}
 
@@ -946,8 +951,8 @@ public class MiscTests extends XMLTestCase
 	    { 
 			// Cast the TransformerFactory to SAXTransformerFactory.
 			SAXTransformerFactory saxTFactory = ((SAXTransformerFactory) tFactory);	  
-			String controlStyleSheet = getSetting("control.xsl", BerichtsheftApp.applicationDataPath("Skripte/control.xsl"));
-			String contentStyleSheet = getSetting("content.xsl", BerichtsheftApp.applicationDataPath("Skripte/content.xsl"));
+			String controlStyleSheet = BerichtsheftApp.applicationDataPath("Skripte/control.xsl");
+			String contentStyleSheet = BerichtsheftApp.applicationDataPath("Skripte/content.xsl");
 			// Create a TransformerHandler for each stylesheet.
 			final TransformerHandler tHandler1 = saxTFactory.newTransformerHandler(new StreamSource(controlStyleSheet));
 			TransformerHandler tHandler2 = saxTFactory.newTransformerHandler(new StreamSource(contentStyleSheet));
@@ -1197,8 +1202,8 @@ public class MiscTests extends XMLTestCase
 	    	String content = pathCombine(tempDir.getPath(), "content.xml");
 			String _content = pathCombine(tempDir.getPath(), "_content.xml");
 			assertTrue(new File(content).renameTo(new File(_content)));
-			String controlStyleSheet = getSetting("control.xsl", BerichtsheftApp.applicationDataPath("Skripte/control.xsl"));
-			String contentStyleSheet = getSetting("content.xsl", BerichtsheftApp.applicationDataPath("Skripte/content.xsl"));
+			String controlStyleSheet = BerichtsheftApp.applicationDataPath("Skripte/control.xsl");
+			String contentStyleSheet = BerichtsheftApp.applicationDataPath("Skripte/content.xsl");
 			Class.forName("org.sqlite.JDBC");
 			for (int way : ints(1,2,3)) {
 				switch (way) {
@@ -1385,12 +1390,12 @@ public class MiscTests extends XMLTestCase
 		String _content = pathCombine(tempDir.getParentFile().getPath(), "_content.xml");
 		assertThat(Util2.getFileSize(content), is(greaterThan(Util2.getFileSize(_content))));
 		String report = check_transform(2, _content, content);
-		System.out.println(report);
+		println(report);
 	}
 
 	public void _testXPath() throws Exception {
-		Document doc = xmlDocument(new File(getSetting("content.xml", BerichtsheftApp.applicationDataPath("Skripte/content.xml"))));
-//		Document doc = xmlDocument(new File(BerichtsheftApp.berichtsheftPath("Vorlagen/Tagesberichte_2012/styles.xml")));
+		Document doc = xmlDocument(new File(BerichtsheftApp.applicationDataPath("Skripte/content.xml")));
+//		Document doc = xmlDocument(new File(BerichtsheftApp.applicationDataPath("Vorlagen/Tagesberichte_2012/styles.xml")));
 		
 /*		String path = 
 				"/document-content" +
@@ -1431,8 +1436,8 @@ public class MiscTests extends XMLTestCase
 		new File(debugFilePath).delete();
 		File dir = tempDir(true, BerichtsheftApp.NAME);
 
-		String content = getSetting("content.xml", BerichtsheftApp.applicationDataPath("Skripte/content.xml"));
-		String mask = getSetting("mask.xsl", BerichtsheftApp.applicationDataPath("Skripte/mask.xsl"));
+		String content = BerichtsheftApp.applicationDataPath("Skripte/content.xml");
+		String mask = BerichtsheftApp.applicationDataPath("Skripte/mask.xsl");
 		String output = "/tmp/content.xml";
 		
 		clearMappings();
@@ -1473,7 +1478,7 @@ public class MiscTests extends XMLTestCase
 	}
 	
 	public void testFormEdit() throws Exception {
-    	Deadline.wait = 2000;
+    	Deadline.WAIT = 2000;
 		String inputPath = BerichtsheftApp.odtVorlagePath("Tagesberichte");
 		String outputPath = BerichtsheftApp.odtDokumentPath("Tagesberichte");
 		assertTrue(FormEditor.perform(inputPath, outputPath, true, 
@@ -1490,5 +1495,12 @@ public class MiscTests extends XMLTestCase
 				}
 			}
 		));
+	}
+	
+	public static Test suite() {
+		if ( TestUtils.hasTestCases() ) {
+			return TestUtils.getSuite( MiscTests.class );
+		}
+		return new TestSuite(MiscTests.class);
 	}
 }

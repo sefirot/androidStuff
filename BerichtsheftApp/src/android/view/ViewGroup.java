@@ -55,7 +55,7 @@ public class ViewGroup extends View implements ViewManager
 				return Resources.dimensionalValue(context, s);
 		}
 		
-        public int width, height;
+        public int width = WRAP_CONTENT, height = WRAP_CONTENT;
         
         public LayoutParams(Context context, AttributeSet attrs) {
 			width = dimensionalValue(context, attrs.getAttributeValue("android:layout_width"));
@@ -86,8 +86,8 @@ public class ViewGroup extends View implements ViewManager
             bottomMargin = bottom;
         }
         
-        public int getMargin(String cardinalPoint) {
-        	switch (asList(cardinalPoints()).indexOf(cardinalPoint)) {
+        public int getMargin(String edge) {
+        	switch (asList(edges()).indexOf(edge)) {
 			case 0:
 				return leftMargin;
 			case 1:
@@ -97,12 +97,12 @@ public class ViewGroup extends View implements ViewManager
 			case 3:
 				return bottomMargin;
 			default:
-				throw new RuntimeException(String.format("no such cardinal point : %s", cardinalPoint));
+				throw new RuntimeException(String.format("no such edge : %s", edge));
 			}
         }
         
-        public void setMargin(String cardinalPoint, int value) {
-        	switch (asList(cardinalPoints()).indexOf(cardinalPoint)) {
+        public void setMargin(String edge, int value) {
+        	switch (asList(edges()).indexOf(edge)) {
 			case 0:
 				leftMargin = value;
 				break;
@@ -116,7 +116,7 @@ public class ViewGroup extends View implements ViewManager
 				bottomMargin = value;
 				break;
 			default:
-				throw new RuntimeException(String.format("no such cardinal point : %s", cardinalPoint));
+				throw new RuntimeException(String.format("no such edge : %s", edge));
 			}
         }
     	
@@ -157,7 +157,7 @@ public class ViewGroup extends View implements ViewManager
         }
 	}
 	
-	ValList views = vlist();
+	protected ValList views = vlist();
 
     public int getChildCount() {
     	return views.size();
@@ -248,14 +248,17 @@ public class ViewGroup extends View implements ViewManager
     	return (Container) getComponent();
     }
 
+	public void initLayout() {
+	}
+
 	public void doLayout(View view) {
 	}
 
-	public ViewGroup completeLayout() {
+	public ViewGroup finalLayout() {
 		return this;
 	}
 
-	public static String[] cardinalPoints() {
+	public static String[] edges() {
 		return strings(SpringLayout.WEST, SpringLayout.NORTH, SpringLayout.EAST, SpringLayout.SOUTH);
 	}
 

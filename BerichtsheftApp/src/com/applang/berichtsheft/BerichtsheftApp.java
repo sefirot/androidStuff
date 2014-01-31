@@ -187,6 +187,7 @@ public class BerichtsheftApp
 					File _content = new File(content.getParent(), "_content.xml");
 					content.renameTo(_content);
 					for (int i = 0; i < databaseFilenames.length; i++) {
+						databaseFilenames[i] = dbPath(databaseFilenames[i]);
 						File database = new File(databaseFilenames[i]);
 						if (!database.exists())
 							throw new Exception(
@@ -212,17 +213,17 @@ public class BerichtsheftApp
 
 	public static boolean pipe(String inputFilename, String outputFilename, Reader params) throws Exception {
 		piped = true;
+		@SuppressWarnings("unused")
+		Class<?> clazz = Class.forName("org.apache.xalan.processor.TransformerFactoryImpl");
 	  	TransformerFactory tFactory = TransformerFactory.newInstance();
-	  	
 	    // Determine whether the TransformerFactory supports the use of SAXSource and SAXResult
 	    if (!tFactory.getFeature(SAXSource.FEATURE))
 			throw new Exception(String.format("TransformerFactory feature '%s' missing", SAXSource.FEATURE));
 	    if (!tFactory.getFeature(SAXResult.FEATURE))
 			throw new Exception(String.format("TransformerFactory feature '%s' missing", SAXResult.FEATURE));
-	    
 		SAXTransformerFactory saxTFactory = ((SAXTransformerFactory) tFactory);	  
-		String controlStyleSheet = getSetting("control.xsl", BerichtsheftApp.applicationDataPath("Skripte/control.xsl"));
-		String contentStyleSheet = getSetting("content.xsl", BerichtsheftApp.applicationDataPath("Skripte/content.xsl"));
+		String controlStyleSheet = applicationDataPath("Skripte/control.xsl");
+		String contentStyleSheet = applicationDataPath("Skripte/content.xsl");
 		TransformerHandler tHandler1 = saxTFactory.newTransformerHandler(new StreamSource(controlStyleSheet));
 		TransformerHandler tHandler2 = saxTFactory.newTransformerHandler(new StreamSource(contentStyleSheet));
 		tHandler2.getTransformer().setParameter("inputfile", inputFilename);
@@ -243,11 +244,9 @@ public class BerichtsheftApp
 			}
 		});
 		tHandler1.setResult(new SAXResult(tHandler2));
-		
 		XMLReader reader = XMLReaderFactory.createXMLReader();
 		reader.setContentHandler(tHandler1);
 		reader.setProperty("http://xml.org/sax/properties/lexical-handler", tHandler1);
-		
 		Properties xmlProps = OutputPropertiesFactory.getDefaultMethodProperties("xml");
 		xmlProps.setProperty("indent", "no");
 		xmlProps.setProperty("standalone", "no");
@@ -255,9 +254,7 @@ public class BerichtsheftApp
 		OutputStream out = new FileOutputStream(outputFilename);
 		serializer.setOutputStream(out);
 		tHandler2.setResult(new SAXResult(serializer.asContentHandler()));
-		
 		reader.parse(new InputSource(params));
-		
 		return piped;
 	}
 

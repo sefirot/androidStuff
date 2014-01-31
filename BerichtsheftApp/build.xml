@@ -149,9 +149,12 @@ rm $0
 			</classpath>
 		</junit>
 	</target>
-
+<!--
 	<property name="test" value="HelperTests" />
 	<property name="tests" value="testShellRun" />
+ -->
+	<property name="test" value="MiscTests" />
+	<property name="tests" value="testOdtDokument" />
 	
 	<target name="ensure-test-name" unless="test">
 	    <fail message="You must run this target with -Dtest=TestName"/>
@@ -162,7 +165,7 @@ rm $0
 	    <junit printsummary="withOutAndErr" fork="yes"> 
 	    	<sysproperty key="tests" value="${tests}"/>
 	        <classpath refid="run.class.path" />
-	        <formatter type="plain" usefile="false"/>
+	        <formatter type="plain"/>
 	        <batchtest>
 	            <fileset dir="src">
 	                <include name="**/${test}.java"/>

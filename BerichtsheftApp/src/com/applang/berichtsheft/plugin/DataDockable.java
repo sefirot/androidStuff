@@ -623,7 +623,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 	// NOTE used in scripts
 	public static boolean makeWetter(final View view, String oper, Object...params) {
 		boolean showData = param_Boolean(true, 0, params);
-		String dbPath = com.applang.Util.param_String("", 1, params);
+		String dbPath = dbPath(param_String("", 1, params));
 		Boolean async = param_Boolean(true, 2, params);
 		boolean retval = true;
 		if ("period".equals(oper)) {
@@ -694,8 +694,8 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 		boolean keep = param_Boolean(false, 0, params);
 		boolean retval = false;
 		if ("odt".equals(oper)) {
-			String dbPath = com.applang.Util.param_String(null, 1, params);
-			String dbPath2 = com.applang.Util.param_String(null, 2, params);
+			String dbPath = param_String(null, 1, params);
+			String dbPath2 = param_String(null, 2, params);
 			DatePicker.Period.load(1);
 			String dateString = DatePicker.Period.weekDate();
 			int[] weekDate = DatePicker.parseWeekDate(dateString);

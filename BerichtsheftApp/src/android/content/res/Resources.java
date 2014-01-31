@@ -7,7 +7,6 @@ import java.io.Writer;
 import java.lang.reflect.Field;
 import java.net.MalformedURLException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.security.CodeSource;
@@ -85,38 +84,64 @@ public class Resources
 	public <T> T getXMLResourceItem(String attribute) {
 		T value = null;
 		if (notNullOrEmpty(attribute)) {
-			MatchResult m = findFirstIn(attribute, XML_RESOURCE_PATTERN);
-			if (m != null) {
-				String pkg = m.group(3);
-				String name = m.group(6), path;
-				int type = asList(resourceTypes).indexOf(m.group(5));
-				switch (type) {
-				default:
-					value = (T) name;
-					break;
-				case 4:
-					if ("android".equals(pkg)) {
-						value = (T) getDrawable (-1, pkg, name);
-						if (value != null)
-							break;
+			try {
+				MatchResult m = findFirstIn(attribute, XML_RESOURCE_PATTERN);
+				if (m != null) {
+					String pkg = m.group(3);
+					String name = m.group(6), path;
+					int type = asList(resourceTypes).indexOf(m.group(5));
+					switch (type) {
+					default:
+						value = (T) name;
+						break;
+					case 4:
+						if ("android".equals(pkg)) {
+							value = (T) getDrawable (-1, pkg, name);
+							if (value != null)
+								break;
+						}
+						path = fileOf(resourceLocations[type], name).getPath();
+						path = Resources.getAbsolutePath(path, Constraint.MIDDLE);
+						if (notNullOrEmpty(path))
+							value = (T) new Drawable().setImage(path);
+						break;
+					case 2:
+					case 3:
+					case 9:
+						if ("android".equals(pkg)) {
+							Job<Class<?>> job = new Job<Class<?>>() {
+								@SuppressWarnings("unused")	//	used via reflect
+								public String value;
+								public void perform(Class<?> t, Object[] parms) throws Exception {
+									int id = param_Integer(-1,2,parms);
+									value = getString(id);
+								}
+							};
+							if (lookup_R(-1, pkg, type, job, null, name)) {
+								value = (T) job.getClass().getField("value").get(job);
+								if (value != null)
+									break;
+							}
+						}
+						path = Resources.getAbsolutePath(resourceLocations[type], Constraint.END);
+						if (notNullOrEmpty(path))
+							value = getResourceByName(xmlDocument(new File(path)), name, type);
+						break;
 					}
-					path = fileOf(resourceLocations[type], name).getPath();
-					path = Resources.getAbsolutePath(path, Constraint.MIDDLE);
-					if (notNullOrEmpty(path))
-						value = (T) new Drawable().setImage(path);
-					break;
-				case 2:
-				case 3:
-				case 9:
-					path = Resources.getAbsolutePath(resourceLocations[type], Constraint.END);
-					if (notNullOrEmpty(path))
-						value = getResourceByName(xmlDocument(new File(path)), name, type);
-					break;
+					return value;
 				}
-				return value;
+			} catch (Exception e) {
+				Log.e(TAG, "getXMLResourceItem", e);
 			}
 		}
 		return value;
+	}
+
+	public static String textValue(Context context, String s) {
+    	if (s.startsWith("@"))
+    		return context.getResources().getXMLResourceItem(s);
+    	else
+    		return s;
 	}
 
 	public static int colorValue(Context context, String s) {
@@ -146,7 +171,8 @@ public class Resources
 	
     //	NOTE	methods further up do NOT correspond to Android APIs
 	
-	public String getString(int id) {
+	public String getString(int id, Object...params) {
+		String pkg = param(context.getPackageName(), 0, params);
 		final int resourceType = 9;
 		switch (id) {
 		case android.R.string.close:
@@ -160,8 +186,9 @@ public class Resources
 		case android.R.string.no:
 			return (String) UIManager.get("OptionPane.noButtonText");
 		default:
-			Object[] params = {null};
-			lookup_R(id, context.getPackageName(), resourceType, new Job<Class<?>>() {
+			params = params.length < 1 ? objects(_null()): params;
+			params[0] = null;
+			lookup_R(id, pkg, resourceType, new Job<Class<?>>() {
 				public void perform(Class<?> c, Object[] parms) throws Exception {
 					final String name = param_String(null,0,parms);
 					InputStream is = c.getResourceAsStream(getRelativePath(resourceType));
@@ -268,12 +295,15 @@ public class Resources
 			Class<?> c = Class.forName(pkg + (notNullOrEmpty(pkg) ? ".R" : "R"));
 			for (Class<?> inner : c.getDeclaredClasses()) {
 				if (resourceTypes[resourceType].equals(inner.getSimpleName())) {
-					String name = param_String(null, 1, params);
+					String nameValue = param_String(null, 1, params);
 					for (Field field : inner.getDeclaredFields()) {
-						if ("int".equals(field.getType().getSimpleName()) && field.getInt(null) == id ||
-								field.getName().equals(name)) {
+						int idValue = field.getInt(null);
+						if ("int".equals(field.getType().getSimpleName()) && 
+								idValue == id ||
+								field.getName().equals(nameValue))
+						{
 							if (lookup != null)
-								lookup.perform(c, objects(field.getName(), params));
+								lookup.perform(c, objects(field.getName(), params, idValue));
 							return true;
 						}
 					}

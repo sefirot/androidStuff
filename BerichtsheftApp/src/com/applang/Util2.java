@@ -1323,6 +1323,7 @@ public class Util2
 		
 	    public ViewGroup build(Object...params) {
 	    	ViewGroup viewGroup = param(this.viewGroup, 0, params);
+	    	viewGroup.initLayout();
 	    	Container container = viewGroup.getContainer();
 			for (int i = 0; i < viewGroup.getChildCount(); i++) {
 				View view = viewGroup.getChildAt(i);
@@ -1334,7 +1335,7 @@ public class Util2
 				container.add(view.getComponent());
 			}
 			viewGroup.applyAttributes();
-			return viewGroup.completeLayout();
+			return viewGroup.finalLayout();
 	    }
 	}
 

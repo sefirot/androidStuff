@@ -169,8 +169,7 @@ public class Context
 	public void registerFlavor(String flavor, String path) {
 		String name = databaseName(flavor);
 		if (name != null) {
-			path = Uri.parse(path).getPath();
-			flavorPaths.putValue(name, path);
+			flavorPaths.putValue(name, dbPath(path));
 		}
 		setFlavor(flavor);
 	}

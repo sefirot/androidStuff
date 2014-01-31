@@ -12,7 +12,6 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Vector;
 
@@ -45,7 +44,6 @@ import javax.swing.table.TableModel;
 
 import org.gjt.sp.jedit.View;
 
-import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ContentResolver;
 import android.content.Context;
@@ -946,7 +944,7 @@ public class DataView extends JPanel implements IComponent
 		
 		private int[] index = null;
 		private int index(int index) {
-			return this.index == null ? index : this.index[index];
+			return this.index == null || index >= this.index.length ? index : this.index[index];
 		}
 		
 		public BidiMultiMap getProjection() {

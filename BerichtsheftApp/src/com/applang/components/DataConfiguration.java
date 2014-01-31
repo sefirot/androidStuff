@@ -79,7 +79,7 @@ public class DataConfiguration
 	private String path, tableName;
 	
 	public String getPath() {
-		return path;
+		return dbPath(path);
 	}
 
 	public String getTableName() {
