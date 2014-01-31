@@ -42,24 +42,23 @@ public class Util1
 {
 	public static ValMap namedParams(Object... params) {
 		ValMap map = vmap();
-		
-		for (int i = 0; i < params.length; i++) {
-			Object param = params[i];
-			if (param instanceof String && embedsLeft(param.toString(), "=")) {
-				String[] sides = param.toString().split("=", 2);
-				if (sides.length > 0) {
-					if (sides.length > 1) 
-						map.put(sides[0], sides[1]);
-					else
-						map.put(sides[0], "");
-					
-					continue;
+		if (params != null) {
+			for (int i = 0; i < params.length; i++) {
+				Object param = params[i];
+				if (param instanceof String
+						&& embedsLeft(param.toString(), "=")) {
+					String[] sides = param.toString().split("=", 2);
+					if (sides.length > 0) {
+						if (sides.length > 1)
+							map.put(sides[0], sides[1]);
+						else
+							map.put(sides[0], "");
+						continue;
+					}
 				}
+				map.put("param" + i, param);
 			}
-			
-			map.put("param" + i, param);
 		}
-		
 		return map;
 	}
 	
@@ -70,7 +69,6 @@ public class Util1
 				T returnValue = (T)map.get(name);
 				return returnValue;
 			} catch (ClassCastException e) {}
-		
 		return defaultValue;
 	}
 	
@@ -350,6 +348,10 @@ public class Util1
 	
 	public static String dbTableName(String uriString) {
 		return dbTableName(Uri.parse(uriString));
+	}
+	
+	public static String dbPath(String uriString) {
+		return Uri.parse(stringValueOf(uriString)).getPath();
 	}
 	
 	public static ValMap schema(Context context, Uri uri) {

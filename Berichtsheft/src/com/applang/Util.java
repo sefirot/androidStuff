@@ -536,10 +536,6 @@ public class Util
 		return params;
 	}
 	
-	public static int[] ints(int...params) {
-		return params;
-	}
-	
 	public static String[] strings(String...params) {
 		return params;
 	}
@@ -562,6 +558,10 @@ public class Util
 	
 	public static <T> Set<T> sortedSet(Collection<T> collection) {
 		return new TreeSet<T>(collection);
+	}
+	
+	public static int[] ints(int...params) {
+		return params;
 	}
 	
 	public interface Function<T> {
@@ -1272,13 +1272,16 @@ public class Util
 	}
 	
 	@SuppressWarnings("unchecked")
-	public static <T> T getPrivateField(Class<?> c, Object o, String fieldName) {
+	public static <T> T getPrivateField(Object cl, Object o, String fieldName) {
 		try {
+			Class<?> c = cl instanceof Class<?> ? 
+					(Class<?>) cl :
+					Class.forName(stringValueOf(cl));
 			Field field = c.getDeclaredField(fieldName);
 			field.setAccessible(true);
 			return (T) field.get(o);
 		} catch (Exception e) {
-			Log.e(TAG, "getPrivateField", e);
+			Log.e(TAG, String.format("getPrivateField '%s' in class '%s'", fieldName, cl), e);
 			return null;
 		}
 	}
