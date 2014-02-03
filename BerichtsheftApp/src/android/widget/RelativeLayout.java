@@ -7,22 +7,20 @@ import java.io.Writer;
 import javax.swing.Spring;
 import javax.swing.SpringLayout;
 
+import com.applang.Util.ValMap;
+
 import android.content.Context;
 import android.content.res.Resources;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewGroup.LayoutParams;
 
 import static com.applang.Util.*;
-import static com.applang.Util1.marginLayoutParams;
+import static com.applang.Util1.*;
 import static com.applang.Util2.*;
-import static com.applang.SwingUtil.*;
 
 public class RelativeLayout extends ViewGroup
 {
-	private static final String TAG = RelativeLayout.class.getSimpleName();
     /**
      * Rule that aligns a child's right edge with another child's left edge.
      */
@@ -170,11 +168,12 @@ public class RelativeLayout extends ViewGroup
 			}
 		}
 		
-        public void addRules(Context context, Object...params) {
-        	for (int i = 0; i < params.length; i+=2) {
-        		int verb = verb(param_String(null, i, params));
+        public void addRules(Context context, Object...attrs) {
+			ValMap map = namedParams(attrs);
+        	for (String key : map.keySet()) {
+        		int verb = verb(key);
         		if (verb > -1)
-        			addRule(context, verb, param_String(null, i + 1, params));
+        			addRule(context, verb, stringValueOf(map.get(key)));
         	}
 		}
 		
@@ -207,105 +206,106 @@ public class RelativeLayout extends ViewGroup
 		return (SpringLayout) getContainer().getLayout();
     }
 	
-	private Component getAnchor(View parent, String name) {
-		View peer = parent.findViewWithTag(name);
-		if (peer != null) 
-			return peer.getComponent();
-		else
-			return null;
+	public void putConstraint(String edge, Component component, int pad, String edge2, Component component2) {
+		printEdges(component.getName() + " before", getLayout().getConstraints(component), edge);
+		getLayout().putConstraint(edge, component, pad, edge2, component2);
+		printEdges(component.getName() + " after", getLayout().getConstraints(component), edge);
 	}
 	
-	private void alignWithAnchor(View parent, String name, int verb, View view, LayoutParams relParams) {
+	private void alignWithAnchor(View parent, String name, int verb, View view, boolean init) {
 		View anchor = parent.findViewWithTag(name);
 		if (anchor != null && anchor.getComponent() != null) {
-			SpringLayout layout = getLayout();
-			int viewIndex = views.indexOf(view);
-			int anchorIndex = views.indexOf(anchor);
-			switch (verb) {
-			case LEFT_OF:
-				if (relParams == null)
+			if (init) {
+				int viewIndex = views.indexOf(view);
+				int anchorIndex = views.indexOf(anchor);
+				switch (verb) {
+				case LEFT_OF:
 					indexMove(viewIndex, anchorIndex);
-				else
-					layout.getConstraints(anchor.getComponent()).setX(
-						Spring.sum(
-							Spring.constant(relParams.leftMargin),
-							layout.getConstraints(view.getComponent()).getConstraint(SpringLayout.EAST)));
-				break;
-			case RIGHT_OF:
-				if (relParams == null)
+				case RIGHT_OF:
 					indexMove(viewIndex, anchorIndex + 1);
-				else
-					layout.getConstraints(view.getComponent()).setX(
-						Spring.sum(
-							Spring.constant(relParams.rightMargin),
-							layout.getConstraints(anchor.getComponent()).getConstraint(SpringLayout.EAST)));
-				break;
-			case ABOVE:
-				if (relParams == null)
+					break;
+				case ABOVE:
 					indexMove(viewIndex, anchorIndex);
-				else
-					layout.getConstraints(anchor.getComponent()).setY(
-						Spring.sum(
-							Spring.constant(relParams.topMargin),
-							layout.getConstraints(view.getComponent()).getConstraint(SpringLayout.SOUTH)));
-				break;
-			case BELOW:
-				if (relParams == null)
+					break;
+				case BELOW:
 					indexMove(viewIndex, anchorIndex + 1);
-				else
-					layout.getConstraints(view.getComponent()).setY(
-						Spring.sum(
-							Spring.constant(relParams.bottomMargin),
-							layout.getConstraints(anchor.getComponent()).getConstraint(SpringLayout.SOUTH)));
-				break;
+					break;
+				}
+			}
+			else {
+				SpringLayout.Constraints coCons = getLayout().getConstraints(view.getComponent());
+				SpringLayout.Constraints anCons = getLayout().getConstraints(anchor.getComponent());
+				String coEdge = "", anEdge = "";
+				switch (verb) {
+				case LEFT_OF:
+					coEdge = SpringLayout.EAST;
+					anEdge = SpringLayout.WEST;
+					break;
+				case RIGHT_OF:
+					coEdge = SpringLayout.WEST;
+					anEdge = SpringLayout.EAST;
+					break;
+				case ABOVE:
+					coEdge = SpringLayout.SOUTH;
+					anEdge = SpringLayout.NORTH;
+					break;
+				case BELOW:
+					coEdge = SpringLayout.NORTH;
+					anEdge = SpringLayout.SOUTH;
+					break;
+				default:
+					return;
+				}
+				int pad = Math.abs(coCons.getConstraint(coEdge).getValue() - anCons.getConstraint(anEdge).getValue());
+				putConstraint(coEdge, view.getComponent(), pad, anEdge, anchor.getComponent());
 			}
 		}
 	}
 
-	private void alignEdges(ViewGroup parent, String peer, int verb, Component component) {
-		Component anchor = getAnchor(parent, peer);
-		if (anchor != null) {
-			SpringLayout.Constraints componentCons = getLayout().getConstraints(component);
-			SpringLayout.Constraints anchorCons = getLayout().getConstraints(anchor);
+	private void alignEdges(ViewGroup parent, String name, int verb, View view) {
+		View anchor = parent.findViewWithTag(name);
+		if (anchor != null && anchor.getComponent() != null) {
+			SpringLayout.Constraints coCons = getLayout().getConstraints(view.getComponent());
+			SpringLayout.Constraints anCons = getLayout().getConstraints(anchor.getComponent());
 			switch (verb) {
 			case ALIGN_LEFT:
-				componentCons.setX(anchorCons.getConstraint(SpringLayout.WEST));
+				coCons.setConstraint(SpringLayout.WEST, anCons.getConstraint(SpringLayout.WEST));
 				break;
 			case ALIGN_TOP:
-				componentCons.setY(anchorCons.getConstraint(SpringLayout.NORTH));
+				coCons.setConstraint(SpringLayout.NORTH, anCons.getConstraint(SpringLayout.NORTH));
 				break;
 			case ALIGN_RIGHT:
-				componentCons.setX(anchorCons.getConstraint(SpringLayout.EAST));
+				coCons.setConstraint(SpringLayout.EAST, anCons.getConstraint(SpringLayout.EAST));
 				break;
 			case ALIGN_BOTTOM:
-				componentCons.setY(anchorCons.getConstraint(SpringLayout.SOUTH));
+				coCons.setConstraint(SpringLayout.SOUTH, anCons.getConstraint(SpringLayout.SOUTH));
 				break;
 			}
 		}
 	}
 	
-	private void alignWithParent(Container parent, int verb, Component component, LayoutParams relParams) {
+	private void alignWithParent(ViewGroup parent, int verb, View view) {
+		SpringLayout.Constraints parCons = getLayout().getConstraints(parent.getContainer());
+		SpringLayout.Constraints coCons = getLayout().getConstraints(view.getComponent());
 		String edge = "";
-		int pad = 0;
 		switch (verb) {
 		case ALIGN_PARENT_LEFT:
 			edge = SpringLayout.WEST;
-			pad = relParams.leftMargin;
 			break;
 		case ALIGN_PARENT_TOP:
 			edge = SpringLayout.NORTH;
-			pad = relParams.topMargin;
 			break;
 		case ALIGN_PARENT_RIGHT:
 			edge = SpringLayout.EAST;
-			pad = relParams.rightMargin;
 			break;
 		case ALIGN_PARENT_BOTTOM:
 			edge = SpringLayout.SOUTH;
-			pad = relParams.bottomMargin;
 			break;
+		default:
+			return;
 		}
-		getLayout().putConstraint(edge, component, pad, edge, parent);
+		int pad = Math.abs(parCons.getConstraint(edge).getValue() - coCons.getConstraint(edge).getValue());
+		putConstraint(edge, view.getComponent(), pad, edge, parent.getContainer());
 	}
 
 	public void doRules(boolean init, View view) {
@@ -323,21 +323,21 @@ public class RelativeLayout extends ViewGroup
 					case RIGHT_OF:
 					case ABOVE:
 					case BELOW:
-						alignWithAnchor(parent, rule, verb, view, init ? null : relParams);
+						alignWithAnchor(parent, rule, verb, view, init);
 						break;
 					case ALIGN_LEFT:
 					case ALIGN_TOP:
 					case ALIGN_RIGHT:
 					case ALIGN_BOTTOM:
 						if (!init)
-							alignEdges(parent, rule, verb, component);
+							alignEdges(parent, rule, verb, view);
 						break;
 					case ALIGN_PARENT_LEFT:
 					case ALIGN_PARENT_TOP:
 					case ALIGN_PARENT_RIGHT:
 					case ALIGN_PARENT_BOTTOM:
 						if (!init)
-							alignWithParent(parent.getContainer(), verb, component, relParams);
+							alignWithParent(parent, verb, view);
 						break;
 					case ALIGN_BASELINE:
 						break;
@@ -372,60 +372,152 @@ public class RelativeLayout extends ViewGroup
 	}
 
 	@Override
-	public void initLayout() {
+	public void preLayout() {
 		indexInit();
 		for (int i = 0; i < getChildCount(); i++)
 			doRules(true, getChildAt(i));
 	}
 
-	public ViewGroup final_Layout() {
-		MarginLayoutParams margins = marginLayoutParams(LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT);
-        Spring xSpring = Spring.constant(0);
-        Spring ySpring = Spring.constant(0);
+	@Override
+	public Container doLayout() {
+		arrange(1, index.size());
+//		printSprings();
+		for (int i = 0; i < getChildCount(); i++)
+			doRules(false, getChildAt(index(i)));
+//		printSprings();
+		return getContainer();
+	}
+
+	public void arrange(int rows, int cols, int...xyPadxPady) {
+        SpringLayout layout = getLayout();
+        Spring x = Spring.constant(param(0,0,xyPadxPady)), y = Spring.constant(param(0,1,xyPadxPady));
+        Spring xPad = Spring.constant(param(0,2,xyPadxPady)), yPad = Spring.constant(param(0,3,xyPadxPady));
+        boolean oneRow = rows < 2;
+        boolean oneCol = cols < 2;
+        View view = null;
+        for (int c = 0; c < cols; c++) {
+            Spring width = Spring.constant(0);
+            Spring dx = width;
+			for (int r = 0; r < rows; r++) {
+            	view = getViewAt(r,c,cols);
+            	if (view == null) continue;
+                Spring w = getLayout().getConstraints(view.getComponent()).getWidth();
+				width = Spring.max(width, w);
+                dx = oneRow || oneCol ? 
+                		Spring.max(dx, Spring.sum(w, getMarginSpring(view, "horz"))) :
+                		width;
+            }
+            for (int r = 0; r < rows; r++) {
+            	view = getViewAt(r,c,cols);
+            	if (view == null) continue;
+                SpringLayout.Constraints constraints = getLayout().getConstraints(view.getComponent());
+                Spring z = x;
+                if (oneRow || oneCol)
+                	z = Spring.sum(z, getMarginSpring(view, SpringLayout.WEST));
+                constraints.setX(z);
+                if (oneRow || oneCol)
+                	z = Spring.sum(z, getMarginSpring(view, SpringLayout.EAST, width.getValue()));
+				if (!oneCol)
+                	constraints.setWidth(width);
+                if (oneRow)
+                	x = z;
+            }
+            x = Spring.sum(x, Spring.sum(dx, xPad));
+        }
+        for (int r = 0; r < rows; r++) {
+            Spring height = Spring.constant(0);
+            Spring dy = height;
+			for (int c = 0; c < cols; c++) {
+            	view = getViewAt(r,c,cols);
+            	if (view == null) continue;
+                Spring h = getLayout().getConstraints(view.getComponent()).getHeight();
+				height = Spring.max(height, h);
+                dy = oneCol || oneRow ?
+                		Spring.max(dy, Spring.sum(h, getMarginSpring(view, "vert"))) :
+                		height;
+            }
+            for (int c = 0; c < cols; c++) {
+            	view = getViewAt(r,c,cols);
+            	if (view == null) continue;
+                SpringLayout.Constraints constraints = getLayout().getConstraints(view.getComponent());
+                Spring z = y;
+                if (oneCol || oneRow)
+                	z = Spring.sum(z, getMarginSpring(view, SpringLayout.NORTH));
+                constraints.setY(z);
+                if (oneCol || oneRow)
+                	z = Spring.sum(z, getMarginSpring(view, SpringLayout.SOUTH, height.getValue()));
+                if (!oneRow)
+                	constraints.setHeight(height);
+                if (oneCol)
+                	y = z;
+            }
+            y = Spring.sum(y, Spring.sum(dy, yPad));
+        }
+
+        SpringLayout.Constraints cons = layout.getConstraints(getContainer());
+        cons.setConstraint(SpringLayout.SOUTH, y);
+        cons.setConstraint(SpringLayout.EAST, x);
+//		println("width", cons.getWidth().getValue(), x.getValue());
+//		println("height", cons.getHeight().getValue(), y.getValue());
+    }
+
+    private View getViewAt(int row, int col, int cols) {
+		return getChildAt(index(row * cols + col));
+    }
+	
+	private Spring getMarginSpring(View view, String edge, int...more) {
+		int margin = 0;
+		if (view != null && view.getLayoutParams() instanceof MarginLayoutParams) {
+			MarginLayoutParams margs = (MarginLayoutParams) view.getLayoutParams();
+			if ("horz".equals(edge)) {
+				margin += margs.getMargin(SpringLayout.WEST);
+				margin += margs.getMargin(SpringLayout.EAST);
+			}
+			else if ("vert".equals(edge)) {
+				margin += margs.getMargin(SpringLayout.NORTH);
+				margin += margs.getMargin(SpringLayout.SOUTH);
+			}
+			else
+				margin = margs.getMargin(edge);
+		}
+		return Spring.constant(margin, margin, margin + param(0, 0, more));
+	}
+
+	public void printSprings() {
 		for (int i = 0; i < getChildCount(); i++) {
-			View view = getChildAt(index(i));
-//			printSprings(view.getTag() + " before", view);
-            SpringLayout.Constraints cons = getLayout().getConstraints(view.getComponent());
-            cons.setX(Spring.sum(xSpring, getMarginSpring(view, SpringLayout.WEST)));
-            cons.setY(Spring.sum(ySpring, getMarginSpring(view, SpringLayout.NORTH)));
-            xSpring = Spring.sum(cons.getConstraint(SpringLayout.EAST), getMarginSpring(view, SpringLayout.EAST));
-			println(cons.getConstraint(SpringLayout.WEST).getValue(), cons.getConstraint(SpringLayout.EAST).getValue());
-            for (String edge : strings(SpringLayout.EAST, SpringLayout.SOUTH)) {
-				margins.setMargin(edge, 
-					Math.max(
-						getMarginSpring(view, edge).getValue(),
-						margins.getMargin(edge)));
-			}
-//			printSprings(view.getTag() + " after", view);
+			View v = getChildAt(index(i));
+			printSprings(stringValueOf(v.getTag()), v);
 		}
-		setOuterMargins(getContainer(), margins);
-		return this;
 	}
 
-	public MarginLayoutParams do_Margins(Container container, Component component, 
-			ViewGroup.LayoutParams layoutParams, 
-			MarginLayoutParams outerMargins)
-	{
-        SpringLayout layout = (SpringLayout) container.getLayout();
-		if (layoutParams instanceof MarginLayoutParams && component != null) {
-			MarginLayoutParams margs = (MarginLayoutParams) layoutParams;
-			SpringLayout.Constraints cons = layout.getConstraints(component);
-			for (String edge : edges()) {
-				int margin = margs.getMargin(edge);
-				if (margin > 0)
-					cons.setConstraint(edge,
-						Spring.sum(
-							Spring.constant(margin),
-							cons.getConstraint(edge)));
-				if (outerMargins != null)
-					outerMargins.setMargin(edge, 
-						Math.max(margin, outerMargins.getMargin(edge)));
-			}
-		}
-		return outerMargins;
+	public void printSprings(String string, View v) {
+		SpringLayout.Constraints cons = getLayout().getConstraints(v.getComponent());
+		printEdges(string, cons, all_constraints());
 	}
 
-	public void setOuterMargins(Container container, MarginLayoutParams margins) {
+	private static void printEdges(String string, SpringLayout.Constraints cons, String...edges) {
+		Writer writer = write(null, string);
+		for (String edge : edges) {
+			writeConstraint(writer, cons, edge);
+		}
+		println(writer.toString());
+	}
+
+	private static Writer writeConstraint(Writer writer, SpringLayout.Constraints cons, String edge) {
+		Spring constraint = cons.getConstraint(edge);
+		String s = stringValueOf(constraint);
+		s = s.replaceAll("javax.swing.Spring\\$", "");
+		return write_assoc(writer, edge, s, 3);
+	}
+
+	private static String[] all_constraints() {
+		String[] edges = getPrivateField(SpringLayout.class, null, "ALL_HORIZONTAL");
+		edges = arrayappend(edges, 
+				(String[]) getPrivateField(SpringLayout.class, null, "ALL_VERTICAL"));
+		return edges;
+	}
+
+	public static void setOuterMargins(Container container, MarginLayoutParams margins) {
         SpringLayout layout = (SpringLayout) container.getLayout();
         Component[] components = container.getComponents();
         Spring maxRightSpring = Spring.constant(0);
@@ -450,137 +542,6 @@ public class RelativeLayout extends ViewGroup
         layout.getConstraints(container).setConstraint(
                 SpringLayout.SOUTH,
                 Spring.sum(Spring.constant(margins.getMargin(SpringLayout.SOUTH)), maxHeightSpring));
-	}
-
-	@Override
-	public ViewGroup finalLayout() {
-		arrange(1, index.size());
-//		makeGrid(getContainer(), 2, index.size() / 2, 0,0,0,0);
-		return this;
-	}
-	
-	private Spring getMarginSpring(View view, String edge, int...more) {
-		int margin = 0;
-		if (view != null && view.getLayoutParams() instanceof MarginLayoutParams) {
-			MarginLayoutParams margs = (MarginLayoutParams) view.getLayoutParams();
-			if ("horz".equals(edge)) {
-				margin += margs.getMargin(SpringLayout.WEST);
-				margin += margs.getMargin(SpringLayout.EAST);
-			}
-			else if ("vert".equals(edge)) {
-				margin += margs.getMargin(SpringLayout.NORTH);
-				margin += margs.getMargin(SpringLayout.SOUTH);
-			}
-			else
-				margin = margs.getMargin(edge);
-		}
-		return Spring.constant(margin, margin, margin + param(0, 0, more));
-	}
-
-    private View getViewAt(int row, int col, int cols) {
-		return getChildAt(index(row * cols + col));
-    }
-
-	public void arrange(int rows, int cols, int...xyPadxPady) {
-        SpringLayout layout = getLayout();
-        Spring x = Spring.constant(param(0,0,xyPadxPady)), y = Spring.constant(param(0,1,xyPadxPady)), z;
-        boolean oneRow = rows < 2;
-        boolean oneCol = cols < 2;
-        View view = null;
-        for (int c = 0; c < cols; c++) {
-            Spring width = Spring.constant(0);
-            Spring dx = width;
-			for (int r = 0; r < rows; r++) {
-            	view = getViewAt(r,c,cols);
-            	if (view == null) continue;
-                Spring w = getLayout().getConstraints(view.getComponent()).getWidth();
-				width = Spring.max(width, w);
-                dx = oneRow || oneCol ? 
-                		Spring.max(dx, Spring.sum(w, getMarginSpring(view, "horz"))) :
-                		width;
-            }
-            for (int r = 0; r < rows; r++) {
-            	z = x;
-            	view = getViewAt(r,c,cols);
-            	if (view == null) continue;
-                SpringLayout.Constraints constraints = getLayout().getConstraints(view.getComponent());
-                if (oneRow || oneCol)
-                	z = Spring.sum(z, getMarginSpring(view, SpringLayout.WEST));
-                constraints.setX(z);
-                if (oneRow || oneCol)
-                	z = Spring.sum(z, getMarginSpring(view, SpringLayout.EAST, width.getValue()));
-				if (!oneCol)
-                	constraints.setWidth(width);
-                if (oneRow)
-                	x = z;
-            }
-            x = Spring.sum(x, Spring.sum(dx, Spring.constant(param(0,2,xyPadxPady))));
-        }
-        for (int r = 0; r < rows; r++) {
-            Spring height = Spring.constant(0);
-            Spring dy = height;
-			for (int c = 0; c < cols; c++) {
-            	view = getViewAt(r,c,cols);
-            	if (view == null) continue;
-                Spring h = getLayout().getConstraints(view.getComponent()).getHeight();
-				height = Spring.max(height, h);
-                dy = oneCol || oneRow ?
-                		Spring.max(dy, Spring.sum(h, getMarginSpring(view, "vert"))) :
-                		height;
-            }
-            for (int c = 0; c < cols; c++) {
-            	z = y;
-            	view = getViewAt(r,c,cols);
-            	if (view == null) continue;
-                SpringLayout.Constraints constraints = getLayout().getConstraints(view.getComponent());
-                if (oneCol || oneRow)
-                	z = Spring.sum(z, getMarginSpring(view, SpringLayout.NORTH));
-                constraints.setY(z);
-                if (oneCol || oneRow)
-                	z = Spring.sum(z, getMarginSpring(view, SpringLayout.SOUTH, height.getValue()));
-                if (!oneRow)
-                	constraints.setHeight(height);
-                if (oneCol)
-                	y = z;
-            }
-            y = Spring.sum(y, Spring.sum(dy, Spring.constant(param(0,3,xyPadxPady))));
-        }
-
-        SpringLayout.Constraints cons = layout.getConstraints(getContainer());
-        cons.setConstraint(SpringLayout.SOUTH, y);
-        cons.setConstraint(SpringLayout.EAST, x);
-        println("width", cons.getWidth().getValue(), x.getValue());
-        println("height", cons.getHeight().getValue(), y.getValue());
-    }
-
-	public void printSprings() {
-		for (int i = 0; i < getChildCount(); i++) {
-			View v = getChildAt(i);
-			printSprings(stringValueOf(v.getTag()), v);
-		}
-	}
-
-	public void printSprings(String string, View v) {
-		SpringLayout.Constraints cons = getLayout().getConstraints(v.getComponent());
-		printEdges(string, cons);
-	}
-
-	private static void printEdges(String string, SpringLayout.Constraints cons) {
-		Writer writer = write(null, string);
-		for (String name : all_constraints()) {
-			Spring constraint = cons.getConstraint(name);
-			String s = stringValueOf(constraint);
-			s = s.replaceAll("javax.swing.Spring\\$", "");
-			write_assoc(writer, name, s, 3);
-		}
-		println(writer.toString());
-	}
-
-	private static String[] all_constraints() {
-		String[] edges = getPrivateField(SpringLayout.class, null, "ALL_HORIZONTAL");
-		edges = arrayappend(edges, 
-				(String[]) getPrivateField(SpringLayout.class, null, "ALL_VERTICAL"));
-		return edges;
 	}
 
     public void makeGrid(Container parent, int rows, int cols, int initialX, int initialY, int xPad, int yPad) {

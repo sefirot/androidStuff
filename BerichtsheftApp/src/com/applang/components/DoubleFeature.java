@@ -139,7 +139,7 @@ public class DoubleFeature implements IComponent
 	public static Component[] focusRequestComponents(Container container) {
 		final Component[] focused = findComponents(container, new Predicate<Component>() {
 			public boolean apply(Component c) {
-				String name = c.getName();
+				String name = stringValueOf(c.getName());
 				return check(name, Constraint.AMONG, DoubleFeature.FOCUS) || 
 						check(name, Constraint.AMONG, DoubleFeature.REQUEST);
 			}

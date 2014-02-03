@@ -62,41 +62,41 @@ public class LayoutInflater
     }
 
 	public View inflate(final Element element, Object...params) {
-    	View vw = null;
+    	View view = null;
 		try {
 			AttributeSet attributeSet = attributeSet(mContext, element);
 			Class<?> layoutClass = Class.forName("android.widget.".concat(element.getNodeName()));
 			int width = LayoutParams.dimensionalValue(mContext, element.getAttribute("android:layout_width"));
 			int height = LayoutParams.dimensionalValue(mContext, element.getAttribute("android:layout_height"));
 			if (LinearLayout.class.equals(layoutClass)) {
-				vw = linearLayout(mContext, 
+				view = linearLayout(mContext, 
 						"vertical".equals(element.getAttribute("android:orientation")) ? 
 								LinearLayout.VERTICAL : LinearLayout.HORIZONTAL, 
 		        		width, height);
 			}
 			else if (RelativeLayout.class.equals(layoutClass)) {
-				vw = relativeLayout(mContext,  width, height);
+				view = relativeLayout(mContext,  width, height);
 			}
 			else {
-				vw = (View) layoutClass
+				view = (View) layoutClass
 						.getConstructor(Context.class, AttributeSet.class)
 						.newInstance(mContext, attributeSet);
-				if (vw != null) {
+				if (view != null) {
 					LayoutParams layoutParams;
 					View vp = param(null, 0, params);
 					if (vp instanceof LinearLayout)
 						layoutParams = new LinearLayout.LayoutParams(mContext, attributeSet);
 					else if (vp instanceof RelativeLayout)
 						layoutParams = new RelativeLayout.LayoutParams(mContext, attributeSet);
-					else 
+					else
 						layoutParams = new ViewGroup.MarginLayoutParams(mContext, attributeSet);
-					vw.setLayoutParams(layoutParams);
+					view.setLayoutParams(layoutParams);
 				}
 			}
-			if (vw != null) {
-				vw.attributeSet = attributeSet;
-				if (vw instanceof ViewGroup) {
-					ViewGroup vg = (ViewGroup) vw;
+			if (view != null) {
+				view.attributeSet = attributeSet;
+				if (view instanceof ViewGroup) {
+					ViewGroup vg = (ViewGroup) view;
 					NodeList nodes = element.getChildNodes();
 					for (int i = 0; i < nodes.getLength(); i++) {
 						Node node = nodes.item(i);
@@ -111,7 +111,7 @@ public class LayoutInflater
 		catch (Exception e) {
 			Log.e(TAG, "inflate", e);
 		}
-		return vw;
+		return view;
 	}
 
 }

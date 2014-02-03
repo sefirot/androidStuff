@@ -4,6 +4,8 @@ import org.w3c.dom.Document;
 
 import android.content.Context;
 import android.content.res.Resources;
+import android.view.LayoutInflater;
+import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -12,21 +14,31 @@ import android.widget.TextView;
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
 
-public class FormBuilder extends LayoutBuilder
+public class FormBuilder extends Layouter
 {
-	public FormBuilder(Context context, ViewGroup viewGroup) {
-		super(context, viewGroup);
-	}
+	protected LayoutInflater inflater = null;
 
 	public FormBuilder(Context context, String resName) {
-		super(context, resName);
-		getViewGroup().setTag("form");
+		super(context);
+		inflater = LayoutInflater.from(mContext);
+		if (notNullOrEmpty(resName)) {
+			View view = inflater.inflate(Resources.getRelativePath(6, resName));
+			if (view instanceof ViewGroup)
+				viewGroup = (ViewGroup) view;
+			else {
+				viewGroup = new ViewGroup(mContext);
+				addView(view, view.getLayoutParams());
+			}
+		}
+		else
+			viewGroup = new ViewGroup(mContext);
+		viewGroup.setTag("form");
 	}
 
 	public FormBuilder(Context context, int resId) {
-		super(context);
+		this(context, null);
 		Document document = mContext.getResources().getXml(resId);
-		setViewGroup((ViewGroup) inflater.inflate(document.getDocumentElement()));
+		viewGroup = (ViewGroup) inflater.inflate(document.getDocumentElement());
 	}
 
 	public void setLabel(Object labelText, ViewGroup vg) {

@@ -1,12 +1,14 @@
 package android.widget;
 
-import static com.applang.Util.NEWLINE_REGEX;
-import static com.applang.Util.enclose;
+import java.awt.Insets;
 
 import javax.swing.JButton;
 
 import android.content.Context;
 import android.util.AttributeSet;
+
+import static com.applang.Util.*;
+import static com.applang.SwingUtil.*;
 
 public class Button extends TextView
 {
@@ -21,6 +23,7 @@ public class Button extends TextView
     protected void create(Object... params) {
     	JButton button = new JButton();
 		setComponent(button);
+		button.setMargin(new Insets(0,0,0,0));
 	}
     
     public JButton getButton() {
@@ -31,7 +34,9 @@ public class Button extends TextView
     	if (isMultiLine()) {
     		text = enclose("<html>", text.replaceAll(NEWLINE_REGEX, "<br>"), "</html>");
     	}
-    	getButton().setText(text);
+    	JButton btn = getButton();
+		btn.setText(text);
+    	adjustButtonSize(btn);
 	}
 
 	public String getText() {

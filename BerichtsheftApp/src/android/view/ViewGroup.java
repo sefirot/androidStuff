@@ -248,14 +248,14 @@ public class ViewGroup extends View implements ViewManager
     	return (Container) getComponent();
     }
 
-	public void initLayout() {
+	public void preLayout() {
 	}
 
 	public void doLayout(View view) {
 	}
 
-	public ViewGroup finalLayout() {
-		return this;
+	public Container doLayout() {
+		return getContainer();
 	}
 
 	public static String[] edges() {

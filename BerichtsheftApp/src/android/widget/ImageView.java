@@ -47,8 +47,9 @@ public class ImageView extends View
 		if (attributeSet != null) {
 	    	if (attributeSet.hasAttribute("android:src")) {
 	    		Drawable drawable = attributeSet.getAttributeResourceItem("android:src");
-	    		if (drawable != null)
+	    		if (drawable != null) {
 	    			setImage(drawable.getImage());
+	    		}
 			}
 		}
 		super.applyAttributes();

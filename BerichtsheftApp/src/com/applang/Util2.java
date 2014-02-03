@@ -87,7 +87,6 @@ import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
 import android.util.AttributeSet;
 import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -1164,11 +1163,10 @@ public class Util2
 	public static AttributeSet attributeSet(final Context context, Object...attrs) {
 		Object o = param(null, 0, attrs);
 		if (!(o instanceof Element)) {
-			ValMap map = namedParams(attrs);
 			StringBuilder sb = new StringBuilder();
 			sb.append("<AttributeSet xmlns:android=\"http://schemas.android.com/apk/res/android\"");
-			for (int i = 0; i < map.size(); i+=2) {
-				sb.append(" " + map.get("param" + i) + "=" + quoted(stringValueOf(map.get("param" + (i + 1)))));
+			for (Object attr : attrs) {
+				sb.append(" " + attr);
 			}
 			sb.append(" />");
 			InputStream is = new ByteArrayInputStream(sb.toString().getBytes());
@@ -1277,14 +1275,17 @@ public class Util2
 		};
 	}
 
-	public static class LayoutBuilder
+	public static class Layouter
 	{
 		protected Context mContext;
-		protected LayoutInflater inflater = null;
 		
-		public LayoutBuilder(Context context) {
+		public Layouter(Context context) {
 			mContext = context;
-			inflater = LayoutInflater.from(mContext);
+		}
+
+		public Layouter(Context context, ViewGroup viewGroup) {
+			this(context);
+			this.viewGroup = viewGroup;
 		}
 
 		protected ViewGroup viewGroup = null;
@@ -1296,34 +1297,14 @@ public class Util2
 		public void setViewGroup(ViewGroup viewGroup) {
 			this.viewGroup = viewGroup;
 		}
-
-		public LayoutBuilder(Context context, ViewGroup viewGroup) {
-			this(context);
-			this.viewGroup = viewGroup;
-		}
-
-		public LayoutBuilder(Context context, String resourceName) {
-			this(context);
-			if (notNullOrEmpty(resourceName)) {
-				View view = inflater.inflate(Resources.getRelativePath(6, resourceName));
-				if (view instanceof ViewGroup)
-					viewGroup = (ViewGroup) view;
-				else {
-					viewGroup = new ViewGroup(mContext);
-					addView(view, view.getLayoutParams());
-				}
-			}
-			else
-				viewGroup = new ViewGroup(mContext);
-		}
 		
 	    public void addView(View view, ViewGroup.LayoutParams params) {
 	    	viewGroup.addView(view, params);
 		}
 		
-	    public ViewGroup build(Object...params) {
+	    public Container build(Object...params) {
 	    	ViewGroup viewGroup = param(this.viewGroup, 0, params);
-	    	viewGroup.initLayout();
+	    	viewGroup.preLayout();
 	    	Container container = viewGroup.getContainer();
 			for (int i = 0; i < viewGroup.getChildCount(); i++) {
 				View view = viewGroup.getChildAt(i);
@@ -1335,7 +1316,7 @@ public class Util2
 				container.add(view.getComponent());
 			}
 			viewGroup.applyAttributes();
-			return viewGroup.finalLayout();
+			return viewGroup.doLayout();
 	    }
 	}
 

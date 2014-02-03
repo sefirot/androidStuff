@@ -298,7 +298,7 @@ public class DataManager extends ActionPanel
 		final BerichtsheftActivity context = BerichtsheftActivity.getInstance((JFrame) getView());
 		iComponent = new IComponent() {
 			public Component getUIComponent() {
-				if (panel == null) {
+				if (container == null) {
 					String layout = props.getProperty("layout");
 					boolean standardLayout = nullOrEmpty(layout);
 					if (standardLayout) 
@@ -328,18 +328,18 @@ public class DataManager extends ActionPanel
 							}
 						}
 					}
-					panel = (JPanel) formBuilder.build().getComponent();
-					printContainer("panel", panel, true);
+					container = formBuilder.build();
+					printContainer("panel", container, true);
 				}
-				return panel;
+				return container;
 			}
 			
-			private JPanel panel = null;
+			private Container container = null;
 		};
 	}
 	
-	public JComponent formView() {
-		JComponent uiComponent = (JComponent) iComponent.getUIComponent();
+	public Container formView() {
+		Container uiComponent = (Container) iComponent.getUIComponent();
 		return uiComponent;
 	}
 	

@@ -21,14 +21,12 @@ import java.beans.PropertyChangeListener;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 
+import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JFormattedTextField;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-
-import com.applang.SwingUtil.Behavior;
-import com.applang.Util1;
 
 import android.util.Log;
 
@@ -46,12 +44,28 @@ public class DatePicker
 		long time = now();
 		println(pickADate(time, "", "", timeLine(time, 1)));
 	}
+	
+	class PickButton extends JButton
+	{
+		public PickButton() {
+	        this(null, null, 0,0,0,0);
+		}
+
+		public PickButton(String text) {
+	        this(text, null, 6,0,6,0);
+		}
+	
+		public PickButton(String text, Icon icon, int...tlbr) {
+			super(text, icon);
+			adjustButtonSize(this, tlbr);
+		}
+	}
 
 	int monthOfYear, year;
 	int rows = 7, cols = 8;
 	String date;
-	JButton month = new JButton("");
-	JButton[] weeks, days;
+	PickButton month = new PickButton("");
+	PickButton[] weeks, days;
 	SimpleDateFormat sdf = new SimpleDateFormat();
 	Long[] timeLine = null;
 	Font font = monoSpaced(Font.BOLD);
@@ -94,16 +108,16 @@ public class DatePicker
 	
 	public JPanel[] panels(final JDialog dialog) {
 		JPanel p1 = new JPanel(new GridLayout(rows, cols));
-		p1.setPreferredSize(new Dimension(600, 200));
-		final JButton[] buttons = new JButton[rows*cols];
-		
+		p1.setPreferredSize(new Dimension(400, 200));
+		final PickButton[] buttons = new PickButton[rows*cols];
 		String[] header = { "", "S", "M", "T", "W", "T", "F", "S" };
-		ArrayList<JButton> w = alist();
-		ArrayList<JButton> d = alist();
+		ArrayList<PickButton> w = alist();
+		ArrayList<PickButton> d = alist();
 		for (int x = 0; x < buttons.length; x++) {
 			final int selection = x;
-			buttons[x] = new JButton();
+			buttons[x] = new PickButton();
 			buttons[x].setFocusPainted(false);
+			buttons[x].setBorderPainted(false);
 			buttons[x].setBackground(Color.white);
 			if (x < cols) {
 				buttons[x].setText(header[x]);
@@ -124,20 +138,17 @@ public class DatePicker
 			}
 			p1.add(buttons[x]);
 		}
-		weeks = w.toArray(new JButton[]{});
-		days = d.toArray(new JButton[]{});
-		
-		JPanel p2 = new JPanel(new GridLayout(1, 3));
-		JButton[] move = new JButton[moves.length];
-		move[0] = new JButton(moves[0]);
+		weeks = w.toArray(new PickButton[]{});
+		days = d.toArray(new PickButton[]{});
+		JPanel p2 = new JPanel(new GridLayout(1, 5));
+		move[0] = new PickButton(moves[0]);
 		move[0].addActionListener(moveMonth);
-		move[1] = new JButton(moves[1]);
+		move[1] = new PickButton(moves[1]);
 		move[1].addActionListener(moveMonth);
-		move[2] = new JButton(moves[2]);
+		move[2] = new PickButton(moves[2]);
 		move[2].addActionListener(moveMonth);
-		move[3] = new JButton(moves[3]);
+		move[3] = new PickButton(moves[3]);
 		move[3].addActionListener(moveMonth);
-		
 		p2.add(move[0]);
 		p2.add(move[1]);
 		month.addActionListener(new ActionListener(){
@@ -149,7 +160,6 @@ public class DatePicker
 		p2.add(month);
 		p2.add(move[2]);
 		p2.add(move[3]);
-		
 		JPanel p3 = new JPanel(new GridLayout(1, 2));
 		p3.add(new JLabel("number of days (into the past)"));
 		final JFormattedTextField tf = new JFormattedTextField("" + ndays);
@@ -163,7 +173,6 @@ public class DatePicker
 			}
 		});
 		p3.add(tf);
-		
 		return new JPanel[] {p1,p2,p3};
 	}
 	
@@ -175,6 +184,7 @@ public class DatePicker
 	}
 	
 	String[] moves = strings("<<", "<", ">", ">>");
+	PickButton[] move = new PickButton[moves.length];
 
 	ActionListener moveMonth = new ActionListener() {
 		@Override
@@ -202,11 +212,13 @@ public class DatePicker
 	
 	void displayDate() {
 		getCalendar().set(year, monthOfYear, 1);
-		sdf.applyPattern(monthFormat);
 		weekOfMonthOfFirstDayOfMonth = getCalendar().get(Calendar.WEEK_OF_MONTH);
 		month.setForeground(Color.BLUE);
-		month.setText(sdf.format(getCalendar().getTime()));
-		month.setToolTipText(month.getText());
+		Date time = getCalendar().getTime();
+		sdf.applyPattern("MMM yyyy");
+		month.setText(sdf.format(time));
+		sdf.applyPattern(monthFormat);
+		month.setToolTipText(sdf.format(time));
 		clearDisplay();
 		int dayOfWeek = getCalendar().get(Calendar.DAY_OF_WEEK);
 		int daysInMonth = getCalendar().getActualMaximum(Calendar.DAY_OF_MONTH);
@@ -237,7 +249,7 @@ public class DatePicker
 			else
 				time = getCalendar().getTimeInMillis();
 			String format = sdf.format(time);
-			JButton btn = weeks[weekOfMonth - weekOfMonthOfFirstDayOfMonth];
+			PickButton btn = weeks[weekOfMonth - weekOfMonthOfFirstDayOfMonth];
 			btn.setForeground(Color.BLUE);
 			btn.setText(format);
 		}

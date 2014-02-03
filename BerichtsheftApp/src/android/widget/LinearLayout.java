@@ -64,6 +64,11 @@ public class LinearLayout extends ViewGroup {
     }
 
 	@Override
+	public Container doLayout() {
+		return getContainer();
+    }
+
+	@Override
 	public void doLayout(View view) {
 		ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
 		if (layoutParams instanceof MarginLayoutParams) {

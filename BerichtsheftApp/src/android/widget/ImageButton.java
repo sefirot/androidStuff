@@ -1,5 +1,6 @@
 package android.widget;
 
+import java.awt.Dimension;
 import java.awt.Image;
 
 import javax.swing.ImageIcon;
@@ -27,8 +28,11 @@ public class ImageButton extends ImageView
 	public void setImage(Image image) {
     	ImageIcon imageIcon = new ImageIcon(image);
     	JButton button = taggedComponent();
-		if (button != null)
+		if (button != null) {
 			button.setIcon(imageIcon);
+			Dimension size = new Dimension(imageIcon.getIconWidth(), imageIcon.getIconHeight());
+			button.setPreferredSize(size);
+		}
 	}
 
 }

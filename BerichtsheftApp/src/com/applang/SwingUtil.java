@@ -10,6 +10,7 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Frame;
+import java.awt.Insets;
 import java.awt.KeyboardFocusManager;
 import java.awt.LayoutManager;
 import java.awt.Point;
@@ -41,7 +42,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.StringWriter;
 import java.io.Writer;
 import java.net.URL;
 import java.net.URLConnection;
@@ -1139,18 +1139,22 @@ public class SwingUtil
 	    	return null;
 	}
 
-	public static void addTabKeyForwarding(JComponent jc) {
+	public static void tabKeyForwarding(JComponent jc) {
 	    jc.addKeyListener(new KeyAdapter() {
 			@Override
 			public void keyPressed(KeyEvent e) {
+				no_println("pressed", e.getKeyCode(), "ctrl", e.isControlDown());
 				if (e.getKeyCode() == KeyEvent.VK_TAB) {
 					e.consume();
-					KeyboardFocusManager.getCurrentKeyboardFocusManager().focusNextComponent();
+					if (e.isShiftDown()) 
+						KeyboardFocusManager.getCurrentKeyboardFocusManager().focusPreviousComponent();
+					else
+						KeyboardFocusManager.getCurrentKeyboardFocusManager().focusNextComponent();
 				}
-				if (e.getKeyCode() == KeyEvent.VK_TAB && e.isShiftDown()) {
-					e.consume();
-					KeyboardFocusManager.getCurrentKeyboardFocusManager().focusPreviousComponent();
-				}
+			}
+			@Override
+			public void keyReleased(KeyEvent e) {
+				no_println("released", e.getKeyCode(), "ctrl", e.isControlDown());
 			}
 		});
 	}
@@ -1643,11 +1647,23 @@ public class SwingUtil
 		FontRenderContext frc = new FontRenderContext(affinetransform, true, true);     
 		int textwidth = (int)(font.getStringBounds(text, frc).getWidth());
 		int textheight = (int)(font.getStringBounds(text, frc).getHeight());
-		return ints(textwidth,textheight);
+		return ints(textwidth, textheight);
 	}
 	
 	public static Font monoSpaced(Object... params) {
 		return new Font("Monospaced", param(0, 0, params), param(12, 1, params));
+	}
+	
+	public static void adjustButtonSize(AbstractButton btn, int...tlbr) {
+		String text = btn.getText();
+		if (text.length() > -1) {
+			Insets insets = isAvailable(3, tlbr) ?
+					new Insets(param(0,0,tlbr), param(0,1,tlbr), param(0,2,tlbr), param(0,3,tlbr)) :
+						btn.getInsets();
+			int[] meas = textMeasures(text, btn.getFont());
+			btn.setPreferredSize(new Dimension(2 + meas[0] + insets.left + insets.right, meas[1] + insets.top + insets.bottom));
+			btn.setMargin(insets);
+		}
 	}
 	
 	public static void printContainer(String message, Container container, Object...params) {

@@ -6,6 +6,7 @@ import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
+import java.awt.LayoutManager;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ComponentAdapter;
@@ -88,6 +89,7 @@ import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
@@ -1283,12 +1285,11 @@ public class HelperTests extends TestCase
 		linearLayout.addView(textView, layoutParams);
         EditText editText = new EditText(context);
         linearLayout.addView(editText, layoutParams);
-		FormBuilder formBuilder = new FormBuilder(context, linearLayout);
 		TextView tv = (TextView) linearLayout.findViewWithTag("*3");
 		tv.setText("hello");
 		EditText et = (EditText) linearLayout.findViewWithTag("*4");
 		et.setText("world");
-		showForm(buildForm(formBuilder));
+		showForm(doLayout(new Layouter(context, linearLayout)));
 	}
 	
 	public void testRelativeLayout2() {
@@ -1297,33 +1298,49 @@ public class HelperTests extends TestCase
 		TextView textView = new TextView(context);
 		LayoutParams layoutParams = new RelativeLayout.LayoutParams(context, 
 				attributeSet(context, 
-						"android:layout_alignLeft", "view__4"));
+						"android:layout_alignLeft=\"view__4\""));
 		viewGroup.addView(textView, layoutParams);
 		EditText editText = new EditText(context);
 		layoutParams = new RelativeLayout.LayoutParams(context, 
 				attributeSet(context, 
-						"android:layout_above", "view_3", 
-						"android:layout_marginLeft", "@dimen/margin", 
-						"android:layout_marginTop", "@dimen/margin_half", 
-						"android:layout_marginRight", "@dimen/margin_half",
-						"android:layout_marginBottom", "@dimen/margin_half"));
+						"android:layout_above=\"view_3\"", 
+						"android:layout_marginLeft=\"@dimen/margin\"", 
+						"android:layout_marginTop=\"@dimen/margin_half\"", 
+						"android:layout_marginRight=\"@dimen/margin_half\"",
+						"android:layout_marginBottom=\"@dimen/margin_half\""));
 		viewGroup.addView(editText, layoutParams);
-		FormBuilder formBuilder = new FormBuilder(context, viewGroup);
+		Layouter formBuilder = new Layouter(context, viewGroup);
 		TextView tv = (TextView) viewGroup.findViewWithTag("*3");
 		tv.setText("hello");
 		EditText et = (EditText) viewGroup.findViewWithTag("*4");
 		et.setText("world");
-		Container container = buildForm(formBuilder);
+		Container container = doLayout(formBuilder);
 		viewGroup.printSprings();
 		showForm(container);
 	}
 	
 	public void testRelativeLayout() {
 		Context context = BerichtsheftActivity.getInstance();
-		RelativeLayout viewGroup = buttonViewGroup(context);
-		Container container = buildForm(new FormBuilder(context, viewGroup));
+		RelativeLayout viewGroup = buttonGroup(context);
+		Container container = doLayout(new Layouter(context, viewGroup));
 //		viewGroup.printSprings();
 		showForm(container);
+	}
+	
+	private RelativeLayout buttonGroup(Context context) {
+		RelativeLayout viewGroup = new RelativeLayout(context);
+		AttributeSet attributeSet = attributeSet(context, 
+			"android:layout_marginLeft=\"@dimen/margin\"", 
+			"android:layout_marginTop=\"@dimen/margin_half\"", 
+			"android:layout_marginRight=\"@dimen/margin_half\"",
+			"android:layout_marginBottom=\"@dimen/margin_half\"");
+		addButton(context, "Button 1", viewGroup, attributeSet);
+		addButton(context, "2", viewGroup, attributeSet);
+		addButton(context, "Button 3", viewGroup, attributeSet);
+		addButton(context, "Long-Named Button 4", viewGroup, attributeSet, 
+				"android:layout_toLeftOf=\"view_5\"");
+		addButton(context, "Button 5", viewGroup, attributeSet);
+		return viewGroup;
 	}
 	
 	private Button addButton(Context context, String text, ViewGroup vg, 
@@ -1339,25 +1356,9 @@ public class HelperTests extends TestCase
 		return btn;
 	}
 	
-	private RelativeLayout buttonViewGroup(Context context) {
-		RelativeLayout viewGroup = new RelativeLayout(context);
-		AttributeSet attributeSet = attributeSet(context, 
-			"android:layout_marginLeft", "@dimen/margin", 
-			"android:layout_marginTop", "@dimen/margin_half", 
-			"android:layout_marginRight", "@dimen/margin_half",
-			"android:layout_marginBottom", "@dimen/margin_half");
-		addButton(context, "Button 1", viewGroup, attributeSet);
-		addButton(context, "2", viewGroup, attributeSet);
-		addButton(context, "Button 3", viewGroup, attributeSet);
-		addButton(context, "Long-Named Button 4", viewGroup, attributeSet, 
-				"android:layout_toLeftOf", "view_5");
-		addButton(context, "Button 5", viewGroup, attributeSet);
-		return viewGroup;
-	}
-	
 	public void testSpringLayout() {
 		Context context = BerichtsheftActivity.getInstance();
-		RelativeLayout viewGroup = buttonViewGroup(context);
+		RelativeLayout viewGroup = buttonGroup(context);
     	Container container = viewGroup.getContainer();
 		for (int i = 0; i < viewGroup.getChildCount(); i++) {
 			View view = viewGroup.getChildAt(i);
@@ -1408,8 +1409,7 @@ public class HelperTests extends TestCase
 		et.setText("world");
         relativeLayout.addView(et, et.getLayoutParams());
         
-		FormBuilder formBuilder = new FormBuilder(context, relativeLayout);
-		Container container = buildForm(formBuilder);
+		Container container = doLayout(new Layouter(context, relativeLayout));
 		assertTrue(swapComponents(tv.getComponent(), et.getComponent()));
 		
         SpringLayout springLayout = relativeLayout.getLayout();
@@ -1436,19 +1436,87 @@ public class HelperTests extends TestCase
 		formBuilder.addFloatField("Float");
 		formBuilder.addBlobField("Blob");
 		formBuilder.addTextField("Text");
-		showForm(buildForm(formBuilder));
+		showForm(doLayout(formBuilder));
 	}
 	
 	public void testFormBuilder2() {
-		Deadline.WAIT = 10000;
 		Context context = BerichtsheftActivity.getInstance();
-		FormBuilder formBuilder = new FormBuilder(context, R.layout.construct_form_header);
-		showForm(buildForm(formBuilder));
+		FormBuilder builder = new FormBuilder(context, R.layout.construct_form_header);
+		Layouter layouter = new Layouter(context, construct_form_header(context));
+		println(builder.getViewGroup());
+		showForm(doLayout(layouter));
+	}
+	
+	public void testFormBuilder1() {
+		Context context = BerichtsheftActivity.getInstance();
+		Layouter layouter = new Layouter(context, single_button(context));
+		showForm(doLayout(layouter));
+	}
+	
+	private RelativeLayout single_button(Context context) {
+		RelativeLayout relativeLayout = new RelativeLayout(context);
+		AttributeSet attributeSet;
+		ImageButton imbtn = new ImageButton(context, attributeSet = attributeSet(context, 
+				"android:id=\"@+id/button1\"", 
+				"android:src=\"@drawable/dropdown\"", 
+				"android:layout_width=\"wrap_content\"", 
+				"android:layout_height=\"wrap_content\"", 
+				"android:layout_alignParentRight=\"true\"", 
+				"android:layout_alignParentBottom=\"true\"", 
+				"android:layout_marginLeft=\"@dimen/margin_half\"", 
+				"android:layout_marginTop=\"@dimen/margin_half\"", 
+				"android:layout_marginRight=\"@dimen/margin_half\"",
+				"android:layout_marginBottom=\"@dimen/margin_half\""));
+		relativeLayout.addView(imbtn, new RelativeLayout.LayoutParams(context, attributeSet));
+		return relativeLayout;
+	}
+	
+	private RelativeLayout construct_form_header(Context context) {
+		RelativeLayout relativeLayout = new RelativeLayout(context);
+		AttributeSet attributeSet;
+		ImageButton imbtn = new ImageButton(context, attributeSet = attributeSet(context, 
+				"android:id=\"@+id/button1\"", 
+				"android:src=\"@drawable/dropdown\"", 
+				"android:layout_width=\"wrap_content\"", 
+				"android:layout_height=\"wrap_content\"", 
+				"android:layout_alignParentLeft=\"true\"", 
+				"android:layout_alignParentTop=\"true\"", 
+				"android:layout_marginLeft=\"@dimen/margin_half\"", 
+				"android:layout_marginTop=\"@dimen/margin_half\"", 
+				"android:layout_marginRight=\"@dimen/margin_half\"",
+				"android:layout_marginBottom=\"@dimen/margin_half\""));
+		relativeLayout.addView(imbtn, new RelativeLayout.LayoutParams(context, attributeSet));
+		Button btn = new Button(context, attributeSet = attributeSet(context, 
+				"android:id=\"@+id/cancel\"", 
+				"android:text=\"@android:string/cancel\"", 
+				"android:layout_width=\"wrap_content\"", 
+				"android:layout_height=\"wrap_content\"", 
+				"android:layout_alignParentRight=\"true\"", 
+				"android:layout_alignParentTop=\"true\"", 
+				"android:layout_marginLeft=\"@dimen/margin_half\"", 
+				"android:layout_marginTop=\"@dimen/margin_half\"",
+				"android:layout_marginRight=\"@dimen/margin_half\"",
+				"android:layout_marginBottom=\"@dimen/margin_half\""));
+		relativeLayout.addView(btn, new RelativeLayout.LayoutParams(context, attributeSet));
+		btn = new Button(context, attributeSet = attributeSet(context, 
+				"android:id=\"@+id/ok\"", 
+				"android:text=\"@android:string/ok\"", 
+				"android:layout_width=\"wrap_content\"", 
+				"android:layout_height=\"wrap_content\"", 
+				"android:layout_toLeftOf=\"@id/cancel\"", 
+				"android:layout_alignParentTop=\"true\"", 
+				"android:paddingLeft=\"@dimen/padding\"", 
+			    "android:paddingRight=\"@dimen/padding\"", 
+				"android:layout_marginLeft=\"@dimen/margin_half\"", 
+				"android:layout_marginTop=\"@dimen/margin_half\"", 
+				"android:layout_marginBottom=\"@dimen/margin_half\""));
+		relativeLayout.addView(btn, new RelativeLayout.LayoutParams(context, attributeSet));
+		return relativeLayout;
 	}
 
-	public Container buildForm(FormBuilder formBuilder) {
-		println(formBuilder.getViewGroup());
-		final Container container = formBuilder.build().getContainer();
+	public Container doLayout(Layouter layouter) {
+		println(layouter.getViewGroup());
+		final Container container = layouter.build();
 		container.addComponentListener(new ComponentAdapter() {
 			@Override
 			public void componentResized(ComponentEvent e) {
@@ -1459,6 +1527,7 @@ public class HelperTests extends TestCase
 	}
 
 	public void showForm(final Container container) {
+		Deadline.WAIT = 3000;
 		showFrame(null, "FormBuilder", 
 				new UIFunction() {
 					public Component[] apply(Component comp, Object[] parms) {
@@ -1468,10 +1537,15 @@ public class HelperTests extends TestCase
 				}, 
 				new UIFunction() {
 					public Component[] apply(Component comp, Object[] parms) {
-						SpringLayout layout = (SpringLayout) container.getLayout();
-						for (int i = 0; i < container.getComponentCount(); i++) {
-//							SpringLayout.Constraints cons = layout.getConstraints(container.getComponent(i));
-//							println(cons.getConstraint(SpringLayout.WEST).getValue(), cons.getConstraint(SpringLayout.EAST).getValue());
+						LayoutManager layout = container.getLayout();
+						if (layout instanceof SpringLayout) {
+							SpringLayout springLayout = (SpringLayout) layout;
+							for (int i = 0; i < container.getComponentCount(); i++) {
+								Component component = container.getComponent(i);
+								SpringLayout.Constraints cons = springLayout.getConstraints(component);
+								no_println(cons.getConstraint(SpringLayout.WEST).getValue(),
+										cons.getConstraint(SpringLayout.EAST).getValue());
+							}
 						}
 						return null;
 					}

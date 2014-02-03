@@ -5,6 +5,7 @@ import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
 
+import javax.swing.AbstractButton;
 import javax.swing.JComponent;
 import javax.swing.border.Border;
 import javax.swing.border.CompoundBorder;
@@ -15,6 +16,8 @@ import android.content.res.Resources;
 import android.util.AttributeSet;
 import android.view.ViewGroup.LayoutParams;
 import android.view.ViewGroup.MarginLayoutParams;
+import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 
 import static com.applang.Util.*;
 import static com.applang.Util1.viewHierarchy;
@@ -158,13 +161,13 @@ public class View
 				}
 				else if (name.startsWith("android:padding")) {
 					if (name.endsWith("Left"))
-						paddingLTRB[0] = Resources.dimensionalValue(mContext, value);
+						paddingTLBR[1] = Resources.dimensionalValue(mContext, value);
 					else if (name.endsWith("Top"))
-						paddingLTRB[1] = Resources.dimensionalValue(mContext, value);
+						paddingTLBR[0] = Resources.dimensionalValue(mContext, value);
 					else if (name.endsWith("Right"))
-						paddingLTRB[2] = Resources.dimensionalValue(mContext, value);
+						paddingTLBR[3] = Resources.dimensionalValue(mContext, value);
 					else if (name.endsWith("Bottom"))
-						paddingLTRB[3] = Resources.dimensionalValue(mContext, value);
+						paddingTLBR[2] = Resources.dimensionalValue(mContext, value);
 					paddingChanged = true;
 				}
 
@@ -195,12 +198,12 @@ public class View
 	private LayoutParams mLayoutParams;
 	
     public LayoutParams getLayoutParams() {
-        return mLayoutParams;
+    	return mLayoutParams;
     }
     
 	public void setLayoutParams(LayoutParams params) {
 		mLayoutParams = params;
-		if (component != null) {
+/*		if (component != null) {
 			Dimension size = component.getPreferredSize();
 			if (mLayoutParams instanceof MarginLayoutParams) {
 				MarginLayoutParams margs = (MarginLayoutParams) mLayoutParams;
@@ -218,24 +221,28 @@ public class View
 			}
 			component.setPreferredSize(size);
 		}
-	}
+*/	}
 	
-	private int[] paddingLTRB = new int[4];
+	private int[] paddingTLBR = new int[4];
 
 	public void setPadding(int left, int top, int right, int bottom) {
-		paddingLTRB[0] = left;
-		paddingLTRB[1] = top;
-		paddingLTRB[2] = right;
-		paddingLTRB[3] = bottom;
+		paddingTLBR[1] = left;
+		paddingTLBR[0] = top;
+		paddingTLBR[3] = right;
+		paddingTLBR[2] = bottom;
 		setPadding();
 	}
 
 	private void setPadding() {
 		if (component != null && component instanceof JComponent) {
-		    Border padding = new EmptyBorder(paddingLTRB[1], paddingLTRB[0], paddingLTRB[3], paddingLTRB[2]);
-		    JComponent jc = (JComponent) component;
-		    Border border = jc.getBorder();
-		    jc.setBorder(new CompoundBorder(border, padding));
+			if (component instanceof AbstractButton)
+				adjustButtonSize((AbstractButton)component, paddingTLBR);
+			else {
+				Border padding = new EmptyBorder(paddingTLBR[0], paddingTLBR[1], paddingTLBR[2], paddingTLBR[3]);
+				JComponent jc = (JComponent) component;
+				Border border = jc.getBorder();
+				jc.setBorder(new CompoundBorder(border, padding));
+			}
 		}
 	}
 	

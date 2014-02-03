@@ -213,9 +213,10 @@ public class BerichtsheftApp
 
 	public static boolean pipe(String inputFilename, String outputFilename, Reader params) throws Exception {
 		piped = true;
-		@SuppressWarnings("unused")
-		Class<?> clazz = Class.forName("org.apache.xalan.processor.TransformerFactoryImpl");
-	  	TransformerFactory tFactory = TransformerFactory.newInstance();
+		String className = "org.apache.xalan.processor.TransformerFactoryImpl";
+//		System.setProperty("javax.xml.transform.TransformerFactory", className);
+		Class.forName(className);
+		TransformerFactory tFactory = TransformerFactory.newInstance();
 	    // Determine whether the TransformerFactory supports the use of SAXSource and SAXResult
 	    if (!tFactory.getFeature(SAXSource.FEATURE))
 			throw new Exception(String.format("TransformerFactory feature '%s' missing", SAXSource.FEATURE));

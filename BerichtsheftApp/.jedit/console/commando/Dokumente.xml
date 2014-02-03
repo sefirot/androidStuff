@@ -19,11 +19,15 @@
 			jEdit.setBooleanProperty("RETRIEVE_WEATHER_DATA", retrieveWeatherData);
 
 			buf = new StringBuffer();
-			buf.append("import com.applang.berichtsheft.plugin.*; ");
+			buf.append("import com.applang.berichtsheft.plugin.*;\n");
 			if (retrieveWeatherData) {
-				buf.append("DataDockable.makeWetter(view, \"period\", new Object[]{false, \""+db2+"\", false}); ");
+				buf.append("import com.applang.components.*;\n");
+				buf.append("DatePicker.Period.load(1);\n");
+				buf.append("DatePicker.Period.save(0);\n");
+				buf.append("DataDockable.makeWetter(view, \"period\", new Object[]{false, \""+db2+"\", false});\n");
 			}
-			buf.append("DataDockable.makeDokument(view, \"odt\", new Object[]{false, \""+db+"\", \""+db2+"\", }); ");
+			buf.append("addClassPath(\""+jEdit.getSettingsDirectory()+"/jars/xalan.jar\");\n");
+			buf.append("DataDockable.makeDokument(view, \"odt\", new Object[]{false, \""+db+"\", \""+db2+"\", });\n");
 			buf.toString();
 		</COMMAND>
 	</COMMANDS>

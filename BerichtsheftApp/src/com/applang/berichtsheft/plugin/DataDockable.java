@@ -37,6 +37,7 @@ import android.content.ContentValues;
 import android.net.Uri;
 import android.util.Log;
 
+import com.applang.Util.BidiMultiMap;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.components.DataView;
 import com.applang.components.DatePicker;
@@ -631,14 +632,8 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 			final DataAdapter dataAdapter = new DataAdapter(WeatherInfo.AUTHORITY, new File(dbPath), uriString);
 			final int[] results = ints(0,0,0);
 			final ValMap profile = ProfileManager.getProfileAsMap("_weather", "download");
-			Object[] names = dataAdapter.info.getList("name").toArray();
-			ValList conversions = vlist();
 			ValMap map = ScriptManager.getDefaultProjection(profile.get("flavor"), dataAdapter.getTableName());
-			for (int i = 0; i < names.length; i++) {
-				Object conv = map.get(names[i]);
-				conversions.add(conv);
-			}
-			final BidiMultiMap projection = new BidiMultiMap(new ValList(asList(names)), conversions);
+			final BidiMultiMap projection = (BidiMultiMap) map.get("projection");
 			final Object pk = dataAdapter.info.get("PRIMARY_KEY");
 			projection.removeKey(pk);
 			WeatherManager wm = new WeatherManager() {
