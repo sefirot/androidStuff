@@ -645,6 +645,7 @@ public class BerichtsheftPlugin extends EditPlugin
 		BerichtsheftToolBar.userCommandDirectory = path;
 		path = dir.getPath();
 		System.setProperty("settings.dir", path);
+		debug_println("loadSettings", System.getProperty("settings.dir", ""));
 		Settings.load(pathCombine(path, NAME + ".properties"));
 		path = pathCombine(settingsDir, "jars", "sqlite4java");
 		System.setProperty("sqlite4java.library.path", path);
@@ -858,9 +859,9 @@ public class BerichtsheftPlugin extends EditPlugin
 		BerichtsheftShell.print("Welcome...", NEWLINE);
 		String[] tools = {"AWK_COMMAND", "ADB_COMMAND", "SQLITE_COMMAND"};
 		for (int i = 0; i < tools.length; i++) {
-			no_println(i, tools[i]);
+			debug_println(i, tools[i]);
 			String cmd = getCommand(tools[i]);
-			no_println(i, cmd);
+			debug_println(i, cmd);
 			if (!fileExists(cmd)) {
 				if (nullOrEmpty(runShellScript("which", "which " + cmd)))
 					consoleMessage("berichtsheft.tool-missing.message", cmd);
@@ -873,9 +874,9 @@ public class BerichtsheftPlugin extends EditPlugin
 	}
 
 	public static String getCommand(String path) {
-		no_println("settings.dir", System.getProperty("settings.dir", ""));
+		debug_println("settings.dir", System.getProperty("settings.dir", ""));
 		String cmd = getProperty(path); 
-		no_println(path, cmd);
+		debug_println(path, cmd);
 		if (!cmd.startsWith(PATH_SEP) && cmd.contains(PATH_SEP)) {
 			String sdk = getProperty("ANDROID_SDK");
 			no_println("ANDROID_SDK", sdk);
