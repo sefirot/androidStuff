@@ -4,6 +4,8 @@ import org.w3c.dom.Document;
 
 import android.content.Context;
 import android.content.res.Resources;
+import android.database.Cursor;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -16,13 +18,15 @@ import static com.applang.Util2.*;
 
 public class FormBuilder extends Layouter
 {
+	private static final String TAG = FormBuilder.class.getSimpleName();
+	
 	protected LayoutInflater inflater = null;
 
 	public FormBuilder(Context context, String resName) {
 		super(context);
 		inflater = LayoutInflater.from(mContext);
 		if (notNullOrEmpty(resName)) {
-			View view = inflater.inflate(Resources.getRelativePath(6, resName));
+			View view = inflater.inflate(templatePath(resName));
 			if (view instanceof ViewGroup)
 				viewGroup = (ViewGroup) view;
 			else {
@@ -30,8 +34,9 @@ public class FormBuilder extends Layouter
 				addView(view, view.getLayoutParams());
 			}
 		}
-		else
+		else {
 			viewGroup = new ViewGroup(mContext);
+		}
 		viewGroup.setTag("form");
 	}
 
@@ -39,6 +44,10 @@ public class FormBuilder extends Layouter
 		this(context, null);
 		Document document = mContext.getResources().getXml(resId);
 		viewGroup = (ViewGroup) inflater.inflate(document.getDocumentElement());
+	}
+
+	protected String templatePath(String name) {
+		return Resources.getRelativePath(6, name);
 	}
 
 	public void setLabel(Object labelText, ViewGroup vg) {
@@ -54,34 +63,54 @@ public class FormBuilder extends Layouter
 		return (ImageView) vg.getChildAt(1);
 	}
     
-    public void addTextField(Object labelText) {
-    	ViewGroup vg = (ViewGroup) inflater.inflate(Resources.getRelativePath(6, "field_text.xml"));
+    public void addTextField(Object description, Object...params) {
+    	ViewGroup vg = (ViewGroup) inflater.inflate(templatePath("field_text.xml"), params);
 		addView(vg, vg.getLayoutParams());
-		setLabel(labelText, vg);
+		setLabel(description, vg);
 	}
 
-    public void addStringField(Object labelText) {
-    	ViewGroup vg = (ViewGroup) inflater.inflate(Resources.getRelativePath(6, "field_string.xml"));
+    public void addStringField(Object description, Object...params) {
+    	ViewGroup vg = (ViewGroup) inflater.inflate(templatePath("field_string.xml"), params);
 		addView(vg, vg.getLayoutParams());
-		setLabel(labelText, vg);
+		setLabel(description, vg);
 	}
 
-	public void addIntegerField(Object labelText) {
-		ViewGroup vg = (ViewGroup) inflater.inflate(Resources.getRelativePath(6, "field_integer.xml"));
+	public void addIntegerField(Object description, Object...params) {
+		ViewGroup vg = (ViewGroup) inflater.inflate(templatePath("field_integer.xml"), params);
 		addView(vg, vg.getLayoutParams());
-		setLabel(labelText, vg);
+		setLabel(description, vg);
 	}
 
-	public void addFloatField(Object labelText) {
-		ViewGroup vg = (ViewGroup) inflater.inflate(Resources.getRelativePath(6, "field_float.xml"));
+	public void addFloatField(Object description, Object...params) {
+		ViewGroup vg = (ViewGroup) inflater.inflate(templatePath("field_float.xml"), params);
 		addView(vg, vg.getLayoutParams());
-		setLabel(labelText, vg);
+		setLabel(description, vg);
 	}
 
-	public void addBlobField(Object labelText) {
-		ViewGroup vg = (ViewGroup) inflater.inflate(Resources.getRelativePath(6, "field_blob.xml"));
+	public void addBlobField(Object description, Object...params) {
+		ViewGroup vg = (ViewGroup) inflater.inflate(templatePath("field_blob.xml"), params);
 		addView(vg, vg.getLayoutParams());
-		setLabel(labelText, vg);
+		setLabel(description, vg);
+	}
+
+	public void addField(Object description, String key, String type) {
+		switch (fieldTypeAffinity(type)) {
+		case Cursor.FIELD_TYPE_STRING:
+			addStringField(description, key);
+			break;
+		case Cursor.FIELD_TYPE_INTEGER:
+			addIntegerField(description, key);
+			break;
+		case Cursor.FIELD_TYPE_FLOAT:
+			addFloatField(description, key);
+			break;
+		case Cursor.FIELD_TYPE_BLOB:
+			addBlobField(description, key);
+			break;
+		default:
+			Log.w(TAG, String.format("type of field '%s' not identified : %s", key, type));
+			break;
+		}
 	}
 
 }

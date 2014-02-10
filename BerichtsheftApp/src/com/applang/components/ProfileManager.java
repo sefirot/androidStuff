@@ -35,6 +35,7 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 
+import com.applang.Util2;
 import com.applang.berichtsheft.BerichtsheftActivity;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.plugin.DataDockable.TransportBuilder;

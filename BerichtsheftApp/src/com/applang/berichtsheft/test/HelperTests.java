@@ -59,7 +59,7 @@ import org.gjt.sp.jedit.BeanShell;
 import org.gjt.sp.jedit.bsh.Interpreter;
 import org.gjt.sp.jedit.bsh.NameSpace;
 
-import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.MatcherAssert.*;
 import static org.hamcrest.Matchers.*;
 
 import org.json.JSONArray;
@@ -98,20 +98,22 @@ import com.applang.BaseDirective;
 import com.applang.Dialogs;
 import com.applang.PromptDirective;
 import com.applang.UserContext.EvaluationTask;
+import com.applang.Util.ValList;
 import com.applang.berichtsheft.BerichtsheftActivity;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.R;
 import com.applang.berichtsheft.plugin.DataDockable;
 import com.applang.berichtsheft.plugin.DataDockable.TransportBuilder;
-import com.applang.berichtsheft.plugin.JEditOptionDialog;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 import com.applang.components.AndroidBridge;
+import com.applang.components.Form;
 import com.applang.components.DataConfiguration;
 import com.applang.components.DataView;
 import com.applang.components.DataView.DataModel;
 import com.applang.components.DataView.ProjectionModel;
 import com.applang.components.DatePicker;
 import com.applang.components.FormBuilder;
+import com.applang.components.OptionDialog;
 import com.applang.components.ProfileManager;
 import com.applang.components.DataAdapter;
 import com.applang.components.ScriptManager;
@@ -222,7 +224,7 @@ public class HelperTests extends TestCase
 	public void testCommando() {
 		String script = String.format(
 				"com.applang.berichtsheft.plugin.BerichtsheftPlugin.invokeAction(view, \"%s\");\n", 
-				"commando.Android");
+				"commando.Dokumente");
 		scriptTest("testCommando", script);
 	}
 	
@@ -561,7 +563,20 @@ public class HelperTests extends TestCase
 				.open();
 	}
 	
-	public void testDataConfig() throws Exception {
+	public void testDataConfig() {
+		dataConfigTest(new Job<DataConfiguration>() {
+			public void perform(DataConfiguration dc, Object[] parms) throws Exception {
+				println("data configuration\n\turi\t%s\n\tpath\t%s\n\ttable\t%s\n\tflavor\t%s\n%s", 
+						dc.getUri(), 
+						dc.getPath(), 
+						dc.getTableName(), 
+						dc.getProjectionModel().getFlavor(), 
+						dc.getProjectionModel().getExpandedProjection());
+			}
+		});
+	}
+	
+	public void dataConfigTest(Job<DataConfiguration> job, Object...params) {
 		println(dbPath(null));
 		String orig_uriString = getSetting("uri", null);
 		String orig_database = getSetting("database", null);
@@ -570,12 +585,11 @@ public class HelperTests extends TestCase
 			putSetting("database", "");
 			DataConfiguration dc = new DataConfiguration(new BerichtsheftActivity(), null, null);
 			while (dc.display(null))
-				println("data configuration\n\turi\t%s\n\tpath\t%s\n\ttable\t%s\n\tflavor\t%s\n%s", 
-						dc.getUri(), 
-						dc.getPath(), 
-						dc.getTableName(), 
-						dc.getProjectionModel().getFlavor(), 
-						dc.getProjectionModel().getExpandedProjection());
+				try {
+					job.perform(dc, params);
+				} catch (Exception e) {
+					fail(e.getMessage());
+				}
 		}
 		finally {
 			putSetting("uri", orig_uriString);
@@ -1427,7 +1441,7 @@ public class HelperTests extends TestCase
 	
 	public void testFormBuilder() {
 		Context context = BerichtsheftActivity.getInstance();
-		String resName = "linearlayout.xml";	//	
+		String resName = "standard_form.xml";	//	
 		FormBuilder formBuilder = new FormBuilder(context, resName);
 /*
  */		
@@ -1439,12 +1453,31 @@ public class HelperTests extends TestCase
 		showForm(doLayout(formBuilder));
 	}
 	
-	public void testFormBuilder2() {
-		Context context = BerichtsheftActivity.getInstance();
-		FormBuilder builder = new FormBuilder(context, R.layout.construct_form_header);
-		Layouter layouter = new Layouter(context, construct_form_header(context));
-		println(builder.getViewGroup());
-		showForm(doLayout(layouter));
+	public void testForm() {
+		final Context context = BerichtsheftActivity.getInstance();
+		dataConfigTest(new Job<DataConfiguration>() {
+			public void perform(DataConfiguration dc, Object[] parms) throws Exception {
+				ProjectionModel projectionModel = dc.getProjectionModel();
+				Form form = new Form(context, projectionModel.getProjection());
+				println(form.projection);
+				Container container = form.getContainer();
+				File dbFile = new File(dc.getPath());
+				String uriString = dc.getUri().toString();
+				DataAdapter dataAdapter = new DataAdapter(
+						projectionModel.getFlavor(), 
+						dbFile, 
+						uriString);
+				ValList keys = form.projection.getKeys();
+				Object[][] result = dataAdapter.query(uriString, toStrings(keys));
+				if (isAvailable(0, result)) {
+					for (int i = 0; i < keys.size(); i++) {
+						Object key = keys.get(i);
+						form.setContent(key, result[0][i]);
+					}
+				}
+				showForm(container);
+			}
+		});
 	}
 	
 	public void testFormBuilder1() {
@@ -1469,6 +1502,14 @@ public class HelperTests extends TestCase
 				"android:layout_marginBottom=\"@dimen/margin_half\""));
 		relativeLayout.addView(imbtn, new RelativeLayout.LayoutParams(context, attributeSet));
 		return relativeLayout;
+	}
+	
+	public void testFormBuilder2() {
+		Context context = BerichtsheftActivity.getInstance();
+		FormBuilder builder = new FormBuilder(context, R.layout.construct_form_header);
+		Layouter layouter = new Layouter(context, construct_form_header(context));
+		println(builder.getViewGroup());
+		showForm(doLayout(layouter));
 	}
 	
 	private RelativeLayout construct_form_header(Context context) {
@@ -1644,8 +1685,8 @@ public class HelperTests extends TestCase
 		toStrings(BaseDirective.options.keySet()));
 	}
 	
-	public void testJEditOptionDialog() {
-		new JEditOptionDialog(null, 
+	public void testOptionDialog() {
+		new OptionDialog(null, 
 				BerichtsheftPlugin.getProperty("berichtsheft.spellcheck-selection.title"), 
 				"", 
 				"Hello", 

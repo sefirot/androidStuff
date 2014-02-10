@@ -1,6 +1,8 @@
 package android.app;
 
+import java.awt.Component;
 import java.awt.Container;
+import java.awt.KeyboardFocusManager;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
@@ -27,7 +29,6 @@ import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.table.AbstractTableModel;
 
-
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.res.Resources;
@@ -45,16 +46,38 @@ import static com.applang.SwingUtil.*;
 
 public class AlertDialog extends Dialog implements DialogInterface
 {
-	protected static final String TAG = AlertDialog.class.getSimpleName();
-	
-	public static boolean modal = true;
+	public static int behavior = Behavior.MODAL;
 	
 	public AlertDialog(Context context, Object...params) {
-		super(null, param_Boolean(modal, 0, params));
-		setAlwaysOnTop(param_Boolean(false, 1, params));
+		super(null, param_Integer(behavior, 0, params));
 		viewGroup = new ViewGroup(context);
+		setEnterEnabled(false);
 	}
 	
+	//	enter key pressed
+	public void ok() {
+		JButton btn = null;
+		Container contentPane = getContentPane();
+		if (contentPane instanceof JOptionPane) {
+			JOptionPane optionPane = (JOptionPane) contentPane;
+			Object[] options = optionPane.getOptions();
+			Component focused = KeyboardFocusManager
+					.getCurrentKeyboardFocusManager().getFocusOwner();
+			int index = arrayindexof(focused, options);
+			if (index > -1)
+				btn = (JButton) options[index];
+			else {
+				Object option = optionPane.getInitialValue();
+				if (option instanceof JButton)
+					btn = (JButton) option;
+			}
+		}
+		if (btn != null)
+			btn.doClick();
+		dismiss();		
+	}
+	
+	//	escape key pressed
 	public void cancel() {
 		dismiss();		
 	}
@@ -144,6 +167,7 @@ public class AlertDialog extends Dialog implements DialogInterface
     				optionPane.setMessage(container);
         		}
         		optionPane.setOptions(options.toArray());
+
         		dialog.setContentPane(optionPane);
         	}
         	else if (vg.getChildCount() > 0) {
@@ -187,6 +211,14 @@ public class AlertDialog extends Dialog implements DialogInterface
 			return this;
 		}
         
+        public Builder setInitialOption(int option) {
+        	if (option < 0)
+        		option = -option - 1;
+        	if (option < options.size())
+                optionPane.setInitialValue(options.get(option));
+            return this;
+        }
+        
         public Builder setMessage(CharSequence message) {
         	addView(new View(new JLabel(message.toString())), null);
             return this;
@@ -202,6 +234,10 @@ public class AlertDialog extends Dialog implements DialogInterface
 				}
 			});
 			options.add(btn);
+			if (which == DialogInterface.BUTTON_POSITIVE) {
+				setInitialOption(arrayindexof(btn, options.toArray()));
+				dialog.setEnterEnabled(true);
+			}
 		}
 
 		public Builder setPositiveButton(String string, OnClickListener onClickListener) {
@@ -236,14 +272,6 @@ public class AlertDialog extends Dialog implements DialogInterface
 			addOption(DialogInterface.BUTTON_NEUTRAL, string, onClickListener);
 			return this;
 		}
-        
-        public Builder setInitialButton(int btn) {
-        	if (btn < 0)
-        		btn = -btn - 1;
-        	if (btn < options.size())
-                optionPane.setInitialValue(options.get(btn));
-            return this;
-        }
         
         public Builder setView(JComponent component) {
         	return setView(new View(component));
@@ -386,7 +414,7 @@ public class AlertDialog extends Dialog implements DialogInterface
 	
 	@SuppressWarnings("rawtypes")
 	public static String chooser(Context context, String title, String[] values, String...defaults) {
-		AlertDialog dlg = new Builder(context)
+		final AlertDialog dlg = new Builder(context)
             .setTitle(title)
             .setItems(values, new DialogInterface.OnClickListener() {
                 public void onClick(DialogInterface dialog, int which) {
@@ -395,7 +423,7 @@ public class AlertDialog extends Dialog implements DialogInterface
             })
             .setOnCancelListener(new DialogInterface.OnCancelListener() {
 				public void onCancel(DialogInterface dialog) {
-					dialog.cancel();
+					dialog.dismiss();
 				}
             })
             .create();

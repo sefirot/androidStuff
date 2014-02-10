@@ -54,60 +54,60 @@ public class ImageView extends View
 		}
 		super.applyAttributes();
 	}
-
-}
-
-class Picture extends JComponent implements MouseListener, FocusListener
-{
-    private Image image = null;
-
-    public Image getImage() {
-		return image;
-	}
-
-	public void setImage(Image image) {
-		this.image = image;
-	}
-
-	public Picture() {
-        setFocusable(true);
-        addMouseListener(this);
-        addFocusListener(this);
+    
+    public static class Picture extends JComponent implements MouseListener, FocusListener
+    {
+    	private Image image = null;
+    	
+    	public Image getImage() {
+    		return image;
+    	}
+    	
+    	public void setImage(Image image) {
+    		this.image = image;
+    	}
+    	
+    	public Picture() {
+    		setFocusable(true);
+    		addMouseListener(this);
+    		addFocusListener(this);
+    	}
+    	
+    	public void mouseClicked(MouseEvent e) {
+    		requestFocusInWindow();
+    	}
+    	
+    	public void mouseEntered(MouseEvent e) { }
+    	public void mouseExited(MouseEvent e) { }
+    	public void mousePressed(MouseEvent e) { }
+    	public void mouseReleased(MouseEvent e) { }
+    	
+    	public void focusGained(FocusEvent e) {
+    		this.repaint();
+    	}
+    	
+    	public void focusLost(FocusEvent e) {
+    		this.repaint();
+    	}
+    	
+    	protected void paintComponent(Graphics graphics) {
+    		Graphics g = graphics.create();
+    		g.setColor(Color.WHITE);
+    		g.fillRect(0, 0, image == null ? 125 : image.getWidth(this),
+    				image == null ? 125 : image.getHeight(this));
+    		if (image != null) {
+    			g.drawImage(image, 0, 0, this);
+    		}
+    		if (isFocusOwner()) {
+    			g.setColor(Color.RED);
+    		} 
+    		else {
+    			g.setColor(Color.BLACK);
+    		}
+    		g.drawRect(0, 0, image == null ? 125 : image.getWidth(this),
+    				image == null ? 125 : image.getHeight(this));
+    		g.dispose();
+    	}
     }
 
-    public void mouseClicked(MouseEvent e) {
-        requestFocusInWindow();
-    }
-
-    public void mouseEntered(MouseEvent e) { }
-    public void mouseExited(MouseEvent e) { }
-    public void mousePressed(MouseEvent e) { }
-    public void mouseReleased(MouseEvent e) { }
-
-    public void focusGained(FocusEvent e) {
-        this.repaint();
-    }
-
-    public void focusLost(FocusEvent e) {
-        this.repaint();
-    }
-
-    protected void paintComponent(Graphics graphics) {
-        Graphics g = graphics.create();
-        g.setColor(Color.WHITE);
-        g.fillRect(0, 0, image == null ? 125 : image.getWidth(this),
-                         image == null ? 125 : image.getHeight(this));
-        if (image != null) {
-            g.drawImage(image, 0, 0, this);
-        }
-        if (isFocusOwner()) {
-            g.setColor(Color.RED);
-        } 
-        else {
-            g.setColor(Color.BLACK);
-        }
-        g.drawRect(0, 0, image == null ? 125 : image.getWidth(this),
-                         image == null ? 125 : image.getHeight(this));
-        g.dispose();
-    }
 }

@@ -18,7 +18,6 @@ import javax.swing.JTextField;
 import org.gjt.sp.jedit.gui.RolloverButton;
 
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
-import com.applang.berichtsheft.plugin.JEditOptionDialog;
 
 import static com.applang.SwingUtil.*;
 import static com.applang.Util.*;
@@ -122,7 +121,7 @@ public class ManagerBase<T extends Object> extends JComponent implements ICompon
 		case 3:
 			return false;
 		}
-		decision = new JEditOptionDialog(null, 
+		decision = new OptionDialog(null, 
 				param("Decision", 2, params), 
 				param("", 1, params), 
 				param("Are you sure", 0, params), 

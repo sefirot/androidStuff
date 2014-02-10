@@ -5,6 +5,8 @@ import java.lang.reflect.Method;
 
 import javax.swing.JFrame;
 
+import com.applang.SwingUtil.Behavior;
+
 import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
@@ -42,12 +44,8 @@ public class Activity extends Context
 				method.invoke(inst, null, objects(this.mPackageInfo));
 				method = c.getMethod("setIntent", Intent.class);
 				method.invoke(inst, intent);
-				Field field = Activity.class.getDeclaredField("mParent");
-				field.setAccessible(true);
-				field.set(inst, this);
-				field = Activity.class.getDeclaredField("mRequestCode");
-				field.setAccessible(true);
-				field.set(inst, mRequestCode);
+				setPrivateField(Activity.class, inst, "mParent", this);
+				setPrivateField(Activity.class, inst, "mRequestCode", mRequestCode);
 				method = Activity.class.getDeclaredMethod("onCreate", Bundle.class);
 				method.invoke(inst, _null());
 			} catch (Exception e) {
@@ -85,7 +83,9 @@ public class Activity extends Context
     public Dialog dialog = null;
 	
 	public final void showDialog(int id) {
-		AlertDialog.modal = id / 100 < 1;
+		AlertDialog.behavior = Behavior.setModal(
+				AlertDialog.behavior, 
+				id / 100 < 1);
     	dialog = onCreateDialog(id);
     	if (dialog != null) {
     		dialog.open();

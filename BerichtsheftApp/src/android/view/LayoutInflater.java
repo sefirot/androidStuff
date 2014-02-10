@@ -4,6 +4,7 @@ import java.io.File;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
@@ -12,13 +13,8 @@ import android.content.res.Resources;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.ViewGroup.LayoutParams;
-import android.view.ViewGroup.MarginLayoutParams;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
-import android.widget.TextView;
 
 import static com.applang.Util.*;
 import static com.applang.Util1.*;
@@ -45,7 +41,7 @@ public class LayoutInflater
     /**
      * Inflate a new view hierarchy from the specified xml resource.
      * 
-     * @param resourcePath path to resource xml
+     * @param resourcePath file path to resource xml
      * @param root Optional view to be the parent of the generated hierarchy.
      * @return The root View of the inflated hierarchy. If root was supplied,
      *         this is the root View; otherwise it is the root of the inflated
@@ -56,6 +52,18 @@ public class LayoutInflater
     	File resourceFile = new File(Resources.getSettingsPath(), resourcePath);
 		if (fileExists(resourceFile)) {
 			Document document = xmlDocument(resourceFile);
+			String key = param_String(null, 0,  params);
+			if (notNullOrEmpty(key)) {
+				NodeList nodes = document.getElementsByTagName("*");
+				for (int i = 0; i < nodes.getLength(); i++) {
+					NamedNodeMap attributes = ((Element) nodes.item(i)).getAttributes();
+					Node node = attributes.getNamedItem("android:id");
+					if (node != null && node.getNodeValue().endsWith("field_")) {
+						node.setNodeValue(node.getNodeValue().replaceFirst("field_$", key));
+						attributes.setNamedItem(node);
+					}
+				}
+			}
 			vw = inflate(document.getDocumentElement(), params);
 		}
         return vw;

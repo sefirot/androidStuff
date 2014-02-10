@@ -50,6 +50,8 @@ import java.util.regex.MatchResult;
 import java.util.regex.Pattern;
 
 import javax.swing.SwingWorker;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Result;
 import javax.xml.transform.Transformer;
@@ -69,13 +71,11 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.json.JSONStringer;
 import org.w3c.dom.CDATASection;
+import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-
-import com.applang.Util.Constraint;
-import com.applang.Util.ValMap;
 
 import android.app.Activity;
 import android.content.Context;
@@ -761,6 +761,31 @@ public class Util2
 			return null;
 		}
 		return bidi;
+	}
+
+	public static Document xmlDocument(File file, Object...params) {
+		InputStream is = null;
+	    try {
+			DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+			DocumentBuilder db = dbf.newDocumentBuilder();
+			if (file != null)
+				return db.parse(file);
+			else {
+				is = Util.param(null, 0, params);
+				return db.parse(is);
+			}
+	    } catch (Exception e) {
+			Log.e(Util.TAG, "xmlDocument", e);
+	    	return null;
+	    }
+	    finally {
+	    	if (is != null)
+				try {
+					is.close();
+				} catch (IOException e) {
+					Log.e(Util.TAG, "xmlDocument", e);
+				}
+	    }
 	}
 	
 	public static void xmlTransform(String fileName, String styleSheet, String outFileName, Object... params) throws Exception {

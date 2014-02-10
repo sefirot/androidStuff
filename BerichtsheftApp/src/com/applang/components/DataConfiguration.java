@@ -87,6 +87,7 @@ public class DataConfiguration
 	}
 
 	private ProjectionModel projectionModel = null;
+	
 	public void setProjectionModel(ProjectionModel projectionModel) {
 		if (this.projectionModel != null && this.projectionModel.hasFlavor()) {
 			context.unregisterFlavor(this.projectionModel.getFlavor());
@@ -124,67 +125,10 @@ public class DataConfiguration
 		final boolean more = param_Boolean(prefs.getBoolean("dataConfig_more", Boolean.TRUE), 0, params);
 		JPanel panel = new JPanel();
 		panel.setLayout(new BoxLayout(panel, BoxLayout.PAGE_AXIS));
-		Box box = new Box(BoxLayout.X_AXIS);
-		box.add(new JLabel("Database"));
-		box.add(Box.createHorizontalStrut(10));
-		entry = new JTextField(40);
-		entry.addKeyListener(new KeyAdapter() {
-			@Override
-			public void keyReleased(KeyEvent e) {
-				setDbFile(new File(entry.getText()), tableName);
-			}
-		});
-		entry.addComponentListener(new ComponentAdapter() {
-			@Override
-			public void componentResized(ComponentEvent e) {
-				setLongText(entry, entry.getText());
-			}
-		});
-		box.add(entry);
-		box.add(BerichtsheftPlugin.makeCustomButton("datadock.choose-db", new ActionListener() {
-			public void actionPerformed(ActionEvent evt) {
-				File dbFile = DataView.chooseDb(BerichtsheftPlugin.fileChooser(view), true, path, true);
-				if (dbFile != null) {
-					setLongText(entry, dbFile.getPath());
-					String flavor = stringValueOf(comboBox.getSelectedItem());
-					if (notNullOrEmpty(flavor))
-						makeSureExists(flavor, dbFile);
-					setDbFile(dbFile, null);
-				}
-				else
-					alert(BerichtsheftPlugin.getProperty("dataview.sqlite-required.message"));
-			}
-		}, false));
-		setMaximumDimension(box, 100);
-		panel.add(box);
+		panel.add(flavor_Box());
+		panel.add(Box.createVerticalStrut(10));
+		panel.add(dbFile_Box(view));
 		panel.add( Box.createVerticalStrut(10) );
-		if (more || !more) {
-			box = new Box(BoxLayout.X_AXIS);
-			box.add(new JLabel("Flavor"));
-			box.add(Box.createHorizontalStrut(10));
-			comboBox = new JComboBox();
-			DataView.fillFlavorCombo(comboBox);
-			comboBox.addActionListener(new ActionListener() {
-				public void actionPerformed(ActionEvent e) {
-					if (projectionModel.hasFlavor())
-						getContext().unregisterFlavor(projectionModel.getFlavor());
-					String flavor = stringValueOf(comboBox.getSelectedItem());
-					projectionModel.setFlavor(flavor);
-					projectionModel.injectFlavor();
-					path = entry.getText();
-					if (projectionModel.hasFlavor()) {
-						if (nullOrEmpty(path))
-							path = context.getDatabasePath(databaseName(flavor)).getPath();
-						getContext().registerFlavor(flavor, path);
-					}
-					setDbFile(new File(path), tableName);
-				}
-			});
-			box.add(comboBox);
-			setMaximumDimension(box, 100);
-			panel.add(box);
-			panel.add(Box.createVerticalStrut(10));
-		}
 		Dimension size = new Dimension(400, 110);
 		JComponent component = DataView.dbTablesComponent(context, uri, onDoubleClick);
 		tables[0] = findFirstComponent(component, "table");
@@ -196,7 +140,6 @@ public class DataConfiguration
 			tables[1].setPreferredScrollableViewportSize(scaledDimension(size, 1.0, 1.2));
 			panel.add(component);
 		}
-//		setDbFile(null, tableName);
 		tables[0].getSelectionModel().addListSelectionListener(
 			new ListSelectionListener() {
 				public void valueChanged(ListSelectionEvent e) {
@@ -257,6 +200,69 @@ public class DataConfiguration
 			return display(view, !more);
 		else
 			return result;
+	}
+
+	public Box flavor_Box() {
+		Box box = new Box(BoxLayout.X_AXIS);
+		box.add(new JLabel("Flavor"));
+		box.add(Box.createHorizontalStrut(10));
+		comboBox = new JComboBox();
+		DataView.fillFlavorCombo(comboBox);
+		comboBox.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				if (projectionModel.hasFlavor())
+					getContext().unregisterFlavor(projectionModel.getFlavor());
+				String flavor = stringValueOf(comboBox.getSelectedItem());
+				projectionModel.setFlavor(flavor);
+				projectionModel.injectFlavor();
+				path = entry.getText();
+				if (projectionModel.hasFlavor()) {
+					if (nullOrEmpty(path))
+						path = context.getDatabasePath(databaseName(flavor)).getPath();
+					getContext().registerFlavor(flavor, path);
+				}
+				setDbFile(new File(path), tableName);
+			}
+		});
+		box.add(comboBox);
+		setMaximumDimension(box, 100);
+		return box;
+	}
+
+	public Box dbFile_Box(final View view) {
+		Box box = new Box(BoxLayout.X_AXIS);
+		box.add(new JLabel("Database"));
+		box.add(Box.createHorizontalStrut(10));
+		entry = new JTextField(40);
+		entry.addKeyListener(new KeyAdapter() {
+			@Override
+			public void keyReleased(KeyEvent e) {
+				setDbFile(new File(entry.getText()), tableName);
+			}
+		});
+		entry.addComponentListener(new ComponentAdapter() {
+			@Override
+			public void componentResized(ComponentEvent e) {
+				setLongText(entry, entry.getText());
+			}
+		});
+		box.add(entry);
+		box.add(BerichtsheftPlugin.makeCustomButton("datadock.choose-db", new ActionListener() {
+			public void actionPerformed(ActionEvent evt) {
+				File dbFile = DataView.chooseDb(BerichtsheftPlugin.fileChooser(view), true, path, true);
+				if (dbFile != null) {
+					setLongText(entry, dbFile.getPath());
+					String flavor = stringValueOf(comboBox.getSelectedItem());
+					if (notNullOrEmpty(flavor))
+						makeSureExists(flavor, dbFile);
+					setDbFile(dbFile, null);
+				}
+				else
+					alert(BerichtsheftPlugin.getProperty("dataview.sqlite-required.message"));
+			}
+		}, false));
+		setMaximumDimension(box, 100);
+		return box;
 	}
 
 	private void setDbFile(File dbFile, String tableName) {
@@ -423,7 +429,7 @@ public class DataConfiguration
 	/**
 	 * @param args
 	 */
-	public static void main(String[] args) {
+	public static void main(String...args) {
 		BerichtsheftApp.loadSettings();
 		DataConfiguration dc = new DataConfiguration(BerichtsheftActivity.getInstance(), null, null);
 		do {

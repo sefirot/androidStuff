@@ -261,5 +261,23 @@ public class ViewGroup extends View implements ViewManager
 	public static String[] edges() {
 		return strings(SpringLayout.WEST, SpringLayout.NORTH, SpringLayout.EAST, SpringLayout.SOUTH);
 	}
+	
+    public static void build(View view) {
+    	if (view instanceof ViewGroup) {
+	    	ViewGroup viewGroup = (ViewGroup) view;
+	    	viewGroup.preLayout();
+	    	Container container = viewGroup.getContainer();
+			for (int i = 0; i < viewGroup.getChildCount(); i++) {
+				view = viewGroup.getChildAt(i);
+				build(view);
+				View parent = view.getParent();
+				if (parent instanceof ViewGroup)
+					((ViewGroup) parent).doLayout(view);
+				container.add(view.getComponent());
+			}
+			viewGroup.applyAttributes();
+			viewGroup.doLayout();
+    	}
+    }
 
 }

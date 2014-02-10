@@ -77,6 +77,7 @@ import com.applang.components.DataManager;
 import com.applang.components.DataManager.DataPanel;
 import com.applang.components.DataView;
 import com.applang.components.DoubleFeature;
+import com.applang.components.OptionDialog;
 import com.applang.components.TextEditor2;
 import com.applang.components.ManagerBase;
 import com.applang.components.TextEditor;
@@ -678,7 +679,7 @@ public class BerichtsheftPlugin extends EditPlugin
 		textEditor2.getTextEditor().installSpellChecker();
 		Component component = textEditor2.getUIComponent();
 		component.setPreferredSize(new Dimension(400,300));
-		new JEditOptionDialog(view, 
+		new OptionDialog(view, 
 				getProperty("berichtsheft.spellcheck-selection.title"), 
 				"", 
 				component, 

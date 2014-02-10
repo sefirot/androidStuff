@@ -20,6 +20,7 @@ import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
+import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.JToolBar;
@@ -41,9 +42,9 @@ import com.applang.provider.NotePad;
 import com.applang.provider.NotePadProvider;
 import com.applang.provider.NotePad.NoteColumns;
 
+import android.app.AlertDialog;
 import android.content.ContentUris;
 import android.content.ContentValues;
-import android.database.Cursor;
 import android.net.Uri;
 import android.util.Log;
 
@@ -96,7 +97,6 @@ public class DataManager extends ActionPanel
 		setDataView();
 		dataView.setUriString(uriString);
 		initialize(dataView.getUriString());
-		setFormComponent();
 	}
 	
 	public static class DataPanel extends JPanel
@@ -247,7 +247,7 @@ public class DataManager extends ActionPanel
 	}
 
 	public boolean isTableView(int index) {
-		return containsComponent(panes[index], tableView());
+		return containsComponent(panes[index], getTableComponent());
 	}
 	
 	private void onMouseClickIn(Container container, MouseListener mouseListener, boolean addRemove) {
@@ -284,7 +284,7 @@ public class DataManager extends ActionPanel
 	
 	private DataView dataView = null;
 	
-	public JComponent tableView() {
+	public JComponent getTableComponent() {
 		return (JComponent) dataView;
 	}
 	
@@ -294,42 +294,30 @@ public class DataManager extends ActionPanel
 		return textEditor2;
 	}
 	
+	private Form formView = null;
+	
 	private void setFormComponent() {
 		final BerichtsheftActivity context = BerichtsheftActivity.getInstance((JFrame) getView());
 		iComponent = new IComponent() {
 			public Component getUIComponent() {
-				if (container == null) {
+				if (container == null) {	//	lazy initialization
+					ProjectionModel projectionModel = dataView.getDataConfiguration().getProjectionModel();
+//					formView = new Form(context, projectionModel.getProjection(), props.getProperty("layout"));
+//					container = new JScrollPane(formView.getContainer());
 					String layout = props.getProperty("layout");
 					boolean standardLayout = nullOrEmpty(layout);
 					if (standardLayout) 
-						layout = "linearlayout.xml";
+						layout = "standard_form.xml";
 					FormBuilder formBuilder = new FormBuilder(context, layout);
-					ProjectionModel projectionModel = dataView.getDataConfiguration().getProjectionModel();
 					if (standardLayout && projectionModel != null) {
 						BidiMultiMap projection = projectionModel.getProjection();
-						for (Object name : projection.getKeys()) {
-							String type = stringValueOf(projection.getValue(name, 2));
-							switch (fieldTypeAffinity(type)) {
-							case Cursor.FIELD_TYPE_STRING:
-								formBuilder.addStringField(name);
-								break;
-							case Cursor.FIELD_TYPE_INTEGER:
-								formBuilder.addIntegerField(name);
-								break;
-							case Cursor.FIELD_TYPE_FLOAT:
-								formBuilder.addFloatField(name);
-								break;
-							case Cursor.FIELD_TYPE_BLOB:
-								formBuilder.addBlobField(name);
-								break;
-							default:
-								Log.w(TAG, String.format("type of field '%s' not identified : %s", name, type));
-								break;
-							}
+						for (Object key : projection.getKeys()) {
+							String type = stringValueOf(projection.getValue(key, 2));
+							formBuilder.addField(key, stringValueOf(key), type);
 						}
 					}
-					container = formBuilder.build();
-					printContainer("panel", container, true);
+					container = new JScrollPane(formBuilder.build());
+					printContainer("panel", container, _null());
 				}
 				return container;
 			}
@@ -338,7 +326,7 @@ public class DataManager extends ActionPanel
 		};
 	}
 	
-	public Container formView() {
+	public Container getFormComponent() {
 		Container uiComponent = (Container) iComponent.getUIComponent();
 		return uiComponent;
 	}
@@ -377,11 +365,11 @@ public class DataManager extends ActionPanel
 			Object[] params = objects(_null());
 			if (tableLayout) {
 				installTools(true);
-				params[0] = tableView();
+				params[0] = getTableComponent();
 			}
 			else {
 				installMoreTools();
-				params[0] = formView();
+				params[0] = getFormComponent();
 			}
 			viewSwitch(
 				new Function<Void>() {
@@ -520,7 +508,6 @@ public class DataManager extends ActionPanel
 						props.setProperty("uri", dbString);
 						propsToFile(props, name);
 						initialize(dbString);
-						setFormComponent();
 					}
 					return null;
 				}
@@ -539,6 +526,7 @@ public class DataManager extends ActionPanel
 			setWindowTitle(this, String.format(
 				"Database : %s", 
 				trimPath(dbString, jc.getWidth() / 2, jc.getFont(), jc)));
+		setFormComponent();
 	}
 	
 	private void clear() {
@@ -902,6 +890,7 @@ public class DataManager extends ActionPanel
 	}
 
 	public static void askConstellation(Job<String> job, Object...params) {
+		AlertDialog.behavior = Behavior.setTimeout(AlertDialog.behavior, true);
 		PromptDirective.prompt(
 			new BerichtsheftActivity(job, params), 
 			Dialogs.DIALOG_TEXT_ENTRY, 
@@ -916,6 +905,7 @@ public class DataManager extends ActionPanel
 		askConstellation(
 			new Job<String>() {
 				public void perform(String result, Object[] parms) throws Exception {
+					AlertDialog.behavior = Behavior.setTimeout(AlertDialog.behavior, false);
 					if (result != null) {
 						props.setProperty("constellation", result);
 						manage(props);
@@ -934,8 +924,8 @@ public class DataManager extends ActionPanel
 		showFrame(null, dm.getName(), 
 			new UIFunction() {
 				public Component[] apply(final Component comp, Object[] parms) {
-					dm.tableView().setPreferredSize(viewportSize);
-					dm.formView().setPreferredSize(viewportSize);
+					dm.getTableComponent().setPreferredSize(viewportSize);
+					dm.getFormComponent().setPreferredSize(viewportSize);
 					JSplitPane splitPane = splitPane(JSplitPane.VERTICAL_SPLIT, null);
 					splitPane.setTopComponent(dm.getUIComponent(0));
 					if (dm.numberOfPanes() > 1) {

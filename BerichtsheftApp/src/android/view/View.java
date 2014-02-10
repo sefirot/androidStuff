@@ -15,12 +15,8 @@ import android.content.Context;
 import android.content.res.Resources;
 import android.util.AttributeSet;
 import android.view.ViewGroup.LayoutParams;
-import android.view.ViewGroup.MarginLayoutParams;
-import android.widget.LinearLayout;
-import android.widget.RelativeLayout;
 
 import static com.applang.Util.*;
-import static com.applang.Util1.viewHierarchy;
 import static com.applang.SwingUtil.*;
 
 public class View

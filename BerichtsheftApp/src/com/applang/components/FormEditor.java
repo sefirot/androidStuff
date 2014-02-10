@@ -64,6 +64,7 @@ import static com.applang.Util.*;
 import static com.applang.Util2.*;
 
 import com.applang.SwingUtil.Behavior;
+import com.applang.Util2;
 import com.applang.berichtsheft.BerichtsheftApp;
 
 public class FormEditor extends JSplitPane

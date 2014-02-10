@@ -7,6 +7,7 @@ import java.io.Writer;
 import javax.swing.Spring;
 import javax.swing.SpringLayout;
 
+import com.applang.Util;
 import com.applang.Util.ValMap;
 
 import android.content.Context;
@@ -169,7 +170,7 @@ public class RelativeLayout extends ViewGroup
 		}
 		
         public void addRules(Context context, Object...attrs) {
-			ValMap map = namedParams(attrs);
+			ValMap map = Util.namedParams(attrs);
         	for (String key : map.keySet()) {
         		int verb = verb(key);
         		if (verb > -1)

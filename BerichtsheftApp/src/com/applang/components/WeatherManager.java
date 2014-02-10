@@ -36,7 +36,6 @@ import com.applang.berichtsheft.BerichtsheftActivity;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 import com.applang.berichtsheft.plugin.BerichtsheftShell;
-import com.applang.berichtsheft.plugin.JEditOptionDialog;
 import com.applang.provider.WeatherInfo.Weathers;
 
 import console.Console;
@@ -370,7 +369,7 @@ public class WeatherManager extends ActionPanel
 				textArea.setText(((StringWriter)out).toString());
 				Component component = new JScrollPane(textArea);
 				component.setPreferredSize(new Dimension(800,400));
-				int result = new JEditOptionDialog(view, 
+				int result = new OptionDialog(view, 
 						BerichtsheftPlugin.getProperty("datadock.weather.title"), 
 						title, 
 						component, 

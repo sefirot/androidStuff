@@ -679,17 +679,29 @@ public class SwingUtil
     	public static final int ALWAYS_ON_TOP = 32;
     	public static final int EXIT_ON_CLOSE = 64;
         
-        public static int getOptionType(int index) {
-        	return (index + 1) % 4 - 1;
+        public static int getOptionType(int behavior) {
+        	return (behavior + 1) % 4 - 1;
         }
 
-        public static int getFlags(int index) { 
-            return (index + 1) / 4 * 4; 
+        public static int getFlags(int behavior) { 
+            return (behavior + 1) / 4 * 4; 
         }
 
-        public static boolean hasFlags(int index, int flags) { 
-			return (getFlags(index) & flags) > 0; 
+        public static boolean hasFlags(int behavior, int flags) { 
+			return (getFlags(behavior) & flags) > 0; 
         }
+
+        public static int setFlags(int behavior, int flags) { 
+			return flags < 0 ? behavior & ~Math.abs(flags) : behavior | flags; 
+        }
+
+        public static int setTimeout(int behavior, boolean timeout) { 
+			return setFlags(behavior, timeout ? TIMEOUT : -TIMEOUT); 
+        }
+
+		public static int setModal(int behavior, boolean modal) {
+			return setFlags(behavior, modal ? MODAL : -MODAL); 
+		}
     }
 	
     public static int showOptionDialog(Component parent, 

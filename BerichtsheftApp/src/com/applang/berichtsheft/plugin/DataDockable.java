@@ -41,6 +41,7 @@ import com.applang.Util.BidiMultiMap;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.components.DataView;
 import com.applang.components.DatePicker;
+import com.applang.components.OptionDialog;
 import com.applang.components.ProfileManager;
 import com.applang.components.DataAdapter;
 import com.applang.components.ScriptManager;
@@ -91,7 +92,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 					final Console console = BerichtsheftShell.getConsole(true);
 					if (console != null) {
 						BerichtsheftShell.consoleWait(console, true);
-						new JEditOptionDialog(view, 
+						new OptionDialog(view, 
 								"Spinner test", 
 								"", 
 								"the spinner icon in the 'Berichtsheft' console window should be animated", 
@@ -489,7 +490,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 			}
 			message = new JScrollPane(table);
 		}
-		return new JEditOptionDialog(view, 
+		return new OptionDialog(view, 
 				BerichtsheftPlugin.getProperty(titleProperty), 
 				caption, 
 				message, 

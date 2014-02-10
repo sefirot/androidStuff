@@ -35,6 +35,7 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.util.Log;
 
+import com.applang.Util2;
 import com.applang.Util2.Settings;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 

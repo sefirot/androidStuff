@@ -872,7 +872,7 @@ public class DataView extends JPanel implements IComponent
 				return super.getCellEditor(row, column);
 			}
 		};
-		table.setModel(model);
+		table.setModel(model == null ? new DefaultTableModel() : model);
 		table.setName("table");
 		table.setRowSelectionAllowed(false);
 		table.setColumnSelectionAllowed(false);

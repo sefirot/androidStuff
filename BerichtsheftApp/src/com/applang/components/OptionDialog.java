@@ -1,4 +1,4 @@
-package com.applang.berichtsheft.plugin;
+package com.applang.components;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
@@ -20,24 +20,27 @@ import javax.swing.border.EmptyBorder;
 
 import org.gjt.sp.jedit.GUIUtilities;
 import org.gjt.sp.jedit.View;
-import org.gjt.sp.jedit.gui.EnhancedDialog;
 
+import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
+
+import android.app.Dialog;
 import android.util.Log;
 
 import static com.applang.Util.*;
 import static com.applang.SwingUtil.*;
 
-public class JEditOptionDialog extends EnhancedDialog	
+public class OptionDialog extends Dialog	
 {
-    private static final String TAG = JEditOptionDialog.class.getSimpleName();
+    private static final String TAG = OptionDialog.class.getSimpleName();
 
-	public JEditOptionDialog(View view, 
+	public OptionDialog(View view, 
 			String title, String caption, Object message, 
 			int optionType, int behavior, 
 			String iconPath, 
 			Job<Void> followUp, Object...params)
 	{
-		super((Frame)view, title, behavior == Behavior.MODAL);
+		super((Frame)view, Behavior.MODAL);
+		setTitle(title);
 		this.optionType = optionType;
 		this.options = defaultOptions(optionType);
 		this.followUp = followUp;

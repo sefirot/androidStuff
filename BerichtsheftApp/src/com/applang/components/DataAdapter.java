@@ -22,7 +22,6 @@ import android.net.Uri;
 
 import com.applang.berichtsheft.BerichtsheftActivity;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
-import com.applang.berichtsheft.plugin.JEditOptionDialog;
 import com.applang.components.DataView.DataModel;
 
 import static com.applang.Util.*;
@@ -206,7 +205,7 @@ public class DataAdapter
 					JTable table = model.makeTable();
 					table.setPreferredScrollableViewportSize(new Dimension(800,100));
 					table.getSelectionModel().setSelectionInterval(1, 1);
-					return decision = new JEditOptionDialog(view, 
+					return decision = new OptionDialog(view, 
 							BerichtsheftPlugin.getProperty("dataview.prompt-update.message"), 
 							"", 
 							new JScrollPane(table), 
