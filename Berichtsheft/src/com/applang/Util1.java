@@ -40,74 +40,6 @@ import static com.applang.Util2.*;
 
 public class Util1
 {
-	public static ValMap namedParams(Object... params) {
-		ValMap map = vmap();
-		if (params != null) {
-			for (int i = 0; i < params.length; i++) {
-				Object param = params[i];
-				if (param instanceof String
-						&& embedsLeft(param.toString(), "=")) {
-					String[] sides = param.toString().split("=", 2);
-					if (sides.length > 0) {
-						if (sides.length > 1)
-							map.put(sides[0], sides[1]);
-						else
-							map.put(sides[0], "");
-						continue;
-					}
-				}
-				map.put("param" + i, param);
-			}
-		}
-		return map;
-	}
-	
-	@SuppressWarnings("unchecked")
-	public static <T extends Object> T namedValue(T defaultValue, String name, Map<String, Object> map) throws ClassCastException {
-		if (map.containsKey(name)) 
-			try {
-				T returnValue = (T)map.get(name);
-				return returnValue;
-			} catch (ClassCastException e) {}
-		return defaultValue;
-	}
-	
-	public static Boolean namedBoolean(Boolean defaultValue, String name, Map<String, Object> map) {
-		if (map.containsKey(name)) {
-			Object value = map.get(name);
-			if (value instanceof Boolean)
-				return (Boolean) value;
-			else
-				return toBool(defaultValue, "" + value);
-		}
-		else
-			return defaultValue;
-	}
-	
-	public static Integer namedInteger(Integer defaultValue, String name, Map<String, Object> map) {
-		if (map.containsKey(name)) {
-			Object value = map.get(name);
-			if (value instanceof Integer)
-				return (Integer) value;
-			else
-				return toInt(defaultValue, "" + value);
-		}
-		else
-			return defaultValue;
-	}
-	
-	public static Double namedDouble(Double defaultValue, String name, Map<String, Object> map) {
-		if (map.containsKey(name)) {
-			Object value = map.get(name);
-			if (value instanceof Double)
-				return (Double) value;
-			else
-				return toDouble(defaultValue, "" + value);
-		}
-		else
-			return defaultValue;
-	}
-
 	public static boolean traverse(Cursor cursor, Job<Cursor> job, Object...params) {
 		if (cursor == null)
 			return false;
@@ -329,6 +261,13 @@ public class Util1
 		else
 			builder = builder.fragment(tableName);
 		return builder.build();
+	}
+	
+	public static String dbLegalize(Object name) {
+		if (notNullOrEmpty(name))
+			return stringValueOf(name).replaceAll("[ \\?\\*]", "_");
+		else
+			throw new RuntimeException("null or empty name not possible");
 	}
 	
 	public static Uri dbTable(String uriString, String tableName) {

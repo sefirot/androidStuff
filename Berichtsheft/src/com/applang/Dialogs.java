@@ -182,22 +182,8 @@ public class Dialogs extends Activity
                 })
                 .setNeutralButton(values[2], new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int whichButton) {
-                        _finish(RESULT_CANCELED, null);
+                        _finish(RESULT_CANCELED, param_String(null, 2, arraycast(values, objects())));
                     }
-                })
-                .create();
-        case DIALOG_LIST:
-            return new AlertDialog.Builder(Dialogs.this)
-                .setTitle(prompt)
-                .setItems(values, new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int which) {
-                        _finish(RESULT_OK, values[which]);
-                    }
-                })
-                .setOnCancelListener(new DialogInterface.OnCancelListener() {
-					public void onCancel(DialogInterface dialog) {
-                        _finish(RESULT_CANCELED, null);
-					}
                 })
                 .create();
         case DIALOG_SINGLE_CHOICE:
@@ -342,6 +328,20 @@ public class Dialogs extends Activity
         	catch (Exception e) {
         		Log.e(TAG, "Dialogs", e);
 			} 
+        case DIALOG_LIST:
+            return new AlertDialog.Builder(Dialogs.this)
+                .setTitle(prompt)
+                .setItems(values, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        _finish(RESULT_OK, values[which]);
+                    }
+                })
+                .setOnCancelListener(new DialogInterface.OnCancelListener() {
+					public void onCancel(DialogInterface dialog) {
+                        _finish(RESULT_CANCELED, null);
+					}
+                })
+                .create();
 	    case DIALOG_TEXT_ENTRY:
 	    case DIALOG_TEXT_INFO:
             LinearLayout linearLayout = linearLayout(this, 

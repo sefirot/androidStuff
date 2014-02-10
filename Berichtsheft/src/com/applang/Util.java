@@ -42,9 +42,6 @@ import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -1071,31 +1068,6 @@ public class Util
 		return new ArrayList<T>(asList(elements));
 	}
 
-	public static Document xmlDocument(File file, Object...params) {
-		InputStream is = null;
-	    try {
-			DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-			DocumentBuilder db = dbf.newDocumentBuilder();
-			if (file != null)
-				return db.parse(file);
-			else {
-				is = param(null, 0, params);
-				return db.parse(is);
-			}
-	    } catch (Exception e) {
-			Log.e(TAG, "xmlDocument", e);
-	    	return null;
-	    }
-	    finally {
-	    	if (is != null)
-				try {
-					is.close();
-				} catch (IOException e) {
-					Log.e(TAG, "xmlDocument", e);
-				}
-	    }
-	}
-	
 	public static Element[] iterateElements(String tagName, Document doc, Predicate<Element> predicate) {
 		ArrayList<Element> al = alist();
 		NodeList nodes = doc.getElementsByTagName(tagName);
@@ -1271,15 +1243,24 @@ public class Util
 		return false;
 	}
 	
+	public static void setPrivateField(Object cl, Object inst, String fieldName, Object value) throws Exception {
+		Class<?> c = cl instanceof Class<?> ? 
+				(Class<?>) cl :
+				Class.forName(stringValueOf(cl));
+		Field field = c.getDeclaredField(fieldName);
+		field.setAccessible(true);
+		field.set(inst, value);
+	}
+	
 	@SuppressWarnings("unchecked")
-	public static <T> T getPrivateField(Object cl, Object o, String fieldName) {
+	public static <T> T getPrivateField(Object cl, Object inst, String fieldName) {
 		try {
 			Class<?> c = cl instanceof Class<?> ? 
 					(Class<?>) cl :
 					Class.forName(stringValueOf(cl));
 			Field field = c.getDeclaredField(fieldName);
 			field.setAccessible(true);
-			return (T) field.get(o);
+			return (T) field.get(inst);
 		} catch (Exception e) {
 			Log.e(TAG, String.format("getPrivateField '%s' in class '%s'", fieldName, cl), e);
 			return null;
@@ -1480,8 +1461,7 @@ public class Util
 		}
 	}
 
-	public static void redirectOutputToFile(String filename, boolean append)
-	{
+	public static void redirectOutputToFile(String filename, boolean append) {
 		try {
 			PrintStream pout = new PrintStream(
 				new FileOutputStream( filename, append ) );
@@ -1491,5 +1471,73 @@ public class Util
 			System.err.println("Can't redirect output to file: "+filename );
 		}
 	}
+
+	public static ValMap namedParams(Object... params) {
+		ValMap map = vmap();
+		if (params != null) {
+			for (int i = 0; i < params.length; i++) {
+				Object param = params[i];
+				if (param instanceof String
+						&& embedsLeft(param.toString(), "=")) {
+					String[] sides = param.toString().split("=", 2);
+					if (sides.length > 0) {
+						if (sides.length > 1)
+							map.put(sides[0], sides[1]);
+						else
+							map.put(sides[0], "");
+						continue;
+					}
+				}
+				map.put("param" + i, param);
+			}
+		}
+		return map;
+	}
 	
+	@SuppressWarnings("unchecked")
+	public static <T extends Object> T namedValue(T defaultValue, String name, Map<String, Object> map) throws ClassCastException {
+		if (map.containsKey(name)) 
+			try {
+				T returnValue = (T)map.get(name);
+				return returnValue;
+			} catch (ClassCastException e) {}
+		return defaultValue;
+	}
+	
+	public static Boolean namedBoolean(Boolean defaultValue, String name, Map<String, Object> map) {
+		if (map.containsKey(name)) {
+			Object value = map.get(name);
+			if (value instanceof Boolean)
+				return (Boolean) value;
+			else
+				return toBool(defaultValue, "" + value);
+		}
+		else
+			return defaultValue;
+	}
+	
+	public static Integer namedInteger(Integer defaultValue, String name, Map<String, Object> map) {
+		if (map.containsKey(name)) {
+			Object value = map.get(name);
+			if (value instanceof Integer)
+				return (Integer) value;
+			else
+				return toInt(defaultValue, "" + value);
+		}
+		else
+			return defaultValue;
+	}
+	
+	public static Double namedDouble(Double defaultValue, String name, Map<String, Object> map) {
+		if (map.containsKey(name)) {
+			Object value = map.get(name);
+			if (value instanceof Double)
+				return (Double) value;
+			else
+				return toDouble(defaultValue, "" + value);
+		}
+		else
+			return defaultValue;
+	}
+
 }
