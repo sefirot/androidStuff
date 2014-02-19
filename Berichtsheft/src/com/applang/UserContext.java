@@ -36,6 +36,11 @@ public class UserContext extends CustomContext implements Serializable
 //
 //	protected void readObject(java.io.ObjectInputStream in) throws java.io.IOException, ClassNotFoundException {
 //	}
+
+	public static String toPlainText(String script, Object...params) {
+		UserContext context = param(new UserContext(), 0, params);
+		return evaluate(context, script, TAG);
+	}
 	
 	public UserContext() {
 		this(vmap());

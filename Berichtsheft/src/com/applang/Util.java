@@ -1,5 +1,8 @@
 package com.applang;
 
+import static com.applang.Util.NEWLINE_REGEX;
+import static com.applang.Util.enclose;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -41,10 +44,6 @@ import java.util.UUID;
 import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
 
 import android.util.Log;
 
@@ -621,7 +620,7 @@ public class Util
 		String[] parts = strings();
 		if (notNullOrEmpty(string))
 			parts = limit.length < 1 ? string.split(regex) : string.split(regex, limit[0]);
-		return new ValList(asList(parts));
+		return vlist(parts);
     }
 
 	public static <T> String join(String delimiter, T...params) {
@@ -638,6 +637,13 @@ public class Util
 
     public static String quoted(String string) {
     	return enclose("\"", string, "\"");
+	}
+
+    public static String htmlize(String text) {
+    	if (!text.substring(0, Math.min(text.length(), 10)).toLowerCase().startsWith("<html>"))
+    		return enclose("<html>", text.replaceAll(NEWLINE_REGEX, "<br>"), "</html>");
+    	else
+    		return text;
 	}
 
     public static String enclose(String decor, Object o, Object...params) {
@@ -904,12 +910,16 @@ public class Util
 		}
 	}
 	
-	public static ValList vlist() {
-		return new ValList();
+	public static <T> ValList vlist(T...values) {
+		return new ValList(asList(values));
 	}
 	
-	public static ValMap vmap() {
-		return new ValMap();
+	public static ValMap vmap(Object...params) {
+		ValMap map = new ValMap();
+		for (int i = 0; i < params.length; i+=2) 
+			map.put(param_String("", i, params), 
+					param(null, i + 1, params));
+		return map;
 	}
 	
 	public static class ValMap extends HashMap<String,Object>
@@ -926,7 +936,6 @@ public class Util
 		public ValMap(Map<? extends String, ? extends Object> m) {
 			super(m);
 		}
-		
 		public ValList getList(String key) {
 			Object value = get(key);
 			if (value == null) {
@@ -939,7 +948,6 @@ public class Util
 			else
 				return null;
 		}
-		
 		public Object getListValue(String key, int index) {
 			return getList(key).get(index);
 		}
@@ -1068,17 +1076,6 @@ public class Util
 		return new ArrayList<T>(asList(elements));
 	}
 
-	public static Element[] iterateElements(String tagName, Document doc, Predicate<Element> predicate) {
-		ArrayList<Element> al = alist();
-		NodeList nodes = doc.getElementsByTagName(tagName);
-		for (int i = 0; i < nodes.getLength(); i++) {
-			Element el = (Element) nodes.item(i);
-			if (predicate.apply(el))
-				al.add(el);
-		}
-		return al.toArray(new Element[0]);
-	}
-
     public static boolean embedsLeft(String whole, String part) {
 		return whole != null && whole.contains(part) && !whole.startsWith(part);
 	}
@@ -1204,13 +1201,18 @@ public class Util
 	public static final String GLUE_REGEX = "\\|";
 	public static final String WHITESPACE_REGEX = "\\s+";
 	public static final String WHITESPACE_OR_NOTHING_REGEX = "\\s*";
+	public static final String SOMETHING_OR_NOTHING_REGEX = ".*";
 	public static final String[] FOLD_MARKER = strings("{{{", "}}}");
 	public static final String[] FOLD_MARKER_REGEX = strings("\\{\\{\\{", "\\}\\}\\}");
 	
-	public static String wildcardRegex(Object wildcard) {
+	public static String wildcardRegex(Object wildcard, String...specials) {
+		String chars = join("\\", specials);
+		if (chars.length() > 0)
+			chars = "\\".concat(chars);
+		chars = enclose("[", chars.concat("\\\\w"), "]");
 		return stringValueOf(wildcard)
-        		.replaceAll("\\*", "\\\\w+")
-        		.replaceAll("\\?", "\\\\w");
+        		.replaceAll("\\*", chars.concat("+"))
+        		.replaceAll("\\?", chars);
 	}
 
 	public static String indentedLine(String line, Object level, Object...params) {
@@ -1431,18 +1433,19 @@ public class Util
 			return retval;
 		}
 		
-		public Object getValue(Object key, int...listIndex) {
+		@SuppressWarnings("unchecked")
+		public <T> T getValue(Object key, int...listIndex) {
 			ValList list = getValues(listIndex);
 			if (list == null)
 				return null;
 			int index = getKeys().indexOf(key);
 			if (index > -1)
-				return list.get(index);
+				return (T) list.get(index);
 			else
 				return null;
 		}
 		
-		public void putValue(Object key, Object value, int...listIndex) {
+		public <T> void putValue(Object key, T value, int...listIndex) {
 			if (getKeys().indexOf(key) < 0)
 				add(key);
 			ValList list = getValues(listIndex);
@@ -1472,7 +1475,7 @@ public class Util
 		}
 	}
 
-	public static ValMap namedParams(Object... params) {
+	public static ValMap namedParams(Object...params) {
 		ValMap map = vmap();
 		if (params != null) {
 			for (int i = 0; i < params.length; i++) {

@@ -74,8 +74,8 @@ import static com.applang.Util.*;
  
 public class VelocityUtil
 {
-	public static final Character VRI = '$';
-	public static final Character VDI = '#';
+	public static final Character VRI = '$';	//	Reference Indicator
+	public static final Character VDI = '#';	//	Directive Indicator
 	
 	public static final Character ARGUMENT_TYPER = '_';
 	public static final String[] ARGUMENT_SEPARATORS = {", ", " "};

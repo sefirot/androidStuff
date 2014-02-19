@@ -1,0 +1,12 @@
+#set($hello='Hello')
+#foreach($i in [-5..9])
+#if($i<0)<#elseif($i>=$hello.length())>#{else}$hello.charAt($i)#end
+#{end}
+
+
+
+
+
+
+						World		
+#{stop}

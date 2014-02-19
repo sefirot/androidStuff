@@ -100,13 +100,13 @@ public class Util1
 		return layoutParams;
 	}
 
-	public static Object[] iterateViews(ViewGroup container, Function<Object[]> func, int indent, Object... params) {
-		if (container != null) {
-			for (int i = 0; i < container.getChildCount(); i++) {
-				View v = container.getChildAt(i);
-				params = func.apply(v, indent, params);
-				if (v instanceof ViewGroup) {
-					iterateViews((ViewGroup) v, func, indent + 1, params);
+	public static Object[] iterateViews(ViewGroup viewGroup, int indent, Function<Object[]> func, Object... params) {
+		if (viewGroup != null) {
+			for (int i = 0; i < viewGroup.getChildCount(); i++) {
+				View view = viewGroup.getChildAt(i);
+				params = func.apply(view, indent, params);
+				if (view instanceof ViewGroup) {
+					iterateViews((ViewGroup) view, indent + 1, func, params);
 				}
 			}
 		}
@@ -128,6 +128,7 @@ public class Util1
 	public static String viewHierarchy(ViewGroup container) {
 		String s = viewLine(container, 0);
 		Object[] params = iterateViews(container, 
+			1, 
 			new Function<Object[]>() {
 				public Object[] apply(Object... params) {
 					View v = param(null, 0, params);
@@ -139,7 +140,6 @@ public class Util1
 					return parms;
 				}
 			}, 
-			1, 
 			objects(s)
 		);
 		return param_String("", 0, params);
@@ -590,6 +590,10 @@ public class Util1
 	public static final String[] PARENS = {"(", ")"};
 	public static final String[] BRACKETS = {"[", "]"};
 	public static final String[] BRACES = {"{", "}"};
+	
+	public static boolean isNULL(Object value) {
+		return JSONObject.NULL.equals(value);
+	}
 
 	@SuppressWarnings("unchecked")
 	public static Object walkJSON(Object[] path, Object json, Function<Object> filter, Object...params) {
@@ -643,7 +647,7 @@ public class Util1
 		}
 		else if (filter != null)
 			object = filter.apply(path, json, params);
-		return object;
+		return isNULL(object) ? null : object;
 	}
 
 	@SuppressWarnings("rawtypes")
@@ -673,8 +677,7 @@ public class Util1
 		else {
 			if (filter != null)
 				object = filter.apply(path, object, params);
-			if (object != null) 
-				stringer.value(object);
+			stringer.value(object);
 		}
 	}
 
