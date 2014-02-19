@@ -32,13 +32,13 @@ import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import javax.swing.JToolBar;
 import javax.swing.SwingUtilities;
 import javax.swing.border.Border;
 import javax.swing.event.AncestorEvent;
 import javax.swing.event.AncestorListener;
 import javax.swing.filechooser.FileFilter;
+import javax.swing.text.JTextComponent;
 
 import org.gjt.sp.jedit.BeanShell;
 import org.gjt.sp.jedit.Buffer;
@@ -66,6 +66,7 @@ import org.gjt.sp.jedit.visitors.JEditVisitorAdapter;
 import org.gjt.sp.util.IOUtilities;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -77,10 +78,9 @@ import com.applang.components.DataManager;
 import com.applang.components.DataManager.DataPanel;
 import com.applang.components.DataView;
 import com.applang.components.DoubleFeature;
-import com.applang.components.OptionDialog;
-import com.applang.components.TextEditor2;
+import com.applang.components.TextEdit;
+import com.applang.components.TextToggle;
 import com.applang.components.ManagerBase;
-import com.applang.components.TextEditor;
 import com.inet.jortho.FileUserDictionary;
 import com.inet.jortho.SpellChecker;
 
@@ -149,7 +149,7 @@ public class BerichtsheftPlugin extends EditPlugin
 			registerEditPane(editPane);
 		}
 		else if (msg.getWhat() == EditPaneUpdate.DESTROYED) {
-			DoubleFeature doubleFeature = (DoubleFeature) doubleFeatures.getValue(editPane);
+			DoubleFeature doubleFeature = doubleFeatures.getValue(editPane);
 			doubleFeatures.removeKey(editPane);
 			no_println("unregistered", doubleFeature);
 			editPane.removeAncestorListener(ancestorListener);
@@ -159,10 +159,9 @@ public class BerichtsheftPlugin extends EditPlugin
 	private BidiMultiMap doubleFeatures = bmap(3);
 
 	private DoubleFeature registerEditPane(EditPane editPane) {
-		DoubleFeature doubleFeature = (DoubleFeature) doubleFeatures.getValue(editPane);
+		DoubleFeature doubleFeature = doubleFeatures.getValue(editPane);
 		if (doubleFeature == null) {
-			doubleFeature = new DoubleFeature();
-			doubleFeature.setTextArea(editPane.getTextArea());
+			doubleFeature = new DoubleFeature(editPane.getTextArea());
 			doubleFeatures.add(editPane, doubleFeature, false);
 			no_println("registered", doubleFeature);
 			editPane.addAncestorListener(ancestorListener);
@@ -176,7 +175,7 @@ public class BerichtsheftPlugin extends EditPlugin
 		public void ancestorMoved(AncestorEvent event) {
 			EditPane editPane = (EditPane) event.getSource();
 			for (Object pane : doubleFeatures.getKeys()) {
-				boolean focused = (Boolean) doubleFeatures.getValue(pane, 2);
+				boolean focused = doubleFeatures.getValue(pane, 2);
 				if (editPane.equals(pane) && focused)
 					focusRequest((EditPane) editPane);
 			}
@@ -236,7 +235,7 @@ public class BerichtsheftPlugin extends EditPlugin
 		SwingUtilities.invokeLater(new Runnable() {
 			public void run() {
 				setEditPane(focusPane);
-				DoubleFeature doubleFeature = (DoubleFeature) doubleFeatures.getValue(focusPane);
+				DoubleFeature doubleFeature = doubleFeatures.getValue(focusPane);
 				if (doubleFeature != null)
 					doubleFeature.requestFocus();
 				updateGutters(focusPane);
@@ -444,33 +443,33 @@ public class BerichtsheftPlugin extends EditPlugin
 		}
 		else {
 			if (magic.startsWith("spell")) {
-				TextEditor textEditor = new TextEditor();
-				addNamePart(textEditor, DoubleFeature.FOCUS);
-				textEditor.installSpellChecker();
-				textEditor.setText(buffer.getText());
+				TextEdit textEdit = new TextEdit();
+				addNamePart(textEdit.getTextComponent(), DoubleFeature.FOCUS);
+				textEdit.installSpellChecker();
+				textEdit.setText(buffer.getText());
 				container = new JPanel(new BorderLayout());
-				addCenterComponent(new JScrollPane(textEditor), container);
+				addCenterComponent(textEdit.getComponent(), container);
 				if (magic.equals("spellcheck")) {
 					final JToolBar bar = northToolBar(container, BorderLayout.SOUTH);
 					bar.add(new ManagerBase<Object>() {
 						{
-							installButton(bar, 
+							createButton(bar, 
 									ACCEPT_BUTTON_KEY, 
 									new ActionListener() {
 										public void actionPerformed(ActionEvent e) {
 											EditPane[] editPanes = getEditPanesFor(buffer);
 											if (editPanes.length > 0) {
-												DoubleFeature df = (DoubleFeature) doubleFeatures.getValue(editPanes[0]);
-												TextEditor textEditor = (TextEditor) 
+												DoubleFeature df = doubleFeatures.getValue(editPanes[0]);
+												JTextComponent textComponent = (JTextComponent) 
 													findFirstComponent(df.getWidget(), 
 															DoubleFeature.FOCUS, Constraint.AMONG);
-												df.getTextArea2().setText(textEditor.getText());
+												df.getTextArea2().setText(textComponent.getText());
 											}
 											removeMagic(buffer);
 											bufferChange(buffer);
 										}
 									});
-							installButton(bar, 
+							createButton(bar, 
 									REJECT_BUTTON_KEY, 
 									new ActionListener() {
 										public void actionPerformed(ActionEvent e) {
@@ -501,10 +500,6 @@ public class BerichtsheftPlugin extends EditPlugin
 		String magic = buffer.getStringProperty(MAGIC);
 		if (!magic.startsWith("data")) {
 			Component component = findFirstComponent(container, DoubleFeature.FOCUS, Constraint.AMONG);
-			if (magic.startsWith("spell")) {
-				TextEditor textEditor = (TextEditor) component;
-				textEditor.uninstallSpellChecker();
-			}
 			if (component != null) 
 				component.removeMouseListener(clickListener);
 			removeNamePart(container, DoubleFeature.FOCUS);
@@ -524,7 +519,7 @@ public class BerichtsheftPlugin extends EditPlugin
 		Container parent = widget.getParent();
 		if (parent instanceof EditPane) {
 			parent.remove(widget);
-			DoubleFeature df = (DoubleFeature) doubleFeatures.getValue(parent);
+			DoubleFeature df = doubleFeatures.getValue(parent);
 			if (df != null) {
 				df.setWidget(new DummyWidget(buffer));
 				df.addUIComponentTo(parent);
@@ -574,7 +569,7 @@ public class BerichtsheftPlugin extends EditPlugin
 			// cannot write on that VFS, creating untitled buffer in home directory
 			parent = System.getProperty("user.home");
 		}
-		Buffer buffer = jEdit.openTemporary(view, "/tmp", MAGIC_TITLE + magicCount,true, null);
+		Buffer buffer = jEdit.openTemporary(view, tempPath(), MAGIC_TITLE + magicCount,true, null);
 		jEdit.commitTemporary(buffer);
 		return buffer;
 	}
@@ -645,7 +640,6 @@ public class BerichtsheftPlugin extends EditPlugin
 		BerichtsheftToolBar.userCommandDirectory = path;
 		path = dir.getPath();
 		System.setProperty("settings.dir", path);
-		debug_println("loadSettings", System.getProperty("settings.dir", ""));
 		Settings.load(pathCombine(path, NAME + ".properties"));
 		path = pathCombine(settingsDir, "jars", "sqlite4java");
 		System.setProperty("sqlite4java.library.path", path);
@@ -662,33 +656,35 @@ public class BerichtsheftPlugin extends EditPlugin
 		}
 	}
 	
+	// NOTE used in scripts
 	public static void spellcheckSelection(View view) {
-		final TextEditor2 jEditor = getJEditor();
+		final TextToggle jEditor = getJEditor();
 		String text = jEditor.getSelectedText();
 		if (nullOrEmpty(text)) {
 			consoleMessage("berichtsheft.no-text-selection.message");
 			return; 
 		}
-		final TextEditor2 textEditor2 = new TextEditor2();
-		textEditor2.setText(text);
+		final TextToggle textToggle = new TextToggle();
+		textToggle.setText(text);
 		Job<Void> takeThis = new Job<Void>() {
 			public void perform(Void t, Object[] params) throws Exception {
-				String text = textEditor2.getText();
+				String text = textToggle.getText();
 				jEditor.setSelectedText(text);
 			}
 		};
-		textEditor2.getTextEditor().installSpellChecker();
-		Component component = textEditor2.getUIComponent();
+		textToggle.getTextEdit().installSpellChecker();
+		Component component = textToggle.getUIComponent();
 		component.setPreferredSize(new Dimension(400,300));
-		new OptionDialog(view, 
+		new AlertDialog(view, 
 				getProperty("berichtsheft.spellcheck-selection.title"), 
 				"", 
 				component, 
 				JOptionPane.OK_CANCEL_OPTION,
 				Behavior.MODAL, 
-				getProperty("manager.action-SPELLCHECK.icon"), 
-				takeThis);
-		textEditor2.getTextEditor().uninstallSpellChecker();
+				loadIcon("manager.action-SPELLCHECK.icon"), 
+				takeThis)
+			.open();
+		textToggle.getTextEdit().uninstallSpellChecker();
 	}
 	
 	public static void spellcheckBuffer(Buffer buffer) {
@@ -712,7 +708,7 @@ public class BerichtsheftPlugin extends EditPlugin
 	
 	private static int getNextMagicTempId() {
 		int magicTitledCount = 0;
-		for (String name : new File("/tmp").list()) 
+		for (String name : new File(tempPath()).list()) 
 			if (name.startsWith(MAGIC_TITLE)) 
 				try {
 					magicTitledCount = Math.max(
@@ -831,8 +827,8 @@ public class BerichtsheftPlugin extends EditPlugin
 		BerichtsheftShell.print(msg, NEWLINE);
 	}
 	
-	public static TextEditor2 getJEditor() {
-		return new TextEditor2(jEdit.getActiveView());
+	public static TextToggle getJEditor() {
+		return new TextToggle(jEdit.getActiveView());
 	}
 	
 	public static JComponent getDockable(View view, String name, boolean add) {
@@ -857,11 +853,14 @@ public class BerichtsheftPlugin extends EditPlugin
 	// NOTE used in scripts
 	public static void checkAvailabilityOfTools() {
 		BerichtsheftShell.print("Welcome...", NEWLINE);
+		BerichtsheftShell.print("settings.dir", System.getProperty("settings.dir"), NEWLINE);
+		BerichtsheftShell.print("jedit.settings.dir", getSettingsDirectory(), NEWLINE);
+		BerichtsheftShell.print("temp.dir", tempPath(), NEWLINE);
 		String[] tools = {"AWK_COMMAND", "ADB_COMMAND", "SQLITE_COMMAND"};
 		for (int i = 0; i < tools.length; i++) {
-			debug_println(i, tools[i]);
+			no_println(i, tools[i]);
 			String cmd = getCommand(tools[i]);
-			debug_println(i, cmd);
+			no_println(i, cmd);
 			if (!fileExists(cmd)) {
 				if (nullOrEmpty(runShellScript("which", "which " + cmd)))
 					consoleMessage("berichtsheft.tool-missing.message", cmd);
@@ -874,9 +873,8 @@ public class BerichtsheftPlugin extends EditPlugin
 	}
 
 	public static String getCommand(String path) {
-		debug_println("settings.dir", System.getProperty("settings.dir", ""));
 		String cmd = getProperty(path); 
-		debug_println(path, cmd);
+		no_println(path, cmd);
 		if (!cmd.startsWith(PATH_SEP) && cmd.contains(PATH_SEP)) {
 			String sdk = getProperty("ANDROID_SDK");
 			no_println("ANDROID_SDK", sdk);
@@ -930,6 +928,8 @@ public class BerichtsheftPlugin extends EditPlugin
     		
  	// NOTE used in scripts
 	public static ImageIcon loadIcon(String path) {
+		if (path.endsWith(".icon"))
+			path = getProperty(path);
 		try {
 			if (path.startsWith("/"))
 				return iconFrom(path);

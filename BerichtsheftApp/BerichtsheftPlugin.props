@@ -81,8 +81,6 @@ dataview.prompt-update.message=Update this record ?
 berichtsheft.export-document.message.1=document '%s' updated
 berichtsheft.export-document.message.2=problems processing the document, see Utilities->Troubleshooting->Activity log !!!
 dataview.sqlite-required.message=Only SQLite database files are acceptable
-texteditor.no-undo.message=Unable to undo: %s
-texteditor.no-redo.message=Unable to redo: %s
 doublefeature.dummy-tooltip.message=<html>click here to view the content of '%s'<br>C + click here for an alternative view</html>
 
 # plugin option pane
@@ -162,6 +160,8 @@ manager.action-DELETE.icon=/images/minus_16x16.png
 manager.action-DELETE.label=delete
 manager.action-SPELLCHECK.icon=/images/abc_16x16.png
 manager.action-SPELLCHECK.label=spell check
+manager.action-PROFILE.icon=/images/properties_24x24.png
+manager.action-PROFILE.label=Profile
 manager.action-PICK.icon=/images/pick_22x22.png
 manager.action-PICK.label=pick note(s)
 manager.action-DATE.label=date or week of year

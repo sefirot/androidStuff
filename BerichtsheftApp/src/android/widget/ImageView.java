@@ -31,15 +31,25 @@ public class ImageView extends View
 	}
 
 	@Override
-	protected void create(Object... params) {
+	protected void create() {
 		Picture picture = new Picture();
 		setComponent(picture);
 	}
 	
-	public void setImage(Image image) {
+	public Image getImage() {
 		Picture picture = taggedComponent();
 		if (picture != null)
+			return picture.getImage();
+		else
+			return null;
+	}
+	
+	public void setImage(Image image) {
+		Picture picture = taggedComponent();
+		if (picture != null) {
 			picture.setImage(image);
+    		imageChanged();
+		}
 	}
 	
     @Override
@@ -53,6 +63,21 @@ public class ImageView extends View
 			}
 		}
 		super.applyAttributes();
+	}
+	
+	private Job<JComponent> onImageChanged = null;
+	
+	private void imageChanged() {
+		try {
+			if (onImageChanged != null)
+				onImageChanged.perform((JComponent) taggedComponent(), objects());
+		} catch (Exception e) {
+			Log.e(TAG, "textChanged", e);
+		}
+	}
+
+	public void setOnTextChanged(final Job<JComponent> onImageChanged) {
+		this.onImageChanged = onImageChanged;
 	}
     
     public static class Picture extends JComponent implements MouseListener, FocusListener
@@ -100,8 +125,7 @@ public class ImageView extends View
     		}
     		if (isFocusOwner()) {
     			g.setColor(Color.RED);
-    		} 
-    		else {
+    		} else {
     			g.setColor(Color.BLACK);
     		}
     		g.drawRect(0, 0, image == null ? 125 : image.getWidth(this),

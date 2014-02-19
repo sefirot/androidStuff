@@ -21,6 +21,8 @@ import static com.applang.SwingUtil.*;
 
 public class View
 {
+    protected static final String TAG = View.class.getSimpleName();
+
 	@Override
 	public String toString() {
 		return String.format("%s\t%s", identity(this), getTag());
@@ -29,22 +31,22 @@ public class View
 	public static int uniqueCounter = 0;
 	
 	public View setTag(Object tag) {
-		if (component != null) {
+		if (mComponent != null) {
 			String name = stringValueOf(tag);
 			if (name.endsWith("_"))
 				name += (++uniqueCounter);
-			component.setName(name);
+			mComponent.setName(name);
 		}
 		return this;
 	}
 	
 	@SuppressWarnings("unchecked")
 	public <T extends Component> T taggedComponent() {
-		Component component = getComponent();
+		Component component = mComponent;
 		if (component == null)
 			return null;
 		else if ((nullOrEmpty(component.getName())) && component instanceof Container) {
-			component = findFirstComponent((Container) component, wildcardRegex("*"));
+			component = findFirstComponent((Container) component, wildcardRegex("*", GLUE_REGEX));
 		}
 		return (T) component;
 	}
@@ -65,9 +67,11 @@ public class View
     }
     
     protected View findViewWithTagTraversal(Object tag, Object...params) {
-//    	Constraint constraint = param(null, 0, params);
     	String string = stringValueOf(getTag());
-        String regex = wildcardRegex(tag);
+    	Constraint constraint = param(null, 0, params);
+    	if (constraint != null && check(string, constraint, stringValueOf(tag)))
+    		return this;
+        String regex = wildcardRegex(tag, GLUE_REGEX);
 		if (string.matches(regex)) {
             return this;
         }
@@ -100,25 +104,35 @@ public class View
     }
 	
 	public View(Component component) {
-		this.component = component;
+		mComponent = component;
+		setTag("view_");
 	}
 	
-	private Component component = null;
-
-	public Component getComponent() {
-		return component;
-	}
+	private Component mComponent = null;
 
 	public void setComponent(Component component) {
-		this.component = component;
+		mComponent = component;
+	}
+
+	public Component getComponent() {
+		return mComponent;
 	}
 
 	private Context mContext = null;
 
+	protected void setContext(Context context) {
+		mContext = context;
+	}
+
 	public Context getContext() {
 		return mContext;
 	}
-
+	
+	protected void message(String key, Object...params) {
+		if (mContext != null)
+			mContext.message(key, params);
+	}
+	
 	public View(Context context, AttributeSet attrs) {
 		mContext = context;
 		attributeSet = attrs;
@@ -128,11 +142,22 @@ public class View
 			String idAttr = attributeSet.getIdAttribute();
 			if (notNullOrEmpty(idAttr))
 				tag = idAttr;
-			inputType = attributeSet.getAttributeValue("android:inputType");
+			inputType = attributeSet.getAttributeResourceItem("android:inputType");
+			feature = attributeSet.getAttributeResourceItem("feature");
 		}
 		create();
 		setTag(tag);
     }
+
+	protected void create() {
+	}
+	
+	protected String inputType = null;
+	protected String feature = null;
+
+	public boolean hasFeature(String value) {
+		return value.equals(feature);
+	}
 	
 	public AttributeSet attributeSet = null;
 	
@@ -142,14 +167,14 @@ public class View
 			for (int i = 0; i < attributeSet.getAttributeCount(); i++) {
 				String name = attributeSet.getAttributeName(i);
 				String value = attributeSet.getAttributeValue(i);
-				Dimension size = component.getPreferredSize();
+				Dimension size = mComponent.getPreferredSize();
 				if ("android:width".equals(name)) {
 					int width = Resources.dimensionalValue(mContext, value);
-					component.setPreferredSize(new Dimension(width, size.height));
+					mComponent.setPreferredSize(new Dimension(width, size.height));
 				}
 				else if ("android:height".equals(name)) {
 					int height = Resources.dimensionalValue(mContext, value);
-					component.setPreferredSize(new Dimension(size.width, height));
+					mComponent.setPreferredSize(new Dimension(size.width, height));
 				}
 				else if ("android:background".equals(name)) {
 					int color= Resources.colorValue(mContext, value);
@@ -170,13 +195,7 @@ public class View
 			}
 			if (paddingChanged)
 				setPadding();
-			attributeSet = null;
 		}
-	}
-	
-	protected String inputType = null;
-
-	protected void create(Object... params) {
 	}
 
 	private View mParent = null;
@@ -230,12 +249,12 @@ public class View
 	}
 
 	private void setPadding() {
-		if (component != null && component instanceof JComponent) {
-			if (component instanceof AbstractButton)
-				adjustButtonSize((AbstractButton)component, paddingTLBR);
+		if (mComponent != null && mComponent instanceof JComponent) {
+			if (mComponent instanceof AbstractButton)
+				adjustButtonSize((AbstractButton)mComponent, paddingTLBR);
 			else {
 				Border padding = new EmptyBorder(paddingTLBR[0], paddingTLBR[1], paddingTLBR[2], paddingTLBR[3]);
-				JComponent jc = (JComponent) component;
+				JComponent jc = (JComponent) mComponent;
 				Border border = jc.getBorder();
 				jc.setBorder(new CompoundBorder(border, padding));
 			}

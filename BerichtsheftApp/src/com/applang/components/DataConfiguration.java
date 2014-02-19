@@ -50,14 +50,14 @@ public class DataConfiguration
 {
 	public static final String TAG = DataConfiguration.class.getSimpleName();
 	
-	private Context context;
+	private Context mContext;
 	public void setContext(Context context) {
-		this.context = context;
-		prefs = this.context.getSharedPreferences(null, Context.MODE_PRIVATE);
+		mContext = context;
+		prefs = mContext.getSharedPreferences();
 	}
 
 	public Context getContext() {
-		return context;
+		return mContext;
 	}
 
 	private Uri uri = null;
@@ -68,11 +68,11 @@ public class DataConfiguration
 	public void setUri(Uri uri) {
 		this.uri = uri;
 		tableName = dbTableName(uri);
-		path = context.getDatabasePath(uri);
+		path = mContext.getDatabasePath(uri);
 		if (nullOrEmpty(uri))
 			setProjectionModel(null);
-		if (projectionModel != null && projectionModel.hasFlavor()) {
-			context.registerFlavor(projectionModel.getFlavor(), path);
+		if (mProjectionModel != null && mProjectionModel.hasFlavor()) {
+			mContext.registerFlavor(mProjectionModel.getFlavor(), path);
 		}
 	}
 
@@ -86,17 +86,17 @@ public class DataConfiguration
 		return tableName;
 	}
 
-	private ProjectionModel projectionModel = null;
+	private ProjectionModel mProjectionModel = null;
 	
 	public void setProjectionModel(ProjectionModel projectionModel) {
-		if (this.projectionModel != null && this.projectionModel.hasFlavor()) {
-			context.unregisterFlavor(this.projectionModel.getFlavor());
+		if (mProjectionModel != null && mProjectionModel.hasFlavor()) {
+			mContext.unregisterFlavor(mProjectionModel.getFlavor());
 		}
-		this.projectionModel = projectionModel;
+		this.mProjectionModel = projectionModel;
 	}
 
 	public ProjectionModel getProjectionModel() {
-		return projectionModel;
+		return mProjectionModel;
 	}
 
 	public DataConfiguration(Context context, Uri uri, ProjectionModel model) {
@@ -125,17 +125,17 @@ public class DataConfiguration
 		final boolean more = param_Boolean(prefs.getBoolean("dataConfig_more", Boolean.TRUE), 0, params);
 		JPanel panel = new JPanel();
 		panel.setLayout(new BoxLayout(panel, BoxLayout.PAGE_AXIS));
-		panel.add(flavor_Box());
+		panel.add(display_Flavor());
 		panel.add(Box.createVerticalStrut(10));
-		panel.add(dbFile_Box(view));
+		panel.add(display_DbFile(view));
 		panel.add( Box.createVerticalStrut(10) );
 		Dimension size = new Dimension(400, 110);
-		JComponent component = DataView.dbTablesComponent(context, uri, onDoubleClick);
+		JComponent component = DataView.dbTablesComponent(mContext, uri, onDoubleClick);
 		tables[0] = findFirstComponent(component, "table");
 		tables[0].setPreferredScrollableViewportSize(scaledDimension(size, 1.0, 0.8));
 		panel.add(component);
 		if (more) {
-			component = DataView.projectionComponent(dialog, projectionModel);
+			component = DataView.projectionComponent(getContext(), dialog, mProjectionModel);
 			tables[1] = findFirstComponent(component, "table");
 			tables[1].setPreferredScrollableViewportSize(scaledDimension(size, 1.0, 1.2));
 			panel.add(component);
@@ -149,10 +149,10 @@ public class DataConfiguration
 					if (sel > -1) {
 						tableName = stringValueOf(tables[0].getModel().getValueAt(sel, 0));
 						uri = dbTable(uri, tableName);
-						setProjectionModel(new ProjectionModel(context, uri, projectionModel.getFlavor()));
-						projectionModel.injectFlavor();
+						setProjectionModel(new ProjectionModel(mContext, uri, mProjectionModel.getFlavor()));
+						mProjectionModel.injectFlavor();
 						if (more) {
-							tables[1].setModel(projectionModel);
+							tables[1].setModel(mProjectionModel);
 						}
 					} else {
 						tableName = null;
@@ -163,7 +163,7 @@ public class DataConfiguration
 			}
 		);
 		result = null;
-		dialog = new AlertDialog.Builder(context)
+		dialog = new AlertDialog.Builder(mContext)
 				.setTitle("Data configuration")
 				.setView(panel)
 				.setPositiveButton(android.R.string.ok, new OnClickListener() {
@@ -192,9 +192,9 @@ public class DataConfiguration
                 })
 				.create();
 		setLongText(entry, path);
-		if (projectionModel == null)
-			setProjectionModel(new ProjectionModel(context, getUri(), context.getFlavor()));
-		comboBox.getModel().setSelectedItem(projectionModel.getFlavor());
+		if (mProjectionModel == null)
+			setProjectionModel(new ProjectionModel(mContext, getUri(), mContext.getFlavor()));
+		comboBox.getModel().setSelectedItem(mProjectionModel.getFlavor());
 		dialog.open();
 		if (result == null)
 			return display(view, !more);
@@ -202,7 +202,7 @@ public class DataConfiguration
 			return result;
 	}
 
-	public Box flavor_Box() {
+	private Box display_Flavor() {
 		Box box = new Box(BoxLayout.X_AXIS);
 		box.add(new JLabel("Flavor"));
 		box.add(Box.createHorizontalStrut(10));
@@ -210,15 +210,15 @@ public class DataConfiguration
 		DataView.fillFlavorCombo(comboBox);
 		comboBox.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				if (projectionModel.hasFlavor())
-					getContext().unregisterFlavor(projectionModel.getFlavor());
+				if (mProjectionModel.hasFlavor())
+					getContext().unregisterFlavor(mProjectionModel.getFlavor());
 				String flavor = stringValueOf(comboBox.getSelectedItem());
-				projectionModel.setFlavor(flavor);
-				projectionModel.injectFlavor();
+				mProjectionModel.setFlavor(flavor);
+				mProjectionModel.injectFlavor();
 				path = entry.getText();
-				if (projectionModel.hasFlavor()) {
+				if (mProjectionModel.hasFlavor()) {
 					if (nullOrEmpty(path))
-						path = context.getDatabasePath(databaseName(flavor)).getPath();
+						path = mContext.getDatabasePath(databaseName(flavor)).getPath();
 					getContext().registerFlavor(flavor, path);
 				}
 				setDbFile(new File(path), tableName);
@@ -229,7 +229,7 @@ public class DataConfiguration
 		return box;
 	}
 
-	public Box dbFile_Box(final View view) {
+	private Box display_DbFile(final View view) {
 		Box box = new Box(BoxLayout.X_AXIS);
 		box.add(new JLabel("Database"));
 		box.add(Box.createHorizontalStrut(10));
@@ -269,13 +269,13 @@ public class DataConfiguration
 		if (fileExists(dbFile) && isSQLite(dbFile)) {
 			setUri(fileUri(dbFile.getPath(), tableName));
 			setLongText(entry, path);
-			tables[0].setModel(DataView.dbTablesModel(context, uri));
+			tables[0].setModel(DataView.dbTablesModel(mContext, uri));
 		}
 		else if (flavoredUri()) {
-			String flavor = projectionModel.getFlavor();
+			String flavor = mProjectionModel.getFlavor();
 			setUri(contentUri(flavor, tableName));
 			entry.setText("");
-			tables[0].setModel(DataView.dbTablesModel(context, uri));
+			tables[0].setModel(DataView.dbTablesModel(mContext, uri));
 		}
 		else {
 			setUri(null);
@@ -291,7 +291,7 @@ public class DataConfiguration
 	}
 
 	private boolean flavoredUri() {
-		return projectionModel.hasFlavor() && nullOrEmpty(entry.getText());
+		return mProjectionModel.hasFlavor() && nullOrEmpty(entry.getText());
 	}
 	
 	private Job<JTable> onDoubleClick = new Job<JTable>() {
@@ -309,7 +309,7 @@ public class DataConfiguration
 		stopCellEditing();
 		dialog.dismiss();
 		if (flavoredUri())
-			uri = contentUri(projectionModel.getFlavor(), tableName);
+			uri = contentUri(mProjectionModel.getFlavor(), tableName);
 		else
 			uri = fileUri(path, tableName);
 	}
@@ -358,7 +358,7 @@ public class DataConfiguration
 				checks.add(parts.length > 2 ? Boolean.parseBoolean(parts[2]) : true);
 			}
 			BidiMultiMap projection = new BidiMultiMap(names, conversions, types, checks);
-			setProjectionModel(new ProjectionModel(context, uri, flavor, projection));
+			setProjectionModel(new ProjectionModel(mContext, uri, flavor, projection));
 		}
 		String tableName = dbTableName(uri);
 		uri = uri.buildUpon().query(null).fragment(null).build();
@@ -368,10 +368,10 @@ public class DataConfiguration
 
 	public void save() {
 		Uri uri = getUri();
-		String database = context.getDatabasePath(uri);
+		String database = mContext.getDatabasePath(uri);
 		if (notNullOrEmpty(tableName)) {
 			uri = dbTable(uri, tableName);
-			if (projectionModel != null) 
+			if (mProjectionModel != null) 
 				uri = projectionToUri(uri);
 		}
 		String uriString = uri != null ? Uri.decode(uri.toString()) : null;
@@ -381,13 +381,13 @@ public class DataConfiguration
 
 	public Uri projectionToUri(Uri uri) {
 		Uri.Builder builder = uri.buildUpon().query("");
-		if (projectionModel.hasFlavor()) {
+		if (mProjectionModel.hasFlavor()) {
 			builder
 				.scheme(ContentResolver.SCHEME_CONTENT)
-    			.authority(projectionModel.getFlavor())
+    			.authority(mProjectionModel.getFlavor())
     			.path(dbTableName(uri));
 		}
-		BidiMultiMap projection = projectionModel.getExpandedProjection();
+		BidiMultiMap projection = mProjectionModel.getExpandedProjection();
 		ValList names = projection.getKeys();
 		ValList conversions = projection.getValues(1);
 		ValList types = projection.getValues(2);
@@ -439,7 +439,8 @@ public class DataConfiguration
 				break;
 			ProjectionModel model = dc.getProjectionModel();
 			println("%s\n%s\n%s\n%s\n%s\n", dc.getUri(), dc.getPath(), dc.getTableName(), model, model.getFlavor());
-		} while (true);
+		} 
+		while (true);
 		System.exit(0);
 	}
 

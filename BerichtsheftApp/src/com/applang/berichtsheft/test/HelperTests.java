@@ -49,6 +49,7 @@ import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.JToolBar;
+import javax.swing.ListSelectionModel;
 import javax.swing.Spring;
 import javax.swing.SpringLayout;
 import javax.swing.SwingWorker;
@@ -71,6 +72,7 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.w3c.dom.Element;
 
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ContentResolver;
 import android.content.ContentUris;
@@ -93,12 +95,13 @@ import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.applang.BaseDirective;
 import com.applang.Dialogs;
 import com.applang.PromptDirective;
 import com.applang.UserContext.EvaluationTask;
-import com.applang.Util.ValList;
+import com.applang.Util.Job;
 import com.applang.berichtsheft.BerichtsheftActivity;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.R;
@@ -106,18 +109,18 @@ import com.applang.berichtsheft.plugin.DataDockable;
 import com.applang.berichtsheft.plugin.DataDockable.TransportBuilder;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 import com.applang.components.AndroidBridge;
-import com.applang.components.Form;
+import com.applang.components.DataForm;
 import com.applang.components.DataConfiguration;
 import com.applang.components.DataView;
 import com.applang.components.DataView.DataModel;
 import com.applang.components.DataView.ProjectionModel;
 import com.applang.components.DatePicker;
-import com.applang.components.FormBuilder;
-import com.applang.components.OptionDialog;
+import com.applang.components.ManagerBase;
 import com.applang.components.ProfileManager;
 import com.applang.components.DataAdapter;
 import com.applang.components.ScriptManager;
-import com.applang.components.TextEditor2;
+import com.applang.components.TextEdit;
+import com.applang.components.TextToggle;
 import com.applang.components.WeatherManager;
 import com.applang.provider.NotePadProvider;
 import com.applang.provider.WeatherInfoProvider;
@@ -132,7 +135,7 @@ import junit.framework.*;
 
 public class HelperTests extends TestCase
 {
-    private static final String TAG = HelperTests.class.getSimpleName();
+	private static final String TAG = HelperTests.class.getSimpleName();
 
     public HelperTests(String name) {
     	super(name);
@@ -229,7 +232,7 @@ public class HelperTests extends TestCase
 	}
 	
 	public void testInquireUri() {
-    	String dbPath = "/tmp/temp.db";
+    	String dbPath = tempPath() + "/temp.db";
 		Uri uri = fileUri(dbPath + "~", "notes");
 		String uriString = stringValueOf(uri);
 		String script = String.format(
@@ -262,19 +265,21 @@ public class HelperTests extends TestCase
 	
 	public void testSpellchecking() {
 		String script = "import com.applang.berichtsheft.plugin.*;\n" +
-				"jEdit.openFile(view.getEditPane(), \"/home/lotharla/work/Workshop/Examples/poem.txt\");\n" + 
+				"jEdit.openFile(view.getEditPane(), \"" + POEM + "\");\n" + 
 				"view.getEditPane().getTextArea().selectAll();\n" + 
 				"actionName = \"berichtsheft.spellcheck-selection\";\n" +
 				"BerichtsheftPlugin.invokeAction(view, actionName);";
 		scriptTest("testSpellchecking", script);
-   }
+	}
+	
+    private static final String POEM = "/home/lotharla/work/Workshop/Examples/poem.txt";
 
 	private ValList shellRunTest(String script, String name) throws Exception {
 		String response = runShellScript(name, script);
 		println("script", flatten(script));
-		String sh = "/tmp/" + name + ".sh";
+		String sh = tempPath() + PATH_SEP + name + ".sh";
 		println(sh, flatten(contentsFromFile(new File(sh))));
-		String resp = "/tmp/" + name;
+		String resp = tempPath() + PATH_SEP + name;
 		println(resp, flatten(contentsFromFile(new File(resp))));
 //		print(sh, TAB);
 //		print(getFileSize(sh), TAB);
@@ -314,11 +319,11 @@ public class HelperTests extends TestCase
 		existTest(false, "xxx/", "");
 		shellRunTest(AndroidBridge.buildAdbCommand("mkdir", "/sdcard/xxx/", ""), "mkdir");
 		existTest(true, "xxx/", "");
-		shellRunTest(AndroidBridge.buildAdbCommand("push", "/sdcard/xxx/", "/tmp/dev"), "push");
+		shellRunTest(AndroidBridge.buildAdbCommand("push", "/sdcard/xxx/", tempPath() + "/dev"), "push");
 		existTest(true, "dev", "xxx/");
-		assertTrue(new File("/tmp/dev").delete());
-		shellRunTest(AndroidBridge.buildAdbCommand("pull", "/sdcard/xxx/dev", "/tmp"), "pull");
-		assertTrue(new File("/tmp/dev").exists());
+		assertTrue(new File(tempPath() + "/dev").delete());
+		shellRunTest(AndroidBridge.buildAdbCommand("pull", "/sdcard/xxx/dev", tempPath()), "pull");
+		assertTrue(new File(tempPath() + "/dev").exists());
 		shellRunTest(AndroidBridge.buildAdbCommand("rm", "/sdcard/xxx/dev", ""), "rm");
 		existTest(false, "dev", "xxx/");
 		shellRunTest(AndroidBridge.buildAdbCommand("rmdir", "/sdcard/xxx/", ""), "rmdir");
@@ -357,11 +362,12 @@ public class HelperTests extends TestCase
 					path, 
 					JOptionPane.OK_CANCEL_OPTION, 
 					JOptionPane.PLAIN_MESSAGE, 
-					null, null, null)) {
+					null, 
+					null, null)) {
 				NameSpace tmp = new NameSpace(BeanShell.getNameSpace(), "Android");
 				tmp.setVariable("oper", "pull");
 				tmp.setVariable("androidFile", "/sdcard/result2");
-				tmp.setVariable("pcDir", "/tmp");
+				tmp.setVariable("pcDir", tempPath());
 				tmp.setVariable("params", "");
 				println(BeanShell.eval(null, tmp, script));
 			}
@@ -385,6 +391,17 @@ public class HelperTests extends TestCase
 		assertTrue(ProfileManager.setTemplate(template, profile, oper, flavor));
 		ValMap map = ProfileManager.getProfileAsMap();
 		println("profileMap", map);
+		MapEditorComponent mec = new MapEditorComponent(map, 
+				object(contentAuthorities(providerPackages).toArray()));
+		new AlertDialog(null, 
+				BerichtsheftPlugin.getProperty("manager.action-PROFILE.label"), 
+				"", 
+				mec, 
+				JOptionPane.DEFAULT_OPTION,
+				Behavior.MODAL, 
+				BerichtsheftPlugin.loadIcon("manager.action-PROFILE.icon"), 
+				null)
+			.open();
 		String template2 = template.replace("created", "created|unixepoch");
 		assertTrue(ProfileManager.setTemplate(template2));
 		map = ProfileManager.getProfileAsMap();
@@ -451,9 +468,8 @@ public class HelperTests extends TestCase
 	Uri uri = getConstantByName("CONTENT_URI", "com.applang.provider.WeatherInfo", "Weathers");
 	
     private String createNotePad() throws Exception {
-    	BerichtsheftActivity activity = new BerichtsheftActivity();
+    	BerichtsheftActivity activity = BerichtsheftActivity.getInstance();
     	activity.deleteDatabase(NotePadProvider.DATABASE_NAME);
-		
 		long now = now();
 		String pattern = DatePicker.calendarFormat;
 		long today = toTime(formatDate(now, pattern), pattern);
@@ -472,7 +488,7 @@ public class HelperTests extends TestCase
 		
     	uri = getConstantByName("CONTENT_URI", "com.applang.provider.NotePad", "NoteColumns");
     	File dbFile = getDatabaseFile(activity, uri);
-    	String dbPath = "/tmp/temp.db";
+    	String dbPath = tempPath() + "/temp.db";
     	copyFile(dbFile, new File(dbPath));
     	return dbPath;
     }
@@ -491,7 +507,7 @@ public class HelperTests extends TestCase
 		
     	uri = getConstantByName("CONTENT_URI", "com.applang.provider.WeatherInfo", "Weathers");
     	File dbFile = getDatabaseFile(activity, uri);
-    	String dbPath = "/tmp/temp.db";
+    	String dbPath = tempPath() + "/temp.db";
     	copyFile(dbFile, new File(dbPath));
     	return dbPath;
     }
@@ -515,43 +531,46 @@ public class HelperTests extends TestCase
 	public void testProjection() throws Exception {
     	String dbPath = createNotePad();
     	String tableName = "notes";
+    	String flavor = "com.applang.provider.NotePad";
 		Uri uri = fileUri(dbPath, tableName);
-		String flavor = "com.applang.provider.NotePad";
 		DataView dv = new DataView();
 		dv.setUri(uri);
 		DataAdapter dataAdapter = new DataAdapter(dv);
 		BidiMultiMap projection = new BidiMultiMap(dataAdapter.info.getList("name"));
 		projection.removeKey("_id");
-		Context context = new BerichtsheftActivity();
-		ProjectionModel model = new ProjectionModel(context, uri, flavor, projection);
-		model.injectFlavor();
-		model= dv.askProjection(model);
-		projection = model.getExpandedProjection();
+		Context context = BerichtsheftActivity.getInstance();
+		context.setFlavor(flavor);
+		ProjectionModel projectionModel = new ProjectionModel(context, uri, flavor, projection);
+		projectionModel.injectFlavor();
+		println("before", ScriptManager.getProjectionDefault(flavor, tableName));
+		projectionModel = DataView.askProjection(context, null, projectionModel, Behavior.MODAL);
+		println("after", ScriptManager.getProjectionDefault(flavor, tableName));
+		projection = projectionModel.getExpandedProjection();
 		println(projection);
-		boolean unchanged = !model.changed;
+		boolean unchanged = !projectionModel.changed;
 		if (unchanged) assertThat((Boolean) projection.getValue("_id", 3), is(equalTo(false)));
-		DataModel consumer = dataAdapter.query(dv.getUriString(), projection);
-		projection = consumer.getProjection();
+		DataModel dataModel = dataAdapter.query(dv.getUriString(), projection, null,null,"title");
+		projection = dataModel.getProjection();
 		if (unchanged) {
 			assertThat(projection.getKeys().size(), is(equalTo(4)));
-			assertThat(consumer.data.get(0).size(), is(equalTo(5)));
-			assertThat(consumer.columns.size(), is(equalTo(5)));
-			assertThat(consumer.conversions.length, is(equalTo(5)));
-			assertThat(consumer.getColumnCount(), is(equalTo(4)));
-			assertThat((Class<String>) consumer.getColumnClass(0),
+			assertThat(dataModel.data.get(0).size(), is(equalTo(5)));
+			assertThat(dataModel.columns.size(), is(equalTo(5)));
+			assertThat(dataModel.conversions.length, is(equalTo(5)));
+			assertThat(dataModel.getColumnCount(), is(equalTo(4)));
+			assertThat((Class<String>) dataModel.getColumnClass(0),
 					is(equalTo(String.class)));
-			assertThat((Class<String>) consumer.getColumnClass(1),
+			assertThat((Class<String>) dataModel.getColumnClass(1),
 					is(equalTo(String.class)));
-			assertThat((Class<Long>) consumer.getColumnClass(2),
+			assertThat((Class<Long>) dataModel.getColumnClass(2),
 					is(equalTo(Long.class)));
-			assertThat((Class<Long>) consumer.getColumnClass(3),
+			assertThat((Class<Long>) dataModel.getColumnClass(3),
 					is(equalTo(Long.class)));
-			for (int i = 0; i < consumer.getRowCount(); i++) {
-				assertThat((String) consumer.getValueAt(i, 0), equalTo("Velocity"
-						+ (i + 1)));
+			for (int i = 0; i < dataModel.getRowCount(); i++) {
+				assertThat((String) dataModel.getValueAt(i, 0), 
+						equalTo("Velocity" + (i + 1)));
 			}
 		}
-		JTable table = consumer.makeTable();
+		JTable table = dataModel.makeTable();
 		new AlertDialog.Builder(context)
 				.setTitle("testProjection")
 				.setView(new View(scrollableViewport(table, new Dimension(400,100))))
@@ -683,6 +702,7 @@ public class HelperTests extends TestCase
     }
 
 	public void testScan() throws Exception {
+		AlertDialog.behavior = Behavior.MODAL|Behavior.TIMEOUT;
 		String template = generateTagesberichteTemplate("pull");
 		ValList fields = builder.evaluateTemplate(template, null);
 		assertTrue(isAvailable(0, fields));
@@ -701,13 +721,15 @@ public class HelperTests extends TestCase
 				String.format("%d record(s)", model.getRowCount()),
 				table, 
 				JOptionPane.DEFAULT_OPTION,
-				Behavior.MODAL,
+				AlertDialog.behavior,
 				null, -2);
+		AlertDialog.behavior = Behavior.MODAL;
 	}
 	
 	TransportBuilder builder = new TransportBuilder();
 	
 	public void testRoundTrip() throws Exception {
+		AlertDialog.behavior = Behavior.MODAL|Behavior.TIMEOUT;
     	String dbPath = createNotePad();
     	String uriString = fileUri(dbPath, "notes").toString();
     	DataAdapter dataAdapter = new DataAdapter(uriString);
@@ -728,7 +750,7 @@ public class HelperTests extends TestCase
 				String.format("%d record(s)", model.getRowCount()),
 				table, 
 				JOptionPane.DEFAULT_OPTION, 
-	    		Behavior.MODAL, 
+				AlertDialog.behavior, 
 	    		null, -1);
 		String text = builder.wrapRecords(table);
 		println(text);
@@ -743,11 +765,11 @@ public class HelperTests extends TestCase
 				String.format("%d record(s)", model.getRowCount()),
 				table, 
 				JOptionPane.DEFAULT_OPTION,
-				Behavior.MODAL,
+				AlertDialog.behavior,
 				null, -1);
 //    	profile.put("name", "tagesbirichte");
     	int[] results = dataAdapter.pickRecords(null, table, uriString, profile);
-		assertNotNull("process canceled", results);
+//		assertNotNull("process canceled", results);
 		println("results", results);
 		println(com.applang.Util.toString(dataAdapter.query(uriString, full)));
 		for (int i = 0; i < mods.length; i++) {
@@ -756,9 +778,11 @@ public class HelperTests extends TestCase
 			if ((Long)m[0][0] > (Long)mod[1])
 				println(String.format("record '%s' updated", mod[2]));
 		}
+		AlertDialog.behavior = Behavior.MODAL;
 	}
 	
 	public void testQuery() throws Exception {
+		AlertDialog.behavior = Behavior.MODAL|Behavior.TIMEOUT;
     	String dbPath = createNotePad();
     	String uriString = fileUri(dbPath, "notes").toString();
     	String flavor = "com.applang.provider.NotePad";
@@ -779,7 +803,7 @@ public class HelperTests extends TestCase
 				String.format("%d record(s)", model.getRowCount()),
 				table, 
 				JOptionPane.OK_CANCEL_OPTION, 
-	    		Behavior.MODAL, 
+				AlertDialog.behavior, 
 	    		new Job<Void>() {
 					public void perform(Void t, Object[] params) throws Exception {
 						String text = builder.wrapRecords(table);
@@ -787,6 +811,7 @@ public class HelperTests extends TestCase
 					}
 				}, -1);
 		println(result);
+		AlertDialog.behavior = Behavior.MODAL;
     }
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
@@ -1088,7 +1113,6 @@ public class HelperTests extends TestCase
 									JOptionPane.PLAIN_MESSAGE,
 									null, 
 									objects("opt1","opt2"), null, 
-									null, 
 									new Function<Boolean>() {
 										public Boolean apply(Object... params) {
 											println("dialogResult " + dialogResult);
@@ -1131,7 +1155,8 @@ public class HelperTests extends TestCase
 			Object result = showOptionDialog(null, prompt, 
 					title + (optionType < 3 ? "entry" : "info"),
 					optionType, JOptionPane.PLAIN_MESSAGE,
-					null, null, value);
+					null, 
+					null, value);
 			println(String.valueOf(result));
 		}
 	}
@@ -1287,23 +1312,129 @@ public class HelperTests extends TestCase
         }
 	}
 	
-	public void testLinearLayout() {
-		Context context = BerichtsheftActivity.getInstance();
-        LinearLayout linearLayout = linearLayout(context, 
+	public void testTextToggle() {
+		final TextToggle textToggle = new TextToggle();
+		textToggle.createBufferedTextArea("velocity", "/modes/velocity_pure.xml");
+		Container contentPane = new JPanel(new BorderLayout());
+		contentPane.add(textToggle.getUIComponent());
+		showForm(contentPane);
+	}
+	
+	public void testTextEdit() {
+		final Activity activity = BerichtsheftActivity.getInstance();
+		LinearLayout linearLayout = linearLayout(activity, 2);
+		activity.setContentView(linearLayout);
+		ViewGroup contentPane = (ViewGroup) getContentView(activity);
+		showForm(doLayout(contentPane, true), 
+			new Job<View>() {
+				public void perform(View vw, Object[] parms) throws Exception {
+					TextEdit te = (TextEdit) vw;
+					if (te.getTextToggle() != null) {
+						te.showScriptArea(true);
+						te.setScript(readAsset(activity, "hello.vm"));
+						te.setText(te.getScript());
+					}
+				}
+			}, 
+			linearLayout.getChildAt(0));
+	}
+	
+	public void testDataForm() throws Exception {
+		final Context context = BerichtsheftActivity.getInstance();
+    	String dbPath = createNotePad();
+    	String tableName = "bausteine";
+    	String flavor = "com.applang.provider.NotePad";
+		Uri uri = fileUri(dbPath, tableName);
+		File dbFile = new File(dbPath);
+		String uriString = uri.toString();
+		ProjectionModel projectionModel = new ProjectionModel(context, uri, flavor);
+		projectionModel.injectFlavor();
+		while ((projectionModel = 
+				DataView.askProjection(context, uriString, 
+						projectionModel, Behavior.MODAL|Behavior.TIMEOUT, JOptionPane.OK_CANCEL_OPTION)) != null) {
+			ManagerBase<?> manager = new ManagerBase<Object>();
+			manager.installUpdate(manager);
+			DataForm dataForm = new DataForm(context, manager,
+					projectionModel.getProjection());
+			println(dataForm.projection);
+			DataAdapter dataAdapter = new DataAdapter(
+					projectionModel.getFlavor(), dbFile, uriString);
+			DataModel model = dataAdapter.query(uriString, projectionModel.getExpandedProjection());
+			if (model.getRowCount() < 1) 
+				continue;
+			JTable table = model.makeTable();
+			table.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+			int retval = new AlertDialog(null, 
+					"Pick a Record", 
+					"", 
+					scrollableViewport(table, new Dimension(400,200)), 
+					JOptionPane.OK_CANCEL_OPTION, 
+					AlertDialog.behavior, 
+					null, null).open().getResult();
+			if (retval > 0)
+				continue;
+			int rowIndex = table.getSelectedRow();
+			String pk = stringValueOf(dataAdapter.info.get("PRIMARY_KEY"));
+			Long id = (Long) model.getValues(false, rowIndex)[model.columns.indexOf(pk)];
+			ValList result = vlist();
+			for (int i = 0; i < model.getColumnCount(); i++) {
+				result.add(model.getValueAt(rowIndex, i));
+			}
+			dataForm.setContent(result.toArray());
+			showForm(dataForm.getContainer());
+			if (manager.isDirty()) {
+				ContentValues values = contentValues(dataAdapter.info, 
+						dataForm.projection.getKeys(),
+						dataForm.getContent());
+				assertThat(dataAdapter.update(appendId(uriString, id), values), is(greaterThan(0)));
+				Toast.makeText(context, String.format("record %d updated", id),
+						Toast.LENGTH_LONG).show();
+			}
+		}
+	}
+
+	public LinearLayout linearLayout(Context context, int kind) {
+		LinearLayout linearLayout = com.applang.Util1.linearLayout(context, 
         		LinearLayout.HORIZONTAL, 
         		LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT);
         LayoutParams layoutParams = marginLayoutParams(
         		LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT, 
-        		10,	5, 10, 5);
-        TextView textView = new TextView(context);
-		linearLayout.addView(textView, layoutParams);
-        EditText editText = new EditText(context);
-        linearLayout.addView(editText, layoutParams);
-		TextView tv = (TextView) linearLayout.findViewWithTag("*3");
-		tv.setText("hello");
-		EditText et = (EditText) linearLayout.findViewWithTag("*4");
-		et.setText("world");
-		showForm(doLayout(new Layouter(context, linearLayout)));
+        		5,	5, 5, 5);
+        TextEdit te;
+        switch (kind) {
+		case 1:
+			te = new TextEdit(context, 
+					Resources.attributeSet(context, 
+							"feature=\"spellchecking\"", 
+							"android:inputType=\"textMultiLine\""));
+			te.setText("hello world");
+			break;
+		case 2:
+			te = new TextEdit(context, 
+					Resources.attributeSet(context, 
+							"feature=\"togglable\"", 
+							"mode=\"velocity\"", 
+							"modeFile=\"/modes/velocity_pure.xml\"", 
+							"android:inputType=\"textMultiLine\"", 
+							"readOnly=\"true\""));
+			break;
+		default:
+			TextView tv = new TextView(context);
+			linearLayout.addView(tv, layoutParams);
+			EditText et = new EditText(context);
+			linearLayout.addView(et, layoutParams);
+			tv.setText("hello");
+			et.setText("world");
+			return linearLayout;
+		}
+        linearLayout.addView(te, layoutParams);
+		return linearLayout;
+	}
+	
+	public void testLinearLayout() {
+		Context context = BerichtsheftActivity.getInstance();
+        LinearLayout linearLayout = linearLayout(context, 0);
+		showForm(doLayout(linearLayout));
 	}
 	
 	public void testRelativeLayout2() {
@@ -1311,24 +1442,23 @@ public class HelperTests extends TestCase
 		RelativeLayout viewGroup = new RelativeLayout(context);
 		TextView textView = new TextView(context);
 		LayoutParams layoutParams = new RelativeLayout.LayoutParams(context, 
-				attributeSet(context, 
+				Resources.attributeSet(context, 
 						"android:layout_alignLeft=\"view__4\""));
 		viewGroup.addView(textView, layoutParams);
 		EditText editText = new EditText(context);
 		layoutParams = new RelativeLayout.LayoutParams(context, 
-				attributeSet(context, 
+				Resources.attributeSet(context, 
 						"android:layout_above=\"view_3\"", 
 						"android:layout_marginLeft=\"@dimen/margin\"", 
 						"android:layout_marginTop=\"@dimen/margin_half\"", 
 						"android:layout_marginRight=\"@dimen/margin_half\"",
 						"android:layout_marginBottom=\"@dimen/margin_half\""));
 		viewGroup.addView(editText, layoutParams);
-		Layouter formBuilder = new Layouter(context, viewGroup);
 		TextView tv = (TextView) viewGroup.findViewWithTag("*3");
 		tv.setText("hello");
 		EditText et = (EditText) viewGroup.findViewWithTag("*4");
 		et.setText("world");
-		Container container = doLayout(formBuilder);
+		Container container = doLayout(viewGroup);
 		viewGroup.printSprings();
 		showForm(container);
 	}
@@ -1336,14 +1466,14 @@ public class HelperTests extends TestCase
 	public void testRelativeLayout() {
 		Context context = BerichtsheftActivity.getInstance();
 		RelativeLayout viewGroup = buttonGroup(context);
-		Container container = doLayout(new Layouter(context, viewGroup));
+		Container container = doLayout(viewGroup);
 //		viewGroup.printSprings();
 		showForm(container);
 	}
 	
 	private RelativeLayout buttonGroup(Context context) {
 		RelativeLayout viewGroup = new RelativeLayout(context);
-		AttributeSet attributeSet = attributeSet(context, 
+		AttributeSet attributeSet = Resources.attributeSet(context, 
 			"android:layout_marginLeft=\"@dimen/margin\"", 
 			"android:layout_marginTop=\"@dimen/margin_half\"", 
 			"android:layout_marginRight=\"@dimen/margin_half\"",
@@ -1371,6 +1501,8 @@ public class HelperTests extends TestCase
 	}
 	
 	public void testSpringLayout() {
+		Spring sum = Spring.sum(Spring.constant(0, 0, 0), Spring.constant(5, 5, 5));
+		println(sum.getValue());
 		Context context = BerichtsheftActivity.getInstance();
 		RelativeLayout viewGroup = buttonGroup(context);
     	Container container = viewGroup.getContainer();
@@ -1423,7 +1555,7 @@ public class HelperTests extends TestCase
 		et.setText("world");
         relativeLayout.addView(et, et.getLayoutParams());
         
-		Container container = doLayout(new Layouter(context, relativeLayout));
+		Container container = doLayout(relativeLayout);
 		assertTrue(swapComponents(tv.getComponent(), et.getComponent()));
 		
         SpringLayout springLayout = relativeLayout.getLayout();
@@ -1442,37 +1574,38 @@ public class HelperTests extends TestCase
 	public void testFormBuilder() {
 		Context context = BerichtsheftActivity.getInstance();
 		String resName = "standard_form.xml";	//	
-		FormBuilder formBuilder = new FormBuilder(context, resName);
+		DataForm dataForm = new DataForm(context, null, null, resName);
 /*
  */		
-		formBuilder.addStringField("String");
-		formBuilder.addIntegerField("Integer");
-		formBuilder.addFloatField("Float");
-		formBuilder.addBlobField("Blob");
-		formBuilder.addTextField("Text");
-		showForm(doLayout(formBuilder));
+		dataForm.builder.addStringField("String");
+		dataForm.builder.addIntegerField("Integer");
+		dataForm.builder.addFloatField("Float");
+		dataForm.builder.addBlobField("Blob");
+		dataForm.builder.addTextField("Text");
+		showForm(dataForm.getContainer());
 	}
 	
 	public void testForm() {
+		BerichtsheftPlugin.setupSpellChecker(BerichtsheftApp.applicationDataPath());
 		final Context context = BerichtsheftActivity.getInstance();
 		dataConfigTest(new Job<DataConfiguration>() {
 			public void perform(DataConfiguration dc, Object[] parms) throws Exception {
 				ProjectionModel projectionModel = dc.getProjectionModel();
-				Form form = new Form(context, projectionModel.getProjection());
-				println(form.projection);
-				Container container = form.getContainer();
+				DataForm dataForm = new DataForm(context, null, projectionModel.getProjection());
+				println(dataForm.projection);
+				Container container = dataForm.getContainer();
 				File dbFile = new File(dc.getPath());
 				String uriString = dc.getUri().toString();
 				DataAdapter dataAdapter = new DataAdapter(
 						projectionModel.getFlavor(), 
 						dbFile, 
 						uriString);
-				ValList keys = form.projection.getKeys();
+				ValList keys = dataForm.projection.getKeys();
 				Object[][] result = dataAdapter.query(uriString, toStrings(keys));
 				if (isAvailable(0, result)) {
 					for (int i = 0; i < keys.size(); i++) {
 						Object key = keys.get(i);
-						form.setContent(key, result[0][i]);
+						dataForm.setContent(key, result[0][i]);
 					}
 				}
 				showForm(container);
@@ -1480,16 +1613,17 @@ public class HelperTests extends TestCase
 		});
 	}
 	
-	public void testFormBuilder1() {
+	public void testForm1() {
 		Context context = BerichtsheftActivity.getInstance();
-		Layouter layouter = new Layouter(context, single_button(context));
-		showForm(doLayout(layouter));
+		ViewGroup viewGroup = single_button(context);
+		ViewGroup.build(viewGroup, true);
+		showForm(viewGroup.getContainer());
 	}
 	
 	private RelativeLayout single_button(Context context) {
 		RelativeLayout relativeLayout = new RelativeLayout(context);
 		AttributeSet attributeSet;
-		ImageButton imbtn = new ImageButton(context, attributeSet = attributeSet(context, 
+		ImageButton imbtn = new ImageButton(context, attributeSet = Resources.attributeSet(context, 
 				"android:id=\"@+id/button1\"", 
 				"android:src=\"@drawable/dropdown\"", 
 				"android:layout_width=\"wrap_content\"", 
@@ -1504,18 +1638,18 @@ public class HelperTests extends TestCase
 		return relativeLayout;
 	}
 	
-	public void testFormBuilder2() {
+	public void testForm2() {
 		Context context = BerichtsheftActivity.getInstance();
-		FormBuilder builder = new FormBuilder(context, R.layout.construct_form_header);
-		Layouter layouter = new Layouter(context, construct_form_header(context));
-		println(builder.getViewGroup());
-		showForm(doLayout(layouter));
+		DataForm dataForm = new DataForm(context, null, null, R.layout.construct_form_header);
+		ViewGroup viewGroup = construct_form_header(context);
+		println(viewGroup);
+		showForm(dataForm.getContainer());
 	}
 	
 	private RelativeLayout construct_form_header(Context context) {
 		RelativeLayout relativeLayout = new RelativeLayout(context);
 		AttributeSet attributeSet;
-		ImageButton imbtn = new ImageButton(context, attributeSet = attributeSet(context, 
+		ImageButton imbtn = new ImageButton(context, attributeSet = Resources.attributeSet(context, 
 				"android:id=\"@+id/button1\"", 
 				"android:src=\"@drawable/dropdown\"", 
 				"android:layout_width=\"wrap_content\"", 
@@ -1527,7 +1661,7 @@ public class HelperTests extends TestCase
 				"android:layout_marginRight=\"@dimen/margin_half\"",
 				"android:layout_marginBottom=\"@dimen/margin_half\""));
 		relativeLayout.addView(imbtn, new RelativeLayout.LayoutParams(context, attributeSet));
-		Button btn = new Button(context, attributeSet = attributeSet(context, 
+		Button btn = new Button(context, attributeSet = Resources.attributeSet(context, 
 				"android:id=\"@+id/cancel\"", 
 				"android:text=\"@android:string/cancel\"", 
 				"android:layout_width=\"wrap_content\"", 
@@ -1539,7 +1673,7 @@ public class HelperTests extends TestCase
 				"android:layout_marginRight=\"@dimen/margin_half\"",
 				"android:layout_marginBottom=\"@dimen/margin_half\""));
 		relativeLayout.addView(btn, new RelativeLayout.LayoutParams(context, attributeSet));
-		btn = new Button(context, attributeSet = attributeSet(context, 
+		btn = new Button(context, attributeSet = Resources.attributeSet(context, 
 				"android:id=\"@+id/ok\"", 
 				"android:text=\"@android:string/ok\"", 
 				"android:layout_width=\"wrap_content\"", 
@@ -1555,36 +1689,47 @@ public class HelperTests extends TestCase
 		return relativeLayout;
 	}
 
-	public Container doLayout(Layouter layouter) {
-		println(layouter.getViewGroup());
-		final Container container = layouter.build();
+	public Container doLayout(ViewGroup viewGroup, Object...params) {
+		println(viewGroup);
+		ViewGroup.build(viewGroup, true);
+		final Container container = viewGroup.getContainer();
 		container.addComponentListener(new ComponentAdapter() {
 			@Override
 			public void componentResized(ComponentEvent e) {
 				printContainer("form", container.getParent(), false);
 			}
 		});
+		if (param_Boolean(false, 0, params))
+			container.setPreferredSize(new Dimension(100,100));
  		return container;
 	}
 
-	public void showForm(final Container container) {
+	public void showForm(final Container container, Object...params) {
 		Deadline.WAIT = 3000;
-		showFrame(null, "FormBuilder", 
+		showFrame(null, "Form", 
 				new UIFunction() {
 					public Component[] apply(Component comp, Object[] parms) {
-//						container.setPreferredSize(new Dimension(100,100));
 						return components(container);
 					}
 				}, 
 				new UIFunction() {
 					public Component[] apply(Component comp, Object[] parms) {
+						Job<View> job = param(null, 0, parms);
+						if (job != null)
+							try {
+								job.perform((View) param(null, 1, parms), parms);
+							} catch (Exception e) {
+								Log.e(TAG, "showForm", e);
+							}
+						printContainer("form", (Container)comp, true);
 						LayoutManager layout = container.getLayout();
 						if (layout instanceof SpringLayout) {
 							SpringLayout springLayout = (SpringLayout) layout;
 							for (int i = 0; i < container.getComponentCount(); i++) {
 								Component component = container.getComponent(i);
 								SpringLayout.Constraints cons = springLayout.getConstraints(component);
-								no_println(cons.getConstraint(SpringLayout.WEST).getValue(),
+								no_println(
+										cons.getConstraint(SpringLayout.WEST).getValue(),
 										cons.getConstraint(SpringLayout.EAST).getValue());
 							}
 						}
@@ -1592,12 +1737,11 @@ public class HelperTests extends TestCase
 					}
 				}, 
 				null, 
-				Behavior.TIMEOUT);
+				Behavior.TIMEOUT,
+				params);
 	}
 	
 	public void testResources() {
-		Spring sum = Spring.sum(Spring.constant(0, 0, 0), Spring.constant(5, 5, 5));
-		println(sum.getValue());
 		assertEquals(-65536, Resources.colorValue(BerichtsheftActivity.getInstance(), "@color/opaque_red"));
 		assertEquals(-65536, Resources.colorValue(BerichtsheftActivity.getInstance(), "#ff0000"));
 		Context context = BerichtsheftActivity.getInstance();
@@ -1612,8 +1756,10 @@ public class HelperTests extends TestCase
 		assertEquals("Berichtsheft", 
 				context.getResources().getString(R.string.app_name));
 		assertEquals(51, ProviderTests.getStateStrings(context).length);
+		assertThat(readAsset(context, "hello.vm").length(), is(greaterThan(0)));
 		printMatchResults("@dimen/margin", Resources.XML_RESOURCE_PATTERN, "no");
 		printMatchResults("@com.applang.berichtsheft.R:dimen/margin", Resources.XML_RESOURCE_PATTERN, "no");
+		println(Resources.getAbsolutePath("/assets/hello.vm", Constraint.END));
 		println(Resources.getAbsolutePath("/res/values/strings.xml", Constraint.END));
 		println(Resources.getAbsolutePath("/res/layout/construct_form_header.xml", Constraint.END));
 		println("user.dir", System.getProperty("user.dir"));
@@ -1685,40 +1831,39 @@ public class HelperTests extends TestCase
 		toStrings(BaseDirective.options.keySet()));
 	}
 	
-	public void testOptionDialog() {
-		new OptionDialog(null, 
+	public void testAlertDialog() {
+		new AlertDialog(null, 
 				BerichtsheftPlugin.getProperty("berichtsheft.spellcheck-selection.title"), 
 				"", 
 				"Hello", 
 				JOptionPane.DEFAULT_OPTION,
-				Behavior.MODAL, 
-				BerichtsheftPlugin.getProperty("manager.action-SPELLCHECK.icon"), 
-				null);
+				Behavior.MODAL|Behavior.TIMEOUT, 
+				BerichtsheftPlugin.loadIcon("manager.action-SPELLCHECK.icon"), 
+				null)
+			.open();
 	}
 	
 	public void testJOrtho() {
 		BerichtsheftPlugin.setupSpellChecker(BerichtsheftApp.applicationDataPath());
-		final TextEditor2 textEditor2 = new TextEditor2();
+		final TextToggle textEditor = new TextToggle();
     	Deadline.WAIT = 2000;
     	showFrame(null, 
 				"Spellchecker",
 				new UIFunction() {
 					public Component[] apply(final Component comp, Object[] parms) {
 				        try {
-//				        	textEditor.createBufferedTextArea("text", "/modes/text.xml");
-							textEditor2.setText(
-								new Scanner(new File("/home/lotharla/work/Workshop/Examples/poem.txt"))
+							textEditor.setText(
+								new Scanner(new File(POEM))
 									.useDelimiter("\\Z").next());
 						} catch (Exception e) {}
-				        Component component = textEditor2.getUIComponent();
+				        Component component = textEditor.getUIComponent();
 				        component.setPreferredSize(new Dimension(400, 400));
 						return components(component);
 					}
 				}, 
 				new UIFunction() {
 					public Component[] apply(Component comp, Object[] parms) {
-						textEditor2.getTextEditor().installSpellChecker();
-//						textEditor.spellcheck();
+						textEditor.getTextEdit().installSpellChecker();
 						return null;
 					}
 				}, 
@@ -1750,7 +1895,7 @@ public class HelperTests extends TestCase
 	      textArea = new JTextArea();
 	      add(new JScrollPane(textArea));
 	      chooser = new JFileChooser();
-	      chooser.setCurrentDirectory(new File("/tmp"));
+	      chooser.setCurrentDirectory(new File(tempPath()));
 	      JMenuBar menuBar = new JMenuBar();
 	      setJMenuBar(menuBar);
 	      JMenu fileMenu = new JMenu("File");

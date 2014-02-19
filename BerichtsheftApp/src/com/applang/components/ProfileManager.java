@@ -19,6 +19,7 @@ import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JRadioButton;
@@ -35,7 +36,6 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 
-import com.applang.Util2;
 import com.applang.berichtsheft.BerichtsheftActivity;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.plugin.DataDockable.TransportBuilder;
@@ -54,21 +54,21 @@ public class ProfileManager extends ManagerBase<Element>
 	
 	// NOTE used in scripts
 	public ProfileManager(final View view) {
-		blockChange(new Job<Void>() {
+		blockDirty(new Job<Void>() {
 			public void perform(Void t, Object[] params) throws Exception {
 				createUI(view, ProfileManager.this);
 			}
 		});
 	}
 
-	protected TextEditor2 textArea;
+	protected TextToggle textArea;
 	private JRadioButton[] radioButtons;
 	
 	@SuppressWarnings("unchecked")
 	protected void createUI(final View view, final Container container) {
 		comboBoxes = new JComboBox[5];
-		textArea = new TextEditor2(4,20);
-		textArea.getTextEditor().installUndoRedo();
+		textArea = new TextToggle(4,20);
+		textArea.getTextEdit().installUndoRedo();
 		radioButtons = new JRadioButton[] {new JRadioButton(),new JRadioButton(),new JRadioButton()};
 		ButtonGroup group = new ButtonGroup();
 		for (AbstractButton btn : radioButtons) 
@@ -192,8 +192,8 @@ public class ProfileManager extends ManagerBase<Element>
 		container.add( Box.createVerticalStrut(10) );
 		box = new Box(BoxLayout.LINE_AXIS);
 		container.add(labelFor(box, "Template", CENTER_ALIGNMENT));
-		textArea.setOnTextChanged(new Job<ITextComponent>() {
-			public void perform(ITextComponent t, Object[] params) throws Exception {
+		textArea.setOnTextChanged(new Job<JComponent>() {
+			public void perform(JComponent t, Object[] params) throws Exception {
 				setDirty(true);
 			}
 		});
@@ -326,7 +326,7 @@ public class ProfileManager extends ManagerBase<Element>
 		String profile = param(getProfile(), 0, params);
 		if (ProfileManager.transportsLoaded()) {
 			if (refresh) {
-				blockChange(new Job<Void>() {
+				blockDirty(new Job<Void>() {
 					public void perform(Void t, Object[] params) throws Exception {
 						DefaultComboBoxModel model = (DefaultComboBoxModel) comboBoxes[0].getModel();
 						model.removeAllElements();
@@ -356,7 +356,7 @@ public class ProfileManager extends ManagerBase<Element>
 
 	// NOTE used in scripts
 	public void setProfile(final String profile) {
-		blockChange(new Job<Void>() {
+		blockDirty(new Job<Void>() {
 			public void perform(Void t, Object[] params) throws Exception {
 				comboBoxes[0].getModel().setSelectedItem(profile);
 				String template = "", flavor = "", filter = "", recordSeparator = "newline", recordDecoration = "none";
@@ -498,7 +498,7 @@ public class ProfileManager extends ManagerBase<Element>
 				"Transport profiles", 
 				JOptionPane.DEFAULT_OPTION + behavior, 
 				JOptionPane.PLAIN_MESSAGE, 
-				null, null, 
-				null);
+				null, 
+				null, null);
 	}
 }

@@ -13,15 +13,14 @@
         android:layout_marginRight="@dimen/margin_half"
         android:layout_marginTop="@dimen/margin_half" />
 
-    <EditText
+    <view
+    	style="@style/style"
         android:id="@+id/field_"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="@dimen/margin_half"
         android:layout_marginLeft="@dimen/margin_half"
         android:layout_marginRight="@dimen/margin"
-        android:layout_marginTop="@dimen/margin_half"
-        android:inputType="numberSigned"
-        android:text="123" />
+        android:layout_marginTop="@dimen/margin_half" />
 
 </LinearLayout>

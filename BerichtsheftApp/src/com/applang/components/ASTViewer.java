@@ -55,10 +55,10 @@ public class ASTViewer extends ActionPanel
 		SwingUtilities.invokeLater(new Runnable() {
 			@Override
 			public void run() {
-				final TextEditor2 textEditor2 = new TextEditor2();
-				textEditor2.createBufferedTextArea("velocity", "/modes/velocity_pure.xml");
+				final TextToggle textToggle = new TextToggle();
+				textToggle.createBufferedTextArea("velocity", "/modes/velocity_pure.xml");
 				String title = "Velocity AST tool";
-				ASTViewer viewer = new ASTViewer(textEditor2, 
+				ASTViewer viewer = new ASTViewer(textToggle, 
 						null,
 						title);
 				ActionPanel.createAndShowGUI(title, 
@@ -67,7 +67,7 @@ public class ASTViewer extends ActionPanel
 						viewer, 
 						new Function<Component>() {
 							public Component apply(Object...params) {
-								return textEditor2.getUIComponent();
+								return textToggle.getUIComponent();
 							}
 						});
 			}
@@ -81,7 +81,7 @@ public class ASTViewer extends ActionPanel
 		MODIFY		(2, "manager.action-MODIFY"), 
 		SET			(3, "set"), 
 		FOREACH		(4, "foreach"), 
-		TOGGLE		(6, "manager.action-TOGGLE"), 
+		TOGGLE		(6, "manager.action-TOGGLE2"), 
 		STRUCT		(7, "manager.action-STRUCT"), 
 		VMFILE		(8, "manager.action-VMFILE"), 
 		ACTIONS		(9, "Actions"); 		//	needs to stay last !
@@ -141,7 +141,7 @@ public class ASTViewer extends ActionPanel
 					setText("");
 				break;
 			case TOGGLE:
-				toggle(this, textViewToggler);
+				toggle(this, getTextToggle().getTextEdit().toggler);
 				break;
 			case STRUCT:
 				if (fileExists(vmFile))
@@ -156,7 +156,7 @@ public class ASTViewer extends ActionPanel
 					}
 					else if (type.index == DELETE) {
 						setSelection(node, false);
-						getTextComponent().setSelectedText(null);
+						getTextToggle().setSelectedText(null);
 					}
 					else if (type.index == INSERT) {
 						setSelection(node, true);
@@ -178,14 +178,14 @@ public class ASTViewer extends ActionPanel
     }
     
 	boolean isSciptView() {
-		return getTextComponent().getTextArea2() == null;
+		return getTextToggle().getTextArea2() == null;
 	}
     
     private void setSelection(Object node, boolean noSpan) {
     	if (isSciptView()) {
 			int[] span = Visitor.span(node);
-			span = getTextOffsets(getTextComponent().getText(), span);
-			getTextComponent().setSelection(span[0], noSpan ? -1 : span[1]);
+			span = getTextOffsets(getTextToggle().getText(), span);
+			getTextToggle().setSelection(span[0], noSpan ? -1 : span[1]);
 		}
     }
 	
@@ -364,7 +364,7 @@ public class ASTViewer extends ActionPanel
 		textArea.setPreferredSize(size);
 		String title = String.format("Evaluation : '%s'", this.title);
 		UserContext.setupVelocity(null, true);
-		textArea.setText(toText(script));
+		textArea.setText(UserContext.toPlainText(script));
 		JOptionPane optionPane = new JOptionPane(new JScrollPane(textArea), 
 				JOptionPane.PLAIN_MESSAGE, 
 				JOptionPane.DEFAULT_OPTION, 
@@ -412,13 +412,12 @@ public class ASTViewer extends ActionPanel
 			final JTable table = configureTable(model);
 			String title = String.format("AST (%d rows) : '%s' ", model.getDataVector().size(), this.title);
 			int option = showOptionDialog(ASTViewer.this, 
-					new JScrollPane(table), 
+					scrollableViewport(table), 
 					title, 
 					Behavior.MODAL + JOptionPane.DEFAULT_OPTION, 
 					JOptionPane.PLAIN_MESSAGE, 
 					null, 
 					options, null, 
-					null, 
 					new Function<Boolean>() {
 						public Boolean apply(Object... parms) {
 							PropertyChangeEvent e = (PropertyChangeEvent) parms[0];

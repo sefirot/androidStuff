@@ -33,6 +33,7 @@ import org.gjt.sp.jedit.textarea.TextArea;
 
 import com.applang.Dialogs;
 import com.applang.PromptDirective;
+import com.applang.Util.Job;
 import com.applang.berichtsheft.BerichtsheftActivity;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
@@ -63,7 +64,7 @@ public class DataManager extends ActionPanel
 	public static final int SCRIPT = 3;
 	
 	public static String propsToFile(Properties props, String name) {
-		String path = "/tmp/" + name;
+		String path = tempPath() + PATH_SEP + name;
 		try {
 			Writer writer = write(new StringWriter(), ":");
 			writer = write_assoc(writer, BerichtsheftPlugin.MAGIC, "data-manage");
@@ -289,12 +290,12 @@ public class DataManager extends ActionPanel
 	}
 	
 	private static ITextComponent createTextComponent() {
-		TextEditor2 textEditor2 = new TextEditor2().createBufferedTextArea(null, null);
-		textEditor2.getTextEditor().installSpellChecker();
-		return textEditor2;
+		TextToggle textToggle = new TextToggle().createBufferedTextArea(null, null);
+		textToggle.getTextEdit().installSpellChecker();
+		return textToggle;
 	}
 	
-	private Form formView = null;
+	private DataForm formView = null;
 	
 	private void setFormComponent() {
 		final BerichtsheftActivity context = BerichtsheftActivity.getInstance((JFrame) getView());
@@ -302,21 +303,10 @@ public class DataManager extends ActionPanel
 			public Component getUIComponent() {
 				if (container == null) {	//	lazy initialization
 					ProjectionModel projectionModel = dataView.getDataConfiguration().getProjectionModel();
-//					formView = new Form(context, projectionModel.getProjection(), props.getProperty("layout"));
-//					container = new JScrollPane(formView.getContainer());
-					String layout = props.getProperty("layout");
-					boolean standardLayout = nullOrEmpty(layout);
-					if (standardLayout) 
-						layout = "standard_form.xml";
-					FormBuilder formBuilder = new FormBuilder(context, layout);
-					if (standardLayout && projectionModel != null) {
-						BidiMultiMap projection = projectionModel.getProjection();
-						for (Object key : projection.getKeys()) {
-							String type = stringValueOf(projection.getValue(key, 2));
-							formBuilder.addField(key, stringValueOf(key), type);
-						}
-					}
-					container = new JScrollPane(formBuilder.build());
+					formView = new DataForm(context, DataManager.this, 
+							projectionModel.getProjection(), 
+							props.getProperty("layout"));
+					container = new JScrollPane(formView.getContainer());
 					printContainer("panel", container, _null());
 				}
 				return container;
@@ -347,7 +337,7 @@ public class DataManager extends ActionPanel
 		addButton(bar, ActionType.PREVIOUS.index(), new ManagerAction(ActionType.PREVIOUS), index);
 		addButton(bar, ActionType.NEXT.index(), new ManagerAction(ActionType.NEXT), index);
 		addButton(bar, ActionType.LAST.index(), new ManagerAction(ActionType.LAST), index);
-		if (getTextComponent() != null)
+		if (getTextToggle() != null)
 			addToggle(bar, ActionType.TOGGLE2.index(), new ManagerAction(ActionType.TOGGLE2), index);
 		return bar;
 	}
@@ -381,7 +371,7 @@ public class DataManager extends ActionPanel
 				}, 
 				params);
 			printContainer(String.format("panes[%d]", index), panes[index], _null());
-			if (!tableLayout && getTextComponent() != null)
+			if (!tableLayout && getTextToggle() != null)
 				try {
 					scriptToggler.perform(_script() == TEXT, objects());
 				} 
@@ -401,18 +391,18 @@ public class DataManager extends ActionPanel
 	}
 	
 	protected Job<Boolean> scriptToggler = new Job<Boolean>() {
-		public void perform(Boolean textView, Object[] parms) throws Exception {
-			props.setProperty("text", textView ? "document" : "script");
+		public void perform(Boolean isText, Object[] parms) throws Exception {
+			props.setProperty("text", isText ? "document" : "script");
 	    	String text = getText();
 			viewSwitch(
 				new Function<Void>() {
 					public Void apply(Object... params) {
 						Boolean textView = (Boolean) params[0];
-						getTextComponent().toggle(textView, null);
+						getTextToggle().toggle(textView, null);
 						return null;
 					}
 				}, 
-				textView);
+				isText);
 			setText(text);
 			propsToFile(props, name);
 		}
@@ -860,10 +850,10 @@ public class DataManager extends ActionPanel
 	
 	@Override
 	public void setText(String text) {
-		TextEditor2 textBums = getTextComponent();
+		TextToggle textBums = getTextToggle();
 		if (textBums != null) {
 			updateText(textBums, text);
-			textBums.getTextEditor().undo.discardAllEdits();
+			textBums.getTextEdit().undoManager.discardAllEdits();
 		}
 	}
 

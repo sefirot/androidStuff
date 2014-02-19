@@ -146,7 +146,9 @@ public class Context
         try {
             File f = makeFilename(getDatabasesDir(), name);
             return f.delete();
-        } catch (Exception e) {
+        } 
+        catch (Exception e) {
+        	Log.e(TAG, "deleteDatabase", e);
         }
         return false;
     }
@@ -196,7 +198,7 @@ public class Context
 	
     public File getDatabasePath(String name) {
 		if (flavorPaths.getKeys().contains(name))
-			return new File(flavorPaths.getValue(name).toString());
+			return new File(stringValueOf(flavorPaths.getValue(name)));
 		else {
 	    	File dir = getDatabasesDir();
 	    	return makeFilename(dir, name);
@@ -346,13 +348,32 @@ public class Context
 			}
     	};
     }
-	
+
     //	NOTE	this does NOT correspond to an Android API
-	public Point location = new Point(0,0);
+    public SharedPreferences getSharedPreferences() {
+    	return getSharedPreferences(null, Context.MODE_PRIVATE);
+    }
+    
+    //	NOTE	this does NOT correspond to an Android API
+	public void message(String key, Object...params) {
+		SharedPreferences prefs = getSharedPreferences();
+		String format = prefs.getString(key, null);
+		String msg = notNullOrEmpty(format) ? 
+				String.format(format, params) : 
+				String.format("<<< message text missing for key '%s'>>>", key) + com.applang.Util.toString(params);
+		com.applang.SwingUtil.message(msg);
+	}
+	
+	private Point location = new Point(0,0);
 	
     //	NOTE	this does NOT correspond to an Android API
 	public Context setLocation(Point location) {
 		this.location = location;
 		return this;
+	}
+
+	//	NOTE	this does NOT correspond to an Android API
+	public Point getLocation() {
+		return location;
 	}
 }

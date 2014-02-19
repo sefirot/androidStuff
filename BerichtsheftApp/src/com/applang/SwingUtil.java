@@ -113,6 +113,7 @@ import javax.swing.table.TableColumnModel;
 import javax.swing.text.JTextComponent;
 
 import com.applang.Util.Constraint;
+import com.applang.Util.Job;
 import com.applang.Util.ValList;
 
 import android.util.Log;
@@ -524,26 +525,62 @@ public class SwingUtil
 			putSetting(key, value.substring(brac > -1 ? brac : 0));
 		}
 	}
+	
+    public static class Behavior
+    {
+    	public static final int NONE = 4;
+    	public static final int MODAL = 8;
+    	public static final int TIMEOUT = 16;
+    	public static final int ALWAYS_ON_TOP = 32;
+    	public static final int EXIT_ON_CLOSE = 64;
+    	public static final int HIDDEN = 128;
+        
+        public static int getOptionType(int behavior) {
+        	return (behavior + 1) % 4 - 1;
+        }
+
+        public static int getFlags(int behavior) { 
+            return (behavior + 1) / 4 * 4; 
+        }
+
+        public static boolean hasFlags(int behavior, int flags) { 
+			return (getFlags(behavior) & flags) > 0; 
+        }
+
+        public static int setFlags(int behavior, int flags) { 
+			return flags < 0 ? 
+					behavior & ~Math.abs(flags) : 
+					behavior | flags; 
+        }
+
+        public static int setTimeout(int behavior, boolean timeout) { 
+			return setFlags(behavior, timeout ? TIMEOUT : -TIMEOUT); 
+        }
+
+		public static int setModal(int behavior, boolean modal) {
+			return setFlags(behavior, modal ? MODAL : -MODAL); 
+		}
+    }
 
 	public interface UIFunction extends ComponentFunction<Component[]> {
 	}
 
 	private static boolean finished = false;
 	
-	public static void showFrame(Object relative, 
+	public static JFrame showFrame(Object relative, 
 			String title, 
 			UIFunction assembleUI,
 			UIFunction arrangeUI,
     		final UIFunction completeUI,
     		int behavior, 
-    		Integer... keyEvents)
+    		final Object...params)
 	{
+		final JFrame frame = new JFrame(title);
 		try {
-			final JFrame frame = new JFrame(title);
 			frame.setName(title);
 			
 			if (assembleUI != null) {
-				Component[] widgets = assembleUI.apply(frame, null);
+				Component[] widgets = assembleUI.apply(frame, params);
 				if (widgets != null)
 					if (widgets.length == 1 && widgets[0] instanceof Container)
 						frame.setContentPane((Container)widgets[0]);
@@ -561,27 +598,23 @@ public class SwingUtil
 				frame.setBounds((Rectangle)relative);
 			boolean exitOnClose = Behavior.hasFlags(behavior, Behavior.EXIT_ON_CLOSE);
 			frame.setDefaultCloseOperation(exitOnClose ? JFrame.EXIT_ON_CLOSE : JFrame.DISPOSE_ON_CLOSE);
-			frame.setVisible(true);
+			frame.setVisible(!Behavior.hasFlags(behavior, Behavior.HIDDEN));
 			
 			if (arrangeUI != null)
-				arrangeUI.apply(frame, null);
+				arrangeUI.apply(frame, params);
 			
 			frame.addWindowListener(new WindowAdapter() {
 				public void windowClosing(WindowEvent event) {
 					if (completeUI != null)
-						completeUI.apply(frame, null);
+						completeUI.apply(frame, params);
 					finished = true;
 				}
 			});
 			
 			boolean deadline = Behavior.hasFlags(behavior, Behavior.TIMEOUT);
-			if (deadline || keyEvents.length > 0) {
-				Deadline.start(
-						deadline ? frame : null, 
-						keyEvents);
-				
+			if (deadline) {
+				Deadline.start(frame);
 				finished = false;
-				
 				while (!finished) {
 					Thread.yield();
 				}
@@ -589,9 +622,10 @@ public class SwingUtil
 		} catch (Exception e) {
 			handleException(e);
 		}
+		return frame;
 	}
 	
-	public static void startFrame(final Action action) {
+	public static void startFrame(final Action action, Object...params) {
 		showFrame(null, 
 				"Start",
 				new UIFunction() {
@@ -607,18 +641,19 @@ public class SwingUtil
 					}
 				}, 
 				null, null, 
-				Behavior.TIMEOUT);
+				Behavior.TIMEOUT, 
+				params);
 	}
 	
 	public static int dialogResult = JOptionPane.CLOSED_OPTION;
 	
-    public static int showDialog(Component parent, Component relative, 
+    public static JDialog showDialog(Component parent, Component relative, 
     		String title, 
     		UIFunction assembleUI,
     		UIFunction arrangeUI,
     		final UIFunction completeUI,
     		final int behavior, 
-    		Integer... keyEvents)
+    		final Object...params)
     {
     	dialogResult = JOptionPane.CLOSED_OPTION;
     	
@@ -629,7 +664,7 @@ public class SwingUtil
 		dlg.setAlwaysOnTop(alwaysOnTop);
 		
 		if (assembleUI != null) {
-			Component[] widgets = assembleUI.apply(dlg, null);
+			Component[] widgets = assembleUI.apply(dlg, params);
 			if (widgets != null)
 				if (widgets.length == 1 && widgets[0] instanceof Container)
 					dlg.setContentPane((Container) widgets[0]);
@@ -647,62 +682,29 @@ public class SwingUtil
 		dlg.setDefaultCloseOperation(WindowConstants.HIDE_ON_CLOSE);
 		
 		if (modal && arrangeUI != null)
-			arrangeUI.apply(dlg, null);
+			arrangeUI.apply(dlg, params);
 
 		if (!deadline)
-			Deadline.start(null, keyEvents);
+			Deadline.start(null);
 		
 		dlg.addWindowListener(new WindowAdapter() {
 			public void windowClosing(WindowEvent event) {
 				if (completeUI != null)
-					completeUI.apply(dlg, null);
+					completeUI.apply(dlg, params);
 				if (Behavior.hasFlags(behavior, Behavior.EXIT_ON_CLOSE))
 					System.exit(0);
 			}
 		});
 		
-		dlg.setVisible(true);
+		dlg.setVisible(!Behavior.hasFlags(behavior, Behavior.HIDDEN));
 		
 		if (!modal && arrangeUI != null)
 			arrangeUI.apply(dlg, null);
     	
 		no_println("dialogResult", dialogResult);
 		
-		return dialogResult;
+		return dlg;
 	}
-	
-    public static class Behavior
-    {
-    	public static final int NONE = 4;
-    	public static final int MODAL = 8;
-    	public static final int TIMEOUT = 16;
-    	public static final int ALWAYS_ON_TOP = 32;
-    	public static final int EXIT_ON_CLOSE = 64;
-        
-        public static int getOptionType(int behavior) {
-        	return (behavior + 1) % 4 - 1;
-        }
-
-        public static int getFlags(int behavior) { 
-            return (behavior + 1) / 4 * 4; 
-        }
-
-        public static boolean hasFlags(int behavior, int flags) { 
-			return (getFlags(behavior) & flags) > 0; 
-        }
-
-        public static int setFlags(int behavior, int flags) { 
-			return flags < 0 ? behavior & ~Math.abs(flags) : behavior | flags; 
-        }
-
-        public static int setTimeout(int behavior, boolean timeout) { 
-			return setFlags(behavior, timeout ? TIMEOUT : -TIMEOUT); 
-        }
-
-		public static int setModal(int behavior, boolean modal) {
-			return setFlags(behavior, modal ? MODAL : -MODAL); 
-		}
-    }
 	
     public static int showOptionDialog(Component parent, 
     		final Object message, String title,
@@ -711,9 +713,8 @@ public class SwingUtil
             final Object[] options, final Object initialOption, 
             Object...params) 
     {
-		Integer[] keyEvents = param(new Integer[0], 0, params);
     	if (optionType > JOptionPane.OK_CANCEL_OPTION) {
-    		final Function<Boolean> optionHandler = param(null, 1, params);
+    		final Function<Boolean> optionHandler = param(null, 0, params);
     		UIFunction assembleUI = new UIFunction() {
     			public Component[] apply(final Component dialog, Object[] parms) {
     				final JOptionPane optionPane = new JOptionPane(message, 
@@ -754,15 +755,16 @@ public class SwingUtil
     				return components(optionPane);
     			}
     		};
-    		return showDialog(JOptionPane.getFrameForComponent(parent), parent, 
+    		showDialog(JOptionPane.getFrameForComponent(parent), parent, 
 					title,
 					assembleUI, 
 					null, null, 
 					optionType,
-    				keyEvents);
+					params);
+    		return dialogResult;
     	}
     	else {
-    		Deadline.start(null, keyEvents);
+    		Deadline.start(null);
     		parent = JOptionPane.getFrameForComponent(parent);
         	return dialogResult = JOptionPane.showOptionDialog(parent, 
         			message, title, 
@@ -770,6 +772,16 @@ public class SwingUtil
         			icon, 
         			options, initialOption);
     	}
+	}
+    
+    public static Icon defaultIcon(int optionType) {
+		switch (optionType) {
+		case JOptionPane.DEFAULT_OPTION:
+		case 3:
+			return UIManager.getIcon("OptionPane.informationIcon");
+		default:
+			return UIManager.getIcon("OptionPane.questionIcon");
+		}
 	}
     
     public static ValList defaultOptions(int optionType) {
@@ -807,6 +819,9 @@ public class SwingUtil
         	break;
     	case 13:
     		array = objects("Accept","Reject","Accept");
+        	break;
+    	case 14:
+    		array = objects("Sync", null);
         	break;
     	default:
     		return list;
@@ -1328,6 +1343,21 @@ public class SwingUtil
         }
     }
 	
+	public static void toggle(CustomAction toggleAction, Job<Boolean> job, Object...params) {
+		String name1 = toggleAction.getType().name(1);
+		String name2 = toggleAction.getType().name(2);
+		Object name = toggleAction.getValue(Action.NAME);
+		name = name != null && name.equals(name1) ? name2 : name1;
+		toggleAction.putValue(Action.NAME, name);
+    	try {
+    		boolean toggle = name.equals(name2);
+			job.perform(toggle, params);
+		} 
+    	catch (Exception e) {
+			Log.e(TAG, "toggle", e);
+		}
+	}
+	
     /**
      * @param <T>	type of container
      * @param container	if T is <code>JPanel</code> then <code>JButton</code> are added else <code>JMenuItem</code>
@@ -1683,7 +1713,7 @@ public class SwingUtil
 		if (debug == null)
 			return;
 		StringBuilder sb = new StringBuilder();
-		sb.append(message + " :\n");
+		sb.append(message + " :" + TAB + container.getLayout() + NEWLINE);
 		iterateContainer(container, sb, 1);
 		debug_print(debug, sb.toString());
 	}
@@ -1712,7 +1742,7 @@ public class SwingUtil
 		private DefaultTableModel model;
 		
 		public MapEditorComponent(final Map map, Object...options) {
-			final Object[] keys = map.keySet().toArray();
+			final Object[] keys = sortedSet(map.keySet()).toArray();
 			model = new DefaultTableModel(keys.length, 2) {
 				@Override
 				public Object getValueAt(int row, int col) {
@@ -1749,7 +1779,8 @@ public class SwingUtil
 			editors = new TableCellEditor[keys.length];
 			for (int i = 0; i < keys.length; i++) 
 				if (isAvailable(i, options)) {
-					editors[i] = new DefaultCellEditor(new JComboBox((Object[])options[i]));
+					Object[] items = (Object[]) options[i];
+					editors[i] = new DefaultCellEditor(new JComboBox(items));
 				}
 		}
 
@@ -1974,9 +2005,12 @@ public class SwingUtil
 		}
 	}
 	
-    public static JScrollPane scrollableViewport(JTable table, Dimension size) {
-		table.setPreferredScrollableViewportSize(size);
-//		table.setFillsViewportHeight(true);
+    public static JScrollPane scrollableViewport(JTable table, Object...params) {
+    	Dimension size = param(null,0,params);
+		if (size != null)
+			table.setPreferredScrollableViewportSize(size);
+		boolean fills = param_Boolean(false, 1, params);
+		table.setFillsViewportHeight(fills);
     	return new JScrollPane(table);
 	}
 	

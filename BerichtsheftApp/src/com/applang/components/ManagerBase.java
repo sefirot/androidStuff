@@ -17,6 +17,8 @@ import javax.swing.JTextField;
 
 import org.gjt.sp.jedit.gui.RolloverButton;
 
+import android.app.AlertDialog;
+
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 
 import static com.applang.SwingUtil.*;
@@ -31,8 +33,9 @@ public class ManagerBase<T extends Object> extends JComponent implements ICompon
 	
 	protected static final String ACCEPT_BUTTON_KEY = stringValueOf(defaultOptions(13).get(0));
 	protected static final String REJECT_BUTTON_KEY = stringValueOf(defaultOptions(13).get(1));
+	protected static final String SYNC_BUTTON_KEY = stringValueOf(defaultOptions(14).get(0));
 	
-	protected RolloverButton installButton(Container container, String text, ActionListener al) {
+	protected RolloverButton createButton(Container container, String text, ActionListener al) {
 		RolloverButton btn = new RolloverButton();
 		btn.setName(text);
 		btn.setText(text);
@@ -121,14 +124,14 @@ public class ManagerBase<T extends Object> extends JComponent implements ICompon
 		case 3:
 			return false;
 		}
-		decision = new OptionDialog(null, 
+		decision = new AlertDialog(null, 
 				param("Decision", 2, params), 
 				param("", 1, params), 
 				param("Are you sure", 0, params), 
 				5, 
 				Behavior.MODAL, 
-				BerichtsheftPlugin.getProperty("manager.action-DELETE.icon"), 
-				null).getResult();
+				BerichtsheftPlugin.loadIcon("manager.action-DELETE.icon"), 
+				null).open().getResult();
 		if (decision < 2)
 			return true;
 		if (decision < 4)
@@ -190,7 +193,7 @@ public class ManagerBase<T extends Object> extends JComponent implements ICompon
 		return getItem();
 	}
 	
-	protected void installAddRemove(Container container, final String itemName) {
+	public void installAddRemove(Container container, final String itemName) {
 		container.add(BerichtsheftPlugin.makeCustomButton("manager.add", new ActionListener() {
 			public void actionPerformed(ActionEvent evt) {
 				save(getItem(), true);
@@ -203,26 +206,26 @@ public class ManagerBase<T extends Object> extends JComponent implements ICompon
 		}, false));
 	}
 	
-	private AbstractButton[] abuttons = new AbstractButton[2];
+	private AbstractButton[] buttons = new AbstractButton[2];
 	
-	protected void installUpdate(Container container) {
-		container.add(abuttons[0] = BerichtsheftPlugin.makeCustomButton("manager.update-change", 
+	public void installUpdate(Container container) {
+		container.add(buttons[0] = BerichtsheftPlugin.makeCustomButton("manager.update-change", 
 				new ActionListener() {
 					public void actionPerformed(ActionEvent evt) {
 						updateChange(true);
 					}
 				}, 
 				false));
-		container.add(abuttons[1] = BerichtsheftPlugin.makeCustomButton("manager.erase-change", 
+		container.add(buttons[1] = BerichtsheftPlugin.makeCustomButton("manager.erase-change", 
 				new ActionListener() {
 					public void actionPerformed(ActionEvent evt) {
 						updateChange(false);
 					}
 				}, 
 				false));
-		changePossible.push(true);
+		dirtyStack.push(true);
 		setDirty(false);
-		changePossible.pop();
+		dirtyStack.pop();
 	}
 
 	public void updateChange(boolean update) {
@@ -231,40 +234,41 @@ public class ManagerBase<T extends Object> extends JComponent implements ICompon
 		setDirty(false);
 	}
 
-	private Stack<Boolean> changePossible;
+	private Stack<Boolean> dirtyStack;
 	
 	{
-		changePossible = new Stack<Boolean>();
-		changePossible.push(true);
+		dirtyStack = new Stack<Boolean>();
+		dirtyStack.push(true);
 	}
 	
 	public boolean isDirty() {
-		if (abuttons[0] != null && changePossible.peek()) 
-			return abuttons[0].isEnabled();
-		else
-			return false;
+		if (dirtyStack.peek()) 
+			if (buttons[0] != null) 
+				return buttons[0].isEnabled();
+		return false;
 	}
 	
 	public void setDirty(boolean dirty) {
-		if (abuttons[0] != null && abuttons[1] != null && changePossible.peek()) 
-			for (AbstractButton button : abuttons) 
-				button.setEnabled(dirty);
+		if (dirtyStack.peek()) 
+			for (AbstractButton button : buttons) 
+				if (button != null)
+					button.setEnabled(dirty);
 	}
 	
-	protected void blockChange(Job<Void> job, Object...params) {
+	protected void blockDirty(Job<Void> job, Object...params) {
 		try {
-			changePossible.push(false);
+			dirtyStack.push(false);
 			job.perform(null, params);
 		} catch (Exception e) {
 			handleException(e);
 		}
 		finally {
-			changePossible.pop();
+			dirtyStack.pop();
 		}
 	}
 
 	protected void updateText(final ITextComponent iTextComponent, final String text) {
-		blockChange(new Job<Void>() {
+		blockDirty(new Job<Void>() {
 			public void perform(Void t, Object[] params) throws Exception {
 				iTextComponent.setText(text);
 			}

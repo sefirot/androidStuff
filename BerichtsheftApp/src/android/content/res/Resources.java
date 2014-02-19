@@ -1,5 +1,6 @@
 package android.content.res;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -23,12 +24,12 @@ import javax.swing.UIManager;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
-
-import com.applang.Util.Constraint;
-import com.applang.Util2;
+import org.w3c.dom.NamedNodeMap;
+import org.w3c.dom.Node;
 
 import android.content.Context;
 import android.graphics.drawable.Drawable;
+import android.util.AttributeSet;
 import android.util.Log;
 
 import static com.applang.Util.*;
@@ -61,9 +62,9 @@ public class Resources
 	}
 	
 	public static String[] resourceTypes = 
-		{"array","attr","color","dimen","drawable","id","layout","menu","raw","string"};
+		{"array","attr","color","dimen","drawable","id","layout","menu","raw","string","style","asset"};
 	public static final Pattern XML_RESOURCE_PATTERN = 
-		Pattern.compile("@([\\+]*)((([\\w]+\\.)*[\\w]+):)*(" + join("|", resourceTypes) + ")/([\\w\\.]+)");
+		Pattern.compile("@([\\+]*)((([\\w]+\\.)*[\\w]+):)*(" + join("|", resourceTypes) + ")/([\\w\\.\\*\\?]+)");
 	public static String[] resourceLocations = 
 		{"res/values/strings.xml",	"attr",
 		"res/values/colors.xml",
@@ -72,7 +73,9 @@ public class Resources
 		"res/layout/",							//	6
 		"res/menu/",
 		"res/raw/",
-		"res/values/strings.xml"};				//	9
+		"res/values/strings.xml",				//	9
+		"res/values/styles.xml",
+		"assets/"};
 	
 	public static String getRelativePath(int loc, String...parts) {
 		parts = arrayextend(parts, true, resourceLocations[loc]);
@@ -82,11 +85,11 @@ public class Resources
 	
 	//	@[<package_name>:]<resource_type>/<resource_name>
 	@SuppressWarnings("unchecked")
-	public <T> T getXMLResourceItem(String attribute) {
-		T value = null;
-		if (notNullOrEmpty(attribute)) {
+	public <T> T getXMLResourceItem(Object item) {
+		T value = (T) item;
+		if (notNullOrEmpty(item)) {
 			try {
-				MatchResult m = findFirstIn(attribute, XML_RESOURCE_PATTERN);
+				MatchResult m = findFirstIn(stringValueOf(item), XML_RESOURCE_PATTERN);
 				if (m != null) {
 					String pkg = m.group(3);
 					String name = m.group(6), path;
@@ -109,6 +112,7 @@ public class Resources
 					case 2:
 					case 3:
 					case 9:
+					case 10:
 						if ("android".equals(pkg)) {
 							Job<Class<?>> job = new Job<Class<?>>() {
 								@SuppressWarnings("unused")	//	used via reflect
@@ -136,6 +140,13 @@ public class Resources
 			}
 		}
 		return value;
+	}
+
+	public static Element styleElement(Context context, String s) {
+    	if (s.startsWith("@")) {
+    		return context.getResources().getXMLResourceItem(s);
+    	}
+    	return null;
 	}
 
 	public static String textValue(Context context, String s) {
@@ -318,22 +329,34 @@ public class Resources
 	
 	@SuppressWarnings("unchecked")
 	public <T> T getResourceByName(Document doc, final String name, int type) {
-		for (Element elem : iterateElements("*", doc, new Predicate<Element>() {
+        final String regex = wildcardRegex(name, DOT_REGEX);
+        final boolean names = !name.equals(regex);
+        ValList list = vlist();
+        list.add(null);
+		String tagName = resourceTypes[type] + SOMETHING_OR_NOTHING_REGEX;
+		for (Element elem : iterateElements(tagName, doc, new Predicate<Element>() {
 			public boolean apply(Element el) {
-				return name.equals(el.getAttribute("name"));
+				String value = el.getAttribute("name");
+				return names ? value.matches(regex) : name.equals(value);
 			}})) 
 		{
-			String value = elem.getTextContent();
-			switch (type) {
-			case 2:
-				return (T) new Integer(android.graphics.Color.parseColor(value));
-			case 3:
-				return (T) toInt(0, stripUnits(value));
-			default:
-				return (T) value;
+			if (names) 
+				list.add(elem.getAttribute("name"));
+			else {
+				String value = elem.getTextContent();
+				switch (type) {
+				case 2:
+					return (T) new Integer(android.graphics.Color.parseColor(value));
+				case 3:
+					return (T) toInt(0, stripUnits(value));
+				case 10:
+					return (T) elem;
+				default:
+					return (T) value;
+				}
 			}
 		}
-		return null;
+		return (T) (names ? list.toArray() : null);
 	}
 	
 	public InputStream getInputStreamByName(Class<?> c, final String name, int type) {
@@ -351,6 +374,136 @@ public class Resources
 			return c.getResourceAsStream(path);
 		}
 		return null;
+	}
+
+	public static AttributeSet attributeSet(final Context context, Object...attrs) {
+		Object o = param(null, 0, attrs);
+		if (!(o instanceof Element)) {
+			StringBuilder sb = new StringBuilder();
+			sb.append("<AttributeSet xmlns:android=\"http://schemas.android.com/apk/res/android\"");
+			for (Object attr : attrs) {
+				sb.append(" " + attr);
+			}
+			sb.append(" />");
+			InputStream is = new ByteArrayInputStream(sb.toString().getBytes());
+			o = xmlDocument(null, is).getDocumentElement();
+		}
+		final Element element = (Element) o;
+		return new AttributeSet() {
+			{
+				resources = context.getResources();
+				attributes = element.getAttributes();
+			}
+			
+			Resources resources;
+			NamedNodeMap attributes;
+			
+			public int getAttributeCount() {
+				return attributes.getLength();
+			}
+			public String getAttributeName(int index) {
+				return attributes.item(index).getNodeName();
+			}
+			public String getAttributeValue(int index) {
+				return attributes.item(index).getNodeValue();
+			}
+			public String getAttributeValue(String namespace, String name) {
+				return attributes.getNamedItemNS(namespace, name).getNodeValue();
+			}
+			public boolean hasAttribute(String name) {
+				return attributes.getNamedItem(name) != null;
+			}
+			public String getAttributeValue(String name) {
+				Node item = attributes.getNamedItem(name);
+				return item != null ? item.getNodeValue() : null;
+			}
+			public <T> T getAttributeResourceItem(String name) {
+				String attr = getAttributeValue(name);
+				if (notNullOrEmpty(attr))
+					return resources.getXMLResourceItem(attr);
+				else {
+					attr = getAttributeValue("style");
+					if (notNullOrEmpty(attr)) {
+						Element el = resources.getXMLResourceItem(attr);
+						if (el != null) {
+							el = selectElement(el, "./item[@name='" + name + "']");
+							if (el != null) {
+								attr = el.getTextContent();
+								return resources.getXMLResourceItem(attr);
+							}
+						}
+					}
+				}
+				return null;
+			}
+			public int getIdAttributeResourceValue(int defaultValue) {
+				return toInt(defaultValue, getIdAttribute());
+			}
+			public String getIdAttribute() {
+				return getAttributeResourceItem("android:id");
+			}
+			public String getClassAttribute() {
+				return getAttributeResourceItem("class");
+			}
+			public int getStyleAttribute() {
+				return getAttributeResourceItem("style");
+			}
+			public String getPositionDescription() {
+				return null;
+			}
+			public int getAttributeUnsignedIntValue(int index, int defaultValue) {
+				// TODO Auto-generated method stub
+				return 0;
+			}
+			public int getAttributeUnsignedIntValue(String namespace, String attribute, int defaultValue) {
+				// TODO Auto-generated method stub
+				return 0;
+			}
+			public int getAttributeResourceValue(int index, int defaultValue) {
+				// TODO Auto-generated method stub
+				return 0;
+			}
+			public int getAttributeResourceValue(String namespace, String attribute, int defaultValue) {
+				// TODO Auto-generated method stub
+				return 0;
+			}
+			public int getAttributeNameResource(int index) {
+				// TODO Auto-generated method stub
+				return 0;
+			}
+			public int getAttributeListValue(int index, String[] options, int defaultValue) {
+				// TODO Auto-generated method stub
+				return 0;
+			}
+			public int getAttributeListValue(String namespace, String attribute, String[] options, int defaultValue) {
+				// TODO Auto-generated method stub
+				return 0;
+			}
+			public int getAttributeIntValue(int index, int defaultValue) {
+				// TODO Auto-generated method stub
+				return 0;
+			}
+			public int getAttributeIntValue(String namespace, String attribute, int defaultValue) {
+				// TODO Auto-generated method stub
+				return 0;
+			}
+			public float getAttributeFloatValue(int index, float defaultValue) {
+				// TODO Auto-generated method stub
+				return 0;
+			}
+			public float getAttributeFloatValue(String namespace, String attribute, float defaultValue) {
+				// TODO Auto-generated method stub
+				return 0;
+			}
+			public boolean getAttributeBooleanValue(int index, boolean defaultValue) {
+				// TODO Auto-generated method stub
+				return false;
+			}
+			public boolean getAttributeBooleanValue(String namespace, String attribute, boolean defaultValue) {
+				// TODO Auto-generated method stub
+				return false;
+			}
+		};
 	}
 
 	public interface ResourceURLFilter {

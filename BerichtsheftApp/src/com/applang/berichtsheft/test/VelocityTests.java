@@ -388,7 +388,7 @@ public class VelocityTests extends TestCase
 	}
 
 	DataBaseConnect dbCon = new DataBaseConnect();
-	String test_db = "/tmp/test.db", test_sql = "/tmp/test.sql";
+	String test_db = tempPath() + "/test.db", test_sql = tempPath() + "/test.sql";
 	
 	String sqlTemplate = "PRAGMA foreign_keys=OFF;" +
 			"BEGIN TRANSACTION;" +
@@ -439,7 +439,7 @@ public class VelocityTests extends TestCase
 		
 		nc.put("kein", -0.00003141592);
 		
-		String fileName = "/tmp/context.ser";
+		String fileName = tempPath() + "/context.ser";
 		new File(fileName).delete();
 		
 		FileOutputStream fileOut = new FileOutputStream(fileName);

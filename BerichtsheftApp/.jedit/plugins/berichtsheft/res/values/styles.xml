@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="string">
+    	<item name="class">android.widget.EditText</item>
+    </style>
+    <style name="integer">
+    	<item name="class">android.widget.EditText</item>
+    	<item name="android:inputType">numberSigned</item>
+    </style>
+    <style name="float">
+    	<item name="class">android.widget.EditText</item>
+    	<item name="android:inputType">numberDecimal</item>
+    </style>
+    <style name="text">
+    	<item name="class">android.widget.EditText</item>
+    	<item name="android:inputType">textMultiLine</item>
+    </style>
+    <style name="text.spellcheck">
+    	<item name="class">com.applang.components.TextEdit</item>
+    	<item name="android:inputType">textMultiLine</item>
+    	<item name="feature">spellchecking</item>
+    </style>
+    <style name="text.velocity">
+    	<item name="class">com.applang.components.TextEdit</item>
+    	<item name="android:inputType">textMultiLine</item>
+    	<item name="feature">togglable</item>
+    	<item name="mode">velocity</item>
+    	<item name="modeFile">/modes/velocity_pure.xml</item>
+    	<item name="readOnly">true</item>
+    </style>
+    <style name="blob">
+    	<item name="class">android.widget.ImageView</item>
+    </style>
+
+</resources>

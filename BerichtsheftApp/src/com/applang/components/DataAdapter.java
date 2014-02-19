@@ -13,6 +13,7 @@ import org.gjt.sp.jedit.bsh.NameSpace;
 import org.gjt.sp.jedit.bsh.UtilEvalError;
 import org.w3c.dom.Element;
 
+import android.app.AlertDialog;
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
@@ -203,15 +204,14 @@ public class DataAdapter
 					row.addAll(asList(items));
 					model.addValues(false, row.toArray());
 					JTable table = model.makeTable();
-					table.setPreferredScrollableViewportSize(new Dimension(800,100));
 					table.getSelectionModel().setSelectionInterval(1, 1);
-					return decision = new OptionDialog(view, 
+					return decision = new AlertDialog(view, 
 							BerichtsheftPlugin.getProperty("dataview.prompt-update.message"), 
 							"", 
-							new JScrollPane(table), 
+							scrollableViewport(table, new Dimension(800,100)), 
 							5, 
-							Behavior.MODAL, 
-							null, null).getResult();
+							AlertDialog.behavior, 
+							null, null).open().getResult();
 				}
 			}
 		};
@@ -234,7 +234,7 @@ public class DataAdapter
 				Object retval = updateOrInsert_query(uri, 
 						profile, 
 						projection, 
-						primaryKeyColumnName.toString(), 
+						stringValueOf(primaryKeyColumnName), 
 						values,
 						param((Function<Integer>)null, 0, params));
 				if (retval instanceof Boolean)

@@ -69,7 +69,7 @@ import com.applang.components.DatePicker.Period;
 import com.applang.components.DatePicker;
 import com.applang.components.FormEditor;
 import com.applang.components.NotePicker;
-import com.applang.components.TextEditor2;
+import com.applang.components.TextToggle;
 import com.applang.components.WeatherManager;
 import com.applang.components.NotePicker.NoteFinder;
 import com.applang.provider.NotePad;
@@ -97,8 +97,8 @@ public class MiscTests extends XMLTestCase
 		underTest = true;
 		BerichtsheftApp.loadSettings();
 		if (!"testOdtDokument".equals(testName) && !"testPiping".equals(testName)) {
-			textEditor2 = new TextEditor2();
-			np = new NotePicker(null, textEditor2);
+			textToggle = new TextToggle();
+			np = new NotePicker(null, textToggle);
 		}
 		if (tempfile.exists())
 			tempfile.delete();
@@ -107,7 +107,7 @@ public class MiscTests extends XMLTestCase
 
 	}
 
-	File tempfile = new File("/tmp/temp.xml");
+	File tempfile = new File(tempPath(), "temp.xml");
 	
 	@Override
 	protected void tearDown() throws Exception {
@@ -131,7 +131,7 @@ public class MiscTests extends XMLTestCase
 	    return suite;
 	}
 
-	TextEditor2 textEditor2;
+	TextToggle textToggle;
 	NotePicker np;
 	
 	public void testDateTime() throws Exception {
@@ -206,7 +206,7 @@ public class MiscTests extends XMLTestCase
 		np.registerNotes(rs);
 		String text = np.all();
 //		System.out.println(text);
-		contentsToFile(new File("/tmp/notes.txt"), text);
+		contentsToFile(new File(tempPath(), "notes.txt"), text);
 	}
 	
 	boolean randomizeTimeOfDay = false;
@@ -316,7 +316,7 @@ public class MiscTests extends XMLTestCase
 		    );
 	}
 
-	String test_db = "/tmp/test.db";
+	String test_db = tempPath() + "/test.db";
 	Pattern expat = Pattern.compile("(?s)\\n([^\\{\\}]+?)(?=\\n)");
 	int[] date = ints(2012, -Calendar.DECEMBER, 24);
 	
@@ -492,7 +492,7 @@ public class MiscTests extends XMLTestCase
 		assertThat(np.comboBoxes[0].getItemAt(3).toString(), is(equalTo("4.")));
 		assertEquals(36, np.lastRow());
 		assertFalse(np.isDirty());
-		textEditor2.getTextEditor().insert("k", 0);
+		textToggle.getTextEdit().insert("k", 0);
 		assertTrue(np.isDirty());
 		np.setDate(record[0].toString());
 		np.setTitle(record[1].toString());
@@ -820,7 +820,7 @@ public class MiscTests extends XMLTestCase
 		stat.close();
 		conn.close();
 		
-		String inputfile = "/tmp/control.xml";
+		String inputfile = tempPath() + "/control.xml";
 		contentsToFile(new File(inputfile), 
 			String.format(
 				"<control>" +
@@ -882,7 +882,7 @@ public class MiscTests extends XMLTestCase
 
 	public void testSqliteRegex() throws Exception {
 		setupKeinFehler(false);
-		String controlfile = "/tmp/control.xml";
+		String controlfile = tempPath() + "/control.xml";
 		contentsToFile(new File(controlfile), 
 			String.format(
 				"<control>" +
@@ -957,7 +957,7 @@ public class MiscTests extends XMLTestCase
 			final TransformerHandler tHandler1 = saxTFactory.newTransformerHandler(new StreamSource(controlStyleSheet));
 			TransformerHandler tHandler2 = saxTFactory.newTransformerHandler(new StreamSource(contentStyleSheet));
 			tHandler2.getTransformer().setParameter("inputfile", "content.xml");
-//			TransformerHandler tHandler3 = saxTFactory.newTransformerHandler(new StreamSource("/tmp/foo3.xsl"));
+//			TransformerHandler tHandler3 = saxTFactory.newTransformerHandler(new StreamSource(tempPath() + "/foo3.xsl"));
 			TransformerHandler tHandler = new TransformerHandler() {
 				@Override
 				public void unparsedEntityDecl(String name, String publicId,
@@ -1286,7 +1286,7 @@ public class MiscTests extends XMLTestCase
 				parts[0]));
 	}
 
-	String test1_db = "/tmp/test1.db", test2_db = "/tmp/test2.db";
+	String test1_db = tempPath() + "/test1.db", test2_db = tempPath() + "/test2.db";
 	int[] date2 = ints(2012, -Calendar.DECEMBER, 25);
 	int[] period = ints(2013, 1, 1, 7);
 	
@@ -1438,7 +1438,7 @@ public class MiscTests extends XMLTestCase
 
 		String content = BerichtsheftApp.applicationDataPath("Skripte/content.xml");
 		String mask = BerichtsheftApp.applicationDataPath("Skripte/mask.xsl");
-		String output = "/tmp/content.xml";
+		String output = tempPath() + "/content.xml";
 		
 		clearMappings();
 		xmlTransform(content, mask, output, 

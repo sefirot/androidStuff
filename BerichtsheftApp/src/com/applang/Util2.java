@@ -1,6 +1,5 @@
 package com.applang;
 
-import java.awt.Container;
 import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.RenderingHints;
@@ -10,6 +9,7 @@ import java.beans.XMLEncoder;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -54,12 +54,14 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Result;
+import javax.xml.transform.Source;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerConfigurationException;
-import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.TransformerFactoryConfigurationError;
 import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.sax.SAXSource;
+import javax.xml.transform.sax.SAXTransformerFactory;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
 import javax.xml.xpath.XPath;
@@ -73,9 +75,9 @@ import org.json.JSONStringer;
 import org.w3c.dom.CDATASection;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
-import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+import org.xml.sax.InputSource;
 
 import android.app.Activity;
 import android.content.Context;
@@ -85,10 +87,7 @@ import android.content.res.Resources.ResourceURLFilter;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
-import android.util.AttributeSet;
 import android.util.Log;
-import android.view.View;
-import android.view.ViewGroup;
 
 import static com.applang.Util.*;
 import static com.applang.Util1.*;
@@ -478,7 +477,7 @@ public class Util2
 			System.out.print(NEWLINE);
 	}
 
-	public static String debugFilePath = "/tmp/debug.out";
+	public static String debugFilePath = pathCombine(tempPath(), "debug.out");
 	
 	public static void debug_out(Job<PrintWriter> job, Object...params) {
 		if (fileExists(debugFilePath))
@@ -774,7 +773,8 @@ public class Util2
 				is = Util.param(null, 0, params);
 				return db.parse(is);
 			}
-	    } catch (Exception e) {
+	    } 
+	    catch (Exception e) {
 			Log.e(Util.TAG, "xmlDocument", e);
 	    	return null;
 	    }
@@ -787,8 +787,21 @@ public class Util2
 				}
 	    }
 	}
+
+	public static Element[] iterateElements(String filterRegex, Document doc, Predicate<Element> predicate) {
+		ArrayList<Element> al = alist();
+		NodeList nodes = doc.getElementsByTagName("*");
+		for (int i = 0; i < nodes.getLength(); i++) {
+			Element el = (Element) nodes.item(i);
+			if (el.getNodeName().matches(filterRegex) && predicate.apply(el))
+				al.add(el);
+		}
+		return al.toArray(new Element[0]);
+	}
 	
-	public static void xmlTransform(String fileName, String styleSheet, String outFileName, Object... params) throws Exception {
+	public static void xmlTransform(String fileName, String styleSheet, String outFileName, Object... params) 
+			throws Exception
+	{
 	    StreamSource source = new StreamSource(fileName);
 	    StreamSource stylesource = new StreamSource(styleSheet);
 	
@@ -804,19 +817,19 @@ public class Util2
 
 	public static void xmlNodeToFile(Node node, boolean omitXmlDeclaration, File file) {
 	    try {
-	    	DOMSource source = new DOMSource(node);
-	        Result result = new StreamResult(file);
-	
 	        Transformer t = xmlTransformer(omitXmlDeclaration);
-	        t.transform(source, result);
+			t.transform(new DOMSource(node), new StreamResult(file));
 	    } catch (Exception e) {}
 	}
 
-	static Transformer xmlTransformer(boolean omitXmlDeclaration)
-			throws TransformerConfigurationException, TransformerFactoryConfigurationError {
+	private static Transformer xmlTransformer(boolean omitXmlDeclaration)
+			throws TransformerConfigurationException, TransformerFactoryConfigurationError
+	{
 		Transformer t = TransformerFactory.newInstance().newTransformer();
 		t.setOutputProperty(OutputKeys.METHOD, "xml");
 		t.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, omitXmlDeclaration ? "yes" : "no");
+		t.setOutputProperty(OutputKeys.INDENT, "yes");
+        t.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4");
 		return t;
 	}
 
@@ -825,11 +838,26 @@ public class Util2
 		try {
 			Transformer t = xmlTransformer(omitXmlDeclaration);
 			t.transform(new DOMSource(node), new StreamResult(sw));
-		} catch (TransformerException te) {
+		} catch (Exception e) {
 			return "";
 		}
 		return sw.toString();
 	}
+
+    public static String formatXml(String xml, boolean omitXmlDeclaration) {
+        try {
+            Transformer serializer = SAXTransformerFactory.newInstance().newTransformer();
+            serializer.setOutputProperty(OutputKeys.INDENT, "yes");
+            serializer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, omitXmlDeclaration ? "yes" : "no");
+            serializer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4");
+            Source xmlSource = new SAXSource(new InputSource(new ByteArrayInputStream(xml.getBytes())));
+            StreamResult res = new StreamResult(new ByteArrayOutputStream());            
+            serializer.transform(xmlSource, res);
+            return new String(((ByteArrayOutputStream)res.getOutputStream()).toByteArray());
+        } catch (Exception e) {
+            return xml;
+        }
+    }
 	
 	public static Element xmlSerialize(BidiMultiMap bidi, Element element, 
 			Function<Object> filter, Object...params) throws Exception
@@ -849,16 +877,6 @@ public class Util2
 		return new BidiMultiMap(list.toArray(new ValList[0]));
 	}
 
-	public static Element selectElement(Object item, String xpath) {
-		if (item == null)
-			return null;
-		NodeList nodes = evaluateXPath(item, xpath);
-		if (nodes.getLength() > 0)
-			return (Element) nodes.item(0);
-		else
-			return null;
-	}
-
 	public static NodeList evaluateXPath(Object item, String path) {
 	    try {
 			XPathFactory factory = XPathFactory.newInstance();
@@ -868,6 +886,16 @@ public class Util2
 	    } catch (Exception e) {
 	    	return null;
 	    }
+	}
+
+	public static Element selectElement(Object item, String xpath) {
+		if (item == null)
+			return null;
+		NodeList nodes = evaluateXPath(item, xpath);
+		if (nodes.getLength() > 0)
+			return (Element) nodes.item(0);
+		else
+			return null;
 	}
 
 	public static boolean osWindows() {
@@ -1085,7 +1113,7 @@ public class Util2
 	}
 
 	public static String runShellScript(String name, String script) {
-		String fileName = pathCombine(new String[]{tempPath(), name});
+		String fileName = pathCombine(strings(tempPath(), name));
 		String path = fileName + ".sh";
 		String fn = "\"" + fileName + "\"";
 		script = enclose("[ -e " + fn + " ] && rm " + fn + "\n", script, " > " + fn) + " 2>&1";
@@ -1185,166 +1213,6 @@ public class Util2
 		}
 	}
 	
-	public static AttributeSet attributeSet(final Context context, Object...attrs) {
-		Object o = param(null, 0, attrs);
-		if (!(o instanceof Element)) {
-			StringBuilder sb = new StringBuilder();
-			sb.append("<AttributeSet xmlns:android=\"http://schemas.android.com/apk/res/android\"");
-			for (Object attr : attrs) {
-				sb.append(" " + attr);
-			}
-			sb.append(" />");
-			InputStream is = new ByteArrayInputStream(sb.toString().getBytes());
-			o = xmlDocument(null, is).getDocumentElement();
-		}
-		final Element element = (Element) o;
-		return new AttributeSet() {
-			{
-				resources = context.getResources();
-				attributes = element.getAttributes();
-			}
-			
-			Resources resources;
-			NamedNodeMap attributes;
-			
-			public int getAttributeCount() {
-				return attributes.getLength();
-			}
-			public String getAttributeName(int index) {
-				return attributes.item(index).getNodeName();
-			}
-			public String getAttributeValue(int index) {
-				return attributes.item(index).getNodeValue();
-			}
-			public String getAttributeValue(String namespace, String name) {
-				return attributes.getNamedItemNS(namespace, name).getNodeValue();
-			}
-			public boolean hasAttribute(String name) {
-				return attributes.getNamedItem(name) != null;
-			}
-			public String getAttributeValue(String name) {
-				Node item = attributes.getNamedItem(name);
-				return item != null ? item.getNodeValue() : null;
-			}
-			public <T> T getAttributeResourceItem(String name) {
-				String attr = getAttributeValue(name);
-				return resources.getXMLResourceItem(attr);
-			}
-			public int getIdAttributeResourceValue(int defaultValue) {
-				return toInt(defaultValue, getIdAttribute());
-			}
-			public String getIdAttribute() {
-				return getAttributeResourceItem("android:id");
-			}
-			public String getClassAttribute() {
-				return getAttributeResourceItem("class");
-			}
-			public int getStyleAttribute() {
-				return getAttributeResourceItem("style");
-			}
-			public String getPositionDescription() {
-				return null;
-			}
-			public int getAttributeUnsignedIntValue(int index, int defaultValue) {
-				// TODO Auto-generated method stub
-				return 0;
-			}
-			public int getAttributeUnsignedIntValue(String namespace, String attribute, int defaultValue) {
-				// TODO Auto-generated method stub
-				return 0;
-			}
-			public int getAttributeResourceValue(int index, int defaultValue) {
-				// TODO Auto-generated method stub
-				return 0;
-			}
-			public int getAttributeResourceValue(String namespace, String attribute, int defaultValue) {
-				// TODO Auto-generated method stub
-				return 0;
-			}
-			public int getAttributeNameResource(int index) {
-				// TODO Auto-generated method stub
-				return 0;
-			}
-			public int getAttributeListValue(int index, String[] options, int defaultValue) {
-				// TODO Auto-generated method stub
-				return 0;
-			}
-			public int getAttributeListValue(String namespace, String attribute, String[] options, int defaultValue) {
-				// TODO Auto-generated method stub
-				return 0;
-			}
-			public int getAttributeIntValue(int index, int defaultValue) {
-				// TODO Auto-generated method stub
-				return 0;
-			}
-			public int getAttributeIntValue(String namespace, String attribute, int defaultValue) {
-				// TODO Auto-generated method stub
-				return 0;
-			}
-			public float getAttributeFloatValue(int index, float defaultValue) {
-				// TODO Auto-generated method stub
-				return 0;
-			}
-			public float getAttributeFloatValue(String namespace, String attribute, float defaultValue) {
-				// TODO Auto-generated method stub
-				return 0;
-			}
-			public boolean getAttributeBooleanValue(int index, boolean defaultValue) {
-				// TODO Auto-generated method stub
-				return false;
-			}
-			public boolean getAttributeBooleanValue(String namespace, String attribute, boolean defaultValue) {
-				// TODO Auto-generated method stub
-				return false;
-			}
-		};
-	}
-
-	public static class Layouter
-	{
-		protected Context mContext;
-		
-		public Layouter(Context context) {
-			mContext = context;
-		}
-
-		public Layouter(Context context, ViewGroup viewGroup) {
-			this(context);
-			this.viewGroup = viewGroup;
-		}
-
-		protected ViewGroup viewGroup = null;
-		
-		public ViewGroup getViewGroup() {
-			return viewGroup;
-		}
-
-		public void setViewGroup(ViewGroup viewGroup) {
-			this.viewGroup = viewGroup;
-		}
-		
-	    public void addView(View view, ViewGroup.LayoutParams params) {
-	    	viewGroup.addView(view, params);
-		}
-		
-	    public Container build(Object...params) {
-	    	ViewGroup viewGroup = param(this.viewGroup, 0, params);
-	    	viewGroup.preLayout();
-	    	Container container = viewGroup.getContainer();
-			for (int i = 0; i < viewGroup.getChildCount(); i++) {
-				View view = viewGroup.getChildAt(i);
-				if (view instanceof ViewGroup)
-					build(view);
-				View parent = view.getParent();
-				if (parent instanceof ViewGroup)
-					((ViewGroup) parent).doLayout(view);
-				container.add(view.getComponent());
-			}
-			viewGroup.applyAttributes();
-			return viewGroup.doLayout();
-	    }
-	}
-
 	/**
 	 * Recursive method used to find all classes in a given directory and subdirs.
 	 *

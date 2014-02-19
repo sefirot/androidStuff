@@ -1,5 +1,6 @@
 package com.applang.components;
 
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyListener;
@@ -9,13 +10,12 @@ import java.util.Properties;
 
 import javax.swing.AbstractAction;
 import javax.swing.JComponent;
-import javax.swing.JFrame;
+import javax.swing.JDialog;
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
-import javax.swing.JScrollPane;
-import javax.swing.WindowConstants;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.text.JTextComponent;
 import javax.swing.text.Segment;
 import javax.swing.text.Highlighter.Highlight;
 
@@ -38,7 +38,7 @@ import org.gjt.sp.jedit.textarea.TextArea;
 
 import android.util.Log;
 
-import com.applang.Util.Constraint;
+import com.applang.Util;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 import com.inet.jortho.SpellChecker;
 
@@ -46,30 +46,43 @@ import static com.applang.Util.*;
 import static com.applang.Util2.*;
 import static com.applang.SwingUtil.*;
 
-public class TextEditor2 extends DoubleFeature implements ITextComponent
+public class TextToggle extends DoubleFeature implements ITextComponent
 {
-	public TextEditor2() {
-		setTextEditor(new TextEditor());
+	public TextToggle() {
+		this(new TextEdit());
 	}
 
-	public TextEditor2(int rows, int columns) {
-		setTextEditor(new TextEditor(rows, columns));
+	public TextToggle(int rows, int columns) {
+		this(new TextEdit(rows, columns));
     }
 
-	public TextEditor2(View view) {
+	public TextToggle(TextEdit textEdit) {
+		super(null);
+		setTextEdit(textEdit);
+	}
+	
+	protected void setTextEdit(TextEdit textEdit) {
+		this.textEdit = textEdit;
+		addNamePart(textEdit.getTaggedComponent(), FOCUS);
+		setWidget((JComponent) textEdit.getComponent());
+		this.textEdit.setTextToggle(this);
+	}
+
+	private TextEdit textEdit;
+
+	public TextEdit getTextEdit() {
+		return textEdit;
+	}
+
+	public JTextComponent getTextEditor() {
+		return getTextEdit().getTextComponent();
+	}
+	
+	public TextToggle(View view) {
 		this();
 		setView(view);
 	}
 
-	private void setTextEditor(TextEditor textEditor) {
-		addNamePart(textEditor, FOCUS);
-		setWidget(new JScrollPane(textEditor));
-	}
-
-	public TextEditor getTextEditor() {
-		return findFirstComponent(getWidget(), FOCUS, Constraint.AMONG);
-	}
-	
 	private View view = null;
 
 	public View getView() {
@@ -90,7 +103,10 @@ public class TextEditor2 extends DoubleFeature implements ITextComponent
 		return hasView() ? getView().getTextArea() : super.getTextArea();
 	}
 	
-	public TextEditor2 createBufferedTextArea(String modeName, String modeFileName) {
+	
+	//	resizing problems (in BoxLayout) of org.gjt.sp.jedit.textarea.StandaloneTextArea 
+	//	no problems in BorderLayout
+	public TextToggle createBufferedTextArea(String modeName, String modeFileName) {
 		TextArea textArea;
 		boolean useEmbedded = false;
 		if (useEmbedded && BerichtsheftPlugin.insideJEdit()) {
@@ -101,7 +117,7 @@ public class TextEditor2 extends DoubleFeature implements ITextComponent
 				@Override
 				public void createPopupMenu(MouseEvent evt) {
 					popup = new JPopupMenu();
-					TextEditor2.this.createPopupMenu(this, popup);
+					TextToggle.this.createPopupMenu(this, popup);
 				}
 			};
 		}
@@ -131,7 +147,7 @@ public class TextEditor2 extends DoubleFeature implements ITextComponent
 				@Override
 				public void createPopupMenu(MouseEvent evt) {
 					popup = new JPopupMenu();
-					TextEditor2.this.createPopupMenu(this, popup);
+					TextToggle.this.createPopupMenu(this, popup);
 				}
 			};
 		}
@@ -142,7 +158,7 @@ public class TextEditor2 extends DoubleFeature implements ITextComponent
 			buffer.setTokenMarker(tokenMarker);
 			textArea.setBuffer(buffer);
 			Mode mode = new Mode(modeName);
-			modeFileName = BerichtsheftPlugin.getSettingsDirectory() + modeFileName;
+			modeFileName = pathCombine(BerichtsheftPlugin.getSettingsDirectory(), modeFileName);
 			mode.setProperty("file", modeFileName);
 			ModeProvider.instance.addMode(mode);	//	mode.loadIfNecessary();
 			buffer.setMode(mode);
@@ -151,7 +167,7 @@ public class TextEditor2 extends DoubleFeature implements ITextComponent
 		textArea.setPreferredSize(new Dimension(size.width, size.height / 2));
 		addNamePart(textArea, FOCUS);
 		setTextArea(textArea);
-		getTextEditor().updateUI();
+		getTextEdit().getTaggedComponent().updateUI();
 		return this;
 	}
 
@@ -198,7 +214,7 @@ public class TextEditor2 extends DoubleFeature implements ITextComponent
 		{
 			TokenMarker.LineContext context = tokenMarker.markTokens(prevContext, new TokenHandler() {
 				public void handleToken(Segment seg, byte id, int offset, int length, LineContext context) {
-					TextEditor textEditor = getTextEditor();
+					JTextComponent textEditor = getTextEditor();
 					if (textEditor != null && spellchecking && id == 0) {
 						Highlight[] hilites = textEditor.getHighlighter().getHighlights();
 						int offset2 = offset + length, len;
@@ -249,7 +265,7 @@ public class TextEditor2 extends DoubleFeature implements ITextComponent
 	@Deprecated
 	public void spellcheck() {
 		TextArea textArea = getTextArea();
-		TextEditor textEditor = getTextEditor();
+		JTextComponent textEditor = getTextEditor();
 		if (textEditor != null && textArea != null) {
 	        SpellChecker.register(textEditor);
 	        textEditor.setText(textArea.getText());
@@ -266,7 +282,7 @@ public class TextEditor2 extends DoubleFeature implements ITextComponent
 		if (textArea != null)
 			textArea.setText(text);
 		else {
-			TextEditor textEditor = getTextEditor();
+			JTextComponent textEditor = getTextEditor();
 			if (textEditor != null)
 				textEditor.setText(text);
 			else
@@ -280,7 +296,7 @@ public class TextEditor2 extends DoubleFeature implements ITextComponent
 		if (textArea != null)
 			return textArea.getText();
 		else {
-			TextEditor textEditor = getTextEditor();
+			JTextComponent textEditor = getTextEditor();
 			if (textEditor != null)
 				return textEditor.getText();
 			Log.w(TAG, "getText not possible, returning null");
@@ -295,7 +311,7 @@ public class TextEditor2 extends DoubleFeature implements ITextComponent
 			textArea.setSelection(new Selection.Range(start, end));
 			textArea.requestFocus();
 		} else {
-			TextEditor textEditor = getTextEditor();
+			JTextComponent textEditor = getTextEditor();
 			if (textEditor != null) {
 				textEditor.setSelectionStart(start);
 				textEditor.setSelectionEnd(end);
@@ -315,10 +331,10 @@ public class TextEditor2 extends DoubleFeature implements ITextComponent
 			if (notNullOrEmpty(text))
 				setSelection(start, start + text.length());
 		} else {
-			TextEditor textEditor = getTextEditor();
+			JTextComponent textEditor = getTextEditor();
 			if (textEditor != null) {
 				int start = textEditor.getSelectionStart();
-				textEditor.replaceRange(text, start, textEditor.getSelectionEnd());
+				getTextEdit().replaceRange(text, start, textEditor.getSelectionEnd());
 				setSelection(start, start + (notNullOrEmpty(text) ? 0 : text.length()));
 			}
 			else
@@ -332,7 +348,7 @@ public class TextEditor2 extends DoubleFeature implements ITextComponent
 		if (textArea != null)
 			return textArea.getSelectedText();
 		else {
-			TextEditor textEditor = getTextEditor();
+			JTextComponent textEditor = getTextEditor();
 			if (textEditor != null)
 				return textEditor.getSelectedText();
 			Log.w(TAG, "getSelectedText not possible, returning null");
@@ -340,20 +356,28 @@ public class TextEditor2 extends DoubleFeature implements ITextComponent
 		}
 	}
 	
-	private Job<ITextComponent> onTextChanged = null;
+	private Job<JComponent> onTextChanged = null;
 	
-	private void update() {
+	private void textChanged() {
 		try {
+			TextArea textArea = getTextArea1();
 			if (onTextChanged != null)
-				onTextChanged.perform(this, objects());
+				onTextChanged.perform(textArea, objects());
 		} catch (Exception e) {
-			Log.e(TAG, "update", e);
+			Log.e(TAG, "textChanged", e);
 		}
 	}
 
-	public void setOnTextChanged(final Job<ITextComponent> onTextChanged) {
-		this.onTextChanged = onTextChanged;
+	private TextArea getTextArea1() {
 		TextArea textArea = getTextArea();
+		if (textArea == null)
+			textArea = getTextArea2();
+		return textArea;
+	}
+
+	public void setOnTextChanged(final Job<JComponent> onTextChanged) {
+		this.onTextChanged = onTextChanged;
+		TextArea textArea = getTextArea1();
 		if (textArea != null) {
 			textArea.getBuffer().addBufferListener(new BufferAdapter() {
 				@Override
@@ -378,31 +402,17 @@ public class TextEditor2 extends DoubleFeature implements ITextComponent
 				}
 				@Override
 				public void contentRemoved(JEditBuffer buffer, int startLine, int offset, int numLines, int length) {
-					update();
+					textChanged();
 				}
 				@Override
 				public void contentInserted(JEditBuffer buffer, int startLine, int offset, int numLines, int length) {
-					update();
+					textChanged();
 				}
 			});
 		} else {
-			TextEditor textEditor = getTextEditor();
-			if (textEditor != null) {
-				textEditor.getDocument().addDocumentListener(
-					new DocumentListener() {
-						public void removeUpdate(DocumentEvent e) {
-							update();
-						}
-
-						public void insertUpdate(DocumentEvent e) {
-							update();
-						}
-
-						public void changedUpdate(DocumentEvent e) {
-							update();
-						}
-					});
-			}
+			TextEdit textEdit = getTextEdit();
+			if (textEdit != null) 
+				textEdit.setOnTextChanged(onTextChanged);
 			else
 				Log.w(TAG, "setOnTextChanged not possible");
 		}
@@ -421,21 +431,37 @@ public class TextEditor2 extends DoubleFeature implements ITextComponent
 				Log.w(TAG, "addKeyListener not possible");
 		}
 	}
+	
+	private ScriptManager scriptManager = null;
+	
+	public JDialog scriptDialog() {
+		return scriptManager == null ? null : scriptManager.scriptDialog;
+	}
+	
+	public void showScriptArea(Component parent, Component relative,
+    		String title, int behavior, 
+			Object...params)
+	{
+		scriptManager = new ScriptManager(this);
+		scriptManager.showScriptDialog(parent, relative, title, behavior, params);
+	}
 
 	public static void main(String...args) throws Exception {
-		JFrame frame = new JFrame();
-		TextEditor2 textEditor2 = new TextEditor2();
-		TextArea textArea = textEditor2.createBufferedTextArea("xml", "/modes/xml.xml").getTextArea();
-		textArea.getPainter().addMouseListener(new MouseAdapter() {
-			@Override
-			public void mouseClicked(MouseEvent e) {
-				println("mouseClicked", identity(e.getSource()));
-			}
-		});
-		printContainer("textArea", textArea, _null());
-		frame.getContentPane().add(textArea);
-		frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-		frame.pack();
-		frame.setVisible(true);
+		TextToggle textToggle = new TextToggle();
+		textToggle.createBufferedTextArea("xml", "/modes/xml.xml");
+		textToggle.showScriptArea(null, null, 
+				"Script",
+				Behavior.MODAL | Behavior.EXIT_ON_CLOSE, 
+				new Util.Job<TextArea>() {
+					public void perform(TextArea t, Object[] parms) throws Exception {
+						t.getPainter().addMouseListener(new MouseAdapter() {
+							@Override
+							public void mouseClicked(MouseEvent e) {
+								println("mouseClicked", identity(e.getSource()));
+							}
+						});
+					}
+				}
+		);
 	}
 }

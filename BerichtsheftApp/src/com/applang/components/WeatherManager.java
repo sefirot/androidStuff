@@ -44,7 +44,6 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 import android.net.Uri;
-import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.widget.TextView;
 
@@ -369,14 +368,14 @@ public class WeatherManager extends ActionPanel
 				textArea.setText(((StringWriter)out).toString());
 				Component component = new JScrollPane(textArea);
 				component.setPreferredSize(new Dimension(800,400));
-				int result = new OptionDialog(view, 
+				int result = new AlertDialog(view, 
 						BerichtsheftPlugin.getProperty("datadock.weather.title"), 
 						title, 
 						component, 
 						JOptionPane.OK_CANCEL_OPTION,
 						Behavior.MODAL, 
-						BerichtsheftPlugin.getProperty("datadock.weather.icon"), 
-						null).getResult();
+						BerichtsheftPlugin.loadIcon("datadock.weather.icon"), 
+						null).open().getResult();
 				if (result != JOptionPane.OK_OPTION)
 					return null;
 			}
@@ -390,7 +389,7 @@ public class WeatherManager extends ActionPanel
 	public AlertDialog feedableDialog(String title) {
 		AlertDialog dialog;
 		TextView tv = new TextView(null, null);
-		tv.getTextComponent().setFont(monoSpaced());
+		tv.getTaggedComponent().setFont(monoSpaced());
 		dialog = new AlertDialog.Builder(BerichtsheftActivity.getInstance(), false)
 				.setTitle(title)
 				.setView(tv)

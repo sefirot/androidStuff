@@ -10,6 +10,7 @@ import javax.swing.SwingUtilities;
 
 import org.gjt.sp.jedit.Buffer;
 import org.gjt.sp.jedit.EditPane;
+import org.gjt.sp.jedit.textarea.JEditTextArea;
 import org.gjt.sp.jedit.textarea.TextArea;
 
 import android.util.Log;
@@ -31,8 +32,9 @@ public class DoubleFeature implements IComponent
 	public JComponent getWidget() {
 		return widget;
 	}
-	
-	public DoubleFeature() {
+
+	public DoubleFeature(TextArea textArea) {
+		setTextArea(textArea);
 	}
 
     @Override

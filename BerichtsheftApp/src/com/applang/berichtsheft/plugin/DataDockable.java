@@ -18,7 +18,6 @@ import javax.swing.BoxLayout;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import javax.swing.JTable;
 
 import org.gjt.sp.jedit.EBComponent;
@@ -33,6 +32,7 @@ import static com.applang.Util.*;
 import static com.applang.Util1.*;
 import static com.applang.SwingUtil.*;
 
+import android.app.AlertDialog;
 import android.content.ContentValues;
 import android.net.Uri;
 import android.util.Log;
@@ -41,7 +41,6 @@ import com.applang.Util.BidiMultiMap;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.components.DataView;
 import com.applang.components.DatePicker;
-import com.applang.components.OptionDialog;
 import com.applang.components.ProfileManager;
 import com.applang.components.DataAdapter;
 import com.applang.components.ScriptManager;
@@ -92,7 +91,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 					final Console console = BerichtsheftShell.getConsole(true);
 					if (console != null) {
 						BerichtsheftShell.consoleWait(console, true);
-						new OptionDialog(view, 
+						new AlertDialog(view, 
 								"Spinner test", 
 								"", 
 								"the spinner icon in the 'Berichtsheft' console window should be animated", 
@@ -103,7 +102,8 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 									public void perform(Void t, Object[] parms) throws Exception {
 										BerichtsheftShell.consoleWait(console, false);
 									}
-								});
+								})
+							.open();
 					}
 				}
 			}, true));
@@ -472,8 +472,6 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 	{
 		if (message instanceof JTable) {
 			JTable table = (JTable) message;
-			table.setPreferredScrollableViewportSize(new Dimension(800,200));
-//	        table.setFillsViewportHeight(true);
 	        int sel;
 			switch (sel = param_Integer(-3, 0, params)) {
 			case -3:
@@ -488,15 +486,16 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 				table.getSelectionModel().setSelectionInterval(sel, sel);
 				break;
 			}
-			message = new JScrollPane(table);
+			message = scrollableViewport(table, new Dimension(800,200));
 		}
-		return new OptionDialog(view, 
+		return new AlertDialog(view, 
 				BerichtsheftPlugin.getProperty(titleProperty), 
 				caption, 
 				message, 
 				optionType,
 				behavior, 
-				null, followUp).getResult();
+				null, 
+				followUp).open().getResult();
 	}
 	
 	// NOTE used in scripts
@@ -633,7 +632,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 			final DataAdapter dataAdapter = new DataAdapter(WeatherInfo.AUTHORITY, new File(dbPath), uriString);
 			final int[] results = ints(0,0,0);
 			final ValMap profile = ProfileManager.getProfileAsMap("_weather", "download");
-			ValMap map = ScriptManager.getDefaultProjection(profile.get("flavor"), dataAdapter.getTableName());
+			ValMap map = ScriptManager.getProjectionDefault(profile.get("flavor"), dataAdapter.getTableName());
 			final BidiMultiMap projection = (BidiMultiMap) map.get("projection");
 			final Object pk = dataAdapter.info.get("PRIMARY_KEY");
 			projection.removeKey(pk);

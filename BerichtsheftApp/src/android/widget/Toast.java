@@ -17,8 +17,8 @@ import android.view.View;
 import static com.applang.Util.*;
 import static com.applang.SwingUtil.*;
 
-public class Toast {
-
+public class Toast
+{
     public static final int LENGTH_ZERO = -1;
     public static final int LENGTH_SHORT = 0;
     public static final int LENGTH_LONG = 1;
@@ -47,7 +47,7 @@ public class Toast {
     public synchronized void show(Object...params) {
     	if (mDuration < 1)
     		return;
-    	Point location = mContext.location;
+    	Point location = mContext.getLocation();
     	location.x += 10;
     	location.y += 10;
     	if (param_Boolean(false, 0, params)) {

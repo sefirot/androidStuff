@@ -53,32 +53,49 @@ public class LayoutInflater
 		if (fileExists(resourceFile)) {
 			Document document = xmlDocument(resourceFile);
 			String key = param_String(null, 0,  params);
-			if (notNullOrEmpty(key)) {
-				NodeList nodes = document.getElementsByTagName("*");
-				for (int i = 0; i < nodes.getLength(); i++) {
-					NamedNodeMap attributes = ((Element) nodes.item(i)).getAttributes();
-					Node node = attributes.getNamedItem("android:id");
-					if (node != null && node.getNodeValue().endsWith("field_")) {
-						node.setNodeValue(node.getNodeValue().replaceFirst("field_$", key));
-						attributes.setNamedItem(node);
-					}
-				}
+			String style = param_String(null, 1,  params);
+			NodeList nodes = document.getElementsByTagName("*");
+			for (int i = 0; i < nodes.getLength(); i++) {
+				NamedNodeMap attributes = ((Element) nodes.item(i)).getAttributes();
+				changeValue(attributes, "android:id", "field_", key);
+				changeValue(attributes, "style", "style", style);
 			}
+			no_println("document", xmlNodeToString(document, true));
 			vw = inflate(document.getDocumentElement(), params);
 		}
         return vw;
     }
 
+	private void changeValue(NamedNodeMap attributes, String name, String oldValue, String newValue) {
+		if (nullOrEmpty(newValue)) 
+			return;
+		Node node = attributes.getNamedItem(name);
+		if (node != null && node.getNodeValue().endsWith(oldValue)) {
+			node.setNodeValue(node.getNodeValue().replaceFirst(oldValue + "$", newValue));
+			attributes.setNamedItem(node);
+		}
+	}
+
 	public View inflate(final Element element, Object...params) {
     	View view = null;
 		try {
-			AttributeSet attributeSet = attributeSet(mContext, element);
-			Class<?> layoutClass = Class.forName("android.widget.".concat(element.getNodeName()));
-			int width = LayoutParams.dimensionalValue(mContext, element.getAttribute("android:layout_width"));
-			int height = LayoutParams.dimensionalValue(mContext, element.getAttribute("android:layout_height"));
+			AttributeSet attributeSet = Resources.attributeSet(mContext, element);
+			String className = element.getNodeName();
+			if ("view".equals(className)) {
+				String attr = attributeSet.getClassAttribute();
+				if (notNullOrEmpty(attr))
+					className = attr;
+				else
+					className = "android.view.View";
+			}
+			else
+				className = "android.widget.".concat(className);
+			Class<?> layoutClass = Class.forName(className);
+			int width = LayoutParams.dimensionalValue(mContext, attributeSet.getAttributeValue("android:layout_width"));
+			int height = LayoutParams.dimensionalValue(mContext, attributeSet.getAttributeValue("android:layout_height"));
 			if (LinearLayout.class.equals(layoutClass)) {
 				view = linearLayout(mContext, 
-						"vertical".equals(element.getAttribute("android:orientation")) ? 
+						"vertical".equals(attributeSet.getAttributeValue("android:orientation")) ? 
 								LinearLayout.VERTICAL : LinearLayout.HORIZONTAL, 
 		        		width, height);
 			}

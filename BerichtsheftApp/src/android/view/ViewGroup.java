@@ -20,18 +20,18 @@ import static com.applang.Util2.*;
 
 public class ViewGroup extends View implements ViewManager
 {
-	@Override
-	public String toString() {
-		return viewHierarchy(this);
-	}
-
 	public ViewGroup(Context context) {
 		super(context, null);
 	}
 
 	@Override
-	protected void create(Object... params) {
+	protected void create() {
 		setComponent(new Container());
+	}
+
+	@Override
+	public String toString() {
+		return viewHierarchy(this);
 	}
 
 	public static class LayoutParams
@@ -184,7 +184,7 @@ public class ViewGroup extends View implements ViewManager
     public View findViewById(final int id) {
 		if (findViewTraversal(id) != null)
 			return this;
-    	Object[] params = iterateViews(this, 
+    	Object[] params = iterateViews(this, 0, 
 			new Function<Object[]>() {
 				public Object[] apply(Object... params) {
 					View v = param(null, 0, params);
@@ -194,7 +194,7 @@ public class ViewGroup extends View implements ViewManager
 					else
 						return parms;
 				}
-			}, 0);
+			});
     	return param(null, 0, params);
     }
 
@@ -202,17 +202,17 @@ public class ViewGroup extends View implements ViewManager
     public View findViewWithTag(final Object tag, final Object...params) {
 		if (findViewWithTagTraversal(tag, params) != null)
 			return this;
-    	Object[] findings = iterateViews(this, 
+    	Object[] findings = iterateViews(this, 0, 
 			new Function<Object[]>() {
 				public Object[] apply(Object... params) {
 					View v = param(null, 0, params);
 					Object[] parms = param(null, 2, params);
-					if (v.findViewWithTagTraversal(tag, params) != null)
-						return arrayextend(parms, false, v);
+					if (v.findViewWithTagTraversal(tag, parms) != null)
+						return arrayextend(parms, true, v);
 					else
 						return parms;
 				}
-			}, 0);
+			}, params);
     	return param(null, 0, findings);
     }
 
@@ -230,19 +230,6 @@ public class ViewGroup extends View implements ViewManager
     protected boolean checkLayoutParams(ViewGroup.LayoutParams p) {
         return  p != null;
     }
-
-	public void applyAttributes() {
-		super.applyAttributes();
-		iterateViews(this, 
-			new Function<Object[]>() {
-				public Object[] apply(Object... params) {
-					View v = param(null, 0, params);
-					if (v != null)
-						v.applyAttributes();
-					return null;
-				}
-			}, 0);
-	}
     
     public Container getContainer() {
     	return (Container) getComponent();
@@ -262,21 +249,32 @@ public class ViewGroup extends View implements ViewManager
 		return strings(SpringLayout.WEST, SpringLayout.NORTH, SpringLayout.EAST, SpringLayout.SOUTH);
 	}
 	
-    public static void build(View view) {
+    public static void build(View view, boolean finalLayout) {
     	if (view instanceof ViewGroup) {
 	    	ViewGroup viewGroup = (ViewGroup) view;
 	    	viewGroup.preLayout();
 	    	Container container = viewGroup.getContainer();
 			for (int i = 0; i < viewGroup.getChildCount(); i++) {
 				view = viewGroup.getChildAt(i);
-				build(view);
+				build(view, false);
 				View parent = view.getParent();
 				if (parent instanceof ViewGroup)
 					((ViewGroup) parent).doLayout(view);
 				container.add(view.getComponent());
 			}
-			viewGroup.applyAttributes();
-			viewGroup.doLayout();
+			if (finalLayout) {
+				viewGroup.applyAttributes();
+				iterateViews(viewGroup, 0, 
+					new Function<Object[]>() {
+						public Object[] apply(Object... params) {
+							View v = param(null, 0, params);
+							if (v != null)
+								v.applyAttributes();
+							return null;
+						}
+					});
+				viewGroup.doLayout();
+			}
     	}
     }
 

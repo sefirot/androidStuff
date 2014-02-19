@@ -29,23 +29,26 @@ public class TextView extends View
 			setMovementMethod(new ScrollingMovementMethod());
     }
 
-    protected void create(Object... params) {
+    public TextView(Component component) {
+		super(component);
+		if (isMultiLine())
+			setMovementMethod(new ScrollingMovementMethod());
+	}
+
+	@Override
+	protected void create() {
 		if (attributeSet == null)
     		inputType = "textMultiLine";
 		JLabel label = new JLabel();
 		setComponent(label);
 	}
     
-    public JComponent getTextComponent() {
-    	JComponent component = taggedComponent();
-		if (component instanceof JScrollPane)
-			return taggedComponent();
-		else
-			return component;
+    public JComponent getTaggedComponent() {
+    	return taggedComponent();
     }
     
     public JLabel getLabel() {
-    	return (JLabel) getTextComponent();
+    	return (JLabel) getTaggedComponent();
     }
 
 	public void setMovementMethod(MovementMethod movementMethod) {
@@ -62,8 +65,8 @@ public class TextView extends View
 	}
 	
 	public void setText(String text) {
-    	if (isMultiLine() && !text.substring(0, Math.min(text.length(), 10)).toLowerCase().startsWith("<html>")) {
-    		text = enclose("<html>", text.replaceAll(NEWLINE_REGEX, "<br>"), "</html>");
+    	if (isMultiLine()) {
+    		text = htmlize(text);
     	}
 		getLabel().setText(text);
 	}
@@ -103,7 +106,7 @@ public class TextView extends View
 			String value = attributeSet.getAttributeValue("android:text");
 	    	if (notNullOrEmpty(value))
 	    		setText(Resources.textValue(getContext(), value));
-	    	value = attributeSet.getAttributeValue("android:textColor");
+	    	value = attributeSet.getAttributeResourceItem("android:textColor");
 	    	if (notNullOrEmpty(value)) {
 				int color= Resources.colorValue(getContext(), value);
 				setTextColor(color);

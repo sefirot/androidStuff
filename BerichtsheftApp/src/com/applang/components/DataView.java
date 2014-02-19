@@ -17,11 +17,13 @@ import java.util.Vector;
 
 import javax.swing.AbstractCellEditor;
 import javax.swing.BoxLayout;
+import javax.swing.DefaultCellEditor;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
@@ -111,7 +113,7 @@ public class DataView extends JPanel implements IComponent
 		switchSelectionMode(false);
 		add(sqlBox, BorderLayout.NORTH);
 		setMaximumDimension(sqlBox, 100);
-		add(new JScrollPane(table), BorderLayout.CENTER);
+		add(scrollableViewport(table), BorderLayout.CENTER);
 		southStatusBar(this);
 	}
 
@@ -440,7 +442,7 @@ public class DataView extends JPanel implements IComponent
 				}
 			});
 		}
-		return new JScrollPane(table);
+		return scrollableViewport(table);
 	}
 	
 	public static File chooseDb(Function<File> chooser, final boolean providerIncluded, Object...params) {
@@ -533,7 +535,7 @@ public class DataView extends JPanel implements IComponent
 				}
 			});
 		}
-		return new JScrollPane(table);
+		return scrollableViewport(table);
 	}
 
 	private AlertDialog dialog = null;
@@ -652,10 +654,12 @@ public class DataView extends JPanel implements IComponent
 			types = info.getList("type").toArray();
 			checks = vlist();
 			conversions = vlist();
+			styles = vlist();
 			int length = names.length;
 			for (int i = 0; i < length; i++) {
 				checks.add(true);
 				conversions.add("");
+				styles.add("");
 			}
 			BidiMultiMap projection = param(null, 0, params);
 			if (projection != null && isAvailable(0, projection.getKeys())) {
@@ -663,6 +667,7 @@ public class DataView extends JPanel implements IComponent
 					Object name = names[i];
 					checks.set(i, projection.getValue(name, 3));
 					conversions.set(i, stringValueOf(projection.getValue(name)));
+					styles.set(i, projection.getValue(name, 4));
 				}
 			}
 		}
@@ -679,7 +684,7 @@ public class DataView extends JPanel implements IComponent
 		private String tableName;
 		private ValMap info;
 		private Object[] names, types;
-		private ValList checks, conversions;
+		private ValList checks, conversions, styles;
 		
 		@Override
 		public int getRowCount() {
@@ -687,40 +692,57 @@ public class DataView extends JPanel implements IComponent
 		}
 		@Override
 		public int getColumnCount() {
-			return 4;
+			return 5;
 		}
 		@Override
 		public String getColumnName(int column) {
-			if (column == 0)
-				return "";
-			else if (column == 1)
+			switch (column) {
+			case 1:
 				return "Column";
-			else if (column == 2)
+			case 2:
 				return "Type";
-			else
+			case 3:
 				return "Conversion";
+			case 4:
+				return "Style";
+			default:
+				return "";
+			}
 		}
 		@Override
 		public Object getValueAt(int row, int col) {
-			if (col == 0)
-				return checks.get(row);
-			else if (col == 1)
+			switch (col) {
+			case 1:
 				return names[row];
-			else if (col == 2)
+			case 2:
 				return types[row];
-			else
+			case 3:
 				return conversions.get(row);
+			case 4:
+				Object style = styles.get(row);
+				return stringValueOf(style);
+			default:
+				return checks.get(row);
+			}
 		}
 		@Override
 		public void setValueAt(Object value, int row, int col) {
-			if (col == 0)
-				checks.set(row, value);
-			else if (col == 1)
+			switch (col) {
+			case 1:
 				names[row] = value;
-			else if (col == 2)
+				break;
+			case 2:
 				types[row] = value;
-			else
+				break;
+			case 3:
 				conversions.set(row, value);
+				break;
+			case 4:
+				styles.set(row, value);
+				break;
+			default:
+				checks.set(row, value);
+			}
 			changed = true;
 			memorizeFlavor();
 		}
@@ -754,7 +776,7 @@ public class DataView extends JPanel implements IComponent
 
 		public void injectFlavor() {
 			if (hasFlavor()) {
-				ValMap map = ScriptManager.getDefaultProjection(flavor, tableName);
+				ValMap map = ScriptManager.getProjectionDefault(flavor, tableName);
 				if (map.get("version") == info.get("VERSION")) {
 					BidiMultiMap projection = (BidiMultiMap) map.get("projection");
 					if (projection != null) {
@@ -763,6 +785,7 @@ public class DataView extends JPanel implements IComponent
 							if (index.length > 0) {
 								conversions.set(i, projection.getValue(names[index[0]], 1));
 								checks.set(i, projection.getValue(names[index[0]], 3));
+								styles.set(i, projection.getValue(names[index[0]], 4));
 							}
 						}
 						fireTableDataChanged();
@@ -776,15 +799,16 @@ public class DataView extends JPanel implements IComponent
 				ValMap map = vmap();
 				map.put("version", info.get("VERSION"));
 				map.put("projection", getExpandedProjection());
-				ScriptManager.setDefaultProjection(flavor, tableName, map);
+				ScriptManager.setProjectionDefault(flavor, tableName, map);
 			}
 		}
 		
 		public BidiMultiMap getExpandedProjection() {
-			return new BidiMultiMap(new ValList(asList(names)), 
+			return new BidiMultiMap(vlist(names), 
 				new ValList(conversions), 
-				new ValList(asList(types)), 
-				new ValList(checks));
+				vlist(types), 
+				new ValList(checks), 
+				new ValList(styles));
 		}
 
 		public BidiMultiMap getProjection() {
@@ -807,7 +831,7 @@ public class DataView extends JPanel implements IComponent
 	
 	public static class ConversionCellEditor extends AbstractCellEditor implements TableCellEditor, ActionListener
 	{
-		JTextField txt = new JTextField();
+		JTextField textField = new JTextField();
 		JPanel panel = null;
 		Component relative;
 		
@@ -817,7 +841,7 @@ public class DataView extends JPanel implements IComponent
 		
 		@Override
 		public Object getCellEditorValue() {
-			return txt.getText();
+			return textField.getText();
 		}
 		
 		@Override
@@ -825,10 +849,10 @@ public class DataView extends JPanel implements IComponent
 			String func = new ScriptManager(
 					BerichtsheftApp.getJEditView(), 
 					relative, 
-					null, null, null, txt.getText())
+					null, null, null, textField.getText())
 				.getFunction();
 			if (notNullOrEmpty(func)) {
-				txt.setText(func);
+				textField.setText(func);
 			}
 			stopCellEditing();
 		}
@@ -837,27 +861,30 @@ public class DataView extends JPanel implements IComponent
 		public Component getTableCellEditorComponent(JTable table,
 				Object value, boolean isSelected, int row, int column)
 		{
-			txt.setText(stringValueOf(value));
+			textField.setText(stringValueOf(value));
 			if (panel == null) {
 				panel = new JPanel();
 				panel.setLayout(new BoxLayout(panel, BoxLayout.LINE_AXIS));
-				panel.add(txt);
+				panel.add(textField);
 				JButton btn = new JButton(iconFrom("/images/ellipsis_16x16.png"));
 				btn.addActionListener(this);
 				panel.add(btn);
 				panel.doLayout();
 				scaleSize(btn, 0.333);
 			}
-			txt.requestFocus();
+			textField.requestFocus();
 			return panel;
 		}
 	}
 	
-	public static JComponent projectionComponent(final Component relative, TableModel model) {
+	public static JComponent projectionComponent(Context context, final Component relative, TableModel model) {
+		final Object[] styles = context.getResources().getXMLResourceItem("@style/*");
 		JTable table = new JTable() {
+			@SuppressWarnings("unchecked")
 			@Override
 			public TableCellEditor getCellEditor(final int row, final int column) {
-				if (column == 3) {
+				switch (column) {
+				case 3:
 					final ConversionCellEditor cellEditor = new ConversionCellEditor(relative);
 					cellEditor.addCellEditorListener(new CellEditorListener() {
 						public void editingStopped(ChangeEvent e) {
@@ -868,8 +895,11 @@ public class DataView extends JPanel implements IComponent
 						}
 					});
 					return cellEditor;
+				case 4:
+					return new DefaultCellEditor(new JComboBox(styles));
+				default:
+					return super.getCellEditor(row, column);
 				}
-				return super.getCellEditor(row, column);
 			}
 		};
 		table.setModel(model == null ? new DefaultTableModel() : model);
@@ -877,28 +907,29 @@ public class DataView extends JPanel implements IComponent
 		table.setRowSelectionAllowed(false);
 		table.setColumnSelectionAllowed(false);
 		setColumnWidthsAsPercentages(table, 0.10);
-		return new JScrollPane(table);
+		return scrollableViewport(table);
 	}
 	
-	public ProjectionModel askProjection(ProjectionModel model) { 
-		JComponent projectionComponent = projectionComponent(dialog, model);
-		dialog = new AlertDialog.Builder(context)
-				.setTitle("Projection")
+	public static ProjectionModel askProjection(Context context, String title, ProjectionModel model, Object...params) { 
+		JComponent projectionComponent = projectionComponent(context, null, model);
+		AlertDialog dialog = new AlertDialog.Builder(context, 
+				param_Integer(AlertDialog.behavior, 0, params), 
+				param_Integer(3, 1, params))
+				.setTitle(valueOrElse("Projection", title))
 				.setView(projectionComponent)
-				.setNeutralButton(android.R.string.close, new OnClickListener() {
-					public void onClick(DialogInterface dialog, int which) {
-						dialog.dismiss();
-					}
-				})
 				.create();
-		dialog.open(0.5, 0.5);
+		dialog.open(1.0, 0.5);
 		JTable table = findFirstComponent(projectionComponent, "table");
 		if (table != null) {
 			AbstractCellEditor ce = (AbstractCellEditor) table.getCellEditor();
 			if (ce != null)
 				ce.stopCellEditing();
 		}
-		return model;
+		int result = (Integer) dialog.result;
+		if (result > 0)
+			return null;
+		else
+			return model;
 	}
 	
 	public static class DataModel extends AbstractTableModel
@@ -938,7 +969,7 @@ public class DataView extends JPanel implements IComponent
 		public ValList columns = vlist();
 		public String[] conversions = strings();
 		
-		boolean hasConversion(int col) {
+		private boolean hasConversion(int col) {
 			return isAvailable(col, conversions) && conversions[col].length() > 0;
 		}
 		

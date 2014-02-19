@@ -615,7 +615,7 @@ public class DatePicker
 	    	if (length < 1)
 	    		return dateInMillis(year, month - 1, day);
 	    	else
-	    		return (Long) datesInMillis.getValue(day);
+	    		return datesInMillis.getValue(day);
 	    }
 		
 		public static long getMillisByHour(int day, int hour) {

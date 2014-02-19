@@ -218,7 +218,7 @@ public class BerichtsheftOptionPane extends AbstractOptionPane implements Action
 				"Berichtsheft options", 
 				JOptionPane.DEFAULT_OPTION | modality, 
 				JOptionPane.PLAIN_MESSAGE, 
-				null, null, 
-				null);
+				null, 
+				null, null);
 	}
 }

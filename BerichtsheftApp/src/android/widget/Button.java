@@ -20,14 +20,15 @@ public class Button extends TextView
 		super(context, attrs);
 	}
 
-    protected void create(Object... params) {
+	@Override
+    protected void create() {
     	JButton button = new JButton();
 		setComponent(button);
 		button.setMargin(new Insets(0,0,0,0));
 	}
     
     public JButton getButton() {
-    	return (JButton) getTextComponent();
+    	return (JButton) getTaggedComponent();
     }
 	
 	public void setText(String text) {

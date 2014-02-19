@@ -175,7 +175,7 @@ public class FormEditor extends JSplitPane
 	static boolean generateMask(String contentXml) {
 		try {
 			String stylePath = BerichtsheftApp.applicationDataPath("Skripte/mask.xsl");
-			String dummy = "/tmp/temp.html";
+			String dummy = tempPath() + "/temp.html";
 			xmlTransform(contentXml, stylePath, dummy, "mode", 1);
 			File dir = tempDir(false, BerichtsheftApp.NAME);
 			pages = dir.listFiles(new FilenameFilter() {

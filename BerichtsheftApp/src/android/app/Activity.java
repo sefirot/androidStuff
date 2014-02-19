@@ -1,6 +1,5 @@
 package android.app;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
 import javax.swing.JFrame;
@@ -22,11 +21,10 @@ public class Activity extends Context
 {
 	protected static final String TAG = Activity.class.getSimpleName();
 	
-	public static ValMap activities = vmap();
-	static {
-		activities.put("com.applang.action.PROMPT", "com.applang.Dialogs");
-		activities.put("com.applang.action.CONSTRUCT", "com.applang.ConstructDialogs");
-	}
+	public static ValMap activities = vmap(
+		"com.applang.action.PROMPT", "com.applang.Dialogs", 
+		"com.applang.action.CONSTRUCT", "com.applang.ConstructDialogs"
+	);
 	
 	private Activity mParent = null;
 	
@@ -159,7 +157,8 @@ public class Activity extends Context
 	
 	private ViewGroup viewGroup = new ViewGroup(this);
 	
-	public void setContentView (View view) {
+	public void setContentView(View view) {
+		viewGroup.setId(android.R.id.content);
 		viewGroup.addView(view, null);
 	}
 

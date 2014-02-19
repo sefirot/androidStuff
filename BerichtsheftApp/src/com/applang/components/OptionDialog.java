@@ -15,7 +15,6 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
-import javax.swing.UIManager;
 import javax.swing.border.EmptyBorder;
 
 import org.gjt.sp.jedit.GUIUtilities;
@@ -45,9 +44,7 @@ public class OptionDialog extends Dialog
 		this.options = defaultOptions(optionType);
 		this.followUp = followUp;
 		this.params = params;
-		Icon icon = optionType == JOptionPane.DEFAULT_OPTION ? 
-				UIManager.getIcon("OptionPane.informationIcon") :
-				UIManager.getIcon("OptionPane.questionIcon");
+		Icon icon = defaultIcon(optionType);
 		if (notNullOrEmpty(iconPath))
 			icon = BerichtsheftPlugin.loadIcon(iconPath);
 		init(caption, icon, message);

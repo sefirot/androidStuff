@@ -370,7 +370,7 @@ public class WeatherInfoTests extends TestCase
 
     public void testHTMLParser() throws Exception {
     	javax.swing.text.html.HTMLDocument doc = getDoc(MONTHREP_URL);
-		contentsToFile(new File("/tmp/synop.html"), getString(doc));
+		contentsToFile(new File(tempPath() + "/synop.html"), getString(doc));
     	
 		javax.swing.text.ElementIterator it = new javax.swing.text.ElementIterator(doc); 
 		javax.swing.text.Element elem; 
@@ -419,7 +419,7 @@ public class WeatherInfoTests extends TestCase
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
 	void jsonTest(Object object) throws Exception {
-		File file = new File("/tmp/test.json");
+		File file = new File(tempPath() + "/test.json");
 
 		JSONStringer jsonWriter = new JSONStringer();
 		toJSON(null, jsonWriter, "", object, null);

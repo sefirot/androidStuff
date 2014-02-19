@@ -11,12 +11,9 @@ import java.sql.Connection;
 import java.sql.Statement;
 
 import javax.swing.AbstractButton;
-import javax.swing.Action;
 import javax.swing.BoxLayout;
 import javax.swing.JPanel;
 import javax.swing.JToggleButton;
-
-import android.util.Log;
 
 import com.applang.UserContext;
 import com.applang.berichtsheft.BerichtsheftApp;
@@ -25,7 +22,6 @@ import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
 import static com.applang.SwingUtil.*;
-import static com.applang.VelocityUtil.*;
 
 public class ActionPanel extends ManagerBase<Object>
 {
@@ -52,6 +48,7 @@ public class ActionPanel extends ManagerBase<Object>
 				}, 
 				new UIFunction() {
 					public Component[] apply(Component comp, Object[] parms) {
+						printContainer("createAndShowGUI", (Container)comp, true);
 						actionPanel.start();
 						return null;
 					}
@@ -217,32 +214,6 @@ public class ActionPanel extends ManagerBase<Object>
 	public boolean isActionEnabled(int index, int...bar) {
 		return buttons[index].getAction().isEnabled();
 	}
-	
-	protected void toggle(CustomAction toggleAction, Job<Boolean> job, Object...params) {
-		String name1 = toggleAction.getType().name(1);
-		String name2 = toggleAction.getType().name(2);
-		String n = Action.NAME;
-		Object name = toggleAction.getValue(n);
-		name = name.equals(name1) ? name2 : name1;
-		toggleAction.putValue(n, name);
-    	try {
-    		boolean toggle = name.equals(name2);
-			job.perform(toggle, params);
-		} 
-    	catch (Exception e) {
-			Log.e(TAG, "", e);
-		}
-	}
-	
-	protected Job<Boolean> textViewToggler = new Job<Boolean>() {
-		public void perform(Boolean textView, Object[] parms) throws Exception {
-	    	String script = getText();
-			getTextComponent().toggle(textView, null);
-	    	if (textView) {
-				setText(toText(script));
-	    	}
-		}
-	};
 
 	protected IComponent iComponent = null;
 
@@ -250,13 +221,13 @@ public class ActionPanel extends ManagerBase<Object>
 		return iComponent instanceof ITextComponent;
 	}
 	
-	public TextEditor2 getTextComponent() {
-		return hasTextComponent() ? (TextEditor2) iComponent : null;
+	public TextToggle getTextToggle() {
+		return hasTextComponent() ? (TextToggle) iComponent : null;
 	}
 	
 	protected void setupTextArea(ITextComponent iTextComponent) {
 		if (hasTextComponent()) {
-			getTextComponent().addKeyListener(new KeyAdapter() {
+			getTextToggle().addKeyListener(new KeyAdapter() {
 				@Override
 				public void keyTyped(KeyEvent e) {
 					setDirty(true);
@@ -265,17 +236,15 @@ public class ActionPanel extends ManagerBase<Object>
 		}
 	}
 
-	protected String toText(String script) {
-		return evaluate(new UserContext(), script, TAG);
-	}
-
 	public void setText(String text) {
 		if (hasTextComponent()) 
-			getTextComponent().setText(text);
+			getTextToggle().setText(text);
 	}
 
 	public String getText() {
-		return hasTextComponent() ? getTextComponent().getText() : null;
+		return hasTextComponent() ? 
+				getTextToggle().getText() : 
+				null;
 	}
 
 	protected String chooseDatabase(String dbName) {

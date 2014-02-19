@@ -21,7 +21,7 @@ import static com.applang.SwingUtil.*;
 
 public abstract class Dialog extends JDialog
 {
-	protected static final String TAG = AlertDialog.class.getSimpleName();
+	protected static final String TAG = Dialog.class.getSimpleName();
 	
 	public Dialog(Frame owner, int behavior) {
 		super(owner, Behavior.hasFlags(behavior, Behavior.MODAL));
@@ -32,7 +32,7 @@ public abstract class Dialog extends JDialog
 
 	protected int _behavior;
 	
-	public void open(Object...params) {
+	public Dialog open(Object...params) {
 		Object param0 = param(null, 0, params);
 		if (param0 instanceof Dimension)
 			setSize((Dimension)param0);
@@ -43,6 +43,7 @@ public abstract class Dialog extends JDialog
 			deadline = Deadline.start(this);
 		setVisible(true);
 		toFront();
+		return this;
 	}
 	
 	private Deadline deadline = null;
@@ -52,6 +53,10 @@ public abstract class Dialog extends JDialog
 	}
 
 	public Object result = null;
+
+	public int getResult() {
+		return (Integer)result;
+	}
 
 	public abstract void ok();
 	public abstract void cancel();

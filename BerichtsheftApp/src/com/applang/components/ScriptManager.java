@@ -12,10 +12,12 @@ import java.awt.event.KeyEvent;
 import java.awt.event.KeyAdapter;
 import java.util.regex.Pattern;
 
+import javax.swing.AbstractButton;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.DefaultCellEditor;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -29,9 +31,9 @@ import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellEditor;
 
 import org.gjt.sp.jedit.BeanShell;
-import org.gjt.sp.jedit.View;
 import org.gjt.sp.jedit.bsh.NameSpace;
 import org.gjt.sp.jedit.gui.RolloverButton;
+import org.gjt.sp.jedit.textarea.TextArea;
 import org.w3c.dom.CDATASection;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -39,6 +41,8 @@ import org.w3c.dom.NodeList;
 
 import android.util.Log;
 
+import com.applang.Util;
+import com.applang.SwingUtil.UIFunction;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 
@@ -59,7 +63,7 @@ public class ScriptManager extends ManagerBase<Element>
 		return String.format("/PROJECTION[@table='%s']", table);
 	}
 	
-	public static boolean setDefaultProjection(Object flavor, String tableName, ValMap map) {
+	public static boolean setProjectionDefault(Object flavor, String tableName, ValMap map) {
 		if (ProfileManager.transportsLoaded()) {
 			String xpath = ProfileManager.transportsSelector + flavorSelector(flavor);
 			Element element = selectElement(ProfileManager.transports, xpath);
@@ -88,7 +92,7 @@ public class ScriptManager extends ManagerBase<Element>
 		return false;
 	}
 	
-	public static ValMap getDefaultProjection(Object flavor, String tableName) {
+	public static ValMap getProjectionDefault(Object flavor, String tableName) {
 		ValMap map = vmap();
 		if (ProfileManager.transportsLoaded()) {
 			String xpath = ProfileManager.transportsSelector + flavorSelector(flavor);
@@ -131,52 +135,112 @@ public class ScriptManager extends ManagerBase<Element>
 		}
 	}
 	
-	private TextEditor2 textArea;
-	private JLabel mess;
-
-	public ScriptManager(final View view, Component relative, Object...params) {
+	public ScriptManager(final Component parent, Component relative, Object...params) {
 		String selector = param_String("", 0, params);
 		this.selector += selector;
 		this.profile = param(null, 1, params);
-		
-		//	resizing problems (like in BoxLayout) of org.gjt.sp.jedit.textarea.StandaloneTextArea (behind TextEditor) 
-		//	make this dialog construction preferable
-		
 		String title = param_String("Script editor", 2, params);
 		final String function = param(null, 3, params);
 		int behavior = param_Integer(Behavior.MODAL, 4, params);
-		showDialog(view, relative, 
-	    		title, 
-	    		new UIFunction() {
-					public Component[] apply(Component comp, Object[] parms) {
-						final JDialog wnd = (JDialog) comp;
-						blockChange(new Job<Void>() {
-							public void perform(Void t, Object[] params) throws Exception {
-								createUI(view, wnd.getContentPane());
-							}
-						});
-						return null;
-					}
-	    		},
-	    		new UIFunction() {
-					public Component[] apply(Component comp, Object[] parms) {
-						JDialog wnd = (JDialog) comp;
-						JButton btn = findFirstComponent(wnd.getContentPane(), ACCEPT_BUTTON_KEY);
-						btn.getRootPane().setDefaultButton(btn);
-						if (function != null)
-							setFunction(function);
-						return null;
-					}
-	    		},
-	    		new UIFunction() {
-					public Component[] apply(Component comp, Object[] parms) {
-						comboBoxes[0].setSelectedIndex(-1);
-						return null;
-					}
-	    		},
-	    		behavior);
+		showDialog(parent, relative, 
+    		title, 
+    		new UIFunction() {
+				public Component[] apply(Component comp, Object[] parms) {
+					final JDialog dlg = (JDialog) comp;
+					blockDirty(new Job<Void>() {
+						public void perform(Void t, Object[] params) throws Exception {
+							createUI(parent, dlg.getContentPane());
+						}
+					});
+					return null;
+				}
+    		},
+    		new UIFunction() {
+				public Component[] apply(Component comp, Object[] parms) {
+					JDialog dlg = (JDialog) comp;
+					JButton btn = findFirstComponent(dlg.getContentPane(), ACCEPT_BUTTON_KEY);
+					btn.getRootPane().setDefaultButton(btn);
+					if (function != null)
+						setFunction(function);
+					return null;
+				}
+    		},
+    		new UIFunction() {
+				public Component[] apply(Component comp, Object[] parms) {
+					comboBoxes[0].setSelectedIndex(-1);
+					return null;
+				}
+    		},
+    		behavior);
 	}
 	
+	public ScriptManager(TextToggle textToggle) {
+		textArea = textToggle;
+	}
+	
+	public JDialog scriptDialog = null;
+	
+	public void showScriptDialog(Component parent, Component relative,
+    		String title, 
+			int behavior, 
+			Object...params)
+	{
+		scriptDialog = showDialog(parent, relative, title,
+			new UIFunction() {
+				public Component[] apply(Component comp, Object[] parms) {
+					final JDialog dlg = (JDialog) comp;
+					blockDirty(new Job<Void>() {
+						public void perform(Void t, Object[] params) throws Exception {
+							comboBoxes = new JComboBox[] {new JComboBox()};
+							Container container = dlg.getContentPane();
+							addCenterComponent(textArea.getTextArea(), container);
+							textArea.setOnTextChanged(new Job<JComponent>() {
+								public void perform(JComponent t, Object[] params) throws Exception {
+									setDirty(true);
+								}
+							});
+							JToolBar bar = northToolBar(container, BorderLayout.SOUTH);
+							createButton(bar, 
+									SYNC_BUTTON_KEY, 
+									new ActionListener() {
+										public void actionPerformed(ActionEvent e) {
+											textArea.getTextEdit().setText(textArea.getText());
+										}
+									});
+						}
+					});
+					return null;
+				}
+			},
+			new UIFunction() {
+				public Component[] apply(Component comp, Object[] parms) {
+					Util.Job<TextArea> job = param(null, 0, parms);
+					if (job != null)
+						try {
+							job.perform(textArea.getTextArea(), parms);
+						} catch (Exception e) {
+							Log.e(TAG, "showScriptDialog", e);
+						}
+					return null;
+				}
+			}, 
+			new UIFunction() {
+				public Component[] apply(Component comp, Object[] parms) {
+					JDialog dlg = (JDialog) comp;
+					AbstractButton btn = findFirstComponent(dlg.getContentPane(), SYNC_BUTTON_KEY);
+					if (btn != null)
+						btn.doClick();
+					scriptDialog = null;
+					return null;
+				}
+			},
+			behavior, 
+			params);
+	}
+	
+	private TextToggle textArea;
+	private JLabel mess;
+
 	private String selector = ProfileManager.transportsSelector;
 	private String profile = null;
 
@@ -255,7 +319,7 @@ public class ScriptManager extends ManagerBase<Element>
 		String function = param(getFunction(), 0, params);
 		if (ProfileManager.transportsLoaded()) {
 			if (refresh) {
-				blockChange(new Job<Void>() {
+				blockDirty(new Job<Void>() {
 					public void perform(Void t, Object[] params) throws Exception {
 						DefaultComboBoxModel model = (DefaultComboBoxModel) comboBoxes[0].getModel();
 						model.removeAllElements();
@@ -279,15 +343,13 @@ public class ScriptManager extends ManagerBase<Element>
 		setFunction(function);
 	}
 
-	// NOTE used in scripts
 	public String getFunction() {
 		Object item = comboBoxes[0].getSelectedItem();
 		return stringValueOf(item);
 	}
 
-	// NOTE used in scripts
 	public void setFunction(final String function) {
-		blockChange(new Job<Void>() {
+		blockDirty(new Job<Void>() {
 			public void perform(Void t, Object[] params) throws Exception {
 				comboBoxes[0].getModel().setSelectedItem(function);
 				String body = "";
@@ -305,13 +367,13 @@ public class ScriptManager extends ManagerBase<Element>
 		setDirty(false);
 	}
 	
-	private void createUI(final View view, final Container container) {
+	private void createUI(final Component parent, final Container container) {
 		comboBoxes = new JComboBox[] {new JComboBox()};
-		textArea = new TextEditor2().createBufferedTextArea("beanshell", "/modes/java.xml");
+		textArea = new TextToggle().createBufferedTextArea("beanshell", "/modes/java.xml");
 		
 		JToolBar bar = new JToolBar();
 		container.add(bar, BorderLayout.NORTH);
-		final RolloverButton btn = installButton(bar, 
+		final RolloverButton btn = createButton(bar, 
 				ACCEPT_BUTTON_KEY, 
 				new ActionListener() {
 					public void actionPerformed(ActionEvent e) {
@@ -353,13 +415,13 @@ public class ScriptManager extends ManagerBase<Element>
 		test.setText("Test");
 		test.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				testThis(view, container, comboEdit(0).getText());
+				testThis(parent, container, comboEdit(0).getText());
 			}
 		});
 		test.setEnabled(findAllIn(selector, Pattern.compile("/")).length < 2);
 		bar.add(test);
-		textArea.setOnTextChanged(new Job<ITextComponent>() {
-			public void perform(ITextComponent t, Object[] params) throws Exception {
+		textArea.setOnTextChanged(new Job<JComponent>() {
+			public void perform(JComponent t, Object[] params) throws Exception {
 				setDirty(true);
 			}
 		});
@@ -373,7 +435,7 @@ public class ScriptManager extends ManagerBase<Element>
 	String[] keys = { "oper", "type", "value" };
 	Object[] values = { "push", "TEXT", null };
 
-	private void testThis(View view, Component relative, final String name) {
+	private void testThis(Component parent, Component relative, final String name) {
 		mess.setText("");
 		final DefaultTableModel model = new DefaultTableModel(3, 2) {
 			@Override
@@ -454,8 +516,7 @@ public class ScriptManager extends ManagerBase<Element>
 	    		JOptionPane.DEFAULT_OPTION + Behavior.MODAL,
 	    		JOptionPane.PLAIN_MESSAGE,
 	    		null,
-	    		objects("Perform"),
-	    		null, null, 
+	    		objects("Perform"),	null, 
 	    		new Function<Boolean>() {
 					public Boolean apply(Object... params) {
 						TableCellEditor editor = table.getCellEditor();

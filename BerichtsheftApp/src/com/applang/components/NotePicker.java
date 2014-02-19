@@ -60,11 +60,11 @@ public class NotePicker extends ActionPanel
 				BerichtsheftApp.loadSettings();
 				BerichtsheftPlugin.setupSpellChecker(BerichtsheftApp.applicationDataPath());
 				final DataView dataView = new DataView();
-				final TextEditor2 textEditor2 = new TextEditor2()
+				final TextToggle textToggle = new TextToggle()
 						.createBufferedTextArea("velocity", "/modes/velocity_pure.xml");
-				textEditor2.getTextEditor().installSpellChecker();
+				textToggle.getTextEdit().installSpellChecker();
 				String title = "Berichtsheft database";
-				NotePicker notePicker = new NotePicker(dataView, textEditor2, 
+				NotePicker notePicker = new NotePicker(dataView, textToggle, 
 						null,
 						title, 1);
 				createAndShowGUI(title, 
@@ -80,7 +80,7 @@ public class NotePicker extends ActionPanel
 									});
 								splitPane.setResizeWeight(0.5);
 								splitPane.setOneTouchExpandable(true);
-								Component target = textEditor2.getUIComponent();
+								Component target = textToggle.getUIComponent();
 								splitPane.setTopComponent(target);
 								Component c = findFirstComponent(dataView, "south");
 								if (c != null)
@@ -108,7 +108,7 @@ public class NotePicker extends ActionPanel
 	public void finish(Object... params) {
 		if (!usingJdbc())
 			dataView.nosync();
-		getTextComponent().getTextEditor().uninstallSpellChecker();
+		getTextToggle().getTextEdit().uninstallSpellChecker();
 		try {
 			if (getCon() != null)
 				getCon().close();
@@ -133,10 +133,10 @@ public class NotePicker extends ActionPanel
 	
 	private JTextField date = null;
 	
-	public NotePicker(DataView dataView, TextEditor2 textArea, Object... params) {
+	public NotePicker(DataView dataView, TextToggle textArea, Object... params) {
 		super(textArea, params);
-		textArea.setOnTextChanged(new Job<ITextComponent>() {
-			public void perform(ITextComponent t, Object[] params) throws Exception {
+		textArea.setOnTextChanged(new Job<JComponent>() {
+			public void perform(JComponent t, Object[] params) throws Exception {
 				setDirty(true);
 			}
 		});
@@ -266,7 +266,7 @@ public class NotePicker extends ActionPanel
 				deleteSelection();
 				break;
 			case TOGGLE2:
-				toggle(this, textViewToggler);
+				toggle(this, getTextToggle().getTextEdit().toggler);
 				break;
 			case STRUCT:
 				break;
@@ -374,11 +374,11 @@ public class NotePicker extends ActionPanel
 			switch (NotePadProvider.tableIndex(tableName)) {
 			case 1:
 				installBausteinEditing(this);
-				getTextComponent().toggle(false, null);
+				getTextToggle().toggle(false, null);
 				break;
 			default:
 				installNotePicking(this);
-				getTextComponent().toggle(true, null);
+				getTextToggle().toggle(true, null);
 				break;
 			}
 			uriString = NotePadProvider.contentUri(tableName).toString();
@@ -522,7 +522,7 @@ public class NotePicker extends ActionPanel
 	}
 	
 	public static final String allDates = "";
-	public static final String allTitles = ".*";
+	public static final String allTitles = SOMETHING_OR_NOTHING_REGEX;
 	public static final String itemAll = "-- all --";
 	public static final String bAndB = "(?i)(bemerk\\w*|bericht\\w*)";
 	public static final String itemBAndB = "Berichte & Bemerkungen";
@@ -1041,9 +1041,9 @@ public class NotePicker extends ActionPanel
 	
 	@Override
 	public void setText(String text) {
-		TextEditor2 textBums = getTextComponent();
+		TextToggle textBums = getTextToggle();
 		updateText(textBums, text);
-		textBums.getTextEditor().undo.discardAllEdits();
+		textBums.getTextEdit().undoManager.discardAllEdits();
 	}
 
 	public static String formatDate(int kind, long time) {

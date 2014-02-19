@@ -8,6 +8,7 @@ import javax.swing.JButton;
 
 import android.content.Context;
 import android.util.AttributeSet;
+import android.widget.ImageView.Picture;
 
 public class ImageButton extends ImageView
 {
@@ -19,9 +20,21 @@ public class ImageButton extends ImageView
 		super(context, attrs);
 	}
 
-    protected void create(Object... params) {
+	@Override
+    protected void create() {
     	JButton button = new JButton();
 		setComponent(button);
+	}
+	
+    @Override
+	public Image getImage() {
+    	JButton button = taggedComponent();
+		if (button != null && button.getIcon() instanceof ImageIcon) {
+			ImageIcon imageIcon = (ImageIcon) button.getIcon();
+			return imageIcon.getImage();
+		}
+		else
+			return null;
 	}
 	
     @Override
