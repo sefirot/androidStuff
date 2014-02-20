@@ -81,9 +81,7 @@ public class Activity extends Context
     public Dialog dialog = null;
 	
 	public final void showDialog(int id) {
-		AlertDialog.behavior = Behavior.setModal(
-				AlertDialog.behavior, 
-				id / 100 < 1);
+		AlertDialog.behavior = Behavior.setModal(AlertDialog.behavior, id / 100 < 1);
     	dialog = onCreateDialog(id);
     	if (dialog != null) {
     		dialog.open();

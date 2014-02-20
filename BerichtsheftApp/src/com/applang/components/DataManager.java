@@ -39,9 +39,6 @@ import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 import com.applang.components.DataView.DataModel;
 import com.applang.components.DataView.ProjectionModel;
-import com.applang.provider.NotePad;
-import com.applang.provider.NotePadProvider;
-import com.applang.provider.NotePad.NoteColumns;
 
 import android.app.AlertDialog;
 import android.content.ContentUris;
@@ -199,10 +196,6 @@ public class DataManager extends ActionPanel
 	
 	private DataPanel[] panes = new DataPanel[0];
 	
-	public int numberOfPanes() {
-		return panes.length;
-	}
-	
 	public JComponent getUIComponent(int index) {
 		while (panes.length <= index) {
 			boolean tableLayout = index > 0 ? isTableView(index - 1) : true;
@@ -295,7 +288,7 @@ public class DataManager extends ActionPanel
 		return textToggle;
 	}
 	
-	private DataForm formView = null;
+	private DataForm dataForm = null;
 	
 	private void setFormComponent() {
 		final BerichtsheftActivity context = BerichtsheftActivity.getInstance((JFrame) getView());
@@ -303,15 +296,15 @@ public class DataManager extends ActionPanel
 			public Component getUIComponent() {
 				if (container == null) {	//	lazy initialization
 					ProjectionModel projectionModel = dataView.getDataConfiguration().getProjectionModel();
-					formView = new DataForm(context, DataManager.this, 
-							projectionModel.getProjection(), 
+					dataForm = new DataForm(context, 
+							DataManager.this, 
+							projectionModel == null ? null : projectionModel.getProjection(), 
 							props.getProperty("layout"));
-					container = new JScrollPane(formView.getContainer());
-					printContainer("panel", container, _null());
+					container = new JScrollPane(dataForm.getContainer());
+					printContainer("panel", container, false);
 				}
 				return container;
 			}
-			
 			private Container container = null;
 		};
 	}
@@ -508,14 +501,12 @@ public class DataManager extends ActionPanel
 	}
 
 	private void initialize(String dbString) {
-		String tableName = dbTableName(dbString);
-		uriString = NotePadProvider.contentUri(tableName).toString();
 		refresh();
-		JComponent jc = (JComponent) getParent();
-		if (jc != null)
+		JComponent parent = (JComponent) getParent();
+		if (parent != null)
 			setWindowTitle(this, String.format(
 				"Database : %s", 
-				trimPath(dbString, jc.getWidth() / 2, jc.getFont(), jc)));
+				trimPath(dbString, parent.getWidth() / 2, parent.getFont(), parent)));
 		setFormComponent();
 	}
 	
@@ -543,13 +534,20 @@ public class DataManager extends ActionPanel
 	}
 
 	private DataAdapter dataAdapter = null;
-	private String uriString = NoteColumns.CONTENT_URI.toString();
+	private String uriString = null;
+	private BidiMultiMap projection = null;
+	private String sortOrder = null;
 	private Object pk = null;
 	public int pkColumn = -1, pkRow = -1;
 	
-	private boolean createProvider() {
-		String dbPath = dataView.getDataConfiguration().getPath();
-		dataAdapter = new DataAdapter(NotePad.AUTHORITY, new File(dbPath), uriString);
+	private boolean createAdapter() {
+		DataConfiguration dataConfig = dataView.getDataConfiguration();
+		String dbPath = dataConfig.getPath();
+		String flavor = dataConfig.getFlavor();
+		projection = dataConfig.getProjection();
+		sortOrder = dataConfig.getSortOrder();
+		uriString = stringValueOf(dataConfig.getUri());
+		dataAdapter = new DataAdapter(flavor, new File(dbPath), uriString);
 		ValMap info = dataAdapter.info;
 		if (info.size() > 0) {
 			pk = info.get("PRIMARY_KEY");
@@ -592,13 +590,11 @@ public class DataManager extends ActionPanel
 		}
 	}
 
-    private static final String DEFAULT_SORT_ORDER = "created,title";
-
 	public void refresh() {
 		if (!noRefresh) {
 			clear();
-			if (createProvider()) {
-				dataView.populate(dataAdapter, null, null, DEFAULT_SORT_ORDER);
+			if (createAdapter()) {
+				dataView.populate(dataAdapter, null, null, sortOrder);
 				browse(ActionType.PICK);
 			}
 		}
@@ -710,7 +706,7 @@ public class DataManager extends ActionPanel
 	@Override
 	public Object select(Object...args) {
 		args = reduceDepth(args);
-		boolean pkValue = !isAvailable(0, args);
+		boolean pkValue = notAvailable(0, args);
 		String dateString = param(null, 0, args);
 		String pattern = param(null, 1, args);
 		if (pkValue || notNullOrEmpty(dateString) || bausteinEditing())
@@ -718,13 +714,14 @@ public class DataManager extends ActionPanel
 				Long time = toTime(dateString, DatePicker.calendarFormat);
 				long[] interval = dayInterval(time, 1);
 				Object[][] result = dataAdapter.query(uriString, 
-						strings("created", "title", "note", "_id"), 
+						projection.getKeys().toArray(new String[0]), 
 						whereClause(pkValue), 
 						pkValue ? 
 								strings("" + pkValue()) : 
 								(bausteinEditing() ? 
 										strings(pattern) :
-										strings("" + interval[0], "" + (interval[1] - 1), pattern)));
+										strings("" + interval[0], "" + (interval[1] - 1), pattern)), 
+						sortOrder);
 				if (isAvailable(0, result)) {
 					return result[0];
 				}
@@ -918,7 +915,7 @@ public class DataManager extends ActionPanel
 					dm.getFormComponent().setPreferredSize(viewportSize);
 					JSplitPane splitPane = splitPane(JSplitPane.VERTICAL_SPLIT, null);
 					splitPane.setTopComponent(dm.getUIComponent(0));
-					if (dm.numberOfPanes() > 1) {
+					if (dm.panes.length > 1) {
 						splitPane.setBottomComponent(dm.getUIComponent(1));
 					}
 					return components(splitPane);

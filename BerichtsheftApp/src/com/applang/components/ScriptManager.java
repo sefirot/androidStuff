@@ -194,11 +194,6 @@ public class ScriptManager extends ManagerBase<Element>
 							comboBoxes = new JComboBox[] {new JComboBox()};
 							Container container = dlg.getContentPane();
 							addCenterComponent(textArea.getTextArea(), container);
-							textArea.setOnTextChanged(new Job<JComponent>() {
-								public void perform(JComponent t, Object[] params) throws Exception {
-									setDirty(true);
-								}
-							});
 							JToolBar bar = northToolBar(container, BorderLayout.SOUTH);
 							createButton(bar, 
 									SYNC_BUTTON_KEY, 
@@ -207,6 +202,12 @@ public class ScriptManager extends ManagerBase<Element>
 											textArea.getTextEdit().setText(textArea.getText());
 										}
 									});
+//							installUpdate(bar);
+//							textArea.setOnTextChanged(new Job<JComponent>() {
+//								public void perform(JComponent t, Object[] params) throws Exception {
+//									setDirty(true);
+//								}
+//							});
 						}
 					});
 					return null;

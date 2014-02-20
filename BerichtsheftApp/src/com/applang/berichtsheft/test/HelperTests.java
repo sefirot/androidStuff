@@ -100,6 +100,7 @@ import android.widget.Toast;
 import com.applang.BaseDirective;
 import com.applang.Dialogs;
 import com.applang.PromptDirective;
+import com.applang.SwingUtil.Behavior;
 import com.applang.UserContext.EvaluationTask;
 import com.applang.Util.Job;
 import com.applang.berichtsheft.BerichtsheftActivity;
@@ -529,6 +530,7 @@ public class HelperTests extends TestCase
 	
 	@SuppressWarnings("unchecked")
 	public void testProjection() throws Exception {
+		AlertDialog.behavior = Behavior.setTimeout(AlertDialog.behavior, true);
     	String dbPath = createNotePad();
     	String tableName = "notes";
     	String flavor = "com.applang.provider.NotePad";
@@ -542,14 +544,13 @@ public class HelperTests extends TestCase
 		context.setFlavor(flavor);
 		ProjectionModel projectionModel = new ProjectionModel(context, uri, flavor, projection);
 		projectionModel.injectFlavor();
-		println("before", ScriptManager.getProjectionDefault(flavor, tableName));
-		projectionModel = DataView.askProjection(context, null, projectionModel, Behavior.MODAL);
-		println("after", ScriptManager.getProjectionDefault(flavor, tableName));
+		projectionModel = DataView.askProjection(context, null, projectionModel, AlertDialog.behavior);
 		projection = projectionModel.getExpandedProjection();
+		String sortOrder = projectionModel.getSortOrder();
 		println(projection);
 		boolean unchanged = !projectionModel.changed;
 		if (unchanged) assertThat((Boolean) projection.getValue("_id", 3), is(equalTo(false)));
-		DataModel dataModel = dataAdapter.query(dv.getUriString(), projection, null,null,"title");
+		DataModel dataModel = dataAdapter.query(dv.getUriString(), projection, null,null, sortOrder);
 		projection = dataModel.getProjection();
 		if (unchanged) {
 			assertThat(projection.getKeys().size(), is(equalTo(4)));
@@ -565,9 +566,11 @@ public class HelperTests extends TestCase
 					is(equalTo(Long.class)));
 			assertThat((Class<Long>) dataModel.getColumnClass(3),
 					is(equalTo(Long.class)));
+			long unixepoch = -1L;
 			for (int i = 0; i < dataModel.getRowCount(); i++) {
-				assertThat((String) dataModel.getValueAt(i, 0), 
-						equalTo("Velocity" + (i + 1)));
+				assertThat((Long) dataModel.getValueAt(i, 2), 
+						greaterThanOrEqualTo(unixepoch));
+				unixepoch = (Long) dataModel.getValueAt(i, 2);
 			}
 		}
 		JTable table = dataModel.makeTable();
@@ -580,17 +583,25 @@ public class HelperTests extends TestCase
 					}})
 				.create()
 				.open();
+		AlertDialog.behavior = Behavior.setTimeout(AlertDialog.behavior, false);
 	}
 	
 	public void testDataConfig() {
 		dataConfigTest(new Job<DataConfiguration>() {
 			public void perform(DataConfiguration dc, Object[] parms) throws Exception {
-				println("data configuration\n\turi\t%s\n\tpath\t%s\n\ttable\t%s\n\tflavor\t%s\n%s", 
+				println("data configuration\n" +
+						"\turi\t%s\n" +
+						"\tpath\t%s\n" +
+						"\ttable\t%s\n" +
+						"\tflavor\t%s\n" +
+						"\tsortOrder\t%s\n" +
+						"\tprojection\t%s", 
 						dc.getUri(), 
 						dc.getPath(), 
 						dc.getTableName(), 
-						dc.getProjectionModel().getFlavor(), 
-						dc.getProjectionModel().getExpandedProjection());
+						dc.getFlavor(), 
+						dc.getSortOrder(), 
+						dc.getProjection());
 			}
 		});
 	}
@@ -702,7 +713,7 @@ public class HelperTests extends TestCase
     }
 
 	public void testScan() throws Exception {
-		AlertDialog.behavior = Behavior.MODAL|Behavior.TIMEOUT;
+		AlertDialog.behavior = Behavior.setTimeout(AlertDialog.behavior, true);
 		String template = generateTagesberichteTemplate("pull");
 		ValList fields = builder.evaluateTemplate(template, null);
 		assertTrue(isAvailable(0, fields));
@@ -723,13 +734,13 @@ public class HelperTests extends TestCase
 				JOptionPane.DEFAULT_OPTION,
 				AlertDialog.behavior,
 				null, -2);
-		AlertDialog.behavior = Behavior.MODAL;
+		AlertDialog.behavior = Behavior.setTimeout(AlertDialog.behavior, false);
 	}
 	
 	TransportBuilder builder = new TransportBuilder();
 	
 	public void testRoundTrip() throws Exception {
-		AlertDialog.behavior = Behavior.MODAL|Behavior.TIMEOUT;
+		AlertDialog.behavior = Behavior.setTimeout(AlertDialog.behavior, true);
     	String dbPath = createNotePad();
     	String uriString = fileUri(dbPath, "notes").toString();
     	DataAdapter dataAdapter = new DataAdapter(uriString);
@@ -778,11 +789,11 @@ public class HelperTests extends TestCase
 			if ((Long)m[0][0] > (Long)mod[1])
 				println(String.format("record '%s' updated", mod[2]));
 		}
-		AlertDialog.behavior = Behavior.MODAL;
+		AlertDialog.behavior = Behavior.setTimeout(AlertDialog.behavior, false);
 	}
 	
 	public void testQuery() throws Exception {
-		AlertDialog.behavior = Behavior.MODAL|Behavior.TIMEOUT;
+		AlertDialog.behavior = Behavior.setTimeout(AlertDialog.behavior, true);
     	String dbPath = createNotePad();
     	String uriString = fileUri(dbPath, "notes").toString();
     	String flavor = "com.applang.provider.NotePad";
@@ -811,7 +822,7 @@ public class HelperTests extends TestCase
 					}
 				}, -1);
 		println(result);
-		AlertDialog.behavior = Behavior.MODAL;
+		AlertDialog.behavior = Behavior.setTimeout(AlertDialog.behavior, false);
     }
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
@@ -1340,6 +1351,7 @@ public class HelperTests extends TestCase
 	}
 	
 	public void testDataForm() throws Exception {
+		AlertDialog.behavior = Behavior.setTimeout(AlertDialog.behavior, true);
 		final Context context = BerichtsheftActivity.getInstance();
     	String dbPath = createNotePad();
     	String tableName = "bausteine";
@@ -1351,12 +1363,13 @@ public class HelperTests extends TestCase
 		projectionModel.injectFlavor();
 		while ((projectionModel = 
 				DataView.askProjection(context, uriString, 
-						projectionModel, Behavior.MODAL|Behavior.TIMEOUT, JOptionPane.OK_CANCEL_OPTION)) != null) {
+						projectionModel, AlertDialog.behavior, JOptionPane.OK_CANCEL_OPTION)) != null) {
 			ManagerBase<?> manager = new ManagerBase<Object>();
 			manager.installUpdate(manager);
-			DataForm dataForm = new DataForm(context, manager,
+			DataForm dataForm = new DataForm(context, 
+					manager,
 					projectionModel.getProjection());
-			println(dataForm.projection);
+			println(dataForm.mProjection);
 			DataAdapter dataAdapter = new DataAdapter(
 					projectionModel.getFlavor(), dbFile, uriString);
 			DataModel model = dataAdapter.query(uriString, projectionModel.getExpandedProjection());
@@ -1384,13 +1397,14 @@ public class HelperTests extends TestCase
 			showForm(dataForm.getContainer());
 			if (manager.isDirty()) {
 				ContentValues values = contentValues(dataAdapter.info, 
-						dataForm.projection.getKeys(),
+						dataForm.mProjection.getKeys(),
 						dataForm.getContent());
 				assertThat(dataAdapter.update(appendId(uriString, id), values), is(greaterThan(0)));
 				Toast.makeText(context, String.format("record %d updated", id),
 						Toast.LENGTH_LONG).show();
 			}
 		}
+		AlertDialog.behavior = Behavior.setTimeout(AlertDialog.behavior, false);
 	}
 
 	public LinearLayout linearLayout(Context context, int kind) {
@@ -1574,7 +1588,7 @@ public class HelperTests extends TestCase
 	public void testFormBuilder() {
 		Context context = BerichtsheftActivity.getInstance();
 		String resName = "standard_form.xml";	//	
-		DataForm dataForm = new DataForm(context, null, null, resName);
+		DataForm dataForm = new DataForm(context, new ManagerBase<Object>(), null, resName);
 /*
  */		
 		dataForm.builder.addStringField("String");
@@ -1586,31 +1600,30 @@ public class HelperTests extends TestCase
 	}
 	
 	public void testForm() {
+		AlertDialog.behavior = Behavior.setTimeout(AlertDialog.behavior, true);
 		BerichtsheftPlugin.setupSpellChecker(BerichtsheftApp.applicationDataPath());
 		final Context context = BerichtsheftActivity.getInstance();
 		dataConfigTest(new Job<DataConfiguration>() {
 			public void perform(DataConfiguration dc, Object[] parms) throws Exception {
 				ProjectionModel projectionModel = dc.getProjectionModel();
-				DataForm dataForm = new DataForm(context, null, projectionModel.getProjection());
-				println(dataForm.projection);
-				Container container = dataForm.getContainer();
+				DataForm dataForm = new DataForm(context, 
+						new ManagerBase<Object>(), 
+						projectionModel.getProjection());
+				println(dataForm.mProjection);
 				File dbFile = new File(dc.getPath());
 				String uriString = dc.getUri().toString();
 				DataAdapter dataAdapter = new DataAdapter(
 						projectionModel.getFlavor(), 
 						dbFile, 
 						uriString);
-				ValList keys = dataForm.projection.getKeys();
+				ValList keys = dataForm.mProjection.getKeys();
 				Object[][] result = dataAdapter.query(uriString, toStrings(keys));
-				if (isAvailable(0, result)) {
-					for (int i = 0; i < keys.size(); i++) {
-						Object key = keys.get(i);
-						dataForm.setContent(key, result[0][i]);
-					}
-				}
-				showForm(container);
+				if (isAvailable(0, result)) 
+					dataForm.setContent(result[0]);
+				showForm(dataForm.getContainer());
 			}
 		});
+		AlertDialog.behavior = Behavior.setTimeout(AlertDialog.behavior, false);
 	}
 	
 	public void testForm1() {
@@ -1640,7 +1653,10 @@ public class HelperTests extends TestCase
 	
 	public void testForm2() {
 		Context context = BerichtsheftActivity.getInstance();
-		DataForm dataForm = new DataForm(context, null, null, R.layout.construct_form_header);
+		DataForm dataForm = new DataForm(context, 
+				new ManagerBase<Object>(), 
+				null, 
+				R.layout.construct_form_header);
 		ViewGroup viewGroup = construct_form_header(context);
 		println(viewGroup);
 		showForm(dataForm.getContainer());
@@ -1739,6 +1755,7 @@ public class HelperTests extends TestCase
 				null, 
 				Behavior.TIMEOUT,
 				params);
+		Deadline.WAIT = 1000;
 	}
 	
 	public void testResources() {

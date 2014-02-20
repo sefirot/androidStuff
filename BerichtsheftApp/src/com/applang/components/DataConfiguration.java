@@ -99,6 +99,18 @@ public class DataConfiguration
 		return mProjectionModel;
 	}
 
+	public String getFlavor() {
+		return mProjectionModel != null ? mProjectionModel.getFlavor() : null;
+	}
+
+	public BidiMultiMap getProjection() {
+		return mProjectionModel != null ? mProjectionModel.getProjection() : null;
+	}
+
+	public String getSortOrder() {
+		return mProjectionModel != null ? mProjectionModel.getSortOrder() : null;
+	}
+
 	public DataConfiguration(Context context, Uri uri, ProjectionModel model) {
 		setContext(context);
 		if (nullOrEmpty(uri))

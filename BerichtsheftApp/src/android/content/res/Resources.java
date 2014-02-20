@@ -331,8 +331,7 @@ public class Resources
 	public <T> T getResourceByName(Document doc, final String name, int type) {
         final String regex = wildcardRegex(name, DOT_REGEX);
         final boolean names = !name.equals(regex);
-        ValList list = vlist();
-        list.add(null);
+        ValList list = vlist(_null());
 		String tagName = resourceTypes[type] + SOMETHING_OR_NOTHING_REGEX;
 		for (Element elem : iterateElements(tagName, doc, new Predicate<Element>() {
 			public boolean apply(Element el) {
@@ -415,26 +414,27 @@ public class Resources
 			}
 			public String getAttributeValue(String name) {
 				Node item = attributes.getNamedItem(name);
-				return item != null ? item.getNodeValue() : null;
+				String attr = item != null ? item.getNodeValue() : null;
+				if (nullOrEmpty(attr)) {
+					item = attributes.getNamedItem("style");
+					if (item != null) {
+						Element el = resources.getXMLResourceItem(item.getNodeValue());
+						if (el != null) {
+							el = selectElement(el, "./item[@name='" + name + "']");
+							if (el != null) {
+								attr = el.getTextContent();
+							}
+						}
+					}
+				}
+				return attr;
 			}
 			public <T> T getAttributeResourceItem(String name) {
 				String attr = getAttributeValue(name);
 				if (notNullOrEmpty(attr))
 					return resources.getXMLResourceItem(attr);
-				else {
-					attr = getAttributeValue("style");
-					if (notNullOrEmpty(attr)) {
-						Element el = resources.getXMLResourceItem(attr);
-						if (el != null) {
-							el = selectElement(el, "./item[@name='" + name + "']");
-							if (el != null) {
-								attr = el.getTextContent();
-								return resources.getXMLResourceItem(attr);
-							}
-						}
-					}
-				}
-				return null;
+				else 
+					return null;
 			}
 			public int getIdAttributeResourceValue(int defaultValue) {
 				return toInt(defaultValue, getIdAttribute());

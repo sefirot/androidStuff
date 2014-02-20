@@ -416,7 +416,7 @@ public class SwingUtil
 		}
 		
 		public static Deadline start(Window wnd, Integer... keyEvents) {
-			if (wnd == null && !isAvailable(0, keyEvents))
+			if (wnd == null && notAvailable(0, keyEvents))
 				return null;
 				
 			final Deadline deadline = new Deadline(wnd, keyEvents);

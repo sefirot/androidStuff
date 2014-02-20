@@ -60,7 +60,7 @@ public class TextEdit extends EditText
 		if (hasFeature("spellchecking"))
 			installSpellChecker(getTextComponent());
 		if (hasFeature("togglable")) {
-			textToggle = new TextToggle(this);
+			setTextToggle(new TextToggle(this));
 			textToggle.createBufferedTextArea(
 					attributeSet.getAttributeValue("mode"), 
 					attributeSet.getAttributeValue("modeFile"));

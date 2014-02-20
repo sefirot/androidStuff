@@ -472,7 +472,7 @@ public class WeatherManager extends ActionPanel
 		BidiMultiMap precip = bmap(3);
 		ArrayList<Double> temps = alist();
 		ValList list = summary.getList("D");
-		if (!isAvailable(0, list))
+		if (notAvailable(0, list))
 			return;
 		String old = list.get(0).toString(), day = old;
 		for (int i = 0; i < list.size(); i++) {

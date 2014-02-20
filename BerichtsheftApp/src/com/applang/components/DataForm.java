@@ -7,11 +7,6 @@ import javax.swing.JComponent;
 
 import org.w3c.dom.Document;
 
-import com.applang.Util.BidiMultiMap;
-import com.applang.Util.Job;
-import com.applang.Util.ValList;
-import com.applang.berichtsheft.BerichtsheftActivity;
-
 import android.content.Context;
 import android.content.res.Resources;
 import android.database.Cursor;
@@ -22,7 +17,6 @@ import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
@@ -32,32 +26,32 @@ public class DataForm
 	private static final String TAG = DataForm.class.getSimpleName();
 	
 	public DataForm(Context context, ManagerBase<?> manager, BidiMultiMap projection, Object...resource) {
-		boolean standard = nullOrEmpty(resource);
+		mManager = manager;
+		boolean standard = notAvailable(0, resource);
 		if (standard) 
 			resource = objects("standard_form.xml");
 		builder = new Builder(context, resource[0]);
 		if (projection != null) {
-			this.projection = new BidiMultiMap(
+			mProjection = new BidiMultiMap(
 					projection.getValues(0), 
 					projection.getValues(1), 
 					projection.getValues(2), 
 					vlist(), 
 					projection.getValues(4));
-			for (Object key : this.projection.getKeys()) {
+			for (Object key : mProjection.getKeys()) {
 				String name = stringValueOf(key);
-				String type = stringValueOf(this.projection.getValue(key, 2));
-				String style = stringValueOf(this.projection.getValue(key, 4));
+				String type = stringValueOf(mProjection.getValue(key, 2));
+				String style = stringValueOf(mProjection.getValue(key, 4));
 				if (nullOrEmpty(style))
 					style = type.toLowerCase();
 				View view = standard ? 
 						builder.addStandardField(key, name, style) : 
 						viewGroup.findViewWithTag(name);
-				this.projection.putValue(key, view, 3);
+				mProjection.putValue(key, view, 3);
 			}
 		}
 		else
-			this.projection = null;
-		this.manager = manager;
+			mProjection = null;
 	}
 
 	public Builder builder;
@@ -69,14 +63,14 @@ public class DataForm
     	return viewGroup.getContainer();
     }
     
-	public BidiMultiMap projection;
+	public BidiMultiMap mProjection;
 
     private int fieldType(Object key) {
-    	return fieldTypeAffinity(stringValueOf(projection.getValue(key, 2)));
+    	return fieldTypeAffinity(stringValueOf(mProjection.getValue(key, 2)));
     }
 	
 	private Object doConversion(Object key, Object value, String oper) {
-		Object conversion = projection.getValue(key, 1);
+		Object conversion = mProjection.getValue(key, 1);
 		if (notNullOrEmpty(conversion))
 			return ScriptManager.doConversion(value, stringValueOf(conversion), oper);
 		else
@@ -85,65 +79,77 @@ public class DataForm
 
 	public Object[] getContent() {
 		ValList list = vlist();
-		ValList keys = projection.getKeys();
+		ValList keys = mProjection.getKeys();
 		for (int i = 0; i < keys.size(); i++) 
 			list.add(getContent(keys.get(i)));
 		return list.toArray();
 	}
 
-	public Object getContent(Object key) {
+	private Object getContent(Object key) {
 		Object value = null;
-		View view = projection.getValue(key, 3);
+		View view = mProjection.getValue(key, 3);
 		if (view != null) {
 			switch (fieldType(key)) {
 			case Cursor.FIELD_TYPE_BLOB:
 				value = ((ImageView)view).getImage();
 				break;
 			default:
-				value = ((EditText)view).getText();
+				if (view instanceof TextEdit) {
+					TextEdit textEdit = (TextEdit)view;
+					if (textEdit.getTextToggle() != null)
+						value = textEdit.getScript();
+					else
+						value = textEdit.getText();
+				}
+				else
+					value = ((EditText)view).getText();
 			}
 		}
 		return doConversion(key, value, "pull");
     }
 
-	public void setContent(Object[] values) {
-		ValList keys = projection.getKeys();
-		for (int i = 0; i < keys.size(); i++) {
-			Object key = keys.get(i);
-			setContent(key, values[i]);
-		}
+	public void setContent(final Object[] values) {
+		mManager.blockDirty(new Job<Void>() {
+			public void perform(Void t, Object[] parms) throws Exception {
+				ValList keys = mProjection.getKeys();
+				for (int i = 0; i < keys.size(); i++) {
+					Object key = keys.get(i);
+					setContent(key, values[i]);
+				}
+			}
+		});
     }
 
-	public void setContent(final Object key, Object value) {
-		final View view = projection.getValue(key, 3);
+	private void setContent(final Object key, Object value) {
+		final View view = mProjection.getValue(key, 3);
 		if (view != null) {
 			final Object o = doConversion(key, value, "push");
-			manager.blockDirty(new Job<Void>() {
-				public void perform(Void t, Object[] parms) throws Exception {
-					switch (fieldType(key)) {
-					case Cursor.FIELD_TYPE_BLOB:
-						((ImageView)view).setImage((Image) o);
-						break;
-					default:
-						String text = stringValueOf(o);
-						if (view.hasFeature("togglable")) {
-							TextEdit textEdit = (TextEdit)view;
-							textEdit.setScript(text);
-							textEdit.setText(textEdit.getScript());
-						}
-						else
-							((EditText)view).setText(text);
+			switch (fieldType(key)) {
+			case Cursor.FIELD_TYPE_BLOB:
+				((ImageView)view).setImage((Image) o);
+				break;
+			default:
+				String text = stringValueOf(o);
+				if (view instanceof TextEdit) {
+					TextEdit textEdit = (TextEdit)view;
+					if (textEdit.getTextToggle() != null) {
+						textEdit.setScript(text);
+						textEdit.setText(textEdit.getScript());
 					}
+					else
+						textEdit.setText(text);
 				}
-			});
+				else
+					((EditText)view).setText(text);
+			}
 		}
 	}
 	
-	private ManagerBase<?> manager;
+	private ManagerBase<?> mManager;
 	
 	private Job<JComponent> onChanged = new Job<JComponent>() {
 		public void perform(JComponent t, Object[] params) throws Exception {
-			manager.setDirty(true);
+			mManager.setDirty(true);
 		}
 	};
 	
@@ -197,9 +203,15 @@ public class DataForm
 			addView(vg, vg.getLayoutParams());
 			setLabel(description, vg);
 			View vw = getEdit(vg);
-			if (vw instanceof EditText)
+			if (vw instanceof EditText) {
 				((EditText) vw).setOnTextChanged(onChanged);
-			return vg.findViewWithTag(name, Constraint.AMONG);
+				if (vw instanceof TextEdit) {
+					TextEdit te = (TextEdit) vw;
+					if (te.getTextToggle() != null)
+						te.getTextToggle().setOnTextChanged(onChanged);
+				}
+			}
+			return vg.findViewWithTag(name);
 		}
 
 		public View addField(Object description, String key, String type) {

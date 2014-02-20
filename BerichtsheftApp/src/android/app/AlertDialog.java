@@ -269,6 +269,8 @@ public class AlertDialog extends Dialog implements DialogInterface
 					});
 				}
 				int which = list.indexOf(list.get(-1));
+				while (which > -1 && nullOrEmpty(list.get(which)))
+					which--;
 				setInitialOption(which);
 				dialog.result = which;
 			}
@@ -361,8 +363,8 @@ public class AlertDialog extends Dialog implements DialogInterface
 				}
 			});
 			dialog.options.add(btn);
-			if (which == DialogInterface.BUTTON_POSITIVE) {
-				setInitialOption(arrayindexof(btn, dialog.options.toArray()));
+			if (which == DialogInterface.BUTTON_NEGATIVE) {
+				setInitialOption(dialog.options.indexOf(btn));
 				dialog.setEnterEnabled(true);
 			}
 		}

@@ -12,6 +12,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Vector;
 
@@ -23,17 +24,17 @@ import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
-import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
+import javax.swing.ListModel;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 import javax.swing.border.MatteBorder;
 import javax.swing.event.CellEditorListener;
 import javax.swing.event.ChangeEvent;
+import javax.swing.event.ListDataListener;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.AbstractTableModel;
@@ -42,7 +43,6 @@ import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
-import javax.swing.table.TableModel;
 
 import org.gjt.sp.jedit.View;
 
@@ -640,7 +640,7 @@ public class DataView extends JPanel implements IComponent
     	return uri;
 	}
 
-	public static class ProjectionModel extends AbstractTableModel
+	public static class ProjectionModel extends AbstractTableModel implements ListModel
 	{
 		public ProjectionModel(Context context, Uri uri, String flavor, Object...params) {
 			setFlavor(flavor);
@@ -655,11 +655,13 @@ public class DataView extends JPanel implements IComponent
 			checks = vlist();
 			conversions = vlist();
 			styles = vlist();
+			sortExpressions = vlist();
 			int length = names.length;
 			for (int i = 0; i < length; i++) {
 				checks.add(true);
 				conversions.add("");
 				styles.add("");
+				sortExpressions.add("");
 			}
 			BidiMultiMap projection = param(null, 0, params);
 			if (projection != null && isAvailable(0, projection.getKeys())) {
@@ -668,6 +670,7 @@ public class DataView extends JPanel implements IComponent
 					checks.set(i, projection.getValue(name, 3));
 					conversions.set(i, stringValueOf(projection.getValue(name)));
 					styles.set(i, projection.getValue(name, 4));
+					sortExpressions.set(i, projection.getValue(name, 5));
 				}
 			}
 		}
@@ -684,7 +687,7 @@ public class DataView extends JPanel implements IComponent
 		private String tableName;
 		private ValMap info;
 		private Object[] names, types;
-		private ValList checks, conversions, styles;
+		private ValList checks, conversions, styles, sortExpressions;
 		
 		@Override
 		public int getRowCount() {
@@ -692,7 +695,7 @@ public class DataView extends JPanel implements IComponent
 		}
 		@Override
 		public int getColumnCount() {
-			return 5;
+			return 6;
 		}
 		@Override
 		public String getColumnName(int column) {
@@ -705,6 +708,8 @@ public class DataView extends JPanel implements IComponent
 				return "Conversion";
 			case 4:
 				return "Style";
+			case 5:
+				return "Sort Order";
 			default:
 				return "";
 			}
@@ -721,6 +726,8 @@ public class DataView extends JPanel implements IComponent
 			case 4:
 				Object style = styles.get(row);
 				return stringValueOf(style);
+			case 5:
+				return sortExpressions.get(row);
 			default:
 				return checks.get(row);
 			}
@@ -739,6 +746,9 @@ public class DataView extends JPanel implements IComponent
 				break;
 			case 4:
 				styles.set(row, value);
+				break;
+			case 5:
+				sortExpressions.set(row, value);
 				break;
 			default:
 				checks.set(row, value);
@@ -786,6 +796,7 @@ public class DataView extends JPanel implements IComponent
 								conversions.set(i, projection.getValue(names[index[0]], 1));
 								checks.set(i, projection.getValue(names[index[0]], 3));
 								styles.set(i, projection.getValue(names[index[0]], 4));
+								sortExpressions.set(i, projection.getValue(names[index[0]], 5));
 							}
 						}
 						fireTableDataChanged();
@@ -808,11 +819,15 @@ public class DataView extends JPanel implements IComponent
 				new ValList(conversions), 
 				vlist(types), 
 				new ValList(checks), 
-				new ValList(styles));
+				new ValList(styles), 
+				new ValList(sortExpressions));
 		}
 
 		public BidiMultiMap getProjection() {
 			BidiMultiMap projection = getExpandedProjection();
+			ValList lists = vlist(projection.getLists());
+			lists.remove(5);
+			projection.setLists(lists.toArray(new ValList[0]));
 			for (int i = names.length - 1; i >= 0; i--) 
 				if (!(Boolean) checks.get(i)) {
 					projection.remove(i);
@@ -827,6 +842,49 @@ public class DataView extends JPanel implements IComponent
 		}
 
 		public boolean changed = false;
+
+		@Override
+		public int getSize() {
+			return getRowCount();
+		}
+
+		@Override
+		public Object getElementAt(int index) {
+			return getValueAt(index, 1);
+		}
+
+		@Override
+		public void addListDataListener(ListDataListener l) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		@Override
+		public void removeListDataListener(ListDataListener l) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		public Object[] getStyles(Context context) {
+			return context.getResources().getXMLResourceItem("@style/*");
+		}
+
+		public Object[] getAllSortExpressions() {
+			ValList expressions = vlist(_null());
+			for (Object name : names) {
+				expressions.add(name + " ASC");
+				expressions.add(name + " DESC");
+			}
+			return expressions.toArray();
+		}
+		
+		public String getSortOrder() {
+			ArrayList<String> sortOrder = alist();
+			for (Object expr : sortExpressions)
+				if (notNullOrEmpty(expr) && sortOrder.indexOf(expr) < 0)
+					sortOrder.add(expr.toString());
+			return join(",", sortOrder.toArray());
+		}
 	}
 	
 	public static class ConversionCellEditor extends AbstractCellEditor implements TableCellEditor, ActionListener
@@ -877,8 +935,10 @@ public class DataView extends JPanel implements IComponent
 		}
 	}
 	
-	public static JComponent projectionComponent(Context context, final Component relative, TableModel model) {
-		final Object[] styles = context.getResources().getXMLResourceItem("@style/*");
+	public static JComponent projectionComponent(final Context context, 
+			final Component relative, 
+			final ProjectionModel model)
+	{
 		JTable table = new JTable() {
 			@SuppressWarnings("unchecked")
 			@Override
@@ -896,7 +956,9 @@ public class DataView extends JPanel implements IComponent
 					});
 					return cellEditor;
 				case 4:
-					return new DefaultCellEditor(new JComboBox(styles));
+					return new DefaultCellEditor(new JComboBox(model.getStyles(context)));
+				case 5:
+					return new DefaultCellEditor(new JComboBox(model.getAllSortExpressions()));
 				default:
 					return super.getCellEditor(row, column);
 				}

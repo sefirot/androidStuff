@@ -51,7 +51,7 @@ public class AndroidBridge
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public static String chooseFileFromSdcard(final View view, final boolean onlyDirs, final String androidFileName) {
 		final Object[] devices = deviceInfo(null);
-		if (!isAvailable(0, devices) || nullOrEmpty(devices[0])) {
+		if (notAvailable(0, devices) || nullOrEmpty(devices[0])) {
 			BerichtsheftPlugin.consoleMessage("berichtsheft.android-devices.message");
 			return null;
 		}

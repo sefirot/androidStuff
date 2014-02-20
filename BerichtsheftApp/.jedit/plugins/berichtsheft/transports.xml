@@ -27,7 +27,10 @@ long created = values.getAsLong("created");
 long[] interval = Util.dayInterval(created, 1);
 title = values.getAsString("title");
 String.format("created between %d and %d and title = '%s'", new Object[]{interval[0], interval[1] - 1, title})]]></BODY>
-		</FUNCTION><PROJECTION table="bausteine" version="4"><![CDATA[[["_id","title","note","created","modified"],["","","","","unixepoch"],["INTEGER","TEXT","TEXT","INTEGER","INTEGER"],[false,false,true,false,false],[null,null,"text.velocity",null,"string"]]]]></PROJECTION><PROJECTION table="notes" version="4"><![CDATA[[["_id","title","note","created","modified"],["","","","unixepoch","unixepoch"],["INTEGER","TEXT","TEXT","INTEGER","INTEGER"],[false,true,true,true,true],[null,"string","text.spellcheck","string","string"]]]]></PROJECTION></FLAVOR>
+		</FUNCTION>
+        <PROJECTION table="bausteine" version="4"><![CDATA[[["_id","title","note","created","modified"],["","","","","unixepoch"],["INTEGER","TEXT","TEXT","INTEGER","INTEGER"],[false,false,true,false,false],[null,null,"text.velocity",null,"string"]]]]></PROJECTION>
+        <PROJECTION table="notes" version="4"><![CDATA[[["_id","title","note","created","modified"],["","","","unixepoch","unixepoch"],["INTEGER","TEXT","TEXT","INTEGER","INTEGER"],[false,true,true,true,true],[null,"string","text.spellcheck","string","string"],["created ASC","title ASC",null,null,null]]]]></PROJECTION>
+    </FLAVOR>
 	<FLAVOR name="com.applang.provider.WeatherInfo">
 		<FUNCTION name="updateOrInsert-clause" profile="_weather">
 <BODY><![CDATA[import com.applang.*;
@@ -35,39 +38,60 @@ long created = values.getAsLong("created");
 long[] interval = Util.dayInterval(created, 1);
 location = values.getAsString("location");
 String.format("created between %d and %d and location = '%s'", new Object[]{interval[0], interval[1] - 1, location})]]></BODY>
-		</FUNCTION><PROJECTION table="weathers" version="1"><![CDATA[[["_id","description","location","precipitation","maxtemp","mintemp","created","modified"],["","","","","","","unixepoch","unixepoch"],["INTEGER","TEXT","TEXT","FLOAT","FLOAT","FLOAT","INTEGER","INTEGER"],[false,true,true,true,true,true,true,true]]]]></PROJECTION></FLAVOR>
+		</FUNCTION>
+        <PROJECTION table="weathers" version="1"><![CDATA[[["_id","description","location","precipitation","maxtemp","mintemp","created","modified"],["","","","","","","unixepoch","unixepoch"],["INTEGER","TEXT","TEXT","FLOAT","FLOAT","FLOAT","INTEGER","INTEGER"],[false,true,true,true,true,true,true,true]]]]></PROJECTION>
+    </FLAVOR>
 
 	<PROFILE flavor="com.applang.provider.PlantInfo" name="plantinfo" oper="pull" recordDecoration="none" recordSeparator="whitespace">
 		
-	<FILTER><![CDATA[group='xxx']]></FILTER><TEMPLATE><![CDATA[`botfamily`	`family`
-`botname`	`name`]]></TEMPLATE></PROFILE>
+	<FILTER><![CDATA[group='xxx']]></FILTER>
+        <TEMPLATE><![CDATA[`botfamily`	`family`
+`botname`	`name`]]></TEMPLATE>
+    </PROFILE>
 	<PROFILE flavor="com.applang.provider.NotePad" name="tagesberichte" oper="pull" recordDecoration="fold" recordSeparator="whitespace">
 
 		
 	<TEMPLATE><![CDATA[ `modified|now``created|unixepoch` '`title`'
 `note`
-]]></TEMPLATE></PROFILE>
+]]></TEMPLATE>
+    </PROFILE>
 	<PROFILE flavor="com.applang.provider.NotePad" name="tagesberichte" oper="push" recordDecoration="fold" recordSeparator="whitespace">
 
 		
 	<TEMPLATE><![CDATA[ `created|unixepoch` '`title`'
 `note`
-]]></TEMPLATE></PROFILE>
+]]></TEMPLATE>
+    </PROFILE>
 	<PROFILE flavor="com.applang.provider.WeatherInfo" name="wetter" oper="push" recordDecoration="none" recordSeparator="whitespace">
 		
 	<TEMPLATE><![CDATA[`_id`	`location`
 `description`	`precipitation`
 `maxtemp`	`mintemp`
-`created|unixepoch`	`modified`]]></TEMPLATE></PROFILE>
+`created|unixepoch`	`modified`]]></TEMPLATE>
+    </PROFILE>
 	<PROFILE flavor="com.applang.provider.WeatherInfo" name="_weather" oper="download">
 		
-	<URL><![CDATA[content://com.applang.provider.WeatherInfo/weathers]]></URL></PROFILE>
-	<FUNCTION name="test"><BODY><![CDATA[import com.applang.*;
+	<URL><![CDATA[content://com.applang.provider.WeatherInfo/weathers]]></URL>
+    </PROFILE>
+	<FUNCTION name="test">
+        <BODY><![CDATA[import com.applang.*;
 push = "push".equals(oper);
 //if (value == void)
 //	return push ? "" : null;
 //else
-//	value;]]></BODY></FUNCTION><PROFILE flavor="com.applang.provider.WeatherInfo" name="wetter" oper="download" recordDecoration="none" recordSeparator="newline"><URL><![CDATA[http://openweathermap.org/city/2931361]]></URL></PROFILE><PROFILE flavor="com.applang.provider.WeatherInfo" name="wetter 4886" oper="download" recordDecoration="none" recordSeparator="newline"><URL><![CDATA[http://openweathermap.org/station/4886]]></URL></PROFILE><PROFILE flavor="com.applang.provider.NotePad" name="file:/tmp/temp.db#notes" oper="pull" recordDecoration="none" recordSeparator="whitespace"><TEMPLATE><![CDATA[`_id`	`title`	`note`	`created|unixepoch`	`modified`]]></TEMPLATE></PROFILE><FUNCTION name="unixepoch2"><BODY><![CDATA[import com.applang.*;
+//	value;]]></BODY>
+    </FUNCTION>
+    <PROFILE flavor="com.applang.provider.WeatherInfo" name="wetter" oper="download" recordDecoration="none" recordSeparator="newline">
+        <URL><![CDATA[http://openweathermap.org/city/2931361]]></URL>
+    </PROFILE>
+    <PROFILE flavor="com.applang.provider.WeatherInfo" name="wetter 4886" oper="download" recordDecoration="none" recordSeparator="newline">
+        <URL><![CDATA[http://openweathermap.org/station/4886]]></URL>
+    </PROFILE>
+    <PROFILE flavor="com.applang.provider.NotePad" name="file:/tmp/temp.db#notes" oper="pull" recordDecoration="none" recordSeparator="whitespace">
+        <TEMPLATE><![CDATA[`_id`	`title`	`note`	`created|unixepoch`	`modified`]]></TEMPLATE>
+    </PROFILE>
+    <FUNCTION name="unixepoch2">
+        <BODY><![CDATA[import com.applang.*;
 push = "push".equals(oper);
 if (value == void)
 	return push ? "" : null;
@@ -76,4 +100,6 @@ if (push)
 	result = Util.formatDate(value, new Object[]{pattern});
 else 
 	result = Util.toTime(value, new Object[]{pattern});
-result]]></BODY></FUNCTION></TRANSPORTS>
+result]]></BODY>
+    </FUNCTION>
+</TRANSPORTS>

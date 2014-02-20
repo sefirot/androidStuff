@@ -928,8 +928,10 @@ public class BerichtsheftPlugin extends EditPlugin
     		
  	// NOTE used in scripts
 	public static ImageIcon loadIcon(String path) {
-		if (path.endsWith(".icon"))
+		if (path != null && path.endsWith(".icon"))
 			path = getProperty(path);
+		if (nullOrEmpty(path))
+			return null;
 		try {
 			if (path.startsWith("/"))
 				return iconFrom(path);
@@ -965,7 +967,7 @@ public class BerichtsheftPlugin extends EditPlugin
 
 	public static AbstractButton makeCustomButton(String name, ActionListener listener, boolean flip) {
 		String toolTip = getProperty(name.concat(".label"));
-		ImageIcon icon = loadIcon(getProperty(name + ".icon"));
+		ImageIcon icon = loadIcon(name + ".icon");
 		if (flip && icon != null) {
 			Image img = icon.getImage();
 			BufferedImage bimg = horizontalflip(img);

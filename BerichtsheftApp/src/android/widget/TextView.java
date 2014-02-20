@@ -106,7 +106,7 @@ public class TextView extends View
 			String value = attributeSet.getAttributeValue("android:text");
 	    	if (notNullOrEmpty(value))
 	    		setText(Resources.textValue(getContext(), value));
-	    	value = attributeSet.getAttributeResourceItem("android:textColor");
+	    	value = attributeSet.getAttributeValue("android:textColor");
 	    	if (notNullOrEmpty(value)) {
 				int color= Resources.colorValue(getContext(), value);
 				setTextColor(color);

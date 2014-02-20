@@ -182,14 +182,14 @@ public class ViewGroup extends View implements ViewManager
     
     @Override
     public View findViewById(final int id) {
-		if (findViewTraversal(id) != null)
+		if (findViewByIdTraversal(id) != null)
 			return this;
     	Object[] params = iterateViews(this, 0, 
 			new Function<Object[]>() {
 				public Object[] apply(Object... params) {
 					View v = param(null, 0, params);
 					Object[] parms = param(null, 2, params);
-					if (v.findViewTraversal(id) != null)
+					if (v.findViewByIdTraversal(id) != null)
 						return objects(v);
 					else
 						return parms;

@@ -235,7 +235,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 		TransportBuilder builder = new TransportBuilder();
 		String template = builder.makeTemplate(columns.toArray());
 		columns = builder.evaluateTemplate(template, null);
-		if (!isAvailable(0, columns))
+		if (notAvailable(0, columns))
 			return;
 		final String text = builder.wrapRecords(table);
 		showItems(view, "datadock.transport-to-buffer.label", 

@@ -17,7 +17,6 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import static com.applang.Util.*;
-import static com.applang.Util1.*;
 import static com.applang.Util2.*;
 
 public class RelativeLayout extends ViewGroup

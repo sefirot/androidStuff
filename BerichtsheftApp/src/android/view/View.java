@@ -67,15 +67,15 @@ public class View
     }
     
     protected View findViewWithTagTraversal(Object tag, Object...params) {
+    	Object param0 = param(null, 0, params);
+    	if (param0 instanceof View)
+    		return null;
     	String string = stringValueOf(getTag());
-    	Constraint constraint = param(null, 0, params);
-    	if (constraint != null && check(string, constraint, stringValueOf(tag)))
-    		return this;
-        String regex = wildcardRegex(tag, GLUE_REGEX);
-		if (string.matches(regex)) {
+        String regex = wildcardRegex(tag);
+		if (among(string, regex)) 
             return this;
-        }
-        return null;
+		else
+			return null;
     }
 	
 	private int mId;
@@ -93,10 +93,10 @@ public class View
         if (id < 0) {
             return null;
         }
-        return findViewTraversal(id);
+        return findViewByIdTraversal(id);
     }
 
-    protected View findViewTraversal(int id) {
+    protected View findViewByIdTraversal(int id) {
         if (id == mId) {
             return this;
         }

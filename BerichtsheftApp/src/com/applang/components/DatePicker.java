@@ -603,7 +603,7 @@ public class DatePicker
 		}
 		
 		public static String weekDate() {
-			if (!isAvailable(0, datesInMillis.getKeys()))
+			if (notAvailable(0, datesInMillis.getKeys()))
 				return "";
 			Long time = (Long) datesInMillis.getValues().get(-1);
 			long[] interval = weekInterval(new Date(time), 1);

@@ -901,7 +901,7 @@ public class NotePicker extends ActionPanel
 	@Override
 	public Object select(Object...args) {
 		args = reduceDepth(args);
-		boolean pkValue = !isAvailable(0, args);
+		boolean pkValue = notAvailable(0, args);
 		String dateString = param(null, 0, args);
 		String pattern = param(null, 1, args);
 		if (pkValue || notNullOrEmpty(dateString) || bausteinEditing())
