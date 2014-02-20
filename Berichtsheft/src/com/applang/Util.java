@@ -1,8 +1,5 @@
 package com.applang;
 
-import static com.applang.Util.NEWLINE_REGEX;
-import static com.applang.Util.enclose;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -382,10 +379,10 @@ public class Util
         } catch(NumberFormatException e) { result = defaultValue; }
         return result;
     }
-	
-	public static boolean isAvailable(int index, List<?> list) {
-		return list != null && index > -1 && index < list.size() && list.get(index) != null;
-	}
+    
+    public static <T> boolean notAvailable(int index, T[] array) {
+    	return !isAvailable(index, array);
+    }
 	
 	public static <T> boolean isAvailable(int index, T[] array) {
 		return array != null && index > -1 && index < array.length && array[index] != null;
@@ -393,6 +390,14 @@ public class Util
 	
 	public static boolean isAvailable(int index, int[] array) {
 		return array != null && index > -1 && index < array.length;
+	}
+	
+	public static boolean notAvailable(int index, List<?> list) {
+		return !isAvailable(index, list.toArray());
+	}
+	
+	public static boolean isAvailable(int index, List<?> list) {
+		return isAvailable(index, list.toArray());
 	}
 	
 	public static Object[] reduceDepth(Object...params) {
@@ -1113,6 +1118,16 @@ public class Util
 		}
 	}
 	
+	public static Boolean among(String string, String regex) {
+		ValList list = split(string, GLUE_REGEX);
+		for (Object element : list) {
+			String part = (String) element;
+			if (part.matches(regex))
+				return true;
+		}
+		return false;
+	}
+	
 	public static Boolean check(String string, Constraint constraint, String part) {
 		if (string == null)
 			return null;
@@ -1122,8 +1137,7 @@ public class Util
 		case MIDDLE:
 			return string.contains(part);
 		case AMONG:
-			ValList list = split(string, "\\|");
-			return list.contains(part);
+			return among(string, part);
 		case END:
 			return string.endsWith(part);
 		default:
@@ -1304,7 +1318,15 @@ public class Util
 		private static final long serialVersionUID =
 				UUID.fromString("fe32a444-91e4-4ad2-8b1e-3d4c2f7a26f3").getLeastSignificantBits();
 	
+		private ValList[] mLists;
+		
 		public BidiMultiMap(ValList...lists) {
+			setLists(lists);
+		}
+			
+		public void setLists(ValList...lists) {
+			if (lists == null)
+				lists = new ValList[0];
 			int size = 0;
 			for (int i = lists.length - 1; i >= 0; i--) {
 				lists[i] = param_T(vlist(), i, lists);
@@ -1316,88 +1338,86 @@ public class Util
 				ValList values = lists[i];
 				values.sizeAtLeast(size);
 			}
-			this.lists = lists;
+			mLists = lists;
 		}
-		
-		private ValList[] lists;
 		
 		public ValList[] getLists() {
-			return lists;
+			return mLists;
 		}
 
-		private int[] index = new int[] {0,1};
+		private int[] mIndex = new int[] {0,1};
 	
 		public int[] getIndex() {
-			return index;
+			return mIndex;
 		}
 
 		public void setIndex(int...listIndex) {
-			for (int i = 0; i < index.length; i++) {
-				int j = param(index[i], i, listIndex);
-				boolean retval = j > -1 && j < lists.length;
+			for (int i = 0; i < mIndex.length; i++) {
+				int j = param(mIndex[i], i, listIndex);
+				boolean retval = j > -1 && j < mLists.length;
 				if (retval)
-					index[i] = j;
+					mIndex[i] = j;
 			}
 		}
 	
 		public ValList getKeys() {
-			return lists[index[0]];
+			return mLists[mIndex[0]];
 		}
 		
 		public ValList getValues(int...listIndex) {
 			return isAvailable(0, listIndex) ? 
-					(isAvailable(listIndex[0], lists) ? lists[listIndex[0]] : null) : 
-					lists[index[1]];
+					(isAvailable(listIndex[0], mLists) ? mLists[listIndex[0]] : null) : 
+					mLists[mIndex[1]];
 		}
 		
 		@Override
 		public String toString() {
 			String separator = GLUE;
 			StringBuilder sb = new StringBuilder();
-			int keysIndex = index[0];
-			index[0] = 0;
+			int keysIndex = mIndex[0];
+			mIndex[0] = 0;
 			int size = getKeys().size();
 			for (int i = 0; i < size; i++) {
 				sb.append(String.format("%s", getKeys().get(i)));
-				for (int j = 1; j < lists.length; j++) {
-					Object val = lists[j].get(i);
+				for (int j = 1; j < mLists.length; j++) {
+					Object val = mLists[j].get(i);
 					sb.append(String.format(separator + "%s", String.valueOf(val)));
 				}
 				if (i < size - 1)
 					sb.append("," + NEWLINE);
 			}
-			index[0] = keysIndex;
+			mIndex[0] = keysIndex;
 			return enclose("{", sb.toString(), "}");
 		}
 	
 		public void add(Object...values) {
-			for (int i = 0; i < lists.length; i++) {
+			for (int i = 0; i < mLists.length; i++) {
 				Object value = param(null, i, values);
-				lists[i].add(value);
+				mLists[i].add(value);
 			}
 		}
 	
 		public void insert(int index, Object...values) {
-			for (int i = 0; i < lists.length; i++) {
+			for (int i = 0; i < mLists.length; i++) {
 				Object value = param(null, i, values);
-				lists[i].add(index, value);
+				mLists[i].add(index, value);
 			}
 		}
 		
 		public void remove(int index) {
-			for (int i = 0; i < lists.length; i++) 
-				lists[i].remove(index);
+			for (int i = 0; i < mLists.length; i++) 
+				mLists[i].remove(index);
 		}
 		
 		public void removeAll() {
-			for (int i = 0; i < lists.length; i++) 
-				lists[i].clear();
+			for (int i = 0; i < mLists.length; i++) 
+				mLists[i].clear();
 		}
 		
 		public ValList get(int index) {
 			ValList list = vlist();
-			for (int i = 0; i < lists.length; i++) 
-				list.add(lists[i].get(index));
+			for (int i = 0; i < mLists.length; i++) 
+				list.add(mLists[i].get(index));
 			return list;
 		}
 		

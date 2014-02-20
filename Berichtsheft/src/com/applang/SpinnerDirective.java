@@ -27,7 +27,7 @@ public class SpinnerDirective extends PromptDirective
 		if (!getArguments(context, node)) {
 			return false;
 		}
-		if (!isAvailable(0, values)) {
+		if (notAvailable(0, values)) {
 			values = getBlockContent(context, node);
 		}
 		return getAnswer(context, Dialogs.DIALOG_LIST);
