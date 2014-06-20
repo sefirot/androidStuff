@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>Berichtsheft1</name>
+	<name>Berichtsheft</name>
 	<comment></comment>
 	<projects>
 	</projects>
@@ -34,42 +34,48 @@
 		<link>
 			<name>res/drawable/spiraling.gif</name>
 			<type>1</type>
-			<locationURI>PARENT-1-PROJECT_LOC/BerichtsheftApp/.jedit/plugins/berichtsheft/res/drawable/spiraling.gif</locationURI>
+			<locationURI>copy_PARENT/BerichtsheftApp/.jedit/plugins/berichtsheft/res/drawable/spiraling.gif</locationURI>
 		</link>
 		<link>
 			<name>res/layout/field_blob.xml</name>
 			<type>1</type>
-			<locationURI>PARENT-1-PROJECT_LOC/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/field_blob.xml</locationURI>
+			<locationURI>copy_PARENT/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/field_blob.xml</locationURI>
 		</link>
 		<link>
 			<name>res/layout/field_float.xml</name>
 			<type>1</type>
-			<locationURI>PARENT-1-PROJECT_LOC/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/field_float.xml</locationURI>
+			<locationURI>copy_PARENT/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/field_float.xml</locationURI>
 		</link>
 		<link>
 			<name>res/layout/field_integer.xml</name>
 			<type>1</type>
-			<locationURI>PARENT-1-PROJECT_LOC/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/field_integer.xml</locationURI>
+			<locationURI>copy_PARENT/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/field_integer.xml</locationURI>
 		</link>
 		<link>
 			<name>res/layout/field_string.xml</name>
 			<type>1</type>
-			<locationURI>PARENT-1-PROJECT_LOC/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/field_string.xml</locationURI>
+			<locationURI>copy_PARENT/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/field_string.xml</locationURI>
 		</link>
 		<link>
 			<name>res/layout/field_text.xml</name>
 			<type>1</type>
-			<locationURI>PARENT-1-PROJECT_LOC/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/field_text.xml</locationURI>
+			<locationURI>copy_PARENT/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/field_text.xml</locationURI>
 		</link>
 		<link>
 			<name>res/layout/linearlayout.xml</name>
 			<type>1</type>
-			<locationURI>PARENT-1-PROJECT_LOC/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/linearlayout.xml</locationURI>
+			<locationURI>copy_PARENT/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/linearlayout.xml</locationURI>
 		</link>
 		<link>
 			<name>res/layout/relativelayout.xml</name>
 			<type>1</type>
-			<locationURI>PARENT-1-PROJECT_LOC/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/relativelayout.xml</locationURI>
+			<locationURI>copy_PARENT/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/relativelayout.xml</locationURI>
 		</link>
 	</linkedResources>
+	<variableList>
+		<variable>
+			<name>copy_PARENT</name>
+			<value>$%7BPARENT-2-PROJECT_LOC%7D/Niklas/androidStuff</value>
+		</variable>
+	</variableList>
 </projectDescription>
