@@ -3,6 +3,7 @@ package android.app;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Container;
+import java.awt.Dimension;
 import java.awt.Frame;
 import java.awt.KeyboardFocusManager;
 import java.awt.event.ActionEvent;
@@ -12,9 +13,9 @@ import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.PipedReader;
 import java.io.PipedWriter;
+import java.io.PrintWriter;
 import java.io.Writer;
 
 import javax.swing.Box;
@@ -31,6 +32,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.ListSelectionModel;
+import javax.swing.UIManager;
 import javax.swing.WindowConstants;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.ListSelectionEvent;
@@ -45,6 +47,7 @@ import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
+import android.widget.EditText;
 import android.widget.TextView;
 
 import static com.applang.Util.*;
@@ -217,31 +220,35 @@ public class AlertDialog extends Dialog implements DialogInterface
     }
 	
 	@SuppressWarnings("resource")
-	public Writer feed(int id) throws IOException {
+	public Writer feed(int id) {
 		final TextView tv = (TextView) findViewById(id);
-		if (tv != null) {
-			PipedWriter writer = new PipedWriter();
-			final PipedReader reader = new PipedReader(writer);
-			Runnable r = new Runnable() {
-				public void run() {
-			        try {
-			            BufferedReader br = new BufferedReader(reader);
-			            String line = null;
-			            while((line = br.readLine()) != null)
-			            {
-			                synchronized (tv) {
-			                	tv.append(line + NEWLINE);
-							}
-			            }
-			            br.close();
-			        }
-			        catch (Exception e) {
-			            Log.e(TAG, "feed", e);
-			        }
-				}
-			};
-			new Thread(r).start();
-			return writer;
+		try {
+			if (tv != null) {
+				PipedWriter writer = new PipedWriter();
+				final PipedReader reader = new PipedReader(writer);
+				Runnable r = new Runnable() {
+					public void run() {
+				        try {
+				            BufferedReader br = new BufferedReader(reader);
+				            String line = null;
+				            while((line = br.readLine()) != null)
+				            {
+				                synchronized (tv) {
+				                	tv.append(line + NEWLINE);
+								}
+				            }
+				            br.close();
+				        }
+				        catch (Exception e) {
+				            Log.e(TAG, "feed", e);
+				        }
+					}
+				};
+				new Thread(r).start();
+				return writer;
+			}
+		} catch (Exception e) {
+			Log.e(TAG, "feed", e);
 		}
 		return null;
 	}
@@ -284,24 +291,21 @@ public class AlertDialog extends Dialog implements DialogInterface
 		
         public AlertDialog create() {
         	ViewGroup vg = dialog.viewGroup;
+        	Container container = ViewGroup.build(vg, true);
         	if (dialog.options.size() > 0) {
-        		Container container = vg.getContainer();
         		if (vg.getChildCount() > 0) {
         			if (vg.getChildCount() < 2) 
         				container = (Container) vg.getChildAt(0).getComponent();
-        			else {
-        				for (int i = 0; i < vg.getChildCount(); i++) {
-        					container.add(vg.getChildAt(i).getComponent());
-						}
-        			}
-    				optionPane.setMessage(container);
+        			optionPane.setMessage(container);
         		}
         		optionPane.setOptions(dialog.options.toArray());
         		dialog.setContentPane(optionPane);
         	}
-        	else if (vg.getChildCount() > 0) {
-        		for (int i = 0; i < vg.getChildCount(); i++)
-					dialog.getContentPane().add(vg.getChildAt(i).getComponent());
+        	else {
+        		for (int i = 0; i < container.getComponentCount(); i++) {
+					Component component = container.getComponent(i);
+					dialog.getContentPane().add(component);
+				}
         	}
 			dialog.setTitle(title);
             dialog.pack();
@@ -330,8 +334,13 @@ public class AlertDialog extends Dialog implements DialogInterface
         public Builder setIcon(int iconId) {
             if (iconId > 0) {
 				ImageIcon icon = iconFrom("/images/spinner.gif");
-				optionPane.setIcon(icon);
+				return setIcon(icon);
 			}
+            return this;
+        }
+
+        public Builder setIcon(Icon icon) {
+            optionPane.setIcon(icon);
             return this;
         }
 
@@ -537,6 +546,32 @@ public class AlertDialog extends Dialog implements DialogInterface
             return this;
         }
         
+	}
+	
+	public static void alerter(Context context, String title, Exception ex) {
+		EditText et = new EditText(context, 
+				Resources.attributeSet(context, "android:inputType=\"textMultiLine\"", "readOnly=\"true\""));
+		int id = 1;
+		et.setId(id);
+		et.getComponent().setPreferredSize(new Dimension(800,400));
+		AlertDialog dlg = new AlertDialog.Builder(context)
+	    		.setTitle(title)
+				.setIcon(UIManager.getIcon("OptionPane.errorIcon"))
+				.setView(et)
+	            .setNeutralButton(stringValueOf(defaultOptions(3).get(0)), new DialogInterface.OnClickListener() {
+	                public void onClick(DialogInterface dialog, int whichButton) {
+	                	dialog.dismiss();
+	                }
+	            })
+				.create();
+		try {
+			Writer out = dlg.feed(id);
+			ex.printStackTrace(new PrintWriter(out));
+			out.close();
+		} catch (Exception e) {
+			Log.e(TAG, "alerter", e);
+		}
+		dlg.open();
 	}
 	
 	@SuppressWarnings("rawtypes")

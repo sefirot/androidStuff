@@ -72,11 +72,15 @@ public class TextView extends View
 	}
 
 	public String getText() {
-		return getLabel().getText();
+		String text = getLabel().getText();
+    	if (isMultiLine())
+    		return deHtmlize(text);
+    	else
+    		return text;
 	}
 	
-	public void append (CharSequence text) {
-		String t = getLabel().getText();
+	public void append(CharSequence text) {
+		String t = getText();
 		setText(t + text.toString());
 	}
 	

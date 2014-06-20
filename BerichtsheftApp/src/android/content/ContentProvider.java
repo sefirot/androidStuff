@@ -98,7 +98,7 @@ public class ContentProvider {
 			String[] args = strings();
 			if (isAvailable(0, sql) && sql[0].length() > 0) {
 				this.sql = sql[0];
-				args = arrayreduce(sql, 1, sql.length - 1);
+				args = arrayslice(sql, 1, sql.length - 1);
 			}
 			else
 				this.sql = "select * from " + mTable;

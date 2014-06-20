@@ -7,6 +7,8 @@ import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
 import java.io.File;
 import java.util.Properties;
 
@@ -34,6 +36,7 @@ import android.content.DialogInterface.OnClickListener;
 import android.content.SharedPreferences;
 import android.net.Uri;
 
+import com.applang.SwingUtil.MapEditorComponent;
 import com.applang.berichtsheft.BerichtsheftActivity;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.R;
@@ -51,6 +54,7 @@ public class DataConfiguration
 	public static final String TAG = DataConfiguration.class.getSimpleName();
 	
 	private Context mContext;
+	
 	public void setContext(Context context) {
 		mContext = context;
 		prefs = mContext.getSharedPreferences();
@@ -86,13 +90,27 @@ public class DataConfiguration
 		return tableName;
 	}
 
+	private PropertyChangeSupport mPcs = new PropertyChangeSupport(this);
+
+	public void
+    addPropertyChangeListener(PropertyChangeListener listener) {
+        mPcs.addPropertyChangeListener(listener);
+    }
+    
+    public void
+    removePropertyChangeListener(PropertyChangeListener listener) {
+        mPcs.removePropertyChangeListener(listener);
+    }
+	
 	private ProjectionModel mProjectionModel = null;
 	
 	public void setProjectionModel(ProjectionModel projectionModel) {
 		if (mProjectionModel != null && mProjectionModel.hasFlavor()) {
 			mContext.unregisterFlavor(mProjectionModel.getFlavor());
 		}
-		this.mProjectionModel = projectionModel;
+		ProjectionModel oldProjectionModel = mProjectionModel;
+		mProjectionModel = projectionModel;
+		mPcs.firePropertyChange("projectionModel", oldProjectionModel, mProjectionModel);
 	}
 
 	public ProjectionModel getProjectionModel() {
@@ -110,6 +128,8 @@ public class DataConfiguration
 	public String getSortOrder() {
 		return mProjectionModel != null ? mProjectionModel.getSortOrder() : null;
 	}
+	
+	private ValMap options = vmap();
 
 	public DataConfiguration(Context context, Uri uri, ProjectionModel model) {
 		setContext(context);
@@ -119,6 +139,7 @@ public class DataConfiguration
 			setUri(uri);
 		if (model != null)
 			setProjectionModel(model);
+		options.put("Layout", "standard");
 	}
 	
 	public DataConfiguration(DataAdapter dataAdapter) {
@@ -150,6 +171,9 @@ public class DataConfiguration
 			component = DataView.projectionComponent(getContext(), dialog, mProjectionModel);
 			tables[1] = findFirstComponent(component, "table");
 			tables[1].setPreferredScrollableViewportSize(scaledDimension(size, 1.0, 1.2));
+			panel.add(component);
+			component = new MapEditorComponent(options, 
+					_null());
 			panel.add(component);
 		}
 		tables[0].getSelectionModel().addListSelectionListener(
@@ -340,7 +364,7 @@ public class DataConfiguration
 	public void load() {
 		String uriString = stringValueOf(prefs.getString("uri", ""));
 		String database = stringValueOf(prefs.getString("database", ""));
-		debug_println(null, "loaded uri, database", uriString, database);
+		diag_println(DIAG_OFF, "loaded uri, database", uriString, database);
 		if (isFileUri(uriString))
 			database = Uri.parse(uriString).getPath();
 		if (!fileExists(database)) {
@@ -388,7 +412,7 @@ public class DataConfiguration
 		}
 		String uriString = uri != null ? Uri.decode(uri.toString()) : null;
 		prefs.edit().putString("uri", uriString).putString("database", database).commit();
-		debug_println(null, "saved uri, database", uriString, database);
+		diag_println(DIAG_OFF, "saved uri, database", uriString, database);
 	}
 
 	public Uri projectionToUri(Uri uri) {

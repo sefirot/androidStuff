@@ -4,12 +4,14 @@
 	</description>
 
 	<property name="src.dir" value="src" />
+	<property name="bin.dir" value="bin" />
 	<property name="build.support" value="build-support" />
   	<property file="build.properties"/>
 	<property file="${build.support}/build.properties"/>
 	<property name="user-doc.xml" location = "users-guide.xml"/>
 	<property name="user-doc.xsl" location = "${build.support}/users-guide.xsl"/>
 	<property name="user-doc.out" location = "${build.docs}/index.html"/>
+	
 	<import file="${build.support}/plugin-build.xml" />
 
     <!-- This selector defines extra files to be included
@@ -172,6 +174,19 @@ rm $0
 	            </fileset>
 	        </batchtest>
 	    </junit>
+	</target>
+<!--
+ -->	
+	<target name="replicant">
+		<jar destfile="../DoubleFeature_Plugin/libs/replicant.jar">
+	        <fileset dir="${bin.dir}">
+	          <or>
+				<filename name="android/**/*.class"/>
+				<filename name="com/applang/Util*.class"/>
+				<filename name="com/applang/SwingUtil*.class"/>
+	          </or>
+	        </fileset>
+		</jar>
 	</target>
 	
 </project>

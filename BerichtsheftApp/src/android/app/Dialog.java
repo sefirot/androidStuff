@@ -26,11 +26,11 @@ public abstract class Dialog extends JDialog
 	public Dialog(Frame owner, int behavior) {
 		super(owner, Behavior.hasFlags(behavior, Behavior.MODAL));
 		setAlwaysOnTop(Behavior.hasFlags(behavior, Behavior.ALWAYS_ON_TOP));
-		this._behavior = behavior;
+		mBehavior = behavior;
 		_init();
 	}
 
-	protected int _behavior;
+	protected int mBehavior;
 	
 	public Dialog open(Object...params) {
 		Object param0 = param(null, 0, params);
@@ -39,7 +39,7 @@ public abstract class Dialog extends JDialog
 		else if (param0 instanceof Double) {
 			scaleSize(this, arraycast(params, new Double[0]));
 		}
-		if (Behavior.hasFlags(_behavior, Behavior.TIMEOUT))
+		if (Behavior.hasFlags(mBehavior, Behavior.TIMEOUT))
 			deadline = Deadline.start(this);
 		setVisible(true);
 		toFront();
@@ -189,7 +189,7 @@ public abstract class Dialog extends JDialog
 		public void windowClosing(WindowEvent evt)
 		{
 			cancel();
-			if (Behavior.hasFlags(_behavior, Behavior.EXIT_ON_CLOSE))
+			if (Behavior.hasFlags(mBehavior, Behavior.EXIT_ON_CLOSE))
 				System.exit(0);
 		}
 	}

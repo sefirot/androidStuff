@@ -58,7 +58,7 @@ public class Resources
 		if (notNullOrEmpty(path))
 			return path;
 		else
-			return absolutePathOf(part, constraint);
+			return resourceUrlOf(part, constraint).getFile();
 	}
 	
 	public static String[] resourceTypes = 
@@ -203,7 +203,8 @@ public class Resources
 			lookup_R(id, pkg, resourceType, new Job<Class<?>>() {
 				public void perform(Class<?> c, Object[] parms) throws Exception {
 					final String name = param_String(null,0,parms);
-					InputStream is = c.getResourceAsStream(getRelativePath(resourceType));
+					String path = getRelativePath(resourceType);
+					InputStream is = c.getResourceAsStream(path);
 					Document doc = xmlDocument(null, is);
 					Object[] params = param(null,1,parms);
 					if (params != null)
@@ -553,6 +554,7 @@ public class Resources
 		try {
 			URLClassLoader ucl = (URLClassLoader)ClassLoader.getSystemClassLoader();
 			for (URL url: ucl.getURLs()) {
+				no_println(url);
 				iterateEntry(new File(url.toURI()), filter, collectedURLs);
 			}
 		} catch (Exception e) {
@@ -581,7 +583,7 @@ public class Resources
 			return src.getLocation().toURI();
 		} catch (Exception e) {
 			Log.e(TAG, "getCodeSourceLocation", e);
-			debug_println("code source not available");
+			diag_println(DIAG_OFF, "code source not available");
 			throw new RuntimeException("code source not available");
 		}
 	}

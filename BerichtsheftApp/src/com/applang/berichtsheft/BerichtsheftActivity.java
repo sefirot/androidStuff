@@ -5,6 +5,7 @@ import java.util.HashMap;
 import javax.swing.JFrame;
 
 import com.applang.BaseDirective;
+import com.applang.SwingUtil.Deadline;
 import com.applang.Util.Job;
 
 import android.app.Activity;
@@ -28,6 +29,9 @@ public class BerichtsheftActivity extends Activity
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 		switch (requestCode) {
 		case 0:
+			if (Deadline.timedOut) {
+				data.getExtras().putString(BaseDirective.RESULT, param_String(null, 0, params));
+			}
 			if (followUp != null)
 				try {
 					String result = data.getExtras().getString(BaseDirective.RESULT);

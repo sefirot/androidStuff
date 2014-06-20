@@ -188,10 +188,10 @@ public class ZipUtil
 			        if (!zipEntry.isDirectory())
 			        	copyContents(in, out);
 				}
-			}, true, filter.toArray(new String[0]));
+			}, true, toStrings(filter));
 			
 			cnt += zipArchive(out, base, 
-					arrayreduce(params, nDelete, params.length - nDelete));
+					arrayslice(params, nDelete, params.length - nDelete));
 
 			if (archive.delete())
 				temp.renameTo(archive);

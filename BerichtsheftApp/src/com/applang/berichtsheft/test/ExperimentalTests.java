@@ -36,7 +36,7 @@ import static com.applang.Util2.*;
 
 import junit.framework.TestCase;
 
-public class WeatherInfoTests extends TestCase
+public class ExperimentalTests extends TestCase
 {
 	public void setUp() throws Exception {
 		BerichtsheftApp.loadSettings();
@@ -176,9 +176,9 @@ public class WeatherInfoTests extends TestCase
 		jsonTest(details);
 	}
 	
-	Document getJsoup(String url) throws Exception {
-		InputStream is = new URL(url).openStream();
-		ProgressMonitorInputStream pmis = new ProgressMonitorInputStream(null, url, is);
+	Document getJsoup(String urlString) throws Exception {
+		InputStream is = new URL(urlString).openStream();
+		ProgressMonitorInputStream pmis = new ProgressMonitorInputStream(null, urlString, is);
 		return Jsoup.parse(pmis, "UTF-8", "", Parser.htmlParser());
 //    	Connection connection = Jsoup.connect(url);
 //		return connection
@@ -455,6 +455,15 @@ public class WeatherInfoTests extends TestCase
 				object = ((ValMap)object).get(path[i].toString());
 		}
 		return object;
+	}
+
+	public void testBookmarks() throws Exception {
+		Document doc = getJsoup(fileUri("/home/lotharla/backups/bookmarks-2014-02-24.html", null).toString());
+    	Elements folders = doc.select("DL");
+    	for (Element folder : folders) {
+			String html = folder.outerHtml();
+			no_println(html);
+		}
 	}
 
 }

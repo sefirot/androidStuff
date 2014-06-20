@@ -260,7 +260,7 @@ public class WeatherManager extends ActionPanel
 			dateParts = DatePicker.extendPeriod(1, dateParts);
 		}
 		Uri uri = siteUri("PA", location, "all", dateParts);
-		BerichtsheftShell.print("connecting '%s'\n... ", uri);
+		BerichtsheftPlugin.print("connecting '%s'\n... ", uri);
 		long millis = System.currentTimeMillis();
 		try {
 			doc = Jsoup.connect(uri.toString())
@@ -269,7 +269,7 @@ public class WeatherManager extends ActionPanel
 		} catch (Exception e) {
 			handleException(e);
 		}
-		BerichtsheftShell.print("%d sec(s)", (System.currentTimeMillis() - millis) / 1000, NEWLINE);
+		BerichtsheftPlugin.print("%d sec(s)", (System.currentTimeMillis() - millis) / 1000, NEWLINE);
 		return doc;
 	}
     
@@ -781,7 +781,7 @@ public class WeatherManager extends ActionPanel
 	public Object updateOrInsert(String location, long time, ValMap values) {
 		if (getCon() == null) {
 			message("database connection not open");
-			BerichtsheftShell.print(location, 
+			BerichtsheftPlugin.print(location, 
 					formatDate(time, DatePicker.calendarFormat, Locale.getDefault()), 
 					values, 
 					NEWLINE);

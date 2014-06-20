@@ -229,6 +229,10 @@ public class Util1
 		return uriString.toLowerCase().startsWith(ContentResolver.SCHEME_FILE);
 	}
 	
+	public static boolean isJarUri(String uriString) {
+		return uriString.toLowerCase().startsWith("jar:");
+	}
+	
 	public static Uri toStringUri(Uri uri) {
 		return Uri.parse(uri.toString());
 	}
@@ -518,7 +522,7 @@ public class Util1
 			if (notNullOrEmpty(name))
 				list.add(name);
 		}
-		return list.toArray(new String[0]);
+		return toStrings(list);
 	}
 	
 	public static File getDatabaseFile(Context context, Uri uri) {

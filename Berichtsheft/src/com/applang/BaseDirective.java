@@ -50,7 +50,7 @@ public class BaseDirective extends CustomDirective
 		setName(signature);
 		
 		if (arguments == null) {
-			arguments = argumentsFrom(signature).toArray(new String[0]);
+			arguments = toStrings(argumentsFrom(signature));
 		}
 	}
 

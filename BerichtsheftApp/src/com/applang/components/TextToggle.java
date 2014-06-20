@@ -106,6 +106,7 @@ public class TextToggle extends DoubleFeature implements ITextComponent
 	//	no problems in BorderLayout
 	public TextToggle createBufferedTextArea(String modeName, String modeFileName) {
 		TextArea textArea;
+		String settingsDir = BerichtsheftPlugin.getSettingsDirectory();
 		boolean useEmbedded = false;
 		if (useEmbedded && BerichtsheftPlugin.insideJEdit()) {
 			textArea = new JEditEmbeddedTextArea() {
@@ -121,7 +122,7 @@ public class TextToggle extends DoubleFeature implements ITextComponent
 		}
 		else {
 			final Properties props = new Properties();
-			String keymapDirName = pathCombine(BerichtsheftPlugin.getSettingsDirectory(), "keymaps");
+			String keymapDirName = pathCombine(settingsDir, "keymaps");
 			String keymapFileName = pathCombine(keymapDirName, "imported_keys.props");
 			if (!fileExists(keymapFileName))
 				keymapFileName = pathCombine(keymapDirName, "jedit_keys.props");
@@ -156,7 +157,7 @@ public class TextToggle extends DoubleFeature implements ITextComponent
 			buffer.setTokenMarker(tokenMarker);
 			textArea.setBuffer(buffer);
 			Mode mode = new Mode(modeName);
-			modeFileName = pathCombine(BerichtsheftPlugin.getSettingsDirectory(), modeFileName);
+			modeFileName = pathCombine(settingsDir, modeFileName);
 			mode.setProperty("file", modeFileName);
 			ModeProvider.instance.addMode(mode);	//	mode.loadIfNecessary();
 			buffer.setMode(mode);

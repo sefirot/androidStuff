@@ -23,6 +23,8 @@ import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Properties;
 import java.util.Set;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 
 import javax.swing.AbstractButton;
 import javax.swing.Action;
@@ -70,7 +72,6 @@ import android.app.AlertDialog;
 import android.util.Log;
 import android.widget.Toast;
 
-import com.applang.Util.Constraint;
 import com.applang.berichtsheft.BerichtsheftActivity;
 import com.applang.components.AndroidBridge;
 import com.applang.components.DataConfiguration;
@@ -85,6 +86,7 @@ import com.inet.jortho.FileUserDictionary;
 import com.inet.jortho.SpellChecker;
 
 import static com.applang.Util.*;
+import static com.applang.Util1.*;
 import static com.applang.Util2.*;
 import static com.applang.SwingUtil.*;
 
@@ -203,12 +205,12 @@ public class BerichtsheftPlugin extends EditPlugin
 						doMagic(doubleFeature, buffer);
 					}
 				});
-				debug_println(null, "featured", identity(pane), doubleFeature);
+				diag_println(DIAG_OFF, "featured", identity(pane), doubleFeature);
 				focusRequest(pane);
 			}
 			else {
 				doubleFeature.toggle(false, null);
-				debug_println(null, "reduced", identity(pane), doubleFeature);
+				diag_println(DIAG_OFF, "reduced", identity(pane), doubleFeature);
 			}
 			Container parent = pane.getParent();
 			if (parent != null)
@@ -245,7 +247,7 @@ public class BerichtsheftPlugin extends EditPlugin
 					doubleFeatures.putValue(pane, focused, 2);
 					s += enclose(focused ? "(" : "", identity(pane), focused ? ")" : "", " ");
 				}
-				debug_println(null, "focused", s);
+				diag_println(DIAG_OFF, "focused", s);
 			}
 		});
 	}
@@ -257,7 +259,7 @@ public class BerichtsheftPlugin extends EditPlugin
 				findComponents(editPane, new Predicate<Component>() {
 					public boolean apply(Component c) {
 						if (c.hasFocus()) {
-							debug_println(null, "hasFocus", identity(c), identity(editPane));
+							diag_println(DIAG_OFF, "hasFocus", identity(c), identity(editPane));
 							return true;
 						}
 						return false;
@@ -285,8 +287,7 @@ public class BerichtsheftPlugin extends EditPlugin
 					public boolean apply(Component c) {
 						if (c instanceof DataPanel) {
 							DataPanel dp = (DataPanel) c;
-							DataManager dm = dp.getDataManager();
-							dm.getGutter(dp).setBorder(border);
+							dp.getGutter().setBorder(border);
 							return true;
 						}
 						return false;
@@ -436,7 +437,7 @@ public class BerichtsheftPlugin extends EditPlugin
 				String text = buffer.getText();
 				props.load(new StringReader(text));
 				DataManager dm = new DataManager(view, props, buffer.getName(), clickListener);
-				container = dm.getUIComponent(0);
+				container = dm.getPane(0);
 			} catch (Exception e) {
 				Log.e(TAG, "addMagic", e);
 			}
@@ -491,7 +492,7 @@ public class BerichtsheftPlugin extends EditPlugin
 		}
 		buffer.setStringProperty(MAGIC, magic);
 		magicBuffers.put(buffer, container);
-		debug_println(null, "addMagic", buffer);
+		diag_println(DIAG_OFF, "addMagic", buffer);
 		return true;
 	}
 	
@@ -506,15 +507,14 @@ public class BerichtsheftPlugin extends EditPlugin
 		}
 		buffer.setStringProperty(MAGIC, "");
 		magicBuffers.remove(buffer);
-		debug_println(null, "removeMagic", buffer);
+		diag_println(DIAG_OFF, "removeMagic", buffer);
 	}
 	
 	private void doMagic(DoubleFeature doubleFeature, Buffer buffer) {
 		JComponent widget = magicBuffers.get(buffer);
 		if (widget instanceof DataPanel) {
 			DataManager dm = ((DataPanel)widget).getDataManager();
-			int index = dm.getIndex();
-			widget = dm.getUIComponent(index);
+			widget = dm.getPane(dm.getIndex());
 		}
 		Container parent = widget.getParent();
 		if (parent instanceof EditPane) {
@@ -608,15 +608,28 @@ public class BerichtsheftPlugin extends EditPlugin
 	public static Properties loadProperties(String fileName) {
 		Properties props = new Properties();
 		if (notNullOrEmpty(fileName)) {
-			File file = new File(fileName);
 			InputStream in = null;
 			try {
-				if (file.isFile()) {
-					in = new FileInputStream(file);
-				} else {
-					in = BerichtsheftPlugin.class.getResourceAsStream(fileName);
+				JarFile jarFile = null;
+				if (isJarUri(fileName)) {
+					URL url = new URL(fileName);
+					url = new URL(url.getFile());
+					String[] parts = url.getFile().split("!/");
+					jarFile = new JarFile(new File(parts[0]));
+					JarEntry jarEntry = jarFile.getJarEntry(parts[1]);
+					in = jarFile.getInputStream(jarEntry);
+				}
+				else {
+					File file = new File(fileName);
+					if (file.isFile()) {
+						in = new FileInputStream(file);
+					} else {
+						in = BerichtsheftPlugin.class.getResourceAsStream(fileName);
+					}
 				}
 				props.load(in);
+				if (jarFile != null)
+					jarFile.close();
 			} catch (Exception e) {
 				Log.e(TAG, "loadProperties", e);
 			} finally {
@@ -739,7 +752,7 @@ public class BerichtsheftPlugin extends EditPlugin
 	
 	public static String getSettingsDirectory() {
 		if (!insideJEdit()) {
-			return pathCombine(relativePath(), ".jedit");
+			return System.getProperty("jedit.settings.dir");
 		}
 		return jEdit.getSettingsDirectory();
 	}
@@ -771,9 +784,11 @@ public class BerichtsheftPlugin extends EditPlugin
 	public static Properties properties = null;
 	static {
 		if (!insideJEdit()) {
-			String fileName = pathCombine(relativePath(), "BerichtsheftPlugin.props");
-			if (!fileExists(fileName))
-				fileName = absolutePathOf(fileName, Constraint.END);
+			String part = "BerichtsheftPlugin.props";
+			String fileName = pathCombine(relativePath(), part);
+			if (!fileExists(fileName)) {
+				fileName = resourceUrlOf(part, Constraint.END).toString();
+			}
 			properties = loadProperties(fileName);
 		}
 		messageRedirection();
@@ -818,13 +833,20 @@ public class BerichtsheftPlugin extends EditPlugin
 			}
 		};
 	}
+
+	public static void print(Object... params) {
+		if (insideJEdit())
+			BerichtsheftShell.print(params);
+		else
+			com.applang.Util2.print(params);
+	}
     
 	public static void consoleMessage(String key, Object...params) {
 		String format = getProperty(key);
 		String msg = notNullOrEmpty(format) ? 
 				String.format(format, params) : 
 				String.format("<<< message text missing for key '%s'>>>", key) + com.applang.Util.toString(params);
-		BerichtsheftShell.print(msg, NEWLINE);
+		print(msg, NEWLINE);
 	}
 	
 	public static TextToggle getJEditor() {
@@ -852,10 +874,10 @@ public class BerichtsheftPlugin extends EditPlugin
 	
 	// NOTE used in scripts
 	public static void checkAvailabilityOfTools() {
-		BerichtsheftShell.print("Welcome...", NEWLINE);
-		BerichtsheftShell.print("settings.dir", System.getProperty("settings.dir"), NEWLINE);
-		BerichtsheftShell.print("jedit.settings.dir", getSettingsDirectory(), NEWLINE);
-		BerichtsheftShell.print("temp.dir", tempPath(), NEWLINE);
+		print("Welcome...", NEWLINE);
+		print("settings.dir", System.getProperty("settings.dir"), NEWLINE);
+		print("jedit.settings.dir", getSettingsDirectory(), NEWLINE);
+		print("temp.dir", tempPath(), NEWLINE);
 		String[] tools = {"AWK_COMMAND", "ADB_COMMAND", "SQLITE_COMMAND"};
 		for (int i = 0; i < tools.length; i++) {
 			no_println(i, tools[i]);
@@ -867,7 +889,7 @@ public class BerichtsheftPlugin extends EditPlugin
 			}
 			else if (tools[i].startsWith("ADB")) {
 				String msg = AndroidBridge.adbRestart();
-				BerichtsheftShell.print(msg, NEWLINE);
+				print(msg, NEWLINE);
 			}
 		}
 	}
@@ -924,6 +946,37 @@ public class BerichtsheftPlugin extends EditPlugin
 
 	public static File getTempFile(String name) {
 		return tempFile(name, NAME);
+	}
+
+	public static String test_jedit_settings() {
+		String subDirName = BerichtsheftPlugin.NAME;
+		File jarsDir = tempDir(true, subDirName, "settings", "jars");
+		try {
+			makeLinks(jarsDir, ".jedit/jars", 
+					"BerichtsheftPlugin.jar",
+					"sqlite4java.jar",
+					"Console.jar",
+					"ProjectViewer.jar",
+					"InfoViewer.jar",
+					"ErrorList.jar",
+					"CommonControls.jar",
+					"kappalayout.jar");
+			makeLinks(jarsDir, ".jedit/jars", "sqlite4java");
+			File settingsDir = tempDir(false, subDirName, "settings");
+			makeLinks(settingsDir, ".jedit", "keymaps");
+			makeLinks(settingsDir, ".jedit", "macros");
+			makeLinks(settingsDir, ".jedit", "modes");
+			settingsDir = tempDir(false, subDirName, "settings", "plugins");
+			makeLinks(settingsDir, ".jedit/plugins", "berichtsheft");
+			File commandoDir = tempDir(false, subDirName, "settings", "console");
+			makeLinks(commandoDir, ".jedit/console", "commando");
+			copyFile(
+					new File(tempDir(false, subDirName, "settings", "plugins", "berichtsheft"), "jedit.properties"), 
+					new File(tempDir(false, subDirName, "settings"), "properties"));
+		} catch (Exception e) {
+			Log.e(TAG, "test_jedit_settings", e);
+		}
+		return jarsDir.getParent();
 	}
     		
  	// NOTE used in scripts

@@ -1433,7 +1433,7 @@ public class MiscTests extends XMLTestCase
 	}
 	
 	public void testMimicry() throws Exception {
-		new File(debugFilePath).delete();
+		new File(diagFilePath).delete();
 		File dir = tempDir(true, BerichtsheftApp.NAME);
 
 		String content = BerichtsheftApp.applicationDataPath("Skripte/content.xml");

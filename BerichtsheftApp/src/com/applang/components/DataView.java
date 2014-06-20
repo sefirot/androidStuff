@@ -246,7 +246,7 @@ public class DataView extends JPanel implements IComponent
 	}
 
 	public void load() {
-		resetDataConfiguration();
+		clear();
 		reload();
 	}
 

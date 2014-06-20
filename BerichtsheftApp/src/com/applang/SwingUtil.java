@@ -2,6 +2,7 @@ package com.applang;
 
 import java.awt.AWTEvent;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Cursor;
@@ -106,6 +107,7 @@ import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableColumn;
@@ -116,6 +118,8 @@ import com.applang.Util.Constraint;
 import com.applang.Util.Job;
 import com.applang.Util.ValList;
 
+import android.app.Activity;
+import android.app.AlertDialog;
 import android.util.Log;
 
 import static com.applang.Util.*;
@@ -195,11 +199,12 @@ public class SwingUtil
 	}
     
 	public static Component findAncestor(Component component, Predicate<Component> predicate) {
-		while(!predicate.apply(component)) {
+		do {
 			component = component.getParent();
 			if(component == null)
 				break;
 		}
+		while(!predicate.apply(component));
 		return component;
 	}
 
@@ -342,18 +347,18 @@ public class SwingUtil
 	public static class Deadline extends SwingWorker<Void, Void>
 	{
 		public Deadline(Window wnd, Integer[] keyEvents) {
-			this.wnd = wnd;
-			this.keyEvents = keyEvents;
+			mWnd = wnd;
+			mKeyEvents = keyEvents;
 		}
 		
-		Window wnd;
-		Integer[] keyEvents = null;
+		Window mWnd;
+		Integer[] mKeyEvents = null;
 
 		@Override
 		protected Void doInBackground(){
 			println(String.format("deadline after %d ms", WAIT));
 
-	        waiting(wnd, new ComponentFunction<Void>() {
+	        waiting(mWnd, new ComponentFunction<Void>() {
 				public Void apply(Component comp, Object[] parms) {
 					Timing timing = (Timing)parms[0];
 					
@@ -372,10 +377,12 @@ public class SwingUtil
 			if (isCancelled())
 				return;
 			
-			if (!nullOrEmpty(keyEvents)) 
+			if (!nullOrEmpty(mKeyEvents)) 
 				doKeyEvents();
-			else if (wnd != null) 
-				pullThePlug(wnd);
+			else if (mWnd != null) 
+				pullThePlug(mWnd);
+			
+			timedOut = true;
 		}
 		
 		public void cancel() {
@@ -388,17 +395,17 @@ public class SwingUtil
 		void doKeyEvents() {
 			try {
 				Robot robot = new Robot();
-				for (int i = 0; i < keyEvents.length; i++) {
-					if (keyEvents[i] != null) {
-						robot.keyPress(keyEvents[i]);
+				for (int i = 0; i < mKeyEvents.length; i++) {
+					if (mKeyEvents[i] != null) {
+						robot.keyPress(mKeyEvents[i]);
 					}
 				}
 				
 				robot.delay(DELAY);
 				
-				for (int i = 0; i < keyEvents.length; i++) {
-					if (keyEvents[i] != null) {
-						robot.keyRelease(keyEvents[i]);
+				for (int i = 0; i < mKeyEvents.length; i++) {
+					if (mKeyEvents[i] != null) {
+						robot.keyRelease(mKeyEvents[i]);
 					}
 				}
 				
@@ -418,22 +425,20 @@ public class SwingUtil
 		public static Deadline start(Window wnd, Integer... keyEvents) {
 			if (wnd == null && notAvailable(0, keyEvents))
 				return null;
-				
+			timedOut = false;
 			final Deadline deadline = new Deadline(wnd, keyEvents);
 			deadline.execute();
-			
 			Toolkit.getDefaultToolkit().addAWTEventListener(new AWTEventListener() {
 				public void eventDispatched(AWTEvent ev) {
 		            deadline.cancel();
 				}
 			}, AWTEvent.MOUSE_MOTION_EVENT_MASK);
-			
 			started = true;
-			
 			return deadline;
 		}
 		
 		public static boolean started = false;
+		public static boolean timedOut = false;
 		
 		public static void finish() {
 			if (started) {
@@ -964,7 +969,7 @@ public class SwingUtil
 				boolean first = param_Boolean(true, 3, params);
 				if (first)
 					list.add(0, element);
-				return list.toArray(new String[0]);
+				return toStrings(list);
 			}
 		};
 		String fileName = param(null, 0, params);
@@ -1222,15 +1227,15 @@ public class SwingUtil
 	public static Function<String> messRedirection = null;
 	
 	public static void message(String text) {
-		if (messRedirection != null)
+		if (underTest)
+			println(text);
+		else if (messRedirection != null)
 			messRedirection.apply(text);
 		else {
 			Container rootContainer = underTest ? container : getRootContainer(container);
 			JLabel mess = findFirstComponent(rootContainer, "mess");
 			if (mess != null) 
 				mess.setText(text);
-			else if (underTest)
-				println(text);
 			else
 				alert(text);
 		}
@@ -1252,12 +1257,13 @@ public class SwingUtil
 				param_Integer(JOptionPane.OK_CANCEL_OPTION, 2, params));
 	}
 
-	public static void handleException(Exception e) {
-		if (e != null) {
-			String message = e.getMessage();
-			if (nullOrEmpty(message))
-				message = String.valueOf(e);
-			message(message);
+	public static void handleException(Exception ex) {
+		if (ex != null) {
+			AlertDialog.alerter(new Activity(), "Exception", ex);
+//			String message = ex.getMessage();
+//			if (nullOrEmpty(message))
+//				message = String.valueOf(ex);
+//			message(message);
 		}
 	}
 
@@ -1709,13 +1715,17 @@ public class SwingUtil
 	}
 	
 	public static void printContainer(String message, Container container, Object...params) {
-		Boolean debug = param_Boolean(null, 0, params);
-		if (debug == null)
+		Boolean diag = param_Boolean(DIAG_OFF, 0, params);
+		if (diag == null)
 			return;
 		StringBuilder sb = new StringBuilder();
-		sb.append(message + " :" + TAB + container.getLayout() + NEWLINE);
+		sb.append(message + " :" 
+				+ TAB + stringValueOf(container.getName()) 
+				+ TAB + stringValueOf(container.getClass())
+				+ TAB + stringValueOf(container.getLayout())
+				+ NEWLINE);
 		iterateContainer(container, sb, 1);
-		debug_print(debug, sb.toString());
+		diag_print(diag, sb.toString());
 	}
 
 	public static void iterateContainer(Container container, final StringBuilder sb, int indent) {
@@ -1773,9 +1783,12 @@ public class SwingUtil
 			};
 			setModel(model);
 			setName("table");
+			column0background = getTableHeader().getBackground();
 			setTableHeader(null);
+			setBorder(BorderFactory.createLineBorder(Color.LIGHT_GRAY, 1));
 			setRowSelectionAllowed(false);
 			setColumnSelectionAllowed(false);
+			getColumnModel().getColumn(0).setCellRenderer(new CustomRenderer());
 			editors = new TableCellEditor[keys.length];
 			for (int i = 0; i < keys.length; i++) 
 				if (isAvailable(i, options)) {
@@ -1794,6 +1807,20 @@ public class SwingUtil
 		        return editor;
 		    else
 		    	return super.getCellEditor(row,col);
+		}
+		
+		Color column0background;
+
+		class CustomRenderer extends DefaultTableCellRenderer 
+		{
+		    public Component getTableCellRendererComponent(JTable table, Object value, 
+		    		boolean isSelected, boolean hasFocus, int row, int column)
+		    {
+		        Component cellComponent = super.getTableCellRendererComponent(table, value, 
+		        		isSelected, hasFocus, row, column);
+		        cellComponent.setBackground(column0background);
+		        return cellComponent;
+		    }
 		}
 	}
 	

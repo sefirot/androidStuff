@@ -10,7 +10,6 @@ import javax.swing.SwingUtilities;
 
 import org.gjt.sp.jedit.Buffer;
 import org.gjt.sp.jedit.EditPane;
-import org.gjt.sp.jedit.textarea.JEditTextArea;
 import org.gjt.sp.jedit.textarea.TextArea;
 
 import android.util.Log;
@@ -158,7 +157,7 @@ public class DoubleFeature implements IComponent
 			Component component = findFirstComponent(widget, FOCUS, Constraint.AMONG);
 			if (component != null) {
 				component.requestFocusInWindow();
-				debug_println(null, "focus", 
+				diag_println(DIAG_OFF, "focus", 
 						identity(component), 
 						identity(SwingUtilities.getAncestorOfClass(EditPane.class, component)));
 			}

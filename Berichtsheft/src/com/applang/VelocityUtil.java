@@ -129,7 +129,7 @@ public class VelocityUtil
     	
     	public String signature(boolean full) {
 			return VDI + getName() + 
-    				argumentListString(full ? arguments : new String[0]) + 
+    				argumentListString(full ? arguments : strings()) + 
     				(BLOCK == getType() ? BLOCK_END : "");
     	}
 		
@@ -914,7 +914,7 @@ public class VelocityUtil
 	public static String[] arrayOfStrings(Object value) {
 		Object[] values;
 		if (value == null) 
-			return new String[0];
+			return strings();
 		else if (value instanceof String[]) 
 			return (String[]) value;
 		else if (value instanceof ArrayList) 
@@ -1019,7 +1019,7 @@ public class VelocityUtil
 					return strings(m.group(1), m.group(2));
 			}
 		}
-		return new String[0];
+		return strings();
 	}
 	
 	public static final String[] DATA_TYPES = {"R", "S", "I", "F", "B", "L", "M", "N", "U", "X", "Y"};

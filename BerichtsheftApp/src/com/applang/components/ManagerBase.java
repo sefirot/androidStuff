@@ -114,7 +114,7 @@ public class ManagerBase<T extends Object> extends JComponent implements ICompon
 		return null;
 	}
 	
-	public boolean noRefresh = false;
+	protected boolean noRefresh = false;
 	private int decision = -1;
 	
 	private boolean _question(Object...params) throws Throwable {

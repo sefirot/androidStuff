@@ -33,10 +33,9 @@ import android.content.Context;
 import android.content.res.Resources;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Environment;
 import android.util.Log;
 
-import com.applang.Util2;
-import com.applang.Util2.Settings;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 
 import static com.applang.Util.*;
@@ -52,19 +51,22 @@ public class BerichtsheftApp
 				jEdit.getSettingsDirectory() : 
 				Resources.getCodeSourceLocation(BerichtsheftApp.class).getPath();
 		int index = absPath.indexOf(".jedit");
-		absPath = pathCombine(
-				index > -1 ? absPath.substring(0, index) : relativePath(), 
-				relPath);
+		String part = index > -1 ? absPath.substring(0, index) : relativePath();
+		absPath = pathCombine(part, relPath);
 		return absPath;
 	}
 	
 	public static void loadSettings() {
-		String path = absolutePath(".jedit/plugins/berichtsheft");
-		System.setProperty("settings.dir", path);
-		String path2 = absolutePath(".jedit/jars/sqlite4java");
+		String path = absolutePath(".jedit");
+		System.setProperty("jedit.settings.dir", path);
+		String path2 = pathCombine(path, "jars/sqlite4java");
 		System.setProperty("sqlite4java.library.path", path2);
-		Settings.load(pathCombine(path, NAME + ".properties"));
+		path2 = pathCombine(path, "plugins/berichtsheft");
+		System.setProperty("settings.dir", path2);
+		Settings.load(pathCombine(path2, NAME + ".properties"));
 		Log.logConsoleHandling(Log.INFO);
+		path2 = pathCombine(System.getProperty("user.home"), "work/test");
+		Environment.setDataDir(path2);
 	}
 	/**
 	 * @param args

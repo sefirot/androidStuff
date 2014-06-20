@@ -14,6 +14,7 @@ import java.awt.event.ComponentEvent;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.StringReader;
@@ -28,6 +29,8 @@ import java.util.Random;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
  
 import javax.swing.AbstractAction;
 import javax.swing.Box;
@@ -102,6 +105,7 @@ import com.applang.Dialogs;
 import com.applang.PromptDirective;
 import com.applang.SwingUtil.Behavior;
 import com.applang.UserContext.EvaluationTask;
+import com.applang.Util.Constraint;
 import com.applang.Util.Job;
 import com.applang.berichtsheft.BerichtsheftActivity;
 import com.applang.berichtsheft.BerichtsheftApp;
@@ -150,18 +154,35 @@ public class HelperTests extends TestCase
 	protected void tearDown() throws Exception {
 		super.tearDown();
 	}
+
+	private void unsetTimeout() {
+		AlertDialog.behavior = Behavior.setTimeout(AlertDialog.behavior, false);
+	}
+
+	private void setTimeout(int millis) {
+		AlertDialog.behavior = Behavior.setTimeout(AlertDialog.behavior, true);
+		Deadline.WAIT = millis;
+	}
 	
     public static String[] getStateStrings() {
     	try {
 			String res = resourceFrom("/res/raw/states.json", "UTF-8");
-			return ((ValList) walkJSON(null, new JSONArray(res), null)).toArray(new String[0]);
+			return toStrings(((ValList) walkJSON(null, new JSONArray(res), null)));
 		} catch (Exception e) {
 			fail(e.getMessage());
 			return null;
 		}
 	}
+
+	private Set<?> lafDefaults() {
+		ValList list = vlist();
+		for (Object object : UIManager.getLookAndFeelDefaults().keySet()) {
+			list.add(stringValueOf(object));
+		}
+		return sortedSet(list);
+	}
 	
-	private void setupJEdit(String script, Object...params) throws Throwable {
+	private void setupJEdit(String script, Object...params) {
 		File tempFile = BerichtsheftPlugin.getTempFile("test.bsh");
 		contentsToFile(tempFile, 
 				String.format(
@@ -176,34 +197,12 @@ public class HelperTests extends TestCase
 						"        run();\n" +
 						"}\n" +
 						"doSomethingUseful();", script));
-		String subDirName = BerichtsheftPlugin.NAME;
-		File jarsDir = tempDir(true, subDirName, "settings", "jars");
-		makeLinks(jarsDir, ".jedit/jars", 
-				"BerichtsheftPlugin.jar",
-				"sqlite4java.jar",
-				"Console.jar",
-				"ProjectViewer.jar",
-				"InfoViewer.jar",
-				"ErrorList.jar",
-				"CommonControls.jar",
-				"kappalayout.jar");
-		makeLinks(jarsDir, ".jedit/jars", "sqlite4java");
-		File settingsDir = tempDir(false, subDirName, "settings");
-		makeLinks(settingsDir, ".jedit", "keymaps");
-		makeLinks(settingsDir, ".jedit", "macros");
-		makeLinks(settingsDir, ".jedit", "modes");
-		settingsDir = tempDir(false, subDirName, "settings", "plugins");
-		makeLinks(settingsDir, ".jedit/plugins", "berichtsheft");
-		File commandoDir = tempDir(false, subDirName, "settings", "console");
-		makeLinks(commandoDir, ".jedit/console", "commando");
-		copyFile(
-				new File(tempDir(false, subDirName, "settings", "plugins", "berichtsheft"), "jedit.properties"), 
-				new File(tempDir(false, subDirName, "settings"), "properties"));
+		String settingsDir = BerichtsheftPlugin.test_jedit_settings();
 		BerichtsheftPlugin.properties = null;
         String[] args = strings(
 				"-nosplash",
 				"-noserver",
-				String.format("-settings=%s", jarsDir.getParent()), 
+				String.format("-settings=%s", settingsDir), 
 				String.format("-run=%s", tempFile.getPath()), 
 				join(" ", params));
         BerichtsheftApp.main(args);
@@ -215,11 +214,7 @@ public class HelperTests extends TestCase
 		startFrame(
 			new AbstractAction(title) {
 				public void actionPerformed(ActionEvent ev) {
-					try {
-						setupJEdit(script, params);
-					} catch (Throwable e) {
-						Log.e(TAG, title, e);
-					}
+					setupJEdit(script, params);
 				}
 			}
 		);
@@ -530,7 +525,7 @@ public class HelperTests extends TestCase
 	
 	@SuppressWarnings("unchecked")
 	public void testProjection() throws Exception {
-		AlertDialog.behavior = Behavior.setTimeout(AlertDialog.behavior, true);
+		setTimeout(1000);
     	String dbPath = createNotePad();
     	String tableName = "notes";
     	String flavor = "com.applang.provider.NotePad";
@@ -583,7 +578,7 @@ public class HelperTests extends TestCase
 					}})
 				.create()
 				.open();
-		AlertDialog.behavior = Behavior.setTimeout(AlertDialog.behavior, false);
+		unsetTimeout();
 	}
 	
 	public void testDataConfig() {
@@ -713,7 +708,7 @@ public class HelperTests extends TestCase
     }
 
 	public void testScan() throws Exception {
-		AlertDialog.behavior = Behavior.setTimeout(AlertDialog.behavior, true);
+		setTimeout(1000);
 		String template = generateTagesberichteTemplate("pull");
 		ValList fields = builder.evaluateTemplate(template, null);
 		assertTrue(isAvailable(0, fields));
@@ -734,13 +729,13 @@ public class HelperTests extends TestCase
 				JOptionPane.DEFAULT_OPTION,
 				AlertDialog.behavior,
 				null, -2);
-		AlertDialog.behavior = Behavior.setTimeout(AlertDialog.behavior, false);
+		unsetTimeout();
 	}
 	
 	TransportBuilder builder = new TransportBuilder();
 	
 	public void testRoundTrip() throws Exception {
-		AlertDialog.behavior = Behavior.setTimeout(AlertDialog.behavior, true);
+		setTimeout(1000);
     	String dbPath = createNotePad();
     	String uriString = fileUri(dbPath, "notes").toString();
     	DataAdapter dataAdapter = new DataAdapter(uriString);
@@ -789,11 +784,11 @@ public class HelperTests extends TestCase
 			if ((Long)m[0][0] > (Long)mod[1])
 				println(String.format("record '%s' updated", mod[2]));
 		}
-		AlertDialog.behavior = Behavior.setTimeout(AlertDialog.behavior, false);
+		unsetTimeout();
 	}
 	
 	public void testQuery() throws Exception {
-		AlertDialog.behavior = Behavior.setTimeout(AlertDialog.behavior, true);
+		setTimeout(1000);
     	String dbPath = createNotePad();
     	String uriString = fileUri(dbPath, "notes").toString();
     	String flavor = "com.applang.provider.NotePad";
@@ -822,7 +817,7 @@ public class HelperTests extends TestCase
 					}
 				}, -1);
 		println(result);
-		AlertDialog.behavior = Behavior.setTimeout(AlertDialog.behavior, false);
+		unsetTimeout();
     }
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
@@ -1278,7 +1273,7 @@ public class HelperTests extends TestCase
 	public void testDialogFeed() throws Exception {
 		final int id = 1;
 		TextView tv = new TextView(null, null);
-		final AlertDialog dialog = new AlertDialog.Builder(new BerichtsheftActivity(), false)
+		final AlertDialog dialog = new AlertDialog.Builder(new BerichtsheftActivity(), Behavior.NONE)
 				.setView(tv)
 				.setNeutralButton(android.R.string.close, new OnClickListener() {
 					public void onClick(DialogInterface dialog, int which) {
@@ -1351,7 +1346,7 @@ public class HelperTests extends TestCase
 	}
 	
 	public void testDataForm() throws Exception {
-		AlertDialog.behavior = Behavior.setTimeout(AlertDialog.behavior, true);
+		setTimeout(1000);
 		final Context context = BerichtsheftActivity.getInstance();
     	String dbPath = createNotePad();
     	String tableName = "bausteine";
@@ -1368,8 +1363,8 @@ public class HelperTests extends TestCase
 			manager.installUpdate(manager);
 			DataForm dataForm = new DataForm(context, 
 					manager,
-					projectionModel.getProjection());
-			println(dataForm.mProjection);
+					projectionModel);
+			println(dataForm.mProjectionModel);
 			DataAdapter dataAdapter = new DataAdapter(
 					projectionModel.getFlavor(), dbFile, uriString);
 			DataModel model = dataAdapter.query(uriString, projectionModel.getExpandedProjection());
@@ -1397,14 +1392,14 @@ public class HelperTests extends TestCase
 			showForm(dataForm.getContainer());
 			if (manager.isDirty()) {
 				ContentValues values = contentValues(dataAdapter.info, 
-						dataForm.mProjection.getKeys(),
+						dataForm.mProjectionModel.getProjection().getKeys(),
 						dataForm.getContent());
 				assertThat(dataAdapter.update(appendId(uriString, id), values), is(greaterThan(0)));
 				Toast.makeText(context, String.format("record %d updated", id),
 						Toast.LENGTH_LONG).show();
 			}
 		}
-		AlertDialog.behavior = Behavior.setTimeout(AlertDialog.behavior, false);
+		unsetTimeout();
 	}
 
 	public LinearLayout linearLayout(Context context, int kind) {
@@ -1600,7 +1595,7 @@ public class HelperTests extends TestCase
 	}
 	
 	public void testForm() {
-		AlertDialog.behavior = Behavior.setTimeout(AlertDialog.behavior, true);
+		setTimeout(1000);
 		BerichtsheftPlugin.setupSpellChecker(BerichtsheftApp.applicationDataPath());
 		final Context context = BerichtsheftActivity.getInstance();
 		dataConfigTest(new Job<DataConfiguration>() {
@@ -1608,29 +1603,28 @@ public class HelperTests extends TestCase
 				ProjectionModel projectionModel = dc.getProjectionModel();
 				DataForm dataForm = new DataForm(context, 
 						new ManagerBase<Object>(), 
-						projectionModel.getProjection());
-				println(dataForm.mProjection);
+						projectionModel);
+				println(dataForm.mProjectionModel);
 				File dbFile = new File(dc.getPath());
 				String uriString = dc.getUri().toString();
 				DataAdapter dataAdapter = new DataAdapter(
 						projectionModel.getFlavor(), 
 						dbFile, 
 						uriString);
-				ValList keys = dataForm.mProjection.getKeys();
+				ValList keys = dataForm.mProjectionModel.getProjection().getKeys();
 				Object[][] result = dataAdapter.query(uriString, toStrings(keys));
 				if (isAvailable(0, result)) 
 					dataForm.setContent(result[0]);
 				showForm(dataForm.getContainer());
 			}
 		});
-		AlertDialog.behavior = Behavior.setTimeout(AlertDialog.behavior, false);
+		unsetTimeout();
 	}
 	
 	public void testForm1() {
 		Context context = BerichtsheftActivity.getInstance();
 		ViewGroup viewGroup = single_button(context);
-		ViewGroup.build(viewGroup, true);
-		showForm(viewGroup.getContainer());
+		showForm(ViewGroup.build(viewGroup, true));
 	}
 	
 	private RelativeLayout single_button(Context context) {
@@ -1707,8 +1701,7 @@ public class HelperTests extends TestCase
 
 	public Container doLayout(ViewGroup viewGroup, Object...params) {
 		println(viewGroup);
-		ViewGroup.build(viewGroup, true);
-		final Container container = viewGroup.getContainer();
+		final Container container = ViewGroup.build(viewGroup, true);
 		container.addComponentListener(new ComponentAdapter() {
 			@Override
 			public void componentResized(ComponentEvent e) {
@@ -1758,7 +1751,18 @@ public class HelperTests extends TestCase
 		Deadline.WAIT = 1000;
 	}
 	
-	public void testResources() {
+	@SuppressWarnings("resource")
+	public void testResources() throws IOException {
+		String fileName = "BerichtsheftPlugin.props";
+		assertNull(resourceUrlOf(fileName, Constraint.END));
+		String path = pathCombine(relativePath(), fileName);
+		assertTrue(fileExists(path));
+		path = pathCombine(System.getProperty("jedit.settings.dir"), "jars/BerichtsheftPlugin.jar");
+		JarFile jarFile = new JarFile(new File(path));
+		JarEntry jarEntry = jarFile.getJarEntry(fileName);
+		InputStream inputStream = jarFile.getInputStream(jarEntry);
+		assertNotNull(inputStream);
+		inputStream.close();
 		assertEquals(-65536, Resources.colorValue(BerichtsheftActivity.getInstance(), "@color/opaque_red"));
 		assertEquals(-65536, Resources.colorValue(BerichtsheftActivity.getInstance(), "#ff0000"));
 		Context context = BerichtsheftActivity.getInstance();
@@ -1781,6 +1785,22 @@ public class HelperTests extends TestCase
 		println(Resources.getAbsolutePath("/res/layout/construct_form_header.xml", Constraint.END));
 		println("user.dir", System.getProperty("user.dir"));
 		println("user.home", System.getProperty("user.home"));
+	}
+	
+	public void testAlertDialogs() {
+		setTimeout(1000);
+		AlertDialog.alerter(new Activity(), "alerter", new Exception());
+		new AlertDialog(null, 
+				BerichtsheftPlugin.getProperty("berichtsheft.spellcheck-selection.title"), 
+				"", 
+				"Hello", 
+				JOptionPane.DEFAULT_OPTION,
+				Behavior.MODAL|Behavior.TIMEOUT, 
+				BerichtsheftPlugin.loadIcon("manager.action-SPELLCHECK.icon"), 
+				null)
+			.open();
+		AlertDialog.chooser(new Activity(), "chooser", getStateStrings());
+		unsetTimeout();
 	}
 	
 	public void testPrompts() {
@@ -1821,11 +1841,7 @@ public class HelperTests extends TestCase
 						prompt = "Choice";
 //						String[] array = getStateStrings();
 //						values.addAll(asList(array));
-						ValList list = vlist();
-						for (Object object : UIManager.getLookAndFeelDefaults().keySet()) {
-							list.add(stringValueOf(object));
-						}
-						values.addAll(sortedSet(list));
+						values.addAll(lafDefaults());
 						break;
 					default:
 						println("not implemented");
@@ -1846,18 +1862,6 @@ public class HelperTests extends TestCase
 		Dialogs.DIALOG_LIST, 
 		"", "Prompts", 
 		toStrings(BaseDirective.options.keySet()));
-	}
-	
-	public void testAlertDialog() {
-		new AlertDialog(null, 
-				BerichtsheftPlugin.getProperty("berichtsheft.spellcheck-selection.title"), 
-				"", 
-				"Hello", 
-				JOptionPane.DEFAULT_OPTION,
-				Behavior.MODAL|Behavior.TIMEOUT, 
-				BerichtsheftPlugin.loadIcon("manager.action-SPELLCHECK.icon"), 
-				null)
-			.open();
 	}
 	
 	public void testJOrtho() {

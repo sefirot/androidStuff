@@ -109,7 +109,7 @@ public class Util2
 			return new File(base).toURI().relativize(new File(path).toURI()).getPath();
 	}
 	
-	public static String absolutePathOf(final String part, final Constraint constraint) {
+	public static URL resourceUrlOf(final String part, final Constraint constraint) {
 		Set<URL> res = Resources.getResourceURLs(
 				new ResourceURLFilter() {
 					public boolean accept(URL resourceUrl) {
@@ -117,9 +117,15 @@ public class Util2
 						return check(url, constraint, part);
 					}
 				});
-		if (res.size() > 0)
-			return res.iterator().next().getFile();
+		if (res.size() > 0) {
+			return res.iterator().next();
+		}
 		return null;
+	}
+	
+	public static String[] classPathEntries() {
+		String classpath = System.getProperty("java.class.path");
+		return classpath.split(File.pathSeparator);
 	}
 	
 	public static class Settings 
@@ -388,7 +394,7 @@ public class Util2
 				int specs = specifiers.length;
 				boolean useSpecifiers = specs > 0 && specs <= params.length - i - 1;
 				if (useSpecifiers) {
-					Object[] args = arrayreduce(params, i + 1, specs);
+					Object[] args = arrayslice(params, i + 1, specs);
 					for (int j = 0; j < args.length; j++)
 						args[j] = 
 							stringify(
@@ -462,7 +468,7 @@ public class Util2
 		Object out = param(null, 0, params);
 		if (out instanceof Writer) {
 			Writer writer = (Writer) out;
-			write(writer, arrayreduce(params, 1, params.length - 1));
+			write(writer, arrayslice(params, 1, params.length - 1));
 		}
 		else
 			System.out.print(write(new StringWriter(), params).toString());
@@ -476,33 +482,43 @@ public class Util2
 		else
 			System.out.print(NEWLINE);
 	}
-
-	public static String debugFilePath = pathCombine(tempPath(), "debug.out");
 	
-	public static void debug_out(Job<PrintWriter> job, Object...params) {
-		if (fileExists(debugFilePath))
+	public static String stackTrace(Throwable t) {
+		Writer out = new StringWriter();
+		t.printStackTrace(new PrintWriter(out));
+		return out.toString();
+	}
+	
+	public static final Boolean DIAG_OFF = (Boolean) _null();
+	public static final Boolean DIAG_ON = false;
+	public static final Boolean DIAG_OUT = true;
+
+	public static String diagFilePath = pathCombine(tempPath(), "debug.out");
+	
+	public static void diag_out(Job<PrintWriter> job, Object...params) {
+		if (fileExists(diagFilePath))
 			try {
-				PrintWriter dout = new PrintWriter( new FileOutputStream( debugFilePath, true ) );
+				PrintWriter dout = new PrintWriter( new FileOutputStream( diagFilePath, true ) );
 				job.perform(dout, params);
 				dout.close();
 			} 
 			catch ( Exception e ) {
-				System.err.println("Can't write debug output to file: " + debugFilePath);
+				System.err.println("Can't write debug output to file: " + diagFilePath);
 			}
 	}
 
-	public static void debug_println(Object...params) {
-		Boolean debug = param_Boolean(null, 0, params);
-		if (debug != null) {
-			params = arrayreduce(params, 1, params.length - 1);
-			if (!debug) {
+	public static void diag_println(Object...params) {
+		Boolean diag = param_Boolean(DIAG_OFF, 0, params);
+		if (diag != null) {
+			params = arrayslice(params, 1, params.length - 1);
+			if (!diag) {
 				println(params);
 				return;
 			}
 		}
 		if (param(null, 0, params) == null)
 			return;
-		debug_out(
+		diag_out(
 			new Job<PrintWriter>() {
 				public void perform(PrintWriter pw, Object[] parms) throws Exception {
 					println(pw, parms);
@@ -511,18 +527,18 @@ public class Util2
 			params);
 	}
 
-	public static void debug_print(Object...params) {
-		Boolean debug = param_Boolean(null, 0, params);
-		if (debug != null) {
-			params = arrayreduce(params, 1, params.length - 1);
-			if (!debug) {
+	public static void diag_print(Object...params) {
+		Boolean diag = param_Boolean(DIAG_OFF, 0, params);
+		if (diag != null) {
+			params = arrayslice(params, 1, params.length - 1);
+			if (!diag) {
 				print(params);
 				return;
 			}
 		}
 		if (param(null, 0, params) == null)
 			return;
-		debug_out(
+		diag_out(
 			new Job<PrintWriter>() {
 				public void perform(PrintWriter pw, Object[] parms) throws Exception {
 					print(pw, parms);
@@ -536,18 +552,18 @@ public class Util2
 	public static void no_println(Object...params) {}
 
 	public static void printMatchResults(String string, Pattern pattern, Object...params) {
-		Boolean debug = param_Boolean(null, 0, params);
-		if (debug == null)
+		Boolean diag = param_Boolean(DIAG_OFF, 0, params);
+		if (diag == null)
 			return;
 		MatchResult[] mr = findAllIn(string, pattern);
     	for (int g = 0; g < mr.length; g++) {
     		MatchResult m = mr[g];
-    		debug_println(debug, "%d-%d(%d,%d)%s", g, m.groupCount(), m.start(), m.end(), m.group());
+    		diag_println(diag, "%d-%d(%d,%d)%s", g, m.groupCount(), m.start(), m.end(), m.group());
     		for (int h = 1; h <= m.groupCount(); h++) {
-    			debug_println(debug, stringValueOf(m.group(h)));
+    			diag_println(diag, stringValueOf(m.group(h)));
     		}
 		}
-    	debug_println(debug, "(%d)%s", string.length(), string);
+    	diag_println(diag, "(%d)%s", string.length(), string);
 	}
 	
 	public static class DataBaseConnect
@@ -767,12 +783,16 @@ public class Util2
 	    try {
 			DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
 			DocumentBuilder db = dbf.newDocumentBuilder();
+			Document doc;
 			if (file != null)
-				return db.parse(file);
+				doc = db.parse(file);
 			else {
 				is = Util.param(null, 0, params);
-				return db.parse(is);
+				doc = db.parse(is);
 			}
+			Boolean diag = DIAG_OFF;
+			diag_println(diag, doc);
+			return doc;
 	    } 
 	    catch (Exception e) {
 			Log.e(Util.TAG, "xmlDocument", e);
@@ -937,7 +957,6 @@ public class Util2
 		File combined = fileOf(join(File.separator, parts));
 		if (combined == null)
 			return "";
-		
 		try {
 			return combined.getCanonicalPath();
 		} catch (IOException e) {
@@ -956,7 +975,7 @@ public class Util2
 			return path;
 	}
 
-	public static <T> T[] arrayreduce(T[] array, int start, int length) {
+	public static <T> T[] arrayslice(T[] array, int start, int length) {
 		if (start < 0 || 
 			start > array.length || 
 			start + length < 0 || 

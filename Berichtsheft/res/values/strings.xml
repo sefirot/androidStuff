@@ -55,8 +55,8 @@
 	<string name="plant_note">Neue Pflanze eingeben</string>
 	<string name="plant_edit">Eingaben zur Pflanze ändern</string>
 		
-	<string name="button_more">More</string>  
-	<string name="button_less">Less</string>
+	<string name="button_more">More...</string>  
+	<string name="button_less">Less...</string>
 	<string name="button_close">Close</string>
 	<string name="button_plus">+</string>  
 	<string name="button_minus">-</string>

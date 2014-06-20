@@ -34,7 +34,6 @@ public class BerichtsheftShell extends Shell
 			}, string);
 			return;
 		}
-		com.applang.Util2.print(string);
 	}
 	
 	public static void perform(Console console, boolean animated, Job<Console> job, Object...params) {

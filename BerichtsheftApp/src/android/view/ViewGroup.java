@@ -17,6 +17,7 @@ import android.util.AttributeSet;
 import static com.applang.Util.*;
 import static com.applang.Util1.*;
 import static com.applang.Util2.*;
+import static com.applang.SwingUtil.*;
 
 public class ViewGroup extends View implements ViewManager
 {
@@ -249,11 +250,12 @@ public class ViewGroup extends View implements ViewManager
 		return strings(SpringLayout.WEST, SpringLayout.NORTH, SpringLayout.EAST, SpringLayout.SOUTH);
 	}
 	
-    public static void build(View view, boolean finalLayout) {
+    public static Container build(View view, boolean finalLayout) {
+    	Container container = null;
     	if (view instanceof ViewGroup) {
 	    	ViewGroup viewGroup = (ViewGroup) view;
 	    	viewGroup.preLayout();
-	    	Container container = viewGroup.getContainer();
+	    	container = viewGroup.getContainer();
 			for (int i = 0; i < viewGroup.getChildCount(); i++) {
 				view = viewGroup.getChildAt(i);
 				build(view, false);
@@ -273,9 +275,11 @@ public class ViewGroup extends View implements ViewManager
 							return null;
 						}
 					});
-				viewGroup.doLayout();
+				container = viewGroup.doLayout();
+				printContainer("build", container, DIAG_OFF);
 			}
     	}
+    	return container;
     }
 
 }

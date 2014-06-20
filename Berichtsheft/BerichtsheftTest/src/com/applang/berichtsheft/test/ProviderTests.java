@@ -29,6 +29,7 @@ import android.os.Message;
 import android.util.Log;
 
 import com.applang.UserContext;
+import com.applang.Util.ValList;
 import com.applang.berichtsheft.R;
 import com.applang.berichtsheft.BerichtsheftActivity;
 import com.applang.provider.NotePad.NoteColumns;
@@ -352,7 +353,7 @@ public class ProviderTests extends InfraTests<BerichtsheftActivity>
     	try {
 			InputStream is = context.getResources().openRawResource(R.raw.states);
 			String res = readAll(new BufferedReader(new InputStreamReader(is, Charset.forName("UTF-8"))));
-			return ((ValList) walkJSON(null, new JSONArray(res), null)).toArray(new String[0]);
+			return toStrings(((ValList) walkJSON(null, new JSONArray(res), null)));
 		} catch (Exception e) {
 			fail(e.getMessage());
 			return null;

@@ -625,7 +625,7 @@ public class NotePicker extends ActionPanel
 					}
 				}
 			} catch (Exception e) {}
-			return this.keys = keylist.toArray(new String[0]);
+			return this.keys = toStrings(keylist);
 		}
 		
 		public String keyValue(long time, String title) {

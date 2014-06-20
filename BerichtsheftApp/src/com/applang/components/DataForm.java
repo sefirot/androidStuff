@@ -4,8 +4,11 @@ import java.awt.Container;
 import java.awt.Image;
 
 import javax.swing.JComponent;
+import javax.swing.JLabel;
 
 import org.w3c.dom.Document;
+
+import com.applang.components.DataView.ProjectionModel;
 
 import android.content.Context;
 import android.content.res.Resources;
@@ -25,52 +28,52 @@ public class DataForm
 {
 	private static final String TAG = DataForm.class.getSimpleName();
 	
-	public DataForm(Context context, ManagerBase<?> manager, BidiMultiMap projection, Object...resource) {
+	public DataForm(Context context, ManagerBase<?> manager, ProjectionModel projectionModel, Object...resource) {
 		mManager = manager;
 		boolean standard = notAvailable(0, resource);
 		if (standard) 
 			resource = objects("standard_form.xml");
 		builder = new Builder(context, resource[0]);
-		if (projection != null) {
-			mProjection = new BidiMultiMap(
+		mProjectionModel = projectionModel;
+		if (mProjectionModel != null) {
+			BidiMultiMap projection = mProjectionModel.getProjection();
+			projection = new BidiMultiMap(
 					projection.getValues(0), 
 					projection.getValues(1), 
 					projection.getValues(2), 
 					vlist(), 
 					projection.getValues(4));
-			for (Object key : mProjection.getKeys()) {
+			for (Object key : projection.getKeys()) {
 				String name = stringValueOf(key);
-				String type = stringValueOf(mProjection.getValue(key, 2));
-				String style = stringValueOf(mProjection.getValue(key, 4));
+				String type = stringValueOf(projection.getValue(key, 2));
+				String style = stringValueOf(projection.getValue(key, 4));
 				if (nullOrEmpty(style))
 					style = type.toLowerCase();
-				View view = standard ? 
+				fields.add(standard ? 
 						builder.addStandardField(key, name, style) : 
-						viewGroup.findViewWithTag(name);
-				mProjection.putValue(key, view, 3);
+						layout.findViewWithTag(name));
 			}
 		}
-		else
-			mProjection = null;
 	}
 
 	public Builder builder;
 	
-	public ViewGroup viewGroup = null;
+	private ValList fields = vlist();
+	
+	private ViewGroup layout = null;
     
     public Container getContainer() {
-    	ViewGroup.build(viewGroup, true);
-    	return viewGroup.getContainer();
+    	return ViewGroup.build(layout, true);
     }
     
-	public BidiMultiMap mProjection;
+	public ProjectionModel mProjectionModel;
 
-    private int fieldType(Object key) {
-    	return fieldTypeAffinity(stringValueOf(mProjection.getValue(key, 2)));
+    private int fieldType(BidiMultiMap projection, Object key) {
+    	return fieldTypeAffinity(stringValueOf(projection.getValue(key, 2)));
     }
 	
-	private Object doConversion(Object key, Object value, String oper) {
-		Object conversion = mProjection.getValue(key, 1);
+	private Object doConversion(BidiMultiMap projection, Object key, Object value, String oper) {
+		Object conversion = projection.getValue(key, 1);
 		if (notNullOrEmpty(conversion))
 			return ScriptManager.doConversion(value, stringValueOf(conversion), oper);
 		else
@@ -78,18 +81,19 @@ public class DataForm
 	}
 
 	public Object[] getContent() {
+		BidiMultiMap projection = mProjectionModel.getProjection();
 		ValList list = vlist();
-		ValList keys = mProjection.getKeys();
+		ValList keys = projection.getKeys();
 		for (int i = 0; i < keys.size(); i++) 
-			list.add(getContent(keys.get(i)));
+			list.add(getContent(projection, keys.get(i)));
 		return list.toArray();
 	}
 
-	private Object getContent(Object key) {
+	private Object getContent(BidiMultiMap projection, Object key) {
 		Object value = null;
-		View view = mProjection.getValue(key, 3);
+		View view = getFieldView(projection, key);
 		if (view != null) {
-			switch (fieldType(key)) {
+			switch (fieldType(projection, key)) {
 			case Cursor.FIELD_TYPE_BLOB:
 				value = ((ImageView)view).getImage();
 				break;
@@ -105,26 +109,31 @@ public class DataForm
 					value = ((EditText)view).getText();
 			}
 		}
-		return doConversion(key, value, "pull");
+		return doConversion(projection, key, value, "pull");
     }
 
+	private View getFieldView(BidiMultiMap projection, Object key) {
+		return (View) fields.get(projection.getKeys().indexOf(key));
+	}
+
 	public void setContent(final Object[] values) {
+		final BidiMultiMap projection = mProjectionModel.getProjection();
 		mManager.blockDirty(new Job<Void>() {
 			public void perform(Void t, Object[] parms) throws Exception {
-				ValList keys = mProjection.getKeys();
+				ValList keys = projection.getKeys();
 				for (int i = 0; i < keys.size(); i++) {
 					Object key = keys.get(i);
-					setContent(key, values[i]);
+					setContent(projection, key, values[i]);
 				}
 			}
 		});
     }
 
-	private void setContent(final Object key, Object value) {
-		final View view = mProjection.getValue(key, 3);
+	private void setContent(BidiMultiMap projection, final Object key, Object value) {
+		View view = getFieldView(projection, key);
 		if (view != null) {
-			final Object o = doConversion(key, value, "push");
-			switch (fieldType(key)) {
+			final Object o = doConversion(projection, key, value, "push");
+			switch (fieldType(projection, key)) {
 			case Cursor.FIELD_TYPE_BLOB:
 				((ImageView)view).setImage((Image) o);
 				break;
@@ -160,31 +169,35 @@ public class DataForm
 		public Builder(Context context, Object resource) {
 			inflater = LayoutInflater.from(context);
 			if (nullOrEmpty(resource)) {
-				viewGroup = new ViewGroup(context);
+				layout = new ViewGroup(context);
 			}
 			else if (resource instanceof Integer) {
 				Document document = context.getResources().getXml((Integer) resource);
-				viewGroup = (ViewGroup) inflater.inflate(document.getDocumentElement());
+				layout = (ViewGroup) inflater.inflate(document.getDocumentElement());
 			}
 			else {
 				View view = inflater.inflate(templatePath(stringValueOf(resource)));
 				if (view instanceof ViewGroup)
-					viewGroup = (ViewGroup) view;
+					layout = (ViewGroup) view;
 				else {
-					viewGroup = new ViewGroup(context);
+					layout = new ViewGroup(context);
 					addView(view, view.getLayoutParams());
 				}
 			}
-			viewGroup.setTag("form");
+			layout.setTag("form");
 		}
 
 		protected String templatePath(String name) {
 			return Resources.getRelativePath(6, name);
 		}
+		
+		public TextView getLabel(ViewGroup vg) {
+			return (TextView) vg.getChildAt(0);
+		}
 
-		public void setLabel(Object labelText, ViewGroup vg) {
-			TextView textView = (TextView) vg.getChildAt(0);
-			textView.setText(stringValueOf(labelText));
+		public void setLabelText(Object text, ViewGroup vg) {
+			TextView textView = getLabel(vg);
+			textView.setText(stringValueOf(text));
 		}
 		
 		public View getEdit(ViewGroup vg) {
@@ -192,7 +205,7 @@ public class DataForm
 		}
 		
 	    public void addView(View view, ViewGroup.LayoutParams params) {
-	    	viewGroup.addView(view, params);
+	    	layout.addView(view, params);
 		}
 
 		public View addStandardField(Object description, String name, String style) {
@@ -201,7 +214,8 @@ public class DataForm
 					name, 
 					style);
 			addView(vg, vg.getLayoutParams());
-			setLabel(description, vg);
+			setLabelText(description, vg);
+			JLabel label = getLabel(vg).taggedComponent();
 			View vw = getEdit(vg);
 			if (vw instanceof EditText) {
 				((EditText) vw).setOnTextChanged(onChanged);
@@ -211,6 +225,7 @@ public class DataForm
 						te.getTextToggle().setOnTextChanged(onChanged);
 				}
 			}
+			label.setLabelFor(vw.taggedComponent());
 			return vg.findViewWithTag(name);
 		}
 
@@ -242,35 +257,35 @@ public class DataForm
 	    public ViewGroup addTextField(Object description, Object...params) {
 	    	ViewGroup vg = (ViewGroup) inflater.inflate(templatePath("field_text.xml"), params);
 			addView(vg, vg.getLayoutParams());
-			setLabel(description, vg);
+			setLabelText(description, vg);
 			return vg;
 		}
 
 	    public ViewGroup addStringField(Object description, Object...params) {
 	    	ViewGroup vg = (ViewGroup) inflater.inflate(templatePath("field_string.xml"), params);
 			addView(vg, vg.getLayoutParams());
-			setLabel(description, vg);
+			setLabelText(description, vg);
 			return vg;
 		}
 
 		public ViewGroup addIntegerField(Object description, Object...params) {
 			ViewGroup vg = (ViewGroup) inflater.inflate(templatePath("field_integer.xml"), params);
 			addView(vg, vg.getLayoutParams());
-			setLabel(description, vg);
+			setLabelText(description, vg);
 			return vg;
 		}
 
 		public ViewGroup addFloatField(Object description, Object...params) {
 			ViewGroup vg = (ViewGroup) inflater.inflate(templatePath("field_float.xml"), params);
 			addView(vg, vg.getLayoutParams());
-			setLabel(description, vg);
+			setLabelText(description, vg);
 			return vg;
 		}
 
 		public ViewGroup addBlobField(Object description, Object...params) {
 			ViewGroup vg = (ViewGroup) inflater.inflate(templatePath("field_blob.xml"), params);
 			addView(vg, vg.getLayoutParams());
-			setLabel(description, vg);
+			setLabelText(description, vg);
 			return vg;
 		}
 

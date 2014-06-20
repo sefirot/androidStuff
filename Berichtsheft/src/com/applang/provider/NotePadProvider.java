@@ -458,7 +458,7 @@ public class NotePadProvider extends ContentProvider
 				titles.add(cursor.getString(0));
 			}
 		}, titles);
-		return titles.toArray(new String[0]);
+		return toStrings(titles);
 	}
 
 	public static long getIdOfNote(ContentResolver contentResolver, int tableIndex, String selection, String[] selectionArgs) {

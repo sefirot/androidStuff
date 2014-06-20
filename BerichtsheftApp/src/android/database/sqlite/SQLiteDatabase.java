@@ -18,6 +18,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static com.applang.Util.*;
+import static com.applang.Util2.*;
 
 /**
  * Exposes methods to manage a SQLite database.
@@ -284,7 +285,7 @@ public class SQLiteDatabase {
 				db.connection.loadExtension(extensionFile, "sqlite3_regexp_init");
 			}
 		} catch (com.almworks.sqlite4java.SQLiteException e) {
-			com.applang.Util2.debug_println(null, "openDatabase", path);
+			diag_println(DIAG_OFF, "openDatabase", path);
 			Log.e(TAG, "openDatabase", e);
 			return null;
 		}

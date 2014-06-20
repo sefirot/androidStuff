@@ -645,8 +645,22 @@ public class Util
 	}
 
     public static String htmlize(String text) {
-    	if (!text.substring(0, Math.min(text.length(), 10)).toLowerCase().startsWith("<html>"))
+    	if (isHtml(text))
+    		return text;
+    	else
     		return enclose("<html>", text.replaceAll(NEWLINE_REGEX, "<br>"), "</html>");
+	}
+
+	private static boolean isHtml(String text) {
+		return text.substring(0, Math.min(text.length(), 20)).trim().toLowerCase().startsWith("<html>");
+	}
+
+    public static String deHtmlize(String text) {
+    	if (isHtml(text)) {
+    		text = text.trim();
+    		text = text.substring(6, text.length() - 7);
+    		return text.replaceAll("<br>", NEWLINE);
+    	}
     	else
     		return text;
 	}

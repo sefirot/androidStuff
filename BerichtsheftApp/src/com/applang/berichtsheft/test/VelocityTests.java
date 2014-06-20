@@ -932,6 +932,6 @@ public class VelocityTests extends TestCase
 			}
 	    }, list);
 	    
-	    return list.toArray(new String[0]);
+	    return toStrings(list);
 	}
 }

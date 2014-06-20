@@ -28,7 +28,7 @@ long[] interval = Util.dayInterval(created, 1);
 title = values.getAsString("title");
 String.format("created between %d and %d and title = '%s'", new Object[]{interval[0], interval[1] - 1, title})]]></BODY>
 		</FUNCTION>
-        <PROJECTION table="bausteine" version="4"><![CDATA[[["_id","title","note","created","modified"],["","","","","unixepoch"],["INTEGER","TEXT","TEXT","INTEGER","INTEGER"],[false,false,true,false,false],[null,null,"text.velocity",null,"string"]]]]></PROJECTION>
+        <PROJECTION table="bausteine" version="4"><![CDATA[[["_id","title","note","created","modified"],["","","","","unixepoch"],["INTEGER","TEXT","TEXT","INTEGER","INTEGER"],[false,true,true,false,true],[null,null,"text.velocity",null,"string"],[null,null,null,null,null]]]]></PROJECTION>
         <PROJECTION table="notes" version="4"><![CDATA[[["_id","title","note","created","modified"],["","","","unixepoch","unixepoch"],["INTEGER","TEXT","TEXT","INTEGER","INTEGER"],[false,true,true,true,true],[null,"string","text.spellcheck","string","string"],["created ASC","title ASC",null,null,null]]]]></PROJECTION>
     </FLAVOR>
 	<FLAVOR name="com.applang.provider.WeatherInfo">
