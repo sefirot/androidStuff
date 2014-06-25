@@ -166,28 +166,28 @@ public class Util1
 	@SuppressWarnings("rawtypes")
 	public static ValList contentAuthorities(String[] packageNames, Object...params) {
 		ValList list = vlist();
-		try {
-			for (String packageName : packageNames) {
-				Class[] cls = getLocalClasses(packageName, params);
-				for (Class c : filter(asList(cls), false, new Predicate<Class>() {
-					public boolean apply(Class c) {
-						String name = c.getName();
-						return !name.contains("$")
-								&& !name.endsWith("Provider");
-					}
-				})) {
-					Object name = c.getDeclaredField("AUTHORITY").get(null);
-					if (name != null)
-						list.add(name.toString());
-				}
-			}
-		} catch (Exception e) {
-			Log.e(TAG, "contentAuthorities", e);
+//		try {
+//			for (String packageName : packageNames) {
+//				Class[] cls = getLocalClasses(packageName, params);
+//				for (Class c : filter(asList(cls), false, new Predicate<Class>() {
+//					public boolean apply(Class c) {
+//						String name = c.getName();
+//						return !name.contains("$")
+//								&& !name.endsWith("Provider");
+//					}
+//				})) {
+//					Object name = c.getDeclaredField("AUTHORITY").get(null);
+//					if (name != null)
+//						list.add(name.toString());
+//				}
+//			}
+//		} catch (Exception e) {
+//			Log.e(TAG, "contentAuthorities", e);
 			list.addAll(asList(strings(
 					"com.applang.provider.NotePad", 
 					"com.applang.provider.WeatherInfo", 
 					"com.applang.provider.PlantInfo")));
-		}
+//		}
 	    return list;
 	}
 
