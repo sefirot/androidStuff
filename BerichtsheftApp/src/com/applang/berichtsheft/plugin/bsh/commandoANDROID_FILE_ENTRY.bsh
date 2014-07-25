@@ -18,7 +18,7 @@ commandoANDROID_FILE_ENTRY(view,pane,ns,label,var,options)
 	box.add(entry);
 	box.add(Box.createHorizontalStrut(12));
 
-	icon = com.applang.berichtsheft.plugin.BerichtsheftPlugin.loadIcon("/images/android_21x22.png");
+	icon = com.applang.PluginUtils.loadIcon("/images/android_21x22.png");
 	btn = new RolloverButton(icon);
 	btn.setToolTipText("Choose a file");
 	listener = new ActionListener()

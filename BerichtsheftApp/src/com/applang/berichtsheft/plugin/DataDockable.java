@@ -1,6 +1,7 @@
 package com.applang.berichtsheft.plugin;
 
 import java.awt.BorderLayout;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
@@ -18,6 +19,7 @@ import javax.swing.BoxLayout;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JSplitPane;
 import javax.swing.JTable;
 
 import org.gjt.sp.jedit.EBComponent;
@@ -31,13 +33,13 @@ import org.gjt.sp.jedit.msg.PropertiesChanged;
 import static com.applang.Util.*;
 import static com.applang.Util1.*;
 import static com.applang.SwingUtil.*;
+import static com.applang.PluginUtils.*;
 
 import android.app.AlertDialog;
 import android.content.ContentValues;
 import android.net.Uri;
 import android.util.Log;
 
-import com.applang.Util.BidiMultiMap;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.components.DataView;
 import com.applang.components.DatePicker;
@@ -71,22 +73,22 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 		public DataToolPanel() {
 			setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
 	
-			add(BerichtsheftPlugin.makeCustomButton("datadock.choose-uri", new ActionListener() {
+			add(makeCustomButton("datadock.choose-uri", new ActionListener() {
 				public void actionPerformed(ActionEvent evt) {
 					chooseUri();
 				}
 			}, false));
-			add(BerichtsheftPlugin.makeCustomButton("datadock.update-uri", new ActionListener() {
+			add(makeCustomButton("datadock.update-uri", new ActionListener() {
 				public void actionPerformed(ActionEvent evt) {
 					updateUri();
 				}
 			}, false));
-			add(BerichtsheftPlugin.makeCustomButton("datadock.transport-to-buffer", new ActionListener() {
+			add(makeCustomButton("datadock.transport-to-buffer", new ActionListener() {
 				public void actionPerformed(ActionEvent evt) {
 					transportToBuffer();
 				}
 			}, false));
-			add(BerichtsheftPlugin.makeCustomButton("datadock.transport-from-buffer", new ActionListener() {
+			add(makeCustomButton("datadock.transport-from-buffer", new ActionListener() {
 				public void actionPerformed(ActionEvent evt) {
 					final Console console = BerichtsheftShell.getConsole(true);
 					if (console != null) {
@@ -203,7 +205,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 	
 	public void chooseUri() {
     	if (dataView.configureData(view, true)) {
-    		BerichtsheftPlugin.setProperty("TRANSPORT_URI", dataView.getUriString());
+    		setProperty("TRANSPORT_URI", dataView.getUriString());
     		updateUri();
 		}
 	};
@@ -221,8 +223,8 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 	}
 
 	public void transportFromBuffer() {
-		BerichtsheftPlugin.setProperty("TRANSPORT_OPER", "pull");
-		BerichtsheftPlugin.invokeAction(view, "commando.Transport");
+		setProperty("TRANSPORT_OPER", "pull");
+		invokeAction(view, "commando.Transport");
 	}
 
 	public void transportToBuffer() {
@@ -239,7 +241,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 			return;
 		final String text = builder.wrapRecords(table);
 		showItems(view, "datadock.transport-to-buffer.label", 
-				BerichtsheftPlugin.getProperty("datadock.transport-to-buffer.message.1"), 
+				getProperty("datadock.transport-to-buffer.message.1"), 
 				text, 
 				JOptionPane.OK_CANCEL_OPTION, 
 	    		Behavior.NONE, 
@@ -489,7 +491,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 			message = scrollableViewport(table, new Dimension(800,200));
 		}
 		return new AlertDialog(view, 
-				BerichtsheftPlugin.getProperty(titleProperty), 
+				getProperty(titleProperty), 
 				caption, 
 				message, 
 				optionType,
@@ -506,7 +508,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 			BerichtsheftPlugin.consoleMessage("datadock.dockable-required.message");
 			return false;
 		}
-		final String uriString = BerichtsheftPlugin.getProperty("TRANSPORT_URI");
+		final String uriString = getProperty("TRANSPORT_URI");
 		if (nullOrEmpty(uriString)) {
 			BerichtsheftPlugin.consoleMessage("datadock.transport-uri.message");
 			return false;
@@ -602,7 +604,7 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 				};
 		   	    if (showData) {
 					showItems(view, "datadock.download-to-buffer.label", 
-							BerichtsheftPlugin.getProperty("datadock.transport-to-buffer.message.1"), 
+							getProperty("datadock.transport-to-buffer.message.1"), 
 							text, 
 							JOptionPane.OK_CANCEL_OPTION, 
 				    		Behavior.NONE, 
@@ -709,5 +711,21 @@ public class DataDockable extends JPanel implements EBComponent, BerichtsheftAct
 			BerichtsheftPlugin.consoleMessage("berichtsheft.export-document.message.1", docPath);
 		}
 		return retval;
+	}
+
+	public static void main(String...args) {
+		BerichtsheftApp.loadSettings();
+    	final DataDockable dd = new DataDockable(null, DockableWindowManager.FLOATING);
+		showFrame(null, "Data", 
+			new UIFunction() {
+				public Component[] apply(final Component comp, Object[] parms) {
+					JSplitPane sp = splitPane(JSplitPane.VERTICAL_SPLIT);
+					sp.setTopComponent(dd);
+					sp.setBottomComponent(new JPanel());
+					return components(sp);
+				}
+			}, 
+			null, null, 
+			Behavior.EXIT_ON_CLOSE);
 	}
 }

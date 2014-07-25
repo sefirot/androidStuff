@@ -1,10 +1,6 @@
 package com.applang.components;
 
 import com.applang.UserContext;
-import com.applang.Util;
-import com.applang.SwingUtil.Behavior;
-import com.applang.Util.Function;
-import com.applang.Util.Job;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 
 import java.awt.Component;
@@ -48,6 +44,7 @@ import android.util.Log;
 import static com.applang.Util.*;
 import static com.applang.SwingUtil.*;
 import static com.applang.VelocityUtil.*;
+import static com.applang.PluginUtils.*;
 
 public class ASTViewer extends ActionPanel
 {
@@ -100,15 +97,15 @@ public class ASTViewer extends ActionPanel
 	    public int index() { return index; }
 		@Override
 		public String iconName() {
-			return BerichtsheftPlugin.getProperty(resourceName + ".icon");
+			return getProperty(resourceName + ".icon");
 		}
 		@Override
 		public String description() {
-			return BerichtsheftPlugin.getProperty(resourceName.concat(".label"));
+			return getProperty(resourceName.concat(".label"));
 		}
 		@Override
 		public String name(int state) {
-			return BerichtsheftPlugin.getProperty(resourceName.concat(".label") + "." + state);
+			return getProperty(resourceName.concat(".label") + "." + state);
 		}
 	}
 
@@ -521,7 +518,7 @@ public class ASTViewer extends ActionPanel
 			null, 
 			new Function<String[]>() {
 				public String[] apply(Object... params) {
-					return contentsFromFile(store).split(Util.NEWLINE_REGEX);
+					return contentsFromFile(store).split(NEWLINE_REGEX);
 				}
 			}, 
 			new Job<String[]>() {

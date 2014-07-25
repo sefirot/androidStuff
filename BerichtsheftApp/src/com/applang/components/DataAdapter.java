@@ -29,6 +29,7 @@ import static com.applang.Util.*;
 import static com.applang.Util1.*;
 import static com.applang.Util2.*;
 import static com.applang.SwingUtil.*;
+import static com.applang.PluginUtils.*;
 
 public class DataAdapter
 {
@@ -206,7 +207,7 @@ public class DataAdapter
 					JTable table = model.makeTable();
 					table.getSelectionModel().setSelectionInterval(1, 1);
 					return decision = new AlertDialog(view, 
-							BerichtsheftPlugin.getProperty("dataview.prompt-update.message"), 
+							getProperty("dataview.prompt-update.message"), 
 							"", 
 							scrollableViewport(table, new Dimension(800,100)), 
 							5, 

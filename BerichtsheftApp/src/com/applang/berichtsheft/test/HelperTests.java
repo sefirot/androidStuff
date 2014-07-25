@@ -25,13 +25,14 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Random;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
- 
+
 import javax.swing.AbstractAction;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -102,11 +103,9 @@ import android.widget.Toast;
 
 import com.applang.BaseDirective;
 import com.applang.Dialogs;
+import com.applang.PluginUtils;
 import com.applang.PromptDirective;
-import com.applang.SwingUtil.Behavior;
 import com.applang.UserContext.EvaluationTask;
-import com.applang.Util.Constraint;
-import com.applang.Util.Job;
 import com.applang.berichtsheft.BerichtsheftActivity;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.R;
@@ -135,7 +134,7 @@ import static com.applang.Util.*;
 import static com.applang.Util1.*;
 import static com.applang.Util2.*;
 import static com.applang.SwingUtil.*;
-
+import static com.applang.PluginUtils.*;
 import junit.framework.*;
 
 public class HelperTests extends TestCase
@@ -197,8 +196,8 @@ public class HelperTests extends TestCase
 						"        run();\n" +
 						"}\n" +
 						"doSomethingUseful();", script));
-		String settingsDir = BerichtsheftPlugin.test_jedit_settings();
-		BerichtsheftPlugin.properties = null;
+		String settingsDir = BerichtsheftPlugin.jedit_test_settings();
+		properties = null;
         String[] args = strings(
 				"-nosplash",
 				"-noserver",
@@ -377,9 +376,9 @@ public class HelperTests extends TestCase
     	String flavor = "com.applang.provider.NotePad";
     	Object[] projection = fullProjection(flavor);
 		String profile = dbTable(fileUri(dbPath, null), "notes").toString();
-		BerichtsheftPlugin.setProperty("TRANSPORT_PROFILE", profile);
+		setProperty("TRANSPORT_PROFILE", profile);
 		String oper = "pull";
-		BerichtsheftPlugin.setProperty("TRANSPORT_OPER", oper);
+		setProperty("TRANSPORT_OPER", oper);
 		println();
 		underTest = true;
 		String template = builder.makeTemplate(projection);
@@ -390,12 +389,12 @@ public class HelperTests extends TestCase
 		MapEditorComponent mec = new MapEditorComponent(map, 
 				object(contentAuthorities(providerPackages).toArray()));
 		new AlertDialog(null, 
-				BerichtsheftPlugin.getProperty("manager.action-PROFILE.label"), 
+				getProperty("manager.action-PROFILE.label"), 
 				"", 
 				mec, 
 				JOptionPane.DEFAULT_OPTION,
 				Behavior.MODAL, 
-				BerichtsheftPlugin.loadIcon("manager.action-PROFILE.icon"), 
+				loadIcon("manager.action-PROFILE.icon"), 
 				null)
 			.open();
 		String template2 = template.replace("created", "created|unixepoch");
@@ -822,7 +821,7 @@ public class HelperTests extends TestCase
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public static boolean generateAwkScript(String awkFileName, Object...params) {
-		String uriString = BerichtsheftPlugin.getProperty("TRANSPORT_URI");
+		String uriString = getProperty("TRANSPORT_URI");
 		if (nullOrEmpty(uriString))
 			return false;
 		String tableName = dbTableName(uriString);
@@ -834,7 +833,7 @@ public class HelperTests extends TestCase
 		ValList projection = builder.evaluateTemplate(template, null);
 		boolean retval = isAvailable(0, projection);
 		if (retval) {
-			BerichtsheftPlugin.setProperty("TRANSPORT_TEMPLATE", template);
+			setProperty("TRANSPORT_TEMPLATE", template);
 			map.put(uriString, template);
 			putMapSetting("TRANSPORT_MAPPINGS", map);
 			ValMap info = table_info(
@@ -966,12 +965,12 @@ public class HelperTests extends TestCase
 		contentsToFile(new File(path), text);
 		String awkFileName = join(".", path.substring(0, path.lastIndexOf('.')), "awk");
 		if (generateAwkScript(awkFileName)) {
-			BerichtsheftPlugin.setProperty("AWK_PROGFILE", awkFileName);
+			setProperty("AWK_PROGFILE", awkFileName);
 			String sqliteFileName = join(".", path.substring(0, path.lastIndexOf('.')), "sql");
-			BerichtsheftPlugin.setProperty("AWK_INFILE", path);
-			BerichtsheftPlugin.setProperty("AWK_OUTFILE", sqliteFileName);
-			BerichtsheftPlugin.setProperty("SQLITE_FILE", sqliteFileName);
-			BerichtsheftPlugin.setProperty("SQLITE_DBFILE", dataView.getDataConfiguration().getPath());
+			setProperty("AWK_INFILE", path);
+			setProperty("AWK_OUTFILE", sqliteFileName);
+			setProperty("SQLITE_FILE", sqliteFileName);
+			setProperty("SQLITE_DBFILE", dataView.getDataConfiguration().getPath());
 		}
     }
 	
@@ -1195,7 +1194,7 @@ public class HelperTests extends TestCase
 					public Component[] apply(Component comp, Object[] parms) {
 						Box box = new Box(BoxLayout.X_AXIS);
 						box.add(entry);
-						box.add(BerichtsheftPlugin.makeCustomButton("datadock.choose-uri", new ActionListener() {
+						box.add(makeCustomButton("datadock.choose-uri", new ActionListener() {
 							public void actionPerformed(ActionEvent evt) {
 								entry.setText(BerichtsheftPlugin.inquireDbFileName(null, null));
 							}
@@ -1596,7 +1595,7 @@ public class HelperTests extends TestCase
 	
 	public void testForm() {
 		setTimeout(1000);
-		BerichtsheftPlugin.setupSpellChecker(BerichtsheftApp.applicationDataPath());
+		setupSpellChecker(BerichtsheftApp.applicationDataPath());
 		final Context context = BerichtsheftActivity.getInstance();
 		dataConfigTest(new Job<DataConfiguration>() {
 			public void perform(DataConfiguration dc, Object[] parms) throws Exception {
@@ -1791,12 +1790,12 @@ public class HelperTests extends TestCase
 		setTimeout(1000);
 		AlertDialog.alerter(new Activity(), "alerter", new Exception());
 		new AlertDialog(null, 
-				BerichtsheftPlugin.getProperty("berichtsheft.spellcheck-selection.title"), 
+				getProperty("berichtsheft.spellcheck-selection.title"), 
 				"", 
 				"Hello", 
 				JOptionPane.DEFAULT_OPTION,
 				Behavior.MODAL|Behavior.TIMEOUT, 
-				BerichtsheftPlugin.loadIcon("manager.action-SPELLCHECK.icon"), 
+				loadIcon("manager.action-SPELLCHECK.icon"), 
 				null)
 			.open();
 		AlertDialog.chooser(new Activity(), "chooser", getStateStrings());
@@ -1865,7 +1864,7 @@ public class HelperTests extends TestCase
 	}
 	
 	public void testJOrtho() {
-		BerichtsheftPlugin.setupSpellChecker(BerichtsheftApp.applicationDataPath());
+		setupSpellChecker(BerichtsheftApp.applicationDataPath());
 		final TextToggle textEditor = new TextToggle();
     	Deadline.WAIT = 2000;
     	showFrame(null, 
@@ -1890,6 +1889,12 @@ public class HelperTests extends TestCase
 				}, 
 				null, 
 				Behavior.TIMEOUT);
+	}
+	
+	public void testMagic() {
+		Properties props = new Properties();
+		String path = magicFile(getNextMagicTemp(), "spell", props);
+		println(contentsFromFile(new File(path)));
 	}
 	
 	public void _testProgressMonitor() {

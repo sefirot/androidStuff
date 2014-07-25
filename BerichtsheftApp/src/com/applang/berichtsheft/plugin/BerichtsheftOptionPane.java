@@ -3,6 +3,7 @@ package com.applang.berichtsheft.plugin;
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
 import static com.applang.SwingUtil.*;
+import static com.applang.PluginUtils.*;
 
 import java.awt.BorderLayout;
 import java.awt.Font;
@@ -54,7 +55,7 @@ public class BerichtsheftOptionPane extends AbstractOptionPane implements Action
 		String[] strings = strings("AWK", "ADB", "SQLITE");
 		for (int i = 0; i < commands.length; i++) {
 			commands[i] = new JTextField(
-					BerichtsheftPlugin.getProperty(strings[i] + "_COMMAND"));
+					getProperty(strings[i] + "_COMMAND"));
 			commands[i].setName(strings[i]);
 		}
 	}
@@ -77,7 +78,7 @@ public class BerichtsheftOptionPane extends AbstractOptionPane implements Action
 			if ("ADB".equals(cmd)) {
 				final JTextField sdk = new JTextField(
 						pathCombine(System.getProperty("user.home"), 
-								BerichtsheftPlugin.getProperty("ANDROID_SDK")));
+								getProperty("ANDROID_SDK")));
 				pathPanel.add(sdk, BorderLayout.CENTER);
 				JButton pick = new JButton(BerichtsheftPlugin.getOptionProperty("choose"));
 				pick.addActionListener(new ActionListener( ) {
@@ -162,13 +163,13 @@ public class BerichtsheftOptionPane extends AbstractOptionPane implements Action
 			BerichtsheftPlugin.setOptionProperty("fontstyle", String.valueOf(font.getStyle()));
 		}
 		for (int i = 0; i < commands.length; i++) 
-			BerichtsheftPlugin.setProperty(commands[i].getName() + "_COMMAND", commands[i].getText());
+			setProperty(commands[i].getName() + "_COMMAND", commands[i].getText());
 		BerichtsheftPlugin.setOptionProperty("field-separator", fieldSeparatorSelector.getSelectedItem().toString());
 		BerichtsheftPlugin.setOptionProperty("field-decoration", fieldDecorationSelector.getSelectedItem().toString());
 		BerichtsheftPlugin.setOptionProperty("record-separator", recordSeparatorSelector.getSelectedItem().toString());
 		BerichtsheftPlugin.setOptionProperty("record-decoration", recordDecorationSelector.getSelectedItem().toString());
 		BerichtsheftPlugin.setOptionProperty("show-toolbar", String.valueOf(showToolbar.isSelected()));
-		BerichtsheftPlugin.saveSettings();
+		saveSettings();
 		BerichtsheftToolBar.init();
 	}
 

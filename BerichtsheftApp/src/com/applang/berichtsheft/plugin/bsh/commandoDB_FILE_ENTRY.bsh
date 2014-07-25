@@ -1,6 +1,6 @@
 commandoDB_FILE_ENTRY(view,pane,ns,label,var,options)
 {
-	import com.applang.berichtsheft.plugin.*;
+	import com.applang.*;
 	
 	entry = new JTextField(40);
 	value = ns.getVariable(var);
@@ -20,7 +20,7 @@ commandoDB_FILE_ENTRY(view,pane,ns,label,var,options)
 	box.add(entry);
 	box.add(Box.createHorizontalStrut(12));
 
-	btn = new RolloverButton(BerichtsheftPlugin.loadIcon("/images/book_open_22x22.png"));
+	btn = new RolloverButton(PluginUtils.loadIcon("/images/book_open_22x22.png"));
 	btn.setToolTipText("Pick a URI");
 	listener = new ActionListener()
 	{

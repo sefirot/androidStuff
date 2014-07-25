@@ -27,13 +27,13 @@ import android.util.Log;
 import android.widget.EditText;
 
 import com.inet.jortho.PopupListener;
-import com.inet.jortho.SpellChecker;
 
 import com.applang.UserContext;
 import com.applang.berichtsheft.BerichtsheftActivity;
 
 import static com.applang.Util.*;
 import static com.applang.SwingUtil.*;
+import static com.applang.PluginUtils.*;
 
 public class TextEdit extends EditText
 {
@@ -239,7 +239,7 @@ public class TextEdit extends EditText
 	}
 	
 	private void installSpellChecker(JTextComponent jtc) {
-		SpellChecker.register(jtc);
+		spellChecking(jtc, true);
 		installUndoRedo(jtc);
 	}
 	
@@ -248,7 +248,7 @@ public class TextEdit extends EditText
 	}
 	
 	public void uninstallSpellChecker() {
-		SpellChecker.unregister(getTextComponent());
+		spellChecking(getTextComponent(), false);
 	}
 	
 	private void installToggle(JTextComponent jtc) {

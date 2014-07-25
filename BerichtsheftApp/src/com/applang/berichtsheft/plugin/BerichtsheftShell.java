@@ -16,6 +16,7 @@ import android.util.Log;
 
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
+import static com.applang.PluginUtils.*;
 
 public class BerichtsheftShell extends Shell
 {
@@ -52,7 +53,7 @@ public class BerichtsheftShell extends Shell
 	}
 	
 	public static void setBerichtsheftShell(Console console) {
-		String name = BerichtsheftPlugin.getProperty("berichtsheft.shell.title");
+		String name = getProperty("berichtsheft.shell.title");
 		if (!name.equals(console.getShell().getName())) 
 			console.setShell(name);
 	}

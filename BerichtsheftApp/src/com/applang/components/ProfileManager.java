@@ -46,6 +46,7 @@ import static com.applang.Util.*;
 import static com.applang.Util1.*;
 import static com.applang.Util2.*;
 import static com.applang.SwingUtil.*;
+import static com.applang.PluginUtils.*;
 
 @SuppressWarnings("rawtypes")
 public class ProfileManager extends ManagerBase<Element>
@@ -75,7 +76,7 @@ public class ProfileManager extends ManagerBase<Element>
 			group.add(btn);
 		container.setLayout(new BoxLayout(container, BoxLayout.PAGE_AXIS));
 		Box box = new Box(BoxLayout.LINE_AXIS);
-		radioButtons[0].setText(BerichtsheftPlugin.getProperty("berichtsheft.transport-push.label"));
+		radioButtons[0].setText(getProperty("berichtsheft.transport-push.label"));
 		radioButtons[0].addItemListener(new ItemListener() {
 			public void itemStateChanged(ItemEvent ev) {
 				if (ev.getStateChange() == ItemEvent.SELECTED) 
@@ -84,7 +85,7 @@ public class ProfileManager extends ManagerBase<Element>
 		});
 		box.add(radioButtons[0]);
 		box.add(Box.createHorizontalGlue());
-		radioButtons[1].setText(BerichtsheftPlugin.getProperty("berichtsheft.transport-pull.label"));
+		radioButtons[1].setText(getProperty("berichtsheft.transport-pull.label"));
 		radioButtons[1].addItemListener(new ItemListener() {
 			public void itemStateChanged(ItemEvent ev) {
 				if (ev.getStateChange() == ItemEvent.SELECTED) 
@@ -93,7 +94,7 @@ public class ProfileManager extends ManagerBase<Element>
 		});
 		box.add(radioButtons[1]);
 		box.add(Box.createHorizontalGlue());
-		radioButtons[2].setText(BerichtsheftPlugin.getProperty("berichtsheft.transport-download.label"));
+		radioButtons[2].setText(getProperty("berichtsheft.transport-download.label"));
 		radioButtons[2].addItemListener(new ItemListener() {
 			public void itemStateChanged(ItemEvent ev) {
 				if (ev.getStateChange() == ItemEvent.SELECTED) 
@@ -132,7 +133,7 @@ public class ProfileManager extends ManagerBase<Element>
 		box = new Box(BoxLayout.LINE_AXIS);
 		container.add(labelFor(box, "Flavor", CENTER_ALIGNMENT));
 		box.add(comboBoxes[1]);
-		box.add(BerichtsheftPlugin.makeCustomButton("berichtsheft.edit-function", new ActionListener() {
+		box.add(makeCustomButton("berichtsheft.edit-function", new ActionListener() {
 			public void actionPerformed(ActionEvent evt) {
 				Object profile = comboBoxes[0].getSelectedItem();
 				Object flavor = comboBoxes[1].getSelectedItem();
@@ -142,7 +143,7 @@ public class ProfileManager extends ManagerBase<Element>
 							profile);
 			}
 		}, false));
-		box.add(BerichtsheftPlugin.makeCustomButton("berichtsheft.insert-field", new ActionListener() {
+		box.add(makeCustomButton("berichtsheft.insert-field", new ActionListener() {
 			int checkedItem = -1;
 			
 			public void actionPerformed(ActionEvent evt) {
@@ -200,12 +201,12 @@ public class ProfileManager extends ManagerBase<Element>
 		box.add(textArea.getUIComponent());
 		Box box2 = new Box(BoxLayout.PAGE_AXIS);
 		Box box3 = new Box(BoxLayout.LINE_AXIS);
-		box3.add(BerichtsheftPlugin.makeCustomButton("berichtsheft.insert-enter", new ActionListener() {
+		box3.add(makeCustomButton("berichtsheft.insert-enter", new ActionListener() {
 			public void actionPerformed(ActionEvent evt) {
 				textArea.setSelectedText(NEWLINE);
 			}
 		}, false));
-		box3.add(BerichtsheftPlugin.makeCustomButton("berichtsheft.insert-function", new ActionListener() {
+		box3.add(makeCustomButton("berichtsheft.insert-function", new ActionListener() {
 			public void actionPerformed(ActionEvent evt) {
 				String expr = new ScriptManager(view, container).getFunction();
 				textArea.setSelectedText(notNullOrEmpty(expr) ? "|" + expr : "");
@@ -232,7 +233,7 @@ public class ProfileManager extends ManagerBase<Element>
 		box.add(Box.createHorizontalGlue());
 		container.add(box);
 		container.add( Box.createVerticalStrut(10) );
-		if ("push".equals(BerichtsheftPlugin.getProperty("TRANSPORT_OPER", "pull")))
+		if ("push".equals(getProperty("TRANSPORT_OPER", "pull")))
 			radioButtons[0].setSelected(true);
 		else
 			radioButtons[1].setSelected(true);
@@ -258,7 +259,7 @@ public class ProfileManager extends ManagerBase<Element>
 		comboBoxes[4].setEnabled(!download);
 		JLabel label = findFirstComponent(container, "Template_Label");
 		label.setText(download ? "URL" : "Template");
-		BerichtsheftPlugin.setProperty("TRANSPORT_OPER", oper);
+		setProperty("TRANSPORT_OPER", oper);
 		updateModels(true, false, true);
 	}
 	
@@ -411,9 +412,9 @@ public class ProfileManager extends ManagerBase<Element>
 	}
 
 	public static boolean setTemplate(String template, Object...params) {
-		String profile = BerichtsheftPlugin.getProperty("TRANSPORT_PROFILE");
+		String profile = getProperty("TRANSPORT_PROFILE");
 		profile = param(profile, 0, params);
-		String oper = BerichtsheftPlugin.getProperty("TRANSPORT_OPER");
+		String oper = getProperty("TRANSPORT_OPER");
 		oper = param(oper, 1, params);
 		if (notNullOrEmpty(profile) && ProfileManager.transportsLoaded()) {
 			boolean download = "download".equals(oper);
@@ -458,9 +459,9 @@ public class ProfileManager extends ManagerBase<Element>
 
 	public static ValMap getProfileAsMap(Object...params) {
 		ValMap map = vmap();
-		String profile = BerichtsheftPlugin.getProperty("TRANSPORT_PROFILE");
+		String profile = getProperty("TRANSPORT_PROFILE");
 		profile = param_String(profile, 0, params);
-		String oper = BerichtsheftPlugin.getProperty("TRANSPORT_OPER");
+		String oper = getProperty("TRANSPORT_OPER");
 		oper = param_String(oper, 1, params);
 		if (notNullOrEmpty(profile) && transportsLoaded()) {
 			String xpath = "/TRANSPORTS/PROFILE[@name='" + profile + "' and @oper='" + oper + "']";

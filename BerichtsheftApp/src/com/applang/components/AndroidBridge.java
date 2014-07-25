@@ -3,6 +3,7 @@ package com.applang.components;
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
 import static com.applang.SwingUtil.*;
+import static com.applang.PluginUtils.*;
 
 import java.awt.Component;
 import java.awt.GridBagConstraints;
@@ -33,7 +34,6 @@ import javax.swing.event.AncestorListener;
 import org.apache.commons.lang.StringUtils;
 import org.gjt.sp.jedit.View;
 
-import com.applang.Util.ValList;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 
@@ -236,7 +236,7 @@ public class AndroidBridge
 		boolean isDirectory = name.endsWith("/");
 		if ("mkdir".equals(oper)) {
 			if (!isDirectory) {
-				message(BerichtsheftPlugin.getProperty("berichtsheft.android-sdcard-directory.message"));
+				message(getProperty("berichtsheft.android-sdcard-directory.message"));
 				return false;
 			}
 		}
@@ -350,7 +350,7 @@ public class AndroidBridge
 	}
 
 	public static String awkCommand(String part) {
-		String cmd = BerichtsheftPlugin.getProperty("AWK_COMMAND"); 
+		String cmd = getProperty("AWK_COMMAND"); 
 		return cmd + " " + enclose("'", part);
 	}
 

@@ -695,7 +695,7 @@ public class DataView extends JPanel implements IComponent
 		}
 		@Override
 		public int getColumnCount() {
-			return 6;
+			return 5;
 		}
 		@Override
 		public String getColumnName(int column) {

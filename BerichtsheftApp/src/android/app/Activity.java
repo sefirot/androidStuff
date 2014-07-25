@@ -5,6 +5,7 @@ import java.lang.reflect.Method;
 import javax.swing.JFrame;
 
 import com.applang.SwingUtil.Behavior;
+import com.applang.berichtsheft.BerichtsheftActivity;
 
 import android.app.Dialog;
 import android.content.Context;
@@ -14,7 +15,6 @@ import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
-
 import static com.applang.Util.*;
 
 public class Activity extends Context
@@ -25,6 +25,10 @@ public class Activity extends Context
 		"com.applang.action.PROMPT", "com.applang.Dialogs", 
 		"com.applang.action.CONSTRUCT", "com.applang.ConstructDialogs"
 	);
+
+	public static Activity getInstance() {
+		return new Activity();
+	}
 	
 	private Activity mParent = null;
 	

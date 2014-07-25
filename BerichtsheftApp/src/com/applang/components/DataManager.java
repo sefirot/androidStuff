@@ -9,7 +9,6 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.util.Date;
@@ -29,6 +28,7 @@ import org.gjt.sp.jedit.View;
 import org.gjt.sp.jedit.textarea.TextArea;
 
 import com.applang.Dialogs;
+import com.applang.PluginUtils;
 import com.applang.PromptDirective;
 import com.applang.berichtsheft.BerichtsheftActivity;
 import com.applang.berichtsheft.BerichtsheftApp;
@@ -40,7 +40,6 @@ import android.content.ContentUris;
 import android.content.ContentValues;
 import android.net.Uri;
 import android.util.Log;
-
 import static com.applang.Util.*;
 import static com.applang.Util1.*;
 import static com.applang.Util2.*;
@@ -48,30 +47,12 @@ import static com.applang.SwingUtil.*;
 
 public class DataManager extends ActionPanel
 {
-    protected static final String TAG = DataManager.class.getSimpleName();
+    private static final String TAG = DataManager.class.getSimpleName();
     
 	public static final int TABLE = 0;
 	public static final int FORM = 1;
 	public static final int TEXT = 2;
 	public static final int SCRIPT = 3;
-	
-	public static String propsToFile(Properties props, String name) {
-		String path = tempPath() + PATH_SEP + name;
-		try {
-			Writer writer = write(new StringWriter(), ":");
-			writer = write_assoc(writer, BerichtsheftPlugin.MAGIC, "data-manage");
-			writer = write(writer, ":");
-			writer = write_assoc(writer, "wrap", "none");
-			writer = write(writer, ":");
-			FileWriter fileWriter = new FileWriter(path);
-			props.store(fileWriter, writer.toString());
-			fileWriter.close();
-		}
-		catch (Exception e) {
-			Log.e(TAG, "installDataManager", e);
-		}
-		return path;
-	}
 	
 	private Properties props;
 	private String name;
@@ -129,7 +110,7 @@ public class DataManager extends ActionPanel
 				createAnotherPane(++index, star == TABLE);
 		}
 		props.getProperty("constellation", config);
-		propsToFile(props, name);
+		PluginUtils.magicFile(name, "data-manage", props);
 	}
 	
 	public void modifyConstellation(final Component component) {
@@ -179,9 +160,9 @@ public class DataManager extends ActionPanel
 
 	private MouseListener clickListener = new MouseAdapter() {
 		@Override
-		public void mouseClicked(MouseEvent e) {
-			final Component component = (Component) e.getSource();
-			boolean controlKeyPressed = (e.getModifiers() & ActionEvent.CTRL_MASK) == ActionEvent.CTRL_MASK;
+		public void mouseClicked(MouseEvent ev) {
+			final Component component = (Component) ev.getSource();
+			boolean controlKeyPressed = isCtrlKeyHeld(ev);
 			println((controlKeyPressed ? "C + " : "") + "mouseClick", identity(component));
 			if (controlKeyPressed) {
 				modifyConstellation(component);
@@ -370,7 +351,7 @@ public class DataManager extends ActionPanel
 				catch(Exception e) {
 					Log.e(TAG, "layoutToggler", e);
 				};
-			propsToFile(props, name);
+			PluginUtils.magicFile(name, "data-manage", props);
 		}
 	};
 	
@@ -396,7 +377,7 @@ public class DataManager extends ActionPanel
 				}, 
 				isText);
 			setText(text);
-			propsToFile(props, name);
+			PluginUtils.magicFile(name, "data-manage", props);
 		}
 	};
 
@@ -486,7 +467,7 @@ public class DataManager extends ActionPanel
 					if (dataView.configureData(view, false)) {
 						String dbString = dataView.getUriString();
 						props.setProperty("uri", dbString);
-						propsToFile(props, name);
+						PluginUtils.magicFile(name, "data-manage", props);
 						initialize(dbString);
 					}
 					return null;
@@ -908,7 +889,7 @@ public class DataManager extends ActionPanel
 				public Component[] apply(final Component comp, Object[] parms) {
 					dm.getTableComponent().setPreferredSize(viewportSize);
 					dm.getFormComponent().setPreferredSize(viewportSize);
-					JSplitPane splitPane = splitPane(JSplitPane.VERTICAL_SPLIT, null);
+					JSplitPane splitPane = splitPane(JSplitPane.VERTICAL_SPLIT);
 					splitPane.setTopComponent(dm.getPane(0));
 					if (dm.getPanesCount() > 1) {
 						splitPane.setBottomComponent(dm.getPane(1));

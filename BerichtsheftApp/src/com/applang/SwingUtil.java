@@ -26,6 +26,7 @@ import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
 import java.awt.event.HierarchyEvent;
 import java.awt.event.HierarchyListener;
+import java.awt.event.InputEvent;
 import java.awt.event.ItemListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
@@ -121,7 +122,6 @@ import com.applang.Util.ValList;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.util.Log;
-
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
 
@@ -1583,6 +1583,10 @@ public class SwingUtil
         }
 	}
     
+    public static boolean isCtrlKeyHeld(InputEvent ev) {
+    	return (ev.getModifiers() & ActionEvent.CTRL_MASK) == ActionEvent.CTRL_MASK;
+    }
+    
     public static void mouseEventOutput(String eventDescription, MouseEvent e) {
         println(eventDescription
                 + " (" + e.getX() + "," + e.getY() + ")"
@@ -2105,11 +2109,12 @@ public class SwingUtil
 		return new Point(screenSize.width / 2, screenSize.height / 2);
 	}
 	
-	public static JSplitPane splitPane(int orientation, PropertyChangeListener dividerLocationListener) {
+	public static JSplitPane splitPane(int orientation, Object...params) {
 		JSplitPane splitPane = new JSplitPane(orientation);
 		splitPane.setResizeWeight(0.5);
 		splitPane.setOneTouchExpandable(true);
-		splitPane.addPropertyChangeListener("dividerLocation", dividerLocationListener);
+		splitPane.addPropertyChangeListener("dividerLocation", 
+				param((PropertyChangeListener)null,0,params));
 		return splitPane;
 	}
 	

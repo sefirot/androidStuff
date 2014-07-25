@@ -32,6 +32,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
+import com.applang.PluginUtils;
 import com.applang.berichtsheft.BerichtsheftActivity;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
@@ -39,17 +40,16 @@ import com.applang.berichtsheft.plugin.BerichtsheftShell;
 import com.applang.provider.WeatherInfo.Weathers;
 
 import console.Console;
-
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 import android.net.Uri;
 import android.util.Log;
 import android.widget.TextView;
-
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
 import static com.applang.SwingUtil.*;
+import static com.applang.PluginUtils.*;
 
 public class WeatherManager extends ActionPanel
 {
@@ -369,12 +369,12 @@ public class WeatherManager extends ActionPanel
 				Component component = new JScrollPane(textArea);
 				component.setPreferredSize(new Dimension(800,400));
 				int result = new AlertDialog(view, 
-						BerichtsheftPlugin.getProperty("datadock.weather.title"), 
+						getProperty("datadock.weather.title"), 
 						title, 
 						component, 
 						JOptionPane.OK_CANCEL_OPTION,
 						Behavior.MODAL, 
-						BerichtsheftPlugin.loadIcon("datadock.weather.icon"), 
+						loadIcon("datadock.weather.icon"), 
 						null).open().getResult();
 				if (result != JOptionPane.OK_OPTION)
 					return null;

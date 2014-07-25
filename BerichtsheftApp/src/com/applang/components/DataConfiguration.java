@@ -36,6 +36,7 @@ import android.content.DialogInterface.OnClickListener;
 import android.content.SharedPreferences;
 import android.net.Uri;
 
+import com.applang.PluginUtils;
 import com.applang.SwingUtil.MapEditorComponent;
 import com.applang.berichtsheft.BerichtsheftActivity;
 import com.applang.berichtsheft.BerichtsheftApp;
@@ -47,6 +48,7 @@ import static com.applang.SwingUtil.*;
 import static com.applang.Util.*;
 import static com.applang.Util1.*;
 import static com.applang.Util2.*;
+import static com.applang.PluginUtils.*;
 
 @SuppressWarnings("rawtypes")
 public class DataConfiguration
@@ -172,8 +174,7 @@ public class DataConfiguration
 			tables[1] = findFirstComponent(component, "table");
 			tables[1].setPreferredScrollableViewportSize(scaledDimension(size, 1.0, 1.2));
 			panel.add(component);
-			component = new MapEditorComponent(options, 
-					_null());
+			component = new MapEditorComponent(options, _null());
 			panel.add(component);
 		}
 		tables[0].getSelectionModel().addListSelectionListener(
@@ -283,7 +284,7 @@ public class DataConfiguration
 			}
 		});
 		box.add(entry);
-		box.add(BerichtsheftPlugin.makeCustomButton("datadock.choose-db", new ActionListener() {
+		box.add(makeCustomButton("datadock.choose-db", new ActionListener() {
 			public void actionPerformed(ActionEvent evt) {
 				File dbFile = DataView.chooseDb(BerichtsheftPlugin.fileChooser(view), true, path, true);
 				if (dbFile != null) {
@@ -294,7 +295,7 @@ public class DataConfiguration
 					setDbFile(dbFile, null);
 				}
 				else
-					alert(BerichtsheftPlugin.getProperty("dataview.sqlite-required.message"));
+					alert(getProperty("dataview.sqlite-required.message"));
 			}
 		}, false));
 		setMaximumDimension(box, 100);
@@ -399,6 +400,7 @@ public class DataConfiguration
 		String tableName = dbTableName(uri);
 		uri = uri.buildUpon().query(null).fragment(null).build();
 		dbTable(uri, tableName);
+		getContext().registerFlavor(flavor, database);
 		setUri(uri);
 	}
 

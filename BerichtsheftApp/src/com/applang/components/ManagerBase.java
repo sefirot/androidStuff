@@ -23,6 +23,7 @@ import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 
 import static com.applang.SwingUtil.*;
 import static com.applang.Util.*;
+import static com.applang.PluginUtils.*;
 
 @SuppressWarnings("rawtypes")
 public class ManagerBase<T extends Object> extends JComponent implements IComponent
@@ -88,7 +89,7 @@ public class ManagerBase<T extends Object> extends JComponent implements ICompon
 				String string = exists ? 
 						"manager.save.message.1" : 
 						"manager.save.message.2";
-				string = BerichtsheftPlugin.getProperty(string);
+				string = getProperty(string);
 				return question(String.format(string, toString(item)), 
 						null,
 						JOptionPane.YES_NO_OPTION);
@@ -130,7 +131,7 @@ public class ManagerBase<T extends Object> extends JComponent implements ICompon
 				param("Are you sure", 0, params), 
 				5, 
 				Behavior.MODAL, 
-				BerichtsheftPlugin.loadIcon("manager.action-DELETE.icon"), 
+				loadIcon("manager.action-DELETE.icon"), 
 				null).open().getResult();
 		if (decision < 2)
 			return true;
@@ -150,7 +151,7 @@ public class ManagerBase<T extends Object> extends JComponent implements ICompon
 	}
 
 	protected Boolean do_delete(Object item) throws Throwable {
-		String string = BerichtsheftPlugin.getProperty("manager.delete.message.1");
+		String string = getProperty("manager.delete.message.1");
 		if (_question(toLongString(item), string)) {
 			setDirty(false);
 			return remove(item);
@@ -160,7 +161,7 @@ public class ManagerBase<T extends Object> extends JComponent implements ICompon
 	
 	protected boolean deleteThis(Object item) {
 		String string = 
-				String.format(BerichtsheftPlugin.getProperty("manager.delete.message"), toString(item));
+				String.format(getProperty("manager.delete.message"), toString(item));
 		if (isItemValid(item) && question(string, null, JOptionPane.YES_NO_OPTION)) {
 			setDirty(false);
 			return true;
@@ -194,12 +195,12 @@ public class ManagerBase<T extends Object> extends JComponent implements ICompon
 	}
 	
 	public void installAddRemove(Container container, final String itemName) {
-		container.add(BerichtsheftPlugin.makeCustomButton("manager.add", new ActionListener() {
+		container.add(makeCustomButton("manager.add", new ActionListener() {
 			public void actionPerformed(ActionEvent evt) {
 				save(getItem(), true);
 			}
 		}, false));
-		container.add(BerichtsheftPlugin.makeCustomButton("manager.remove", new ActionListener() {
+		container.add(makeCustomButton("manager.remove", new ActionListener() {
 			public void actionPerformed(ActionEvent evt) {
 				delete(getItem());
 			}
@@ -209,14 +210,14 @@ public class ManagerBase<T extends Object> extends JComponent implements ICompon
 	private AbstractButton[] buttons = new AbstractButton[2];
 	
 	public void installUpdate(Container container) {
-		container.add(buttons[0] = BerichtsheftPlugin.makeCustomButton("manager.update-change", 
+		container.add(buttons[0] = makeCustomButton("manager.update-change", 
 				new ActionListener() {
 					public void actionPerformed(ActionEvent evt) {
 						updateChange(true);
 					}
 				}, 
 				false));
-		container.add(buttons[1] = BerichtsheftPlugin.makeCustomButton("manager.erase-change", 
+		container.add(buttons[1] = makeCustomButton("manager.erase-change", 
 				new ActionListener() {
 					public void actionPerformed(ActionEvent evt) {
 						updateChange(false);

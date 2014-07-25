@@ -15,13 +15,14 @@ import javax.swing.BoxLayout;
 import javax.swing.JPanel;
 import javax.swing.JToggleButton;
 
-import com.applang.UserContext;
+import com.applang.PluginUtils;
 import com.applang.berichtsheft.BerichtsheftApp;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
 import static com.applang.SwingUtil.*;
+import static com.applang.PluginUtils.*;
 
 public class ActionPanel extends ManagerBase<Object>
 {
@@ -106,15 +107,15 @@ public class ActionPanel extends ManagerBase<Object>
 	    public String resourceName()   { return resourceName; }
 		@Override
 		public String iconName() {
-			return BerichtsheftPlugin.getProperty(resourceName + ".icon");
+			return getProperty(resourceName + ".icon");
 		}
 		@Override
 		public String description() {
-			return BerichtsheftPlugin.getProperty(resourceName.concat(".label"));
+			return getProperty(resourceName.concat(".label"));
 		}
 		@Override
 		public String name(int state) {
-			return BerichtsheftPlugin.getProperty(resourceName.concat(".label") + "." + state);
+			return getProperty(resourceName.concat(".label") + "." + state);
 		}
 	}
 
@@ -170,7 +171,7 @@ public class ActionPanel extends ManagerBase<Object>
 	}
 	
 	public void addButton(Container container, int index, CustomAction customAction, int...bar) {
-		_add(container, index, BerichtsheftPlugin.makeCustomButton(customAction, false), bar);
+		_add(container, index, makeCustomButton(customAction, false), bar);
 	}
 	
 	public void addToggle(Container container, int index, CustomAction customAction, int...bar) {

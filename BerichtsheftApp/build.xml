@@ -86,13 +86,14 @@
 	<tempfile property="temp.sh" prefix="link" suffix=".sh"/>
     
     <target name="compile">
-    	<echo file="${temp.sh}" append="false">#!/bin/sh
-mkdir ${abs.build.dir}
+    	<echo file="${temp.sh}" append="false">
+#!/bin/sh
+mkdir ${abs.build.dir} 2&gt;/dev/null
 cd ${abs.build.dir}
 rm -rf classes
 ln -s ../bin classes
 rm $0
-</echo>
+		</echo>
     	<echo message="${temp.sh}" />
 		<exec executable = "bash">
 			<arg value="${temp.sh}" />
@@ -100,7 +101,7 @@ rm $0
     </target>
 	
     <path id="JUnit.libraryclasspath">
-        <pathelement location="/home/lotharla/eclipse/plugins/org.junit_3.8.2.v3_8_2_v20100427-1100/junit.jar"/>
+        <pathelement location="/opt/eclipse-4.3.2/plugins/org.junit_4.11.0.v201303080030/junit.jar"/>
     </path>
     <path id="run.class.path">
 		<fileset dir=".jedit">
@@ -110,36 +111,51 @@ rm $0
     </path>
 	
 	<target name="run" depends="build">
-        <java fork="true" classname="com.applang.berichtsheft.BerichtsheftApp"
+        <java fork="true" jar=".jedit/jedit.jar"
             classpathref="run.class.path">
+			<arg value="-nosplash"/>
+			<arg value="-settings=.jedit"/>
         </java>
 	</target>
 	
-	<target name="run-debug" depends="build">
-		<java jar=".jedit/jedit.jar"
-		      fork="true" spawn="true"
-		      classpathref="run.class.path">
-			<jvmarg value="-agentlib:jdwp=transport=dt_socket,server=y,address=localhost:5005,timeout=60000"/>
+	<target name="run-special" depends="build">
+        <java fork="true" classname="com.applang.components.DataConfiguration"
+            classpathref="run.class.path">
 			<arg value="-nosplash"/>
-			<arg value="-settings=/home/lotharla/work/Niklas/androidStuff/BerichtsheftApp/.jedit"/>
-		</java>
+			<arg value="-settings=.jedit"/>
+        </java>
+	</target>
+	
+	<macrodef name="run.debug">
+		<attribute name="class.name" default="org.gjt.sp.jedit.jEdit" />
+		<attribute name="jvm.arg" default="-agentlib:jdwp=transport=dt_socket,server=y,address=localhost:5005,timeout=60000" />
+		<sequential>
+			<java classname="@{class.name}"
+			      fork="true" spawn="true"
+			      classpathref="run.class.path">
+				<jvmarg value="@{jvm.arg}"/>
+				<arg value="-nosplash"/>
+				<arg value="-settings=.jedit"/>
+			</java>
+		</sequential>
+	</macrodef>
+	
+	<target name="run-debug" depends="build">
+		<run.debug />
+	</target>
+
+	<target name="run-nodebug" depends="build">
+		<run.debug jvm.arg="-da"/>
 	</target>
 	
 	<target name="run-debug-special" depends="build">
-		<java classname="com.applang.components.DataConfiguration"
-		      fork="true" spawn="true"
-		      classpathref="run.class.path">
-			<jvmarg value="-agentlib:jdwp=transport=dt_socket,server=y,address=localhost:5005,timeout=60000"/>
-			<arg value="-nosplash"/>
-			<arg value="-settings=/home/lotharla/work/Niklas/androidStuff/BerichtsheftApp/.jedit"/>
-		</java>
+		<run.debug class.name="com.applang.berichtsheft.plugin.DataDockable" />
 	</target>
-
-	<target name="run-special">
-        <java jvm="/usr/lib/jvm/jre1.7.0_45-i586/bin/java" fork="true" 
-			classname="com.applang.components.DataConfiguration"
-            classpathref="run.class.path">
-        </java>
+<!--
+		<run.debug class.name="com.applang.berichtsheft.BerichtsheftApp" />
+ -->
+	<target name="run-nodebug-special" depends="build">
+		<run.nodebug class.name="com.applang.berichtsheft.plugin.DataDockable" />
 	</target>
 
 	<target name="test-special" depends="build">
@@ -176,17 +192,16 @@ rm $0
 	    </junit>
 	</target>
 <!--
- -->	
-	<target name="replicant">
-		<jar destfile="../DoubleFeature_Plugin/libs/replicant.jar">
-	        <fileset dir="${bin.dir}">
-	          <or>
-				<filename name="android/**/*.class"/>
-				<filename name="com/applang/Util*.class"/>
-				<filename name="com/applang/SwingUtil*.class"/>
-	          </or>
+		<echo file="/tmp/output.txt" message="jedit.settings.files : ${toString:jedit.settings.files}" />
+ -->
+	<target name="clean.jedit.settings.files">
+		<delete>
+	        <fileset dir=".jedit">
+				<exclude name="jedit.jar"/>
+				<include name="*" />
+				<include name="DockableWindowManager/*" />
 	        </fileset>
-		</jar>
+		</delete>
 	</target>
 	
 </project>

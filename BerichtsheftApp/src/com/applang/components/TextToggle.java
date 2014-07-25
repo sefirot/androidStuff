@@ -36,6 +36,7 @@ import org.gjt.sp.jedit.textarea.TextArea;
 
 import android.util.Log;
 
+import com.applang.PluginUtils;
 import com.applang.Util;
 import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
 import com.inet.jortho.SpellChecker;
@@ -43,6 +44,7 @@ import com.inet.jortho.SpellChecker;
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
 import static com.applang.SwingUtil.*;
+import static com.applang.PluginUtils.*;
 
 public class TextToggle extends DoubleFeature implements ITextComponent
 {
@@ -106,9 +108,9 @@ public class TextToggle extends DoubleFeature implements ITextComponent
 	//	no problems in BorderLayout
 	public TextToggle createBufferedTextArea(String modeName, String modeFileName) {
 		TextArea textArea;
-		String settingsDir = BerichtsheftPlugin.getSettingsDirectory();
+		String settingsDir = PluginUtils.getSettingsDirectory();
 		boolean useEmbedded = false;
-		if (useEmbedded && BerichtsheftPlugin.insideJEdit()) {
+		if (useEmbedded && PluginUtils.insideJEdit()) {
 			textArea = new JEditEmbeddedTextArea() {
 				{
 					setRightClickPopupEnabled(true);
@@ -126,10 +128,10 @@ public class TextToggle extends DoubleFeature implements ITextComponent
 			String keymapFileName = pathCombine(keymapDirName, "imported_keys.props");
 			if (!fileExists(keymapFileName))
 				keymapFileName = pathCombine(keymapDirName, "jedit_keys.props");
-			props.putAll(BerichtsheftPlugin.loadProperties(keymapFileName));
-			props.putAll(BerichtsheftPlugin.loadProperties("/org/gjt/sp/jedit/jedit.props"));
+			props.putAll(PluginUtils.loadProperties(keymapFileName));
+			props.putAll(PluginUtils.loadProperties("/org/gjt/sp/jedit/jedit.props"));
 			initBufferProperties(props);
-			String antiAlias = BerichtsheftPlugin.getProperty("view.antiAlias", "standard");
+			String antiAlias = getProperty("view.antiAlias", "standard");
 			props.setProperty("view.antiAlias", antiAlias);
 			props.setProperty("view.gutter.borderWidth", "0");
 			IPropertyManager propsMan = new IPropertyManager() {
@@ -266,12 +268,12 @@ public class TextToggle extends DoubleFeature implements ITextComponent
 		TextArea textArea = getTextArea();
 		JTextComponent textEditor = getTextEditor();
 		if (textEditor != null && textArea != null) {
-	        SpellChecker.register(textEditor);
+			spellChecking(textEditor, true);
 	        textEditor.setText(textArea.getText());
 			spellchecking = true;
 			textArea.setText(textEditor.getText());
 			spellchecking = false;
-	        SpellChecker.unregister(textEditor);
+			spellChecking(textEditor, false);
 		}
 	}
 	

@@ -23,10 +23,10 @@
 
 	<COMMANDS>
 		<COMMAND SHELL="System">
-			import com.applang.berichtsheft.plugin.*;
-			BerichtsheftPlugin.setProperty("ADB_OPERATION", oper);
-			BerichtsheftPlugin.setProperty("ANDROID_FILE", androidFile);
-			BerichtsheftPlugin.setProperty("PC_FILE", pcFile);
+			import com.applang.*;
+			PluginUtils.setProperty("ADB_OPERATION", oper);
+			PluginUtils.setProperty("ANDROID_FILE", androidFile);
+			PluginUtils.setProperty("PC_FILE", pcFile);
 			
 			buf = new StringBuffer();
 			if (androidFile.length() &gt; 0 &amp;&amp; pcFile.length() &gt; 0) {

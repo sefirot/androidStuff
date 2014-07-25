@@ -51,6 +51,7 @@ import static com.applang.SwingUtil.*;
 import static com.applang.Util.*;
 import static com.applang.Util1.*;
 import static com.applang.Util2.*;
+import static com.applang.PluginUtils.*;
 
 public class NotePicker extends ActionPanel
 {
@@ -58,7 +59,7 @@ public class NotePicker extends ActionPanel
 		SwingUtilities.invokeLater(new Runnable() {
 			public void run() {
 				BerichtsheftApp.loadSettings();
-				BerichtsheftPlugin.setupSpellChecker(BerichtsheftApp.applicationDataPath());
+				setupSpellChecker(BerichtsheftApp.applicationDataPath());
 				final DataView dataView = new DataView();
 				final TextToggle textToggle = new TextToggle()
 						.createBufferedTextArea("velocity", "/modes/velocity_pure.xml");
