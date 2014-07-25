@@ -451,6 +451,13 @@ public class Util
 			return defaultParam;
 	}
 	
+	public static boolean param(boolean defaultParam, int index, boolean...params) {
+		if (params != null && index > -1 && params.length > index)
+			return params[index];
+		else
+			return defaultParam;
+	}
+	
 	public static <P extends Object, T extends P> T param_T(T defaultParam, int index, P...params) {
 		T param = param(defaultParam, index, params);
 		if (isType(defaultParam, param))
@@ -1161,11 +1168,12 @@ public class Util
 	
 	public static String findFirstFile(File dir, Constraint constraint, String part) {
 		File[] files = dir.listFiles();
-    	for (File file : files) {
-    		String path = file.getPath();
-			if (file.isFile() && check(path, constraint, part))
-    			return path;
-    	}
+    	if (files != null)
+    		for (File file : files) {
+	    		String path = file.getPath();
+				if (file.isFile() && check(path, constraint, part))
+	    			return path;
+	    	}
 		return null;
 	}
     

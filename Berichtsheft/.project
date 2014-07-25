@@ -39,37 +39,37 @@
 		<link>
 			<name>res/layout/field_blob.xml</name>
 			<type>1</type>
-			<locationURI>copy_PARENT/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/field_blob.xml</locationURI>
+			<location>/home/lotharla/work/Niklas/androidStuff/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/field_blob.xml</location>
 		</link>
 		<link>
 			<name>res/layout/field_float.xml</name>
 			<type>1</type>
-			<locationURI>copy_PARENT/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/field_float.xml</locationURI>
+			<location>/home/lotharla/work/Niklas/androidStuff/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/field_float.xml</location>
 		</link>
 		<link>
 			<name>res/layout/field_integer.xml</name>
 			<type>1</type>
-			<locationURI>copy_PARENT/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/field_integer.xml</locationURI>
+			<location>/home/lotharla/work/Niklas/androidStuff/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/field_integer.xml</location>
 		</link>
 		<link>
 			<name>res/layout/field_string.xml</name>
 			<type>1</type>
-			<locationURI>copy_PARENT/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/field_string.xml</locationURI>
+			<location>/home/lotharla/work/Niklas/androidStuff/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/field_string.xml</location>
 		</link>
 		<link>
 			<name>res/layout/field_text.xml</name>
 			<type>1</type>
-			<locationURI>copy_PARENT/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/field_text.xml</locationURI>
+			<location>/home/lotharla/work/Niklas/androidStuff/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/field_text.xml</location>
 		</link>
 		<link>
 			<name>res/layout/linearlayout.xml</name>
 			<type>1</type>
-			<locationURI>copy_PARENT/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/linearlayout.xml</locationURI>
+			<location>/home/lotharla/work/Niklas/androidStuff/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/linearlayout.xml</location>
 		</link>
 		<link>
 			<name>res/layout/relativelayout.xml</name>
 			<type>1</type>
-			<locationURI>copy_PARENT/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/relativelayout.xml</locationURI>
+			<location>/home/lotharla/work/Niklas/androidStuff/BerichtsheftApp/.jedit/plugins/berichtsheft/res/layout/relativelayout.xml</location>
 		</link>
 	</linkedResources>
 	<variableList>
