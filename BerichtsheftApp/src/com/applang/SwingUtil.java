@@ -122,6 +122,7 @@ import com.applang.Util.ValList;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.util.Log;
+import android.widget.Toast;
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
 
@@ -1239,6 +1240,10 @@ public class SwingUtil
 			else
 				alert(text);
 		}
+	}
+	
+	public static void longToast(String text) {
+		Toast.makeText(Activity.getInstance(), text, Toast.LENGTH_LONG).show(true);
 	}
 
 	public static void alert(Object...params) {

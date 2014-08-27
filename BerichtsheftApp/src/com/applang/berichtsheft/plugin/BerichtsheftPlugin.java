@@ -7,6 +7,7 @@ import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.InputEvent;
+import java.awt.event.MouseListener;
 import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
@@ -42,7 +43,6 @@ import com.applang.components.AndroidBridge;
 import com.applang.components.DataConfiguration;
 import com.applang.components.DataManager;
 import com.applang.components.DataView;
-import com.applang.components.DoubleFeature;
 import com.applang.components.DoubleFeaturePlugin;
 import com.applang.components.ManagerBase;
 import com.applang.components.TextEdit;
@@ -112,11 +112,11 @@ public class BerichtsheftPlugin extends DoubleFeaturePlugin
 	}
 	
 	@Override
-	protected JComponent trueMagicWidget(JComponent widget, BufferChanging msg) {
+	protected JComponent featuredWidget(JComponent widget, BufferChanging msg) {
 		if (widget instanceof DataManager.DataPanel) {
 			DataManager dm = ((DataManager.DataPanel)widget).getDataManager();
-			if (msg instanceof MagicBufferChanging) {
-				InputEvent ev = ((MagicBufferChanging)msg).inputEvent;
+			if (msg instanceof FeatureBufferChanging) {
+				InputEvent ev = ((FeatureBufferChanging)msg).inputEvent;
 				dm.setIndex(isCtrlKeyHeld(ev) ? 1 : 0);
 			}
 			widget = dm.getPane(dm.getIndex());
@@ -125,26 +125,27 @@ public class BerichtsheftPlugin extends DoubleFeaturePlugin
 	}
 
 	@Override
-	protected JComponent constructMagicContainer(final Buffer buffer, String magic, Object...params) throws IOException {
-		JComponent container = super.constructMagicContainer(buffer, magic, params);
-		if (magic.startsWith("data")) {
+	protected JComponent constructFeature(final Buffer buffer, String feature, JComponent container, Object...params) throws IOException {
+		container = super.constructFeature(buffer, feature, container, params);
+		if (feature.startsWith("data")) {
 			buffer.setAutoReloadDialog(false);
 			buffer.setAutoReload(true);
-			Properties props = param(new Properties(), 0, params);
+			Properties props = param(new Properties(), 1, params);
 			String text = buffer.getText();
 			props.load(new StringReader(text));
-			DataManager dm = new DataManager(view, props, buffer.getName(), focusClickListener);
+			MouseListener focusRequestListener = param(null, 0, params);
+			DataManager dm = new DataManager(view, props, buffer.getName(), focusRequestListener);
 			container = dm.getPane(0);
 		}
 		else {
-			if (magic.startsWith("spell")) {
+			if (feature.startsWith("spell")) {
 				TextEdit textEdit = new TextEdit();
 				addNamePart(textEdit.getTextComponent(), DoubleFeature.FOCUS);
 				textEdit.installSpellChecker();
 				textEdit.setText(buffer.getText());
 				container = new JPanel(new BorderLayout());
 				addCenterComponent(textEdit.getComponent(), container);
-				if (magic.equals("spellcheck")) {
+				if (feature.equals("spellcheck")) {
 					final JToolBar bar = northToolBar(container, BorderLayout.SOUTH);
 					bar.add(new ManagerBase<Object>() {
 						{
@@ -154,13 +155,13 @@ public class BerichtsheftPlugin extends DoubleFeaturePlugin
 										public void actionPerformed(ActionEvent e) {
 											EditPane[] editPanes = getEditPanesFor(buffer);
 											if (editPanes.length > 0) {
-												DoubleFeature df = doubleFeatures.getValue(editPanes[0]);
+												DoubleFeature df = doubleFeatures.get(editPanes[0]);
 												JTextComponent textComponent = (JTextComponent) 
 													findFirstComponent(df.getWidget(), 
 															DoubleFeature.FOCUS, Constraint.AMONG);
 												df.getTextArea2().setText(textComponent.getText());
 											}
-											removeMagic(buffer);
+											removeFeature(buffer);
 											bufferChange(buffer);
 										}
 									});
@@ -168,7 +169,7 @@ public class BerichtsheftPlugin extends DoubleFeaturePlugin
 									REJECT_BUTTON_KEY, 
 									new ActionListener() {
 										public void actionPerformed(ActionEvent e) {
-											removeMagic(buffer);
+											removeFeature(buffer);
 											bufferChange(buffer);
 										}
 									});
@@ -186,8 +187,8 @@ public class BerichtsheftPlugin extends DoubleFeaturePlugin
 	}
 	
 	@Override
-	protected void deconstructMagicContainer(String magic, JComponent container) {
-		if (!magic.startsWith("data")) {
+	protected void deconstructFeature(String feature, JComponent container) {
+		if (!feature.startsWith("data")) {
 			installFocusClickListener(container, false);
 			removeNamePart(container, DoubleFeature.FOCUS);
 		}
@@ -198,7 +199,7 @@ public class BerichtsheftPlugin extends DoubleFeaturePlugin
 		if (doubleFeature != null) {
 			Properties props = new Properties();
 			if (DataConfiguration.dataProperties(editPane.getView(), props)) {
-				String path = magicFile(getNextMagicTemp(), "data-manage", props);
+				String path = featureFile(getNextFeatureTemp(), "data-manage", props);
 				jEdit.openFile(editPane, path);
 			}
 		}

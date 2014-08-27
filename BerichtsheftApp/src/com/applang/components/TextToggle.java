@@ -38,8 +38,6 @@ import android.util.Log;
 
 import com.applang.PluginUtils;
 import com.applang.Util;
-import com.applang.berichtsheft.plugin.BerichtsheftPlugin;
-import com.inet.jortho.SpellChecker;
 
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
@@ -48,6 +46,8 @@ import static com.applang.PluginUtils.*;
 
 public class TextToggle extends DoubleFeature implements ITextComponent
 {
+    private static final String TAG = TextToggle.class.getSimpleName();
+    
 	public TextToggle() {
 		this(new TextEdit());
 	}
@@ -96,6 +96,11 @@ public class TextToggle extends DoubleFeature implements ITextComponent
 	public boolean hasView() {
 		View view = getView();
 		return view != null && view.getTextArea() != null;
+	}
+	
+	@Override
+	public Component getUIComponent() {
+		return super.getFeature();
 	}
 	
 	@Override

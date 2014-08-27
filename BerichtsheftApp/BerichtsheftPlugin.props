@@ -32,8 +32,8 @@ plugin.com.applang.berichtsheft.plugin.BerichtsheftPlugin.menu=datadock \
 	- \
 	datadock.choose-uri \
 	datadock.update-uri \
-	berichtsheft.spellcheck-selection \
-	magic.data-manage
+	berichtsheft.spellcheck-selection
+#	magic.data-manage
 
 # action labels for actions supplied by dockables.xml
 datadock.label=Data
@@ -189,7 +189,7 @@ datadock.transport-from-buffer.label=Pull selected text from current buffer into
 datadock.transport-to-buffer.label=Push selected items to current buffer
 datadock.download-to-buffer.label=Download content to current buffer
 berichtsheft.spellcheck-selection.label=Spellcheck selection
-magic.data-manage.label=Manage data
+#magic.data-manage.label=Manage data
 manager.add.label=add new item
 manager.remove.label=remove old item
 berichtsheft.insert-enter.label=insert 'new line' character into template at current position

@@ -103,7 +103,6 @@ import android.widget.Toast;
 
 import com.applang.BaseDirective;
 import com.applang.Dialogs;
-import com.applang.PluginUtils;
 import com.applang.PromptDirective;
 import com.applang.UserContext.EvaluationTask;
 import com.applang.berichtsheft.BerichtsheftActivity;
@@ -1893,7 +1892,7 @@ public class HelperTests extends TestCase
 	
 	public void testMagic() {
 		Properties props = new Properties();
-		String path = magicFile(getNextMagicTemp(), "spell", props);
+		String path = featureFile(getNextFeatureTemp(), "spell", props);
 		println(contentsFromFile(new File(path)));
 	}
 	

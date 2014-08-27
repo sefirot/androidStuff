@@ -10,8 +10,10 @@ import java.awt.event.MouseListener;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
+import java.util.Map;
 
 import javax.swing.BorderFactory;
 import javax.swing.JComponent;
@@ -36,15 +38,12 @@ import org.gjt.sp.jedit.msg.EditPaneUpdate;
 import org.gjt.sp.jedit.msg.ViewUpdate;
 import org.gjt.sp.jedit.textarea.Gutter;
 import org.gjt.sp.jedit.visitors.JEditVisitorAdapter;
+import org.gjt.sp.util.Log;
 
-import android.util.Log;
 import static com.applang.SwingUtil.*;
 import static com.applang.Util.*;
 import static com.applang.Util2.*;
 import static com.applang.PluginUtils.*;
-
-import com.applang.Util.Constraint;
-import com.applang.components.DoubleFeature;
 
 /**
  * The DoubleFeature plugin
@@ -52,8 +51,6 @@ import com.applang.components.DoubleFeature;
  */
 public class DoubleFeaturePlugin extends EditPlugin 
 {
-    private static final String TAG = DoubleFeaturePlugin.class.getSimpleName();
-
     protected static DoubleFeaturePlugin self = null;
 
 	@Override
@@ -78,7 +75,8 @@ public class DoubleFeaturePlugin extends EditPlugin
 		}
 	}
 	
-	protected BidiMultiMap doubleFeatures = bmap(3);
+	protected HashMap<EditPane, DoubleFeature> doubleFeatures = 
+		new HashMap<EditPane, DoubleFeature>();
 	
 	@EBHandler
 	public void handleEditPaneUpdate(EditPaneUpdate msg)
@@ -88,18 +86,18 @@ public class DoubleFeaturePlugin extends EditPlugin
 			registerEditPane(editPane);
 		}
 		else if (msg.getWhat() == EditPaneUpdate.DESTROYED) {
-			DoubleFeature doubleFeature = doubleFeatures.getValue(editPane);
-			doubleFeatures.removeKey(editPane);
+			DoubleFeature doubleFeature = doubleFeatures.get(editPane);
+			doubleFeatures.remove(editPane);
 			no_println("unregistered", doubleFeature);
 			editPane.removeAncestorListener(ancestorListener);
 		}
 	}
 	
 	public DoubleFeature registerEditPane(EditPane editPane) {
-		DoubleFeature doubleFeature = doubleFeatures.getValue(editPane);
+		DoubleFeature doubleFeature = doubleFeatures.get(editPane);
 		if (doubleFeature == null) {
 			doubleFeature = new DoubleFeature(editPane.getTextArea());
-			doubleFeatures.add(editPane, doubleFeature, false);
+			doubleFeatures.put(editPane, doubleFeature);
 			no_println("registered", doubleFeature);
 			editPane.addAncestorListener(ancestorListener);
 		}
@@ -115,9 +113,9 @@ public class DoubleFeaturePlugin extends EditPlugin
 		}
 		public void ancestorMoved(AncestorEvent event) {
 			EditPane editPane = (EditPane) event.getSource();
-			for (Object pane : doubleFeatures.getKeys()) {
-				boolean focused = doubleFeatures.getValue(pane, 2);
-				if (editPane.equals(pane) && focused)
+			for (Object pane : doubleFeatures.keySet()) {
+				DoubleFeature doubleFeature = doubleFeatures.get(pane);
+				if (editPane.equals(pane) && doubleFeature.focused)
 					focusRequest((EditPane) editPane);
 			}
 		}
@@ -138,10 +136,10 @@ public class DoubleFeaturePlugin extends EditPlugin
 				if (fileExists(buffer.getPath()))
 					return;
 			}
-			if (magicBuffers.containsKey(buffer)) {
+			if (featuredBuffers.containsKey(buffer)) {
 				doubleFeature.toggle(true, new Job<Container>() {
 					public void perform(Container c, Object[] parms) throws Exception {
-						doMagic(doubleFeature, buffer, msg);
+						doFeature(doubleFeature, buffer, msg);
 					}
 				});
 				diag_println(DIAG_OFF, "featured", identity(pane), doubleFeature);
@@ -157,18 +155,18 @@ public class DoubleFeaturePlugin extends EditPlugin
 		}
 	};
 	
-	protected static class MagicBufferChanging extends BufferChanging
+	protected static class FeatureBufferChanging extends BufferChanging
 	{
 		public InputEvent inputEvent;
 		
-		public MagicBufferChanging(Component component, Buffer newBuffer, InputEvent inputEvent) {
+		public FeatureBufferChanging(Component component, Buffer newBuffer, InputEvent inputEvent) {
 			super((EditPane) SwingUtilities.getAncestorOfClass(EditPane.class, component), newBuffer);
 			this.inputEvent = inputEvent;
 		}
 	}
 	
 	@EBHandler
-	public void handleMagicBufferChanging(MagicBufferChanging msg)
+	public void handleFeatureBufferChanging(FeatureBufferChanging msg)
 	{
 		if (msg.getWhat() == EditPaneUpdate.BUFFER_CHANGING) {
 			handleBufferChanging(msg);
@@ -179,14 +177,15 @@ public class DoubleFeaturePlugin extends EditPlugin
 		SwingUtilities.invokeLater(new Runnable() {
 			public void run() {
 				setEditPane(focusPane);
-				DoubleFeature doubleFeature = doubleFeatures.getValue(focusPane);
+				DoubleFeature doubleFeature = doubleFeatures.get(focusPane);
 				if (doubleFeature != null)
 					doubleFeature.requestFocus();
 				updateGutters(view, focusPane);
 				String s = "";
-				for (Object pane : doubleFeatures.getKeys()) {
+				for (Object pane : doubleFeatures.keySet()) {
 					boolean focused = focusPane.equals(pane);
-					doubleFeatures.putValue(pane, focused, 2);
+					doubleFeature = doubleFeatures.get(pane);
+					doubleFeature.focused = focused;
 					s += enclose(focused ? "(" : "", identity(pane), focused ? ")" : "", " ");
 				}
 				diag_println(DIAG_OFF, "focused", s);
@@ -219,9 +218,9 @@ public class DoubleFeaturePlugin extends EditPlugin
 	}
 	
 	protected boolean setGutterBorder(Component component, Border border) {
-		if (component instanceof MagicContainer) {
-			MagicContainer mc = (MagicContainer) component;
-			mc.getGutter().setBorder(border);
+		if (component instanceof FeatureContainer) {
+			FeatureContainer fc = (FeatureContainer) component;
+			fc.getGutter().setBorder(border);
 			return true;
 		}
 		else
@@ -235,7 +234,7 @@ public class DoubleFeaturePlugin extends EditPlugin
 			EditPane editPane = editPanes[i];
 			final Border border = getGutterBorder(editPane, 
 					editPane.equals(focusPane) ? "focusBorder" : "noFocusBorder");
-			if (magicBuffers.containsKey(editPane.getBuffer())) {
+			if (featuredBuffers.containsKey(editPane.getBuffer())) {
 				findFirstComponent(editPane, new Predicate<Component>() {
 					public boolean apply(Component c) {
 						return setGutterBorder(c, border);
@@ -250,7 +249,7 @@ public class DoubleFeaturePlugin extends EditPlugin
 	
 	private Hashtable<DoubleFeature,Buffer> pendingFeatures = new Hashtable<DoubleFeature,Buffer>();
 	private HashSet<Buffer> pendingBuffers = new HashSet<Buffer>();
-	private boolean noMagic = false;
+	private boolean noFeature = false;
 	
 	@EBHandler
 	public void handleBufferUpdate(BufferUpdate msg)
@@ -261,20 +260,22 @@ public class DoubleFeaturePlugin extends EditPlugin
 		}
 		else if (msg.getWhat() == BufferUpdate.LOADED) {
 			pendingBuffers.remove(buffer);
-			if (!noMagic) {
-				String magic = buffer.getStringProperty(MAGIC);
-				if (notNullOrEmpty(magic) && !magicBuffers.containsKey(buffer)) {
-					addMagic(buffer, magic);
+			if (!noFeature) {
+				String feature = buffer.getStringProperty(FEATURE);
+				if (notNullOrEmpty(feature) && !featuredBuffers.containsKey(buffer)) {
+					addFeature(buffer, feature);
 				}
 				EditPane editPane = null;
 				if (pendingFeatures.containsValue(buffer)) {
 					for (DoubleFeature doubleFeature : pendingFeatures.keySet()) 
 						if (buffer.equals(pendingFeatures.get(doubleFeature))) {
 							pendingFeatures.remove(doubleFeature);
-							editPane = (EditPane) doubleFeatures.getKey(doubleFeature);
+							for (Map.Entry<EditPane,DoubleFeature> entry : doubleFeatures.entrySet())
+								if (entry.getValue().equals(doubleFeature))
+									editPane = entry.getKey();
 						}
 				}
-				else if (magicBuffers.containsKey(buffer)) {
+				else if (featuredBuffers.containsKey(buffer)) {
 					EditPane[] editPanes = getEditPanesFor(buffer);
 					if (editPanes.length > 0)
 						editPane = editPanes[0];
@@ -285,8 +286,8 @@ public class DoubleFeaturePlugin extends EditPlugin
 			}
 		}
 		else if (msg.getWhat() == BufferUpdate.CLOSED) {
-			if (magicBuffers.containsKey(buffer)) 
-				removeMagic(buffer);
+			if (featuredBuffers.containsKey(buffer)) 
+				removeFeature(buffer);
 		}
 	}
 	
@@ -296,19 +297,21 @@ public class DoubleFeaturePlugin extends EditPlugin
 			EditBus.send(new BufferChanging(editPanes[0], buffer));
 	}
 
-	public static class DummyContainer extends JComponent implements MouseListener
+	public static class FeatureContainer extends JComponent implements MouseListener
 	{
-		public DummyContainer(Buffer buffer) {
+		public FeatureContainer(Buffer buffer) {
+			setLayout(new BorderLayout());
 			this.buffer = buffer;
 			addMouseListener(this);
 			String format = getProperty("doublefeature.dummy-tooltip.message", "'%s'");
 			setToolTipText(String.format(format, buffer));
+			addGutter();
 		}
 		
 		Buffer buffer;
 		
 		public void mouseClicked(MouseEvent ev) {
-			EditBus.send(new MagicBufferChanging((Component)ev.getSource(), buffer, ev));
+			EditBus.send(new FeatureBufferChanging((Component)ev.getSource(), buffer, ev));
 		}
 		public void mousePressed(MouseEvent e) {
 		}
@@ -318,37 +321,8 @@ public class DoubleFeaturePlugin extends EditPlugin
 		}
 		public void mouseExited(MouseEvent e) {
 		}
-	}
-	
-	private EditPane getEditPaneByDescendant(MouseEvent e) {
-		return (EditPane)SwingUtilities.getAncestorOfClass(
-				EditPane.class, 
-				(Component)e.getSource());
-	}
-	
-	protected MouseListener focusClickListener = new MouseAdapter() {
-		@Override
-		public void mouseClicked(MouseEvent e) {
-			EditPane editPane = getEditPaneByDescendant(e);
-			if (editPane != null)
-				focusRequest(editPane);
-		}
-	};
-	
-	protected void installFocusClickListener(Container container, boolean...install) {
-		Component component = findFirstComponent(container, DoubleFeature.FOCUS, Constraint.AMONG);
-		if (component != null) {
-			if (param(true, 0, install))
-				component.addMouseListener(focusClickListener);
-			else
-				component.removeMouseListener(focusClickListener);
-		}
-	}
-
-	public static class MagicContainer extends JPanel
-	{
-		public MagicContainer() {
-			super(new BorderLayout());
+		
+		void addGutter() {
 			JPanel gutter = new JPanel();
 			gutter.setName("gutter");
 			add(gutter, BorderLayout.WEST);
@@ -365,66 +339,91 @@ public class DoubleFeaturePlugin extends EditPlugin
 		}
 	}
 	
-	private Hashtable<Buffer,JComponent> magicBuffers = new Hashtable<Buffer,JComponent>();
+	private EditPane getEditPaneByDescendant(MouseEvent e) {
+		return (EditPane)SwingUtilities.getAncestorOfClass(
+				EditPane.class, 
+				(Component)e.getSource());
+	}
 	
-	protected JComponent constructMagicContainer(final Buffer buffer, String magic, Object...params) throws IOException {
-		MagicContainer container = new MagicContainer();
+	private MouseListener focusRequestListener = new MouseAdapter() {
+		@Override
+		public void mouseClicked(MouseEvent e) {
+			EditPane editPane = getEditPaneByDescendant(e);
+			if (editPane != null)
+				focusRequest(editPane);
+		}
+	};
+	
+	protected void installFocusClickListener(Container container, boolean...install) {
+		Component component = findFirstComponent(container, DoubleFeature.FOCUS, Constraint.AMONG);
+		if (component != null) {
+			if (param(true, 0, install))
+				component.addMouseListener(focusRequestListener);
+			else
+				component.removeMouseListener(focusRequestListener);
+		}
+	}
+	
+	private Hashtable<Buffer,JComponent> featuredBuffers = new Hashtable<Buffer,JComponent>();
+	
+	protected JComponent constructFeature(final Buffer buffer, String feature, JComponent container, Object...params) throws IOException {
 		installFocusClickListener(container);
 		return container;
 	}
 	
-	protected void deconstructMagicContainer(String magic, JComponent container) {
+	protected void deconstructFeature(String feature, JComponent container) {
 		installFocusClickListener(container, false);
 	}
 	
-	protected boolean addMagic(Buffer buffer, String magic, Object...params) {
-		JComponent container = null;
+	protected boolean addFeature(Buffer buffer, String feature, Object...params) {
+		JComponent container = new FeatureContainer(buffer);
 		try {
-			container = constructMagicContainer(buffer, magic, params);
+			container = constructFeature(buffer, feature, container, 
+					arrayappend(objects(focusRequestListener), params));
 		} catch (Exception e) {
-			Log.e(TAG, "addMagic", e);
+			Log.log(Log.ERROR, getClass().getName() + ".addFeature", e);
 		}
 		if (container == null)
-			container = new DummyContainer(buffer);
-		buffer.setStringProperty(MAGIC, magic);
-		magicBuffers.put(buffer, container);
-		diag_println(DIAG_OFF, "addMagic", buffer);
+			container = new FeatureContainer(buffer);
+		buffer.setStringProperty(FEATURE, feature);
+		featuredBuffers.put(buffer, container);
+		diag_println(DIAG_OFF, "addFeature", buffer);
 		return true;
 	}
 	
-	protected void removeMagic(Buffer buffer) {
-		JComponent container = magicBuffers.get(buffer);
-		String magic = buffer.getStringProperty(MAGIC);
-		deconstructMagicContainer(magic, container);
-		buffer.setStringProperty(MAGIC, "");
-		magicBuffers.remove(buffer);
-		diag_println(DIAG_OFF, "removeMagic", buffer);
+	protected void removeFeature(Buffer buffer) {
+		JComponent container = featuredBuffers.get(buffer);
+		String feature = buffer.getStringProperty(FEATURE);
+		deconstructFeature(feature, container);
+		buffer.setStringProperty(FEATURE, "");
+		featuredBuffers.remove(buffer);
+		diag_println(DIAG_OFF, "removeFeature", buffer);
 	}
 	
-	protected JComponent trueMagicWidget(JComponent widget, BufferChanging msg) {
+	protected JComponent featuredWidget(JComponent widget, BufferChanging msg) {
 		return widget;
 	}
 	
-	private void doMagic(DoubleFeature doubleFeature, Buffer buffer, BufferChanging msg) {
-		JComponent widget = trueMagicWidget(magicBuffers.get(buffer), msg);
-		Container parent = widget.getParent();
-		if (parent instanceof EditPane) {
-			parent.remove(widget);
-			DoubleFeature df = doubleFeatures.getValue(parent);
+	private void doFeature(DoubleFeature doubleFeature, Buffer buffer, BufferChanging msg) {
+		JComponent widget = featuredWidget(featuredBuffers.get(buffer), msg);
+		Container container = widget.getParent();
+		if (container instanceof EditPane) {
+			container.remove(widget);
+			DoubleFeature df = doubleFeatures.get(container);
 			if (df != null) {
-				df.setWidget(new DummyContainer(buffer));
-				df.addUIComponentTo(parent);
+				df.setWidget(new FeatureContainer(buffer));
+				df.addFeatureTo(container);
 			}
 		}
 		doubleFeature.setWidget(widget);
 	}
 	
-	public Buffer newMagicBuffer(String magic, Object...params) {
+	public Buffer newFeatureBuffer(String feature, Object...params) {
 		BufferSetManager bufferSetManager = jEdit.getBufferSetManager();
 		EditPane editPane = jEdit.getActiveView().getEditPane();
 		Buffer buffer = editPane.getBuffer();
-		Buffer newBuffer = createMagicBuffer();
-		addMagic(newBuffer, magic, params);
+		Buffer newBuffer = createFeatureBuffer();
+		addFeature(newBuffer, feature, params);
 		for (BufferSet bufferSet : bufferSetManager.getOwners(buffer)) {
 			View[] views = jEdit.getViews();
 			for (View view : views) {
@@ -442,8 +441,8 @@ public class DoubleFeaturePlugin extends EditPlugin
 	}
 	
 	public static void spellcheckBuffer(Buffer buffer) {
-		if (!self.magicBuffers.containsKey(buffer)) {
-			if (self.addMagic(buffer, "spellcheck"))
+		if (!self.featuredBuffers.containsKey(buffer)) {
+			if (self.addFeature(buffer, "spellcheck"))
 				self.bufferChange(buffer);
 		}
 	}

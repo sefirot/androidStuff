@@ -5,7 +5,6 @@ import java.lang.reflect.Method;
 import javax.swing.JFrame;
 
 import com.applang.SwingUtil.Behavior;
-import com.applang.berichtsheft.BerichtsheftActivity;
 
 import android.app.Dialog;
 import android.content.Context;

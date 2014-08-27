@@ -30,6 +30,7 @@ import org.xml.sax.helpers.XMLReaderFactory;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.res.Resources;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Environment;
@@ -40,14 +41,27 @@ import com.applang.PluginUtils;
 import static com.applang.Util.*;
 import static com.applang.Util1.*;
 import static com.applang.Util2.*;
+import static com.applang.PluginUtils.insideJEdit;
 import static com.applang.SwingUtil.*;
 import static com.applang.ZipUtil.*;
 
 public class BerichtsheftApp
 {
+	public static String absolutePath(String relPath) {
+		String absPath = insideJEdit() ? 
+				jEdit.getSettingsDirectory() : 
+				Resources.getCodeSourceLocation(PluginUtils.class).getPath();
+		int index = absPath.indexOf(".jedit");
+		String part = index > -1 ? 
+				absPath.substring(0, index) : 
+				relativePath();
+		absPath = pathCombine(part, relPath);
+		return absPath;
+	}
+	
 	public static void loadSettings() {
 		System.setProperty("plugin.props", "BerichtsheftPlugin.props");
-		String path = PluginUtils.absolutePath(".jedit");
+		String path = absolutePath(".jedit");
 		System.setProperty("jedit.settings.dir", path);
 		String path2 = pathCombine(path, "jars/sqlite4java");
 		System.setProperty("sqlite4java.library.path", path2);

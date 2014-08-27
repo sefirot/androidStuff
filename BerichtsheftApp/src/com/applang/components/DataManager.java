@@ -28,7 +28,6 @@ import org.gjt.sp.jedit.View;
 import org.gjt.sp.jedit.textarea.TextArea;
 
 import com.applang.Dialogs;
-import com.applang.PluginUtils;
 import com.applang.PromptDirective;
 import com.applang.berichtsheft.BerichtsheftActivity;
 import com.applang.berichtsheft.BerichtsheftApp;
@@ -44,6 +43,7 @@ import static com.applang.Util.*;
 import static com.applang.Util1.*;
 import static com.applang.Util2.*;
 import static com.applang.SwingUtil.*;
+import static com.applang.PluginUtils.*;
 
 public class DataManager extends ActionPanel
 {
@@ -110,7 +110,7 @@ public class DataManager extends ActionPanel
 				createAnotherPane(++index, star == TABLE);
 		}
 		props.getProperty("constellation", config);
-		PluginUtils.magicFile(name, "data-manage", props);
+		featureFile(name, "data-manage", props);
 	}
 	
 	public void modifyConstellation(final Component component) {
@@ -351,7 +351,7 @@ public class DataManager extends ActionPanel
 				catch(Exception e) {
 					Log.e(TAG, "layoutToggler", e);
 				};
-			PluginUtils.magicFile(name, "data-manage", props);
+			featureFile(name, "data-manage", props);
 		}
 	};
 	
@@ -377,7 +377,7 @@ public class DataManager extends ActionPanel
 				}, 
 				isText);
 			setText(text);
-			PluginUtils.magicFile(name, "data-manage", props);
+			featureFile(name, "data-manage", props);
 		}
 	};
 
@@ -467,7 +467,7 @@ public class DataManager extends ActionPanel
 					if (dataView.configureData(view, false)) {
 						String dbString = dataView.getUriString();
 						props.setProperty("uri", dbString);
-						PluginUtils.magicFile(name, "data-manage", props);
+						featureFile(name, "data-manage", props);
 						initialize(dbString);
 					}
 					return null;

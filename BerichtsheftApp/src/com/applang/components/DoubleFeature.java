@@ -18,7 +18,7 @@ import static com.applang.Util.*;
 import static com.applang.Util2.*;
 import static com.applang.SwingUtil.*;
 
-public class DoubleFeature implements IComponent
+public class DoubleFeature
 {
     protected static final String TAG = DoubleFeature.class.getSimpleName();
 
@@ -53,7 +53,7 @@ public class DoubleFeature implements IComponent
 					}
 				), 
 				1);
-		Container container = getUIComponent().getParent();
+		Container container = getFeature().getParent();
 		if (container instanceof EditPane) {
 			EditPane editPane = (EditPane)container;
 			Buffer buffer = editPane.getBuffer();
@@ -77,19 +77,18 @@ public class DoubleFeature implements IComponent
 		return textAreas[1];
 	}
 	
-	@Override
-	public Component getUIComponent() {
+	public Component getFeature() {
 		return textAreas[0] != null ? textAreas[0] : widget;
 	}
 	
-	public void addUIComponentTo(Container container) {
-		addCenterComponent(getUIComponent(), container);
+	public void addFeatureTo(Container container) {
+		addCenterComponent(getFeature(), container);
 		container.validate();
 		container.repaint();
 	}
 	
 	protected boolean isolate(Object...params) {
-		Component target = getUIComponent();
+		Component target = getFeature();
 		Container container = target.getParent();
 		if (container == null) {
 			Log.w(TAG, String.format("%s cannot be isolated", identity(target)));
@@ -115,7 +114,7 @@ public class DoubleFeature implements IComponent
 					textAreas[1] = null;
 				}
 			}
-			addUIComponentTo(container);
+			addFeatureTo(container);
 			container = null;
 		}
 	}
